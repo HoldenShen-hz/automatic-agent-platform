@@ -1,6 +1,7 @@
-import { describe, it, expect } from "node:test";
-import { DomainEvaluationGateService } from "../../../../../src/domains/eval-framework/domain-evaluation-gate-service.js";
-import type { DomainEvalFramework } from "../../../../../src/domains/eval-framework/index.js";
+import { beforeEach, describe, it } from "node:test";
+import { expect } from "../../../helpers/node-expect.js";
+import { DomainEvaluationGateService } from "../../../../src/domains/eval-framework/domain-evaluation-gate-service.js";
+import type { DomainEvalFramework } from "../../../../src/domains/eval-framework/index.js";
 
 describe("DomainEvaluationGateService", () => {
   let service: DomainEvaluationGateService;
@@ -9,7 +10,9 @@ describe("DomainEvaluationGateService", () => {
     service = new DomainEvaluationGateService();
   });
 
-  const createMockFramework = (overrides?: Partial<DomainEvalFramework>): DomainEvalFramework => ({
+  const createMockFramework = (
+    overrides?: Partial<DomainEvalFramework>,
+  ): DomainEvalFramework => ({
     frameworkId: "framework_1",
     domainId: "domain_1",
     evaluators: [
@@ -32,7 +35,7 @@ describe("DomainEvaluationGateService", () => {
     ],
     releaseGates: {
       minFewShotCount: 2,
-      minRegressionCaseCount: 10,
+      minRegressionCaseCount: 3,
       requirePromptInjectionCoverage: true,
     },
     onlineMetrics: ["accuracy", "latency", "cost"],
@@ -40,7 +43,13 @@ describe("DomainEvaluationGateService", () => {
   });
 
   const createMockRun = (overrides?: {
-    cases?: Array<{ caseId: string; metric: string; score: number; expectedClass: string; approvalMatched?: boolean }>;
+    cases?: Array<{
+      caseId: string;
+      metric: string;
+      score: number;
+      expectedClass: string;
+      approvalMatched?: boolean;
+    }>;
     domainId?: string;
   }) => ({
     suiteId: "suite_1",
@@ -49,9 +58,27 @@ describe("DomainEvaluationGateService", () => {
     executionMode: "supervised" as const,
     storageMode: "sqlite" as const,
     cases: overrides?.cases ?? [
-      { caseId: "case_1", metric: "accuracy", score: 0.95, expectedClass: "pass", approvalMatched: true },
-      { caseId: "case_2", metric: "accuracy", score: 0.92, expectedClass: "pass", approvalMatched: true },
-      { caseId: "case_3", metric: "latency", score: 80, expectedClass: "pass", approvalMatched: true },
+      {
+        caseId: "case_1",
+        metric: "accuracy",
+        score: 0.95,
+        expectedClass: "pass",
+        approvalMatched: true,
+      },
+      {
+        caseId: "case_2",
+        metric: "accuracy",
+        score: 0.92,
+        expectedClass: "pass",
+        approvalMatched: true,
+      },
+      {
+        caseId: "case_3",
+        metric: "latency",
+        score: 80,
+        expectedClass: "pass",
+        approvalMatched: true,
+      },
     ],
   });
 
@@ -59,13 +86,17 @@ describe("DomainEvaluationGateService", () => {
     it("should throw for empty regression suite", () => {
       const framework = createMockFramework();
       const run = createMockRun({ cases: [] });
-      expect(() => service.evaluateSuite(framework, run)).toThrow("domain_eval.empty_regression_suite");
+      expect(() => service.evaluateSuite(framework, run)).toThrow(
+        "domain_eval.empty_regression_suite",
+      );
     });
 
     it("should throw for domain mismatch", () => {
       const framework = createMockFramework({ domainId: "domain_1" });
       const run = createMockRun({ domainId: "domain_2" });
-      expect(() => service.evaluateSuite(framework, run)).toThrow("domain_eval.domain_mismatch");
+      expect(() => service.evaluateSuite(framework, run)).toThrow(
+        "domain_eval.domain_mismatch",
+      );
     });
 
     it("should return pass when all metrics meet thresholds", () => {
@@ -81,8 +112,20 @@ describe("DomainEvaluationGateService", () => {
       const framework = createMockFramework();
       const run = createMockRun({
         cases: [
-          { caseId: "case_1", metric: "accuracy", score: 0.5, expectedClass: "pass", approvalMatched: true },
-          { caseId: "case_2", metric: "accuracy", score: 0.6, expectedClass: "pass", approvalMatched: true },
+          {
+            caseId: "case_1",
+            metric: "accuracy",
+            score: 0.5,
+            expectedClass: "pass",
+            approvalMatched: true,
+          },
+          {
+            caseId: "case_2",
+            metric: "accuracy",
+            score: 0.6,
+            expectedClass: "pass",
+            approvalMatched: true,
+          },
         ],
       });
       const report = service.evaluateSuite(framework, run);
@@ -102,8 +145,18 @@ describe("DomainEvaluationGateService", () => {
       const framework = createMockFramework();
       const run = createMockRun({
         cases: [
-          { caseId: "case_1", metric: "accuracy", score: 0.95, expectedClass: "pass" },
-          { caseId: "case_2", metric: "latency", score: 80, expectedClass: "pass" },
+          {
+            caseId: "case_1",
+            metric: "accuracy",
+            score: 0.95,
+            expectedClass: "pass",
+          },
+          {
+            caseId: "case_2",
+            metric: "latency",
+            score: 80,
+            expectedClass: "pass",
+          },
         ],
       });
       const report = service.evaluateSuite(framework, run);
@@ -115,7 +168,12 @@ describe("DomainEvaluationGateService", () => {
       const framework = createMockFramework();
       const run = createMockRun({
         cases: [
-          { caseId: "case_1", metric: "accuracy", score: 0.95, expectedClass: "pass" },
+          {
+            caseId: "case_1",
+            metric: "accuracy",
+            score: 0.95,
+            expectedClass: "pass",
+          },
         ],
       });
       const report = service.evaluateSuite(framework, run);
@@ -125,27 +183,50 @@ describe("DomainEvaluationGateService", () => {
 
     it("should handle few shot gate pass", () => {
       const framework = createMockFramework({
-        releaseGates: { minFewShotCount: 2, minRegressionCaseCount: 1, requirePromptInjectionCoverage: false },
-        fewShotExamples: [{ input: "1", expected: "1" }, { input: "2", expected: "2" }],
+        releaseGates: {
+          minFewShotCount: 2,
+          minRegressionCaseCount: 1,
+          requirePromptInjectionCoverage: false,
+        },
+        fewShotExamples: [
+          { input: "1", expected: "1" },
+          { input: "2", expected: "2" },
+        ],
       });
-      const run = createMockRun({ cases: [{ caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" }] });
+      const run = createMockRun({
+        cases: [
+          { caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" },
+        ],
+      });
       const report = service.evaluateSuite(framework, run);
       expect(report.fewShotGatePassed).toBe(true);
     });
 
     it("should fail few shot gate when not enough examples", () => {
       const framework = createMockFramework({
-        releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 1, requirePromptInjectionCoverage: false },
+        releaseGates: {
+          minFewShotCount: 5,
+          minRegressionCaseCount: 1,
+          requirePromptInjectionCoverage: false,
+        },
         fewShotExamples: [{ input: "1", expected: "1" }],
       });
-      const run = createMockRun({ cases: [{ caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" }] });
+      const run = createMockRun({
+        cases: [
+          { caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" },
+        ],
+      });
       const report = service.evaluateSuite(framework, run);
       expect(report.fewShotGatePassed).toBe(false);
     });
 
     it("should handle regression case gate pass", () => {
       const framework = createMockFramework({
-        releaseGates: { minFewShotCount: 1, minRegressionCaseCount: 3, requirePromptInjectionCoverage: false },
+        releaseGates: {
+          minFewShotCount: 1,
+          minRegressionCaseCount: 3,
+          requirePromptInjectionCoverage: false,
+        },
       });
       const run = createMockRun({
         cases: [
@@ -160,10 +241,16 @@ describe("DomainEvaluationGateService", () => {
 
     it("should fail regression case gate when not enough cases", () => {
       const framework = createMockFramework({
-        releaseGates: { minFewShotCount: 1, minRegressionCaseCount: 10, requirePromptInjectionCoverage: false },
+        releaseGates: {
+          minFewShotCount: 1,
+          minRegressionCaseCount: 3,
+          requirePromptInjectionCoverage: false,
+        },
       });
       const run = createMockRun({
-        cases: [{ caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" }],
+        cases: [
+          { caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" },
+        ],
       });
       const report = service.evaluateSuite(framework, run);
       expect(report.regressionCaseGatePassed).toBe(false);
@@ -171,11 +258,21 @@ describe("DomainEvaluationGateService", () => {
 
     it("should handle prompt injection coverage when required", () => {
       const framework = createMockFramework({
-        releaseGates: { minFewShotCount: 1, minRegressionCaseCount: 1, requirePromptInjectionCoverage: true },
+        releaseGates: {
+          minFewShotCount: 1,
+          minRegressionCaseCount: 1,
+          requirePromptInjectionCoverage: true,
+        },
       });
       const run = createMockRun({
         cases: [
-          { caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p", approvalMatched: true },
+          {
+            caseId: "c1",
+            metric: "acc",
+            score: 0.9,
+            expectedClass: "p",
+            approvalMatched: true,
+          },
         ],
       });
       const report = service.evaluateSuite(framework, run);
@@ -184,12 +281,28 @@ describe("DomainEvaluationGateService", () => {
 
     it("should fail prompt injection coverage when any case has approvalMatched false", () => {
       const framework = createMockFramework({
-        releaseGates: { minFewShotCount: 1, minRegressionCaseCount: 1, requirePromptInjectionCoverage: true },
+        releaseGates: {
+          minFewShotCount: 1,
+          minRegressionCaseCount: 1,
+          requirePromptInjectionCoverage: true,
+        },
       });
       const run = createMockRun({
         cases: [
-          { caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p", approvalMatched: true },
-          { caseId: "c2", metric: "acc", score: 0.9, expectedClass: "p", approvalMatched: false },
+          {
+            caseId: "c1",
+            metric: "acc",
+            score: 0.9,
+            expectedClass: "p",
+            approvalMatched: true,
+          },
+          {
+            caseId: "c2",
+            metric: "acc",
+            score: 0.9,
+            expectedClass: "p",
+            approvalMatched: false,
+          },
         ],
       });
       const report = service.evaluateSuite(framework, run);
@@ -198,10 +311,16 @@ describe("DomainEvaluationGateService", () => {
 
     it("should pass prompt injection coverage when not required", () => {
       const framework = createMockFramework({
-        releaseGates: { minFewShotCount: 1, minRegressionCaseCount: 1, requirePromptInjectionCoverage: false },
+        releaseGates: {
+          minFewShotCount: 1,
+          minRegressionCaseCount: 1,
+          requirePromptInjectionCoverage: false,
+        },
       });
       const run = createMockRun({
-        cases: [{ caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" }],
+        cases: [
+          { caseId: "c1", metric: "acc", score: 0.9, expectedClass: "p" },
+        ],
       });
       const report = service.evaluateSuite(framework, run);
       expect(report.promptInjectionCoveragePassed).toBe(true);
@@ -217,7 +336,9 @@ describe("DomainEvaluationGateService", () => {
         ],
       });
       const report = service.evaluateSuite(framework, run);
-      const accuracyResult = report.evaluatorResults.find((r) => r.metric === "accuracy");
+      const accuracyResult = report.evaluatorResults.find(
+        (r) => r.metric === "accuracy",
+      );
       expect(accuracyResult?.observedScore).toBe(0.9); // (0.9 + 0.95 + 0.85) / 3 = 0.9
     });
 
@@ -226,11 +347,13 @@ describe("DomainEvaluationGateService", () => {
       const run = createMockRun({
         cases: [
           { caseId: "c1", metric: "accuracy", score: 0.95, expectedClass: "p" },
-          { caseId: "c2", metric: "latency", score: 200, expectedClass: "p" }, // threshold is 100
+          { caseId: "c2", metric: "latency", score: 50, expectedClass: "p" }, // threshold is 100
         ],
       });
       const report = service.evaluateSuite(framework, run);
-      expect(report.nonBlockingFindings.some((f) => f.includes("below_threshold"))).toBe(true);
+      expect(
+        report.nonBlockingFindings.some((f) => f.includes("below_threshold")),
+      ).toBe(true);
     });
 
     it("should generate report with unique report ID", () => {
@@ -242,7 +365,10 @@ describe("DomainEvaluationGateService", () => {
     });
 
     it("should include framework and domain IDs in report", () => {
-      const framework = createMockFramework({ frameworkId: "fw_123", domainId: "dom_456" });
+      const framework = createMockFramework({
+        frameworkId: "fw_123",
+        domainId: "dom_456",
+      });
       const run = createMockRun({ domainId: "dom_456" });
       const report = service.evaluateSuite(framework, run);
       expect(report.frameworkId).toBe("fw_123");

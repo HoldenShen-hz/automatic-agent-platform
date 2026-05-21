@@ -10,32 +10,59 @@ import { DomainEvalFrameworkSchema } from "../../../../src/domains/eval-framewor
 
 // ── Helper to create valid framework ──────────────────────────────────────────
 
-function createFramework(domainId: string, overrides?: {
-  minFewShotCount?: number;
-  minRegressionCaseCount?: number;
-  requirePromptInjectionCoverage?: boolean;
-  evaluators?: Array<{ evaluatorId: string; metric: string; threshold: number; blocking: boolean }>;
-  fewShotExamples?: string[];
-  onlineMetrics?: string[];
-}): ReturnType<typeof DomainEvalFrameworkSchema.parse> {
+function createFramework(
+  domainId: string,
+  overrides?: {
+    minFewShotCount?: number;
+    minRegressionCaseCount?: number;
+    requirePromptInjectionCoverage?: boolean;
+    evaluators?: Array<{
+      evaluatorId: string;
+      metric: string;
+      threshold: number;
+      blocking: boolean;
+    }>;
+    fewShotExamples?: string[];
+    onlineMetrics?: string[];
+  },
+): ReturnType<typeof DomainEvalFrameworkSchema.parse> {
   return DomainEvalFrameworkSchema.parse({
     frameworkId: `fw_${domainId}`,
     domainId,
     evaluators: overrides?.evaluators ?? [
-      { evaluatorId: "eval_accuracy", metric: "accuracy", threshold: 0.8, blocking: true },
-      { evaluatorId: "eval_latency", metric: "latency_ms", threshold: 200, blocking: true },
+      {
+        evaluatorId: "eval_accuracy",
+        metric: "accuracy",
+        threshold: 0.8,
+        blocking: true,
+      },
+      {
+        evaluatorId: "eval_latency",
+        metric: "latency_ms",
+        threshold: 200,
+        blocking: false,
+      },
     ],
-    fewShotExamples: overrides?.fewShotExamples ?? ["example1", "example2", "example3", "example4", "example5"],
+    fewShotExamples: overrides?.fewShotExamples ?? [
+      "example1",
+      "example2",
+      "example3",
+      "example4",
+      "example5",
+    ],
     onlineMetrics: overrides?.onlineMetrics ?? ["accuracy", "latency_ms"],
     releaseGates: {
       minFewShotCount: overrides?.minFewShotCount ?? 5,
       minRegressionCaseCount: overrides?.minRegressionCaseCount ?? 20,
-      requirePromptInjectionCoverage: overrides?.requirePromptInjectionCoverage ?? true,
+      requirePromptInjectionCoverage:
+        overrides?.requirePromptInjectionCoverage ?? true,
     },
   });
 }
 
-function createCase(overrides?: Partial<RegressionCaseResult>): RegressionCaseResult {
+function createCase(
+  overrides?: Partial<RegressionCaseResult>,
+): RegressionCaseResult {
   return {
     caseId: "case_1",
     metric: "accuracy",
@@ -45,7 +72,10 @@ function createCase(overrides?: Partial<RegressionCaseResult>): RegressionCaseRe
   };
 }
 
-function createRun(domainId: string, cases: RegressionCaseResult[]): RegressionSuiteRun {
+function createRun(
+  domainId: string,
+  cases: RegressionCaseResult[],
+): RegressionSuiteRun {
   return {
     suiteId: "suite_edge",
     domainId,
@@ -84,8 +114,18 @@ test("DomainEvaluationGateService.evaluateSuite reports multiple blocking failur
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_1", metric: "metric_a", threshold: 0.9, blocking: true },
-      { evaluatorId: "eval_2", metric: "metric_b", threshold: 0.9, blocking: true },
+      {
+        evaluatorId: "eval_1",
+        metric: "metric_a",
+        threshold: 0.9,
+        blocking: true,
+      },
+      {
+        evaluatorId: "eval_2",
+        metric: "metric_b",
+        threshold: 0.9,
+        blocking: true,
+      },
     ],
   });
   const run = createRun("test", [
@@ -110,7 +150,12 @@ test("DomainEvaluationGateService.evaluateSuite reports all gate failures simult
     minRegressionCaseCount: 20,
     requirePromptInjectionCoverage: true,
     evaluators: [
-      { evaluatorId: "eval_1", metric: "accuracy", threshold: 0.9, blocking: true },
+      {
+        evaluatorId: "eval_1",
+        metric: "accuracy",
+        threshold: 0.9,
+        blocking: true,
+      },
     ],
     fewShotExamples: ["only_one"], // Below minFewShotCount of 10
   });
@@ -125,15 +170,24 @@ test("DomainEvaluationGateService.evaluateSuite reports all gate failures simult
   assert.equal(report.regressionCaseGatePassed, false);
   assert.equal(report.promptInjectionCoveragePassed, false);
   assert.ok(report.blockingFailures.includes("domain_eval.min_few_shot_gate"));
-  assert.ok(report.blockingFailures.includes("domain_eval.min_regression_case_gate"));
-  assert.ok(report.blockingFailures.includes("domain_eval.prompt_injection_gate"));
+  assert.ok(
+    report.blockingFailures.includes("domain_eval.min_regression_case_gate"),
+  );
+  assert.ok(
+    report.blockingFailures.includes("domain_eval.prompt_injection_gate"),
+  );
 });
 
 test("DomainEvaluationGateService.evaluateSuite handles single case with single metric", () => {
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_single", metric: "single_metric", threshold: 0.5, blocking: true },
+      {
+        evaluatorId: "eval_single",
+        metric: "single_metric",
+        threshold: 0.5,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 1,
     requirePromptInjectionCoverage: false,
@@ -153,7 +207,12 @@ test("DomainEvaluationGateService.evaluateSuite calculates average correctly for
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_float", metric: "float_metric", threshold: 0.9, blocking: true },
+      {
+        evaluatorId: "eval_float",
+        metric: "float_metric",
+        threshold: 0.9,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 3,
     requirePromptInjectionCoverage: false,
@@ -165,7 +224,9 @@ test("DomainEvaluationGateService.evaluateSuite calculates average correctly for
   ]);
 
   const report = service.evaluateSuite(framework, run);
-  const floatResult = report.evaluatorResults.find((r) => r.metric === "float_metric");
+  const floatResult = report.evaluatorResults.find(
+    (r) => r.metric === "float_metric",
+  );
 
   // (0.333 + 0.333 + 0.333) / 3 = 0.332999... rounded to 0.333
   assert.equal(floatResult?.observedScore, 0.333);
@@ -175,7 +236,12 @@ test("DomainEvaluationGateService.evaluateSuite handles very small threshold dif
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_tiny", metric: "tiny_diff", threshold: 0.9999, blocking: true },
+      {
+        evaluatorId: "eval_tiny",
+        metric: "tiny_diff",
+        threshold: 0.9999,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 1,
     requirePromptInjectionCoverage: false,
@@ -193,7 +259,12 @@ test("DomainEvaluationGateService.evaluateSuite handles zero threshold", () => {
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_zero", metric: "zero_metric", threshold: 0, blocking: true },
+      {
+        evaluatorId: "eval_zero",
+        metric: "zero_metric",
+        threshold: 0,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 1,
     requirePromptInjectionCoverage: false,
@@ -221,21 +292,35 @@ test("DomainEvaluationGateService.evaluateSuite handles missing online metric", 
   const report = service.evaluateSuite(framework, run);
 
   assert.ok(report.missingOnlineMetrics.includes("metric_c"));
-  assert.ok(report.nonBlockingFindings.some((f) => f.includes("online_metric_missing:metric_c")));
+  assert.ok(
+    report.nonBlockingFindings.some((f) =>
+      f.includes("online_metric_missing:metric_c"),
+    ),
+  );
 });
 
 test("DomainEvaluationGateService.evaluateSuite handles costUsd and latencyMs in case results", () => {
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_cost", metric: "cost_usd", threshold: 10, blocking: false },
-      { evaluatorId: "eval_latency", metric: "latency_ms", threshold: 100, blocking: false },
+      {
+        evaluatorId: "eval_cost",
+        metric: "cost_usd",
+        threshold: 10,
+        blocking: false,
+      },
+      {
+        evaluatorId: "eval_latency",
+        metric: "latency_ms",
+        threshold: 100,
+        blocking: false,
+      },
     ],
     minRegressionCaseCount: 1,
     requirePromptInjectionCoverage: false,
   });
   const run = createRun("test", [
-    createCase({ metric: "cost_usd", score: 5, costUsd: 3.50 }),
+    createCase({ metric: "cost_usd", score: 5, costUsd: 3.5 }),
     createCase({ metric: "latency_ms", score: 80, latencyMs: 75 }),
   ]);
 
@@ -299,7 +384,12 @@ test("DomainEvaluationGateService.evaluateSuite handles duplicate metrics in cas
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_dup", metric: "dup_metric", threshold: 0.7, blocking: true },
+      {
+        evaluatorId: "eval_dup",
+        metric: "dup_metric",
+        threshold: 0.7,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 5,
     requirePromptInjectionCoverage: false,
@@ -313,7 +403,9 @@ test("DomainEvaluationGateService.evaluateSuite handles duplicate metrics in cas
   ]);
 
   const report = service.evaluateSuite(framework, run);
-  const dupResult = report.evaluatorResults.find((r) => r.metric === "dup_metric");
+  const dupResult = report.evaluatorResults.find(
+    (r) => r.metric === "dup_metric",
+  );
 
   // Average of [0.8, 0.8, 0.8, 0.8, 0.8] = 0.8
   assert.equal(dupResult?.observedScore, 0.8);
@@ -324,7 +416,12 @@ test("DomainEvaluationGateService.evaluateSuite handles metric with no matching 
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_no_match", metric: "no_match_metric", threshold: 0.9, blocking: true },
+      {
+        evaluatorId: "eval_no_match",
+        metric: "no_match_metric",
+        threshold: 0.9,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 1,
     requirePromptInjectionCoverage: false,
@@ -334,7 +431,9 @@ test("DomainEvaluationGateService.evaluateSuite handles metric with no matching 
   ]);
 
   const report = service.evaluateSuite(framework, run);
-  const noMatchResult = report.evaluatorResults.find((r) => r.metric === "no_match_metric");
+  const noMatchResult = report.evaluatorResults.find(
+    (r) => r.metric === "no_match_metric",
+  );
 
   assert.equal(noMatchResult?.observedScore, null);
   assert.equal(noMatchResult?.passed, false);
@@ -345,14 +444,21 @@ test("DomainEvaluationGateService.evaluateSuite handles large number of cases", 
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_large", metric: "large_metric", threshold: 0.5, blocking: true },
+      {
+        evaluatorId: "eval_large",
+        metric: "large_metric",
+        threshold: 0.5,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 100,
     requirePromptInjectionCoverage: false,
   });
-  const cases = Array(100).fill(null).map((_, i) =>
-    createCase({ caseId: `case_${i}`, metric: "large_metric", score: 0.9 }),
-  );
+  const cases = Array(100)
+    .fill(null)
+    .map((_, i) =>
+      createCase({ caseId: `case_${i}`, metric: "large_metric", score: 0.9 }),
+    );
   const run = createRun("test", cases);
 
   const report = service.evaluateSuite(framework, run);
@@ -364,7 +470,12 @@ test("DomainEvaluationGateService.evaluateSuite handles exact threshold boundary
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_boundary", metric: "boundary_metric", threshold: 0.8, blocking: true },
+      {
+        evaluatorId: "eval_boundary",
+        metric: "boundary_metric",
+        threshold: 0.8,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 1,
     requirePromptInjectionCoverage: false,
@@ -382,7 +493,12 @@ test("DomainEvaluationGateService.evaluateSuite handles evaluator with very high
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_high", metric: "high_threshold", threshold: 0.99, blocking: true },
+      {
+        evaluatorId: "eval_high",
+        metric: "high_threshold",
+        threshold: 0.99,
+        blocking: true,
+      },
     ],
     minRegressionCaseCount: 1,
     requirePromptInjectionCoverage: false,
@@ -427,8 +543,18 @@ test("DomainEvaluationGateService reports non-blocking evaluator failures in non
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test", {
     evaluators: [
-      { evaluatorId: "eval_blocking", metric: "blocking_metric", threshold: 0.9, blocking: true },
-      { evaluatorId: "eval_non_blocking", metric: "non_blocking_metric", threshold: 0.9, blocking: false },
+      {
+        evaluatorId: "eval_blocking",
+        metric: "blocking_metric",
+        threshold: 0.9,
+        blocking: true,
+      },
+      {
+        evaluatorId: "eval_non_blocking",
+        metric: "non_blocking_metric",
+        threshold: 0.9,
+        blocking: false,
+      },
     ],
     minRegressionCaseCount: 2,
     requirePromptInjectionCoverage: false,
@@ -441,5 +567,9 @@ test("DomainEvaluationGateService reports non-blocking evaluator failures in non
   const report = service.evaluateSuite(framework, run);
 
   assert.equal(report.overallPass, true); // Blocking evaluator passes
-  assert.ok(report.nonBlockingFindings.some((f) => f.includes("eval_non_blocking:below_threshold")));
+  assert.ok(
+    report.nonBlockingFindings.some((f) =>
+      f.includes("eval_non_blocking:below_threshold"),
+    ),
+  );
 });

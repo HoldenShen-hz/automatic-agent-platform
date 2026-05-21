@@ -21,18 +21,22 @@ import {
   type SubmitHrRoleProposalRequest,
   type SubmitHrRoleProposalResult,
   type RegisterApprovedHrRoleRequest,
-  type SubmitHrRoleProposalResult,
   type HrGapTriggerReason,
   type HrProposalApprovalStatus,
-} from "../../../../../../src/domains/governance/hr-role-governance-service.js";
-import type { DivisionRegistry } from "../../../../../../src/domains/governance/division-loader.js";
+} from "../../../../../src/domains/governance/hr-role-governance-service.js";
+import type { DivisionRegistry } from "../../../../../src/domains/governance/division-loader.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock division factory
 // ─────────────────────────────────────────────────────────────────────────────
 
 function makeMockDivision(
-  roles: Array<{ id: string; name: string; tools: string[]; promptText?: string }>,
+  roles: Array<{
+    id: string;
+    name: string;
+    tools: string[];
+    promptText?: string;
+  }>,
   divisionId = "test_division",
 ): DivisionRegistry {
   return {
@@ -224,7 +228,8 @@ test("HrGapAnalysisResult recommendedModel is coding or balanced", () => {
   });
 
   assert.ok(
-    result.recommendedModel === "coding" || result.recommendedModel === "balanced",
+    result.recommendedModel === "coding" ||
+      result.recommendedModel === "balanced",
     `Expected coding or balanced, got ${result.recommendedModel}`,
   );
 });

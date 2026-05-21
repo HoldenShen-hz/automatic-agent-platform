@@ -23,11 +23,16 @@ import {
   type SubmitHrRoleProposalResult,
   type RegisterApprovedHrRoleRequest,
   type HrProposalApprovalStatus,
-} from "../../../../../../src/domains/governance/hr-role-governance-service.js";
-import type { DivisionRegistry } from "../../../../../../src/domains/governance/division-loader.js";
+} from "../../../../../src/domains/governance/hr-role-governance-service.js";
+import type { DivisionRegistry } from "../../../../../src/domains/governance/division-loader.js";
 
-/function makeMockDivision(
-  roles: Array<{ id: string; name: string; tools: string[]; promptText?: string }>,
+function makeMockDivision(
+  roles: Array<{
+    id: string;
+    name: string;
+    tools: string[];
+    promptText?: string;
+  }>,
   divisionId = "test_division",
 ): DivisionRegistry {
   return {
@@ -63,7 +68,9 @@ import type { DivisionRegistry } from "../../../../../../src/domains/governance/
   } as unknown as DivisionRegistry;
 }
 
-function makeMinimalProposal(overrides: Partial<HrRoleProposal> = {}): HrRoleProposal {
+function makeMinimalProposal(
+  overrides: Partial<HrRoleProposal> = {},
+): HrRoleProposal {
   const defaultProposal: HrRoleProposal = {
     divisionId: "test_division",
     roleId: "new_role_001",
@@ -71,7 +78,10 @@ function makeMinimalProposal(overrides: Partial<HrRoleProposal> = {}): HrRolePro
     promptText: "You are a test role that helps with testing",
     model: "balanced",
     tools: ["read"],
-    scope: { responsibilities: ["provide test capabilities"], boundaries: ["read-only access"] },
+    scope: {
+      responsibilities: ["provide test capabilities"],
+      boundaries: ["read-only access"],
+    },
     inputSchema: { required: ["task"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "Always applicable" }],
@@ -103,7 +113,10 @@ test("HrRoleSchemaShape accepts valid shape with required only", () => {
 });
 
 test("HrRoleSchemaShape accepts valid shape with optional", () => {
-  const shape: HrRoleSchemaShape = { required: ["field1"], optional: ["field2"] };
+  const shape: HrRoleSchemaShape = {
+    required: ["field1"],
+    optional: ["field2"],
+  };
   assert.deepEqual(shape.required, ["field1"]);
   assert.deepEqual(shape.optional, ["field2"]);
 });
@@ -113,7 +126,10 @@ test("HrRoleSchemaShape accepts valid shape with optional", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("HrRolePrecondition accepts valid precondition", () => {
-  const precondition: HrRolePrecondition = { check: "always", description: "Always passes" };
+  const precondition: HrRolePrecondition = {
+    check: "always",
+    description: "Always passes",
+  };
   assert.equal(precondition.check, "always");
   assert.equal(precondition.description, "Always passes");
 });
@@ -499,5 +515,8 @@ test("analyzeGap result contains all required fields", () => {
   assert.ok(Array.isArray(result.missingCapabilities));
   assert.ok(Array.isArray(result.divisionToolUnion));
   assert.ok(Array.isArray(result.suggestedToolNames));
-  assert.ok(result.recommendedModel === "coding" || result.recommendedModel === "balanced");
+  assert.ok(
+    result.recommendedModel === "coding" ||
+      result.recommendedModel === "balanced",
+  );
 });

@@ -14,15 +14,20 @@ import {
   type HrRoleSchemaShape,
   type HrRolePrecondition,
   type HrWorkflowSuggestion,
-} from "../../../../../../src/domains/governance/hr-role-governance-service.js";
-import type { DivisionRegistry } from "../../../../../../src/domains/governance/division-loader.js";
+} from "../../../../../src/domains/governance/hr-role-governance-service.js";
+import type { DivisionRegistry } from "../../../../../src/domains/governance/division-loader.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock division factory
 // ─────────────────────────────────────────────────────────────────────────────
 
 function makeMockDivision(
-  roles: Array<{ id: string; name: string; tools: string[]; promptText?: string }>,
+  roles: Array<{
+    id: string;
+    name: string;
+    tools: string[];
+    promptText?: string;
+  }>,
   divisionId = "test_division",
 ): DivisionRegistry {
   return {
@@ -142,7 +147,10 @@ test("validateProposal passes with bash restrict boundary", () => {
     promptText: "Executes bash commands with restrictions",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run bash commands"], boundaries: ["bash restrict 5 minutes"] },
+    scope: {
+      responsibilities: ["run bash commands"],
+      boundaries: ["bash restrict 5 minutes"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -164,7 +172,10 @@ test("validateProposal passes with bash limit boundary", () => {
     promptText: "Executes bash commands with limits",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run bash commands"], boundaries: ["bash limit 1 hour"] },
+    scope: {
+      responsibilities: ["run bash commands"],
+      boundaries: ["bash limit 1 hour"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -186,7 +197,10 @@ test("validateProposal passes with shell only boundary", () => {
     promptText: "Shell access",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run shell commands"], boundaries: ["shell only read operations"] },
+    scope: {
+      responsibilities: ["run shell commands"],
+      boundaries: ["shell only read operations"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -208,7 +222,10 @@ test("validateProposal passes with Chinese restriction characters", () => {
     promptText: "Restricted bash",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run bash commands"], boundaries: ["bash 禁止危险命令"] },
+    scope: {
+      responsibilities: ["run bash commands"],
+      boundaries: ["bash 禁止危险命令"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -230,7 +247,10 @@ test("validateProposal passes with Chinese limit characters", () => {
     promptText: "Limited bash",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run bash commands"], boundaries: ["bash 限制执行时间"] },
+    scope: {
+      responsibilities: ["run bash commands"],
+      boundaries: ["bash 限制执行时间"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -252,7 +272,10 @@ test("validateProposal passes with Chinese only characters", () => {
     promptText: "Bash only",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run bash commands"], boundaries: ["bash 仅限于查询操作"] },
+    scope: {
+      responsibilities: ["run bash commands"],
+      boundaries: ["bash 仅限于查询操作"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -274,7 +297,10 @@ test("validateProposal passes with terminal limit boundary", () => {
     promptText: "Terminal access",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run terminal commands"], boundaries: ["terminal limit 10 minutes"] },
+    scope: {
+      responsibilities: ["run terminal commands"],
+      boundaries: ["terminal limit 10 minutes"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -296,7 +322,10 @@ test("validateProposal fails with bash but no restriction", () => {
     promptText: "Unrestricted bash",
     model: "balanced",
     tools: ["bash"],
-    scope: { responsibilities: ["run bash commands"], boundaries: ["bash allowed without limit"] },
+    scope: {
+      responsibilities: ["run bash commands"],
+      boundaries: ["bash allowed without limit"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -319,7 +348,10 @@ test("validateProposal fails with command_exec but no restriction", () => {
     promptText: "Command exec",
     model: "balanced",
     tools: ["command_exec"],
-    scope: { responsibilities: ["execute commands"], boundaries: ["command exec allowed"] },
+    scope: {
+      responsibilities: ["execute commands"],
+      boundaries: ["command exec allowed"],
+    },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -413,7 +445,10 @@ test("validateProposal warns for read-only role with read only", () => {
     promptText: "Read-only role",
     model: "balanced",
     tools: ["read"],
-    scope: { responsibilities: ["read data"], boundaries: ["read-only access"] },
+    scope: {
+      responsibilities: ["read data"],
+      boundaries: ["read-only access"],
+    },
     inputSchema: { required: ["path"] },
     outputSchema: { required: ["data"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -436,7 +471,10 @@ test("validateProposal warns for read-only role with read and question", () => {
     promptText: "Read and question role",
     model: "balanced",
     tools: ["read", "question"],
-    scope: { responsibilities: ["read and query"], boundaries: ["read-only access"] },
+    scope: {
+      responsibilities: ["read and query"],
+      boundaries: ["read-only access"],
+    },
     inputSchema: { required: ["path"] },
     outputSchema: { required: ["data"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -459,7 +497,10 @@ test("validateProposal does not warn for role with write tool", () => {
     promptText: "Write role",
     model: "balanced",
     tools: ["read", "write"],
-    scope: { responsibilities: ["write data"], boundaries: ["read-write access"] },
+    scope: {
+      responsibilities: ["write data"],
+      boundaries: ["read-write access"],
+    },
     inputSchema: { required: ["path", "data"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -487,7 +528,10 @@ test("validateProposal allows tools within division tool union", () => {
     promptText: "New role using existing tools",
     model: "balanced",
     tools: ["read", "write"],
-    scope: { responsibilities: ["read and write"], boundaries: ["read-write access"] },
+    scope: {
+      responsibilities: ["read and write"],
+      boundaries: ["read-write access"],
+    },
     inputSchema: { required: ["path"] },
     outputSchema: { required: ["result"] },
     preconditions: [{ check: "always", description: "test" }],
@@ -514,7 +558,12 @@ test("validateProposal returns normalizedTools in result", () => {
   });
 
   assert.ok(Array.isArray(result.normalizedTools));
-  assert.deepEqual(result.normalizedTools, ["read", "write"]);
+  assert.deepEqual(result.normalizedTools, [
+    "read",
+    "edit_replace",
+    "edit_batch",
+    "apply_patch",
+  ]);
 });
 
 test("validateProposal returns declaredDivisionToolUnion in result", () => {

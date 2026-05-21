@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainEvalFrameworkSchema, DomainEvaluatorSchema } from "../../../../src/domains/eval-framework/index.js";
+import {
+  DomainEvalFrameworkSchema,
+  DomainEvaluatorSchema,
+} from "../../../../src/domains/eval-framework/index.js";
 
 // ── Extended Schema Validation Tests ─────────────────────────────────────────
 
@@ -43,13 +46,13 @@ test("DomainEvaluatorSchema accepts threshold of 1", () => {
   assert.equal(result.data?.threshold, 1);
 });
 
-test("DomainEvaluatorSchema rejects threshold greater than 1", () => {
+test("DomainEvaluatorSchema accepts absolute thresholds greater than 1", () => {
   const result = DomainEvaluatorSchema.safeParse({
     evaluatorId: "eval_1",
     metric: "accuracy",
     threshold: 1.01,
   });
-  assert.equal(result.success, false);
+  assert.equal(result.success, true);
 });
 
 test("DomainEvaluatorSchema rejects threshold less than 0", () => {
@@ -266,9 +269,24 @@ test("DomainEvalFrameworkSchema accepts multiple evaluators", () => {
     frameworkId: "fw_1",
     domainId: "coding",
     evaluators: [
-      { evaluatorId: "eval_1", metric: "accuracy", threshold: 0.9, blocking: true },
-      { evaluatorId: "eval_2", metric: "latency", threshold: 200, blocking: false },
-      { evaluatorId: "eval_3", metric: "cost", threshold: 1.0, blocking: false },
+      {
+        evaluatorId: "eval_1",
+        metric: "accuracy",
+        threshold: 0.9,
+        blocking: true,
+      },
+      {
+        evaluatorId: "eval_2",
+        metric: "latency",
+        threshold: 200,
+        blocking: false,
+      },
+      {
+        evaluatorId: "eval_3",
+        metric: "cost",
+        threshold: 1.0,
+        blocking: false,
+      },
     ],
   });
   assert.equal(result.success, true);
@@ -297,7 +315,12 @@ test("DomainEvalFrameworkSchema correctly infers DomainEvalFramework type", () =
     frameworkId: "fw_type_test",
     domainId: "type_test_domain",
     evaluators: [
-      { evaluatorId: "eval_1", metric: "accuracy", threshold: 0.9, blocking: true },
+      {
+        evaluatorId: "eval_1",
+        metric: "accuracy",
+        threshold: 0.9,
+        blocking: true,
+      },
     ],
     fewShotExamples: ["example 1", "example 2"],
     onlineMetrics: ["accuracy"],

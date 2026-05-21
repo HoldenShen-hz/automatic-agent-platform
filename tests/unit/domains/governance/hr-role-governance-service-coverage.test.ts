@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach } from "node:test";
-import { HrRoleGovernanceService } from "../../../../../src/domains/governance/hr-role-governance-service.js";
+import { beforeEach, describe, it } from "node:test";
+import { expect } from "../../../helpers/node-expect.js";
+import { HrRoleGovernanceService } from "../../../../src/domains/governance/hr-role-governance-service.js";
 import type {
   HrGapAnalysisRequest,
   HrRoleProposal,
   SubmitHrRoleProposalRequest,
   RegisterApprovedHrRoleRequest,
-} from "../../../../../src/domains/governance/hr-role-governance-service.js";
+} from "../../../../src/domains/governance/hr-role-governance-service.js";
 
 describe("HrRoleGovernanceService", () => {
   let service: HrRoleGovernanceService;
@@ -69,7 +70,7 @@ describe("HrRoleGovernanceService", () => {
   });
 
   describe("submitProposal", () => {
-    it("should return result with null approval when registry unavailable", () => {
+    it("should fail closed when registry is unavailable", () => {
       const request: SubmitHrRoleProposalRequest = {
         gapAnalysisRequest: {
           taskId: "task_1",
@@ -94,10 +95,9 @@ describe("HrRoleGovernanceService", () => {
           preconditions: [{ check: "always", description: "always passes" }],
         },
       };
-      const result = service.submitProposal(request);
-      expect(result).toHaveProperty("gapAnalysis");
-      expect(result).toHaveProperty("validation");
-      expect(result.approvalRequest).toBeNull();
+      expect(() => service.submitProposal(request)).toThrow(
+        "division.registry_unavailable",
+      );
     });
   });
 
@@ -148,37 +148,33 @@ describe("HrRoleGovernanceService", () => {
   });
 
   describe("HrRoleProposalValidationResult structure", () => {
-    it("should have correct structure for validation result", () => {
-      // This tests the interface structure without registry
-      const result = service.submitProposal({
-        gapAnalysisRequest: {
-          taskId: "task_1",
-          taskDescription: "Test",
-          targetDivisionId: "div_1",
-          triggerReason: "no_role_match",
-          requestedCapabilities: [],
-        },
-        proposal: {
-          divisionId: "div_1",
-          roleId: "role_1",
-          name: "Test",
-          promptText: "Prompt",
-          model: "balanced",
-          tools: ["read"],
-          scope: {
-            responsibilities: ["task"],
-            boundaries: ["limit"],
+    it("should not expose a validation result without a registry", () => {
+      expect(() =>
+        service.submitProposal({
+          gapAnalysisRequest: {
+            taskId: "task_1",
+            taskDescription: "Test",
+            targetDivisionId: "div_1",
+            triggerReason: "no_role_match",
+            requestedCapabilities: [],
           },
-          inputSchema: { required: [] },
-          outputSchema: { required: [] },
-          preconditions: [{ check: "check", description: "desc" }],
-        },
-      });
-      expect(result.validation).toHaveProperty("valid");
-      expect(result.validation).toHaveProperty("errors");
-      expect(result.validation).toHaveProperty("warnings");
-      expect(result.validation).toHaveProperty("normalizedTools");
-      expect(result.validation).toHaveProperty("declaredDivisionToolUnion");
+          proposal: {
+            divisionId: "div_1",
+            roleId: "role_1",
+            name: "Test",
+            promptText: "Prompt",
+            model: "balanced",
+            tools: ["read"],
+            scope: {
+              responsibilities: ["task"],
+              boundaries: ["limit"],
+            },
+            inputSchema: { required: [] },
+            outputSchema: { required: [] },
+            preconditions: [{ check: "check", description: "desc" }],
+          },
+        }),
+      ).toThrow("division.registry_unavailable");
     });
   });
 });

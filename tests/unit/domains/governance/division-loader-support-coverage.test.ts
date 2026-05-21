@@ -1,4 +1,5 @@
-import { describe, it, expect } from "node:test";
+import { describe, it } from "node:test";
+import { expect } from "../../../helpers/node-expect.js";
 import {
   tokenizeYaml,
   parseLimitedYaml,
@@ -12,7 +13,7 @@ import {
   toObjectArray,
   toStringArray,
   toInteger,
-} from "../../../../../src/domains/governance/division-loader-support.js";
+} from "../../../../src/domains/governance/division-loader-support.js";
 
 describe("division-loader-support", () => {
   describe("tokenizeYaml", () => {
@@ -43,12 +44,15 @@ describe("division-loader-support", () => {
     });
 
     it("should skip comment lines", () => {
-      const lines = tokenizeYaml("key: value\n# this is a comment\nkey2: value2");
+      const lines = tokenizeYaml(
+        "key: value\n# this is a comment\nkey2: value2",
+      );
       expect(lines).toHaveLength(2);
     });
 
     it("should handle mixed indentation", () => {
-      const yaml = "root:\n  child1: value1\n    grandchild: value2\n  child2: value2";
+      const yaml =
+        "root:\n  child1: value1\n    grandchild: value2\n  child2: value2";
       const lines = tokenizeYaml(yaml);
       expect(lines).toHaveLength(4);
       expect(lines[0]!.indent).toBe(0);
@@ -128,7 +132,11 @@ describe("division-loader-support", () => {
     });
 
     it("should handle values with colons", () => {
-      const [key, value] = splitKeyValue("key: http://example.com", "test.yaml", 1);
+      const [key, value] = splitKeyValue(
+        "key: http://example.com",
+        "test.yaml",
+        1,
+      );
       expect(key).toBe("key");
       expect(value).toBe("http://example.com");
     });
@@ -305,7 +313,9 @@ describe("division-loader-support", () => {
     });
 
     it("should reject trailing content", () => {
-      expect(() => parseLimitedYaml("key: value\ntrailing: content", "test.yaml")).toThrow();
+      expect(() =>
+        parseLimitedYaml("key: value\n- trailing", "test.yaml"),
+      ).toThrow();
     });
   });
 });

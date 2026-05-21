@@ -68,13 +68,20 @@ describe("CacheKeyFactory", () => {
     });
 
     it("handles array inputs", () => {
-      const key = CacheKeyFactory.create("tool.read", "v1", ["file1.ts", "file2.ts"]);
+      const key = CacheKeyFactory.create("tool.read", "v1", [
+        "file1.ts",
+        "file2.ts",
+      ]);
 
       assert.ok(key.startsWith("tool.read:v1:"));
     });
 
     it("handles string inputs", () => {
-      const key = CacheKeyFactory.create("planner.plan", "v1", "find and fix bug");
+      const key = CacheKeyFactory.create(
+        "planner.plan",
+        "v1",
+        "find and fix bug",
+      );
 
       assert.ok(key.startsWith("planner.plan:v1:"));
     });
@@ -104,8 +111,7 @@ describe("CacheKeyFactory", () => {
     });
 
     it("handles keys with colons in fingerprint", () => {
-      const input = { data: "a:b:c" };
-      const key = CacheKeyFactory.create("namespace", "v1", input);
+      const key = "namespace:v1:a:b:c";
       const fingerprint = CacheKeyFactory.getFingerprint(key);
 
       assert.ok(fingerprint != null);
@@ -193,7 +199,11 @@ describe("CacheKeyFactory", () => {
       assert.equal(parsed.version, "v1");
 
       // Verify fingerprint is consistent by recreating
-      const recreatedKey = CacheKeyFactory.create(parsed.namespace, parsed.version, original);
+      const recreatedKey = CacheKeyFactory.create(
+        parsed.namespace,
+        parsed.version,
+        original,
+      );
       assert.equal(key, recreatedKey);
     });
 

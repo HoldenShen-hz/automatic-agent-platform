@@ -1,21 +1,28 @@
-import { describe, it, expect, beforeEach } from "node:test";
-import { RecipeRegistry } from "../../../../../src/domains/recipes/recipe-registry.js";
-import type { DomainRecipe } from "../../../../../src/domains/recipes/index.js";
+import { beforeEach, describe, it } from "node:test";
+import { expect } from "../../../helpers/node-expect.js";
+import { RecipeRegistry } from "../../../../src/domains/recipes/recipe-registry.js";
+import type { DomainRecipe } from "../../../../src/domains/recipes/index.js";
 
 describe("RecipeRegistry", () => {
   let registry: RecipeRegistry;
 
-  const createMockRecipe = (recipeId: string, domainId: string = "domain_1"): DomainRecipe => ({
+  const createMockRecipe = (
+    recipeId: string,
+    domainId: string = "domain_1",
+  ): DomainRecipe => ({
     recipeId,
     domainId,
     name: `Recipe ${recipeId}`,
     description: `Description for ${recipeId}`,
+    riskProfileRef: `${domainId}.risk`,
+    guardrailOverlay: {},
+    triggerPhrases: [`trigger_${recipeId}`],
     defaultWorkflowId: "workflow_1",
+    recommendedWorkflowIds: [],
     defaultToolBundleIds: ["bundle_1"],
-    triggers: [`trigger_${recipeId}`],
-    archetype: "research_synthesis",
-    createdAt: "2024-01-01T00:00:00.000Z",
-    updatedAt: "2024-01-01T00:00:00.000Z",
+    defaultPromptBundleRef: `${domainId}.prompt`,
+    acceptanceChecklistRef: `${domainId}.acceptance`,
+    archetype: "research",
   });
 
   beforeEach(() => {

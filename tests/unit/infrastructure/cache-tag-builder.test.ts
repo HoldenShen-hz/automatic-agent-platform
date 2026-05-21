@@ -5,11 +5,14 @@
  * tag generation for cache invalidation.
  */
 
-import { describe, it } from "node:test";
+import { beforeEach, describe, it } from "node:test";
 import assert from "node:assert";
 
 // Tag Builder
-import { TagBuilder, tagBuilder } from "../../../src/platform/shared/cache/utils/tag-builder.js";
+import {
+  TagBuilder,
+  tagBuilder,
+} from "../../../src/platform/shared/cache/utils/tag-builder.js";
 
 describe("TagBuilder", () => {
   let builder: TagBuilder;
@@ -94,14 +97,20 @@ describe("TagBuilder", () => {
 
   describe("toolContext", () => {
     it("creates tags for tool call without session", () => {
-      const tags = builder.toolContext("read", { path: "/workspace/src/index.ts" });
+      const tags = builder.toolContext("read", {
+        path: "/workspace/src/index.ts",
+      });
 
       assert.ok(tags.includes("tool:read"));
       assert.ok(tags.some((t) => t.startsWith("file:")));
     });
 
     it("creates tags for tool call with session", () => {
-      const tags = builder.toolContext("read", { path: "/workspace/src/index.ts" }, "session-123");
+      const tags = builder.toolContext(
+        "read",
+        { path: "/workspace/src/index.ts" },
+        "session-123",
+      );
 
       assert.ok(tags.includes("tool:read"));
       assert.ok(tags.includes("session:session-123"));
@@ -138,7 +147,9 @@ describe("TagBuilder", () => {
     });
 
     it("handles array path (glob pattern)", () => {
-      const tags = builder.toolContext("glob", { files: ["/a", "/b"] } as Record<string, unknown>);
+      const tags = builder.toolContext("glob", {
+        files: ["/a", "/b"],
+      } as Record<string, unknown>);
 
       assert.ok(tags.includes("tool:glob"));
       // No file tags for files property, only path/file
@@ -156,7 +167,11 @@ describe("TagBuilder", () => {
     });
 
     it("adds division tag when provided", () => {
-      const tags = builder.promptContext("session-123", "claude-3-opus", "division-001");
+      const tags = builder.promptContext(
+        "session-123",
+        "claude-3-opus",
+        "division-001",
+      );
 
       assert.ok(tags.includes("session:session-123"));
       assert.ok(tags.includes("model:claude-3-opus"));

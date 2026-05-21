@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "node:test";
+import { beforeEach, describe, it } from "node:test";
+import { expect } from "../../../helpers/node-expect.js";
 import { SuccessCriteriaService } from "../../../../src/domains/roadmap/success-criteria-service.js";
 import type {
   SuccessCriterionDefinition,
@@ -82,6 +83,16 @@ describe("SuccessCriteriaService", () => {
     });
 
     it("should store multiple measurements for same criterion", () => {
+      service.registerCriterion({
+        criterionId: "crit_1",
+        phase: "phase1",
+        metricKey: "accuracy",
+        title: "Accuracy",
+        measurementType: "percentage",
+        threshold: 90,
+        operator: "gte",
+        required: true,
+      });
       service.recordMeasurement({
         criterionId: "crit_1",
         metricKey: "accuracy",
@@ -267,11 +278,7 @@ describe("SuccessCriteriaService", () => {
         blockOnDeferredItems: false,
       });
 
-      const decision = service.evaluatePhaseAdvance(
-        "phase1",
-        ["item_1"],
-        [],
-      );
+      const decision = service.evaluatePhaseAdvance("phase1", ["item_1"], []);
       expect(decision.allowed).toBe(false);
       expect(decision.pendingItemIds).toContain("item_2");
     });
@@ -284,9 +291,15 @@ describe("SuccessCriteriaService", () => {
         blockOnDeferredItems: true,
       });
 
-      const decision = service.evaluatePhaseAdvance("phase1", [], ["deferred_item"]);
+      const decision = service.evaluatePhaseAdvance(
+        "phase1",
+        [],
+        ["deferred_item"],
+      );
       expect(decision.allowed).toBe(false);
-      expect(decision.reasonCodes.some((code) => code.includes("deferred"))).toBe(true);
+      expect(
+        decision.reasonCodes.some((code) => code.includes("deferred")),
+      ).toBe(true);
     });
 
     it("should return null nextPhase when advance not allowed", () => {
@@ -316,7 +329,9 @@ describe("SuccessCriteriaService", () => {
       });
 
       const decision = service.evaluatePhaseAdvance("phase1", [], []);
-      expect(decision.reasonCodes.some((code) => code.includes("pending_item"))).toBe(true);
+      expect(
+        decision.reasonCodes.some((code) => code.includes("pending_item")),
+      ).toBe(true);
     });
   });
 

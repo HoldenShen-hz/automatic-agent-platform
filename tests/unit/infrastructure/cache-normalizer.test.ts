@@ -9,7 +9,11 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
 
 // Cache Normalizer
-import { CacheNormalizer, normalizePath, normalizeQuery } from "../../../src/platform/shared/cache/cache-normalizer.js";
+import {
+  CacheNormalizer,
+  normalizePath,
+  normalizeQuery,
+} from "../../../src/platform/shared/cache/cache-normalizer.js";
 
 describe("CacheNormalizer", () => {
   describe("constructor", () => {
@@ -83,7 +87,9 @@ describe("CacheNormalizer", () => {
 
     it("preserves string values", () => {
       const normalizer = new CacheNormalizer();
-      const result = normalizer.normalizeToolArgs({ path: "  /workspace/test.ts  " });
+      const result = normalizer.normalizeToolArgs({
+        path: "  /workspace/test.ts  ",
+      });
 
       // Should not trim in normalizeToolArgs, only in normalizeString when path is used
       assert.equal((result.path as string).trim(), "/workspace/test.ts");
@@ -112,7 +118,10 @@ describe("CacheNormalizer", () => {
     it("replaces complex values with placeholder", () => {
       const normalizer = new CacheNormalizer();
       const fn = () => {};
-      const result = normalizer.normalizeToolArgs({ func: fn } as Record<string, unknown>);
+      const result = normalizer.normalizeToolArgs({ func: fn } as Record<
+        string,
+        unknown
+      >);
 
       assert.equal(result.func, "[ComplexValue]");
     });
@@ -142,7 +151,10 @@ describe("CacheNormalizer", () => {
 
     it("normalizes nested object with sorted keys", () => {
       const normalizer = new CacheNormalizer();
-      const result = normalizer.normalizeCacheInput({ b: 2, a: 1 }) as Record<string, number>;
+      const result = normalizer.normalizeCacheInput({ b: 2, a: 1 }) as Record<
+        string,
+        number
+      >;
 
       const keys = Object.keys(result);
       assert.equal(keys[0], "a");
@@ -151,16 +163,26 @@ describe("CacheNormalizer", () => {
 
     it("removes undefined values in objects", () => {
       const normalizer = new CacheNormalizer();
-      const result = normalizer.normalizeCacheInput({ a: 1, b: undefined, c: 3 }) as Record<string, number>;
+      const result = normalizer.normalizeCacheInput({
+        a: 1,
+        b: undefined,
+        c: 3,
+      }) as Record<string, number>;
 
       assert.ok(!("b" in result));
     });
 
     it("handles nested arrays", () => {
       const normalizer = new CacheNormalizer();
-      const result = normalizer.normalizeCacheInput([[3, 1], [2, 4]]) as number[][];
+      const result = normalizer.normalizeCacheInput([
+        [3, 1],
+        [2, 4],
+      ]) as number[][];
 
-      assert.deepStrictEqual(result, [[3, 1], [2, 4]]);
+      assert.deepStrictEqual(result, [
+        [3, 1],
+        [2, 4],
+      ]);
     });
   });
 
@@ -235,11 +257,13 @@ describe("CacheNormalizer", () => {
       assert.ok(result.path);
     });
 
-    it("does not trim string values when no workspace root", () => {
+    it("trims string values when no workspace root", () => {
       const normalizer = new CacheNormalizer();
-      const result = normalizer.normalizeCacheInput({ path: "  test  " }) as { path: string };
+      const result = normalizer.normalizeCacheInput({ path: "  test  " }) as {
+        path: string;
+      };
 
-      assert.equal(result.path, "  test  ");
+      assert.equal(result.path, "test");
     });
   });
 

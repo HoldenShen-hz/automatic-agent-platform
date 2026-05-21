@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "node:test";
+import { beforeEach, describe, it } from "node:test";
+import { expect } from "../../../helpers/node-expect.js";
 import { PhaseDeliveryService } from "../../../../src/domains/roadmap/phase-delivery-service.js";
 
 describe("PhaseDeliveryService", () => {
@@ -23,9 +24,40 @@ describe("PhaseDeliveryService", () => {
     });
 
     it("should create all roadmap phases", () => {
-      const phases: Array<"phase1" | "phase2" | "phase3" | "phase4" | "phase5" | "phase6" | "phase7" | "phase8a" | "phase8b" | "phase8c" | "phase9a" | "phase9b" | "phase9c" | "phase9d" | "phase9e" | "phase9f"> = [
-        "phase1", "phase2", "phase3", "phase4", "phase5", "phase6", "phase7",
-        "phase8a", "phase8b", "phase8c", "phase9a", "phase9b", "phase9c", "phase9d", "phase9e", "phase9f",
+      const phases: Array<
+        | "phase1"
+        | "phase2"
+        | "phase3"
+        | "phase4"
+        | "phase5"
+        | "phase6"
+        | "phase7"
+        | "phase8a"
+        | "phase8b"
+        | "phase8c"
+        | "phase9a"
+        | "phase9b"
+        | "phase9c"
+        | "phase9d"
+        | "phase9e"
+        | "phase9f"
+      > = [
+        "phase1",
+        "phase2",
+        "phase3",
+        "phase4",
+        "phase5",
+        "phase6",
+        "phase7",
+        "phase8a",
+        "phase8b",
+        "phase8c",
+        "phase9a",
+        "phase9b",
+        "phase9c",
+        "phase9d",
+        "phase9e",
+        "phase9f",
       ];
 
       for (const phase of phases) {
@@ -58,10 +90,12 @@ describe("PhaseDeliveryService", () => {
     });
 
     it("should throw for non-existent phase", () => {
-      expect(() => service.addDeliverableToPhase("non_existent", {
-        title: "Test",
-        description: "Test",
-      })).toThrow();
+      expect(() =>
+        service.addDeliverableToPhase("non_existent", {
+          title: "Test",
+          description: "Test",
+        }),
+      ).toThrow();
     });
   });
 
@@ -73,13 +107,18 @@ describe("PhaseDeliveryService", () => {
         description: "Test deliverable",
       });
 
-      const updated = service.markDeliverableComplete(phase.phaseId, deliverable.deliverableId);
+      const updated = service.markDeliverableComplete(
+        phase.phaseId,
+        deliverable.deliverableId,
+      );
       expect(updated.completedAt).toBeDefined();
     });
 
     it("should throw when deliverable not found", () => {
       const phase = service.createPhase("phase1");
-      expect(() => service.markDeliverableComplete(phase.phaseId, "non_existent")).toThrow();
+      expect(() =>
+        service.markDeliverableComplete(phase.phaseId, "non_existent"),
+      ).toThrow();
     });
 
     it("should throw when deliverable belongs to different phase", () => {
@@ -90,7 +129,12 @@ describe("PhaseDeliveryService", () => {
         description: "Test",
       });
 
-      expect(() => service.markDeliverableComplete(phase2.phaseId, deliverable.deliverableId)).toThrow();
+      expect(() =>
+        service.markDeliverableComplete(
+          phase2.phaseId,
+          deliverable.deliverableId,
+        ),
+      ).toThrow();
     });
   });
 
@@ -105,11 +149,23 @@ describe("PhaseDeliveryService", () => {
 
     it("should calculate correct progress percentage", () => {
       const phase = service.createPhase("phase1");
-      service.addDeliverableToPhase(phase.phaseId, { title: "D1", description: "D1" });
-      service.addDeliverableToPhase(phase.phaseId, { title: "D2", description: "D2" });
+      service.addDeliverableToPhase(phase.phaseId, {
+        title: "D1",
+        description: "D1",
+      });
+      service.addDeliverableToPhase(phase.phaseId, {
+        title: "D2",
+        description: "D2",
+      });
 
-      const d1 = service.addDeliverableToPhase(phase.phaseId, { title: "D3", description: "D3" });
-      service.addDeliverableToPhase(phase.phaseId, { title: "D4", description: "D4" });
+      const d1 = service.addDeliverableToPhase(phase.phaseId, {
+        title: "D3",
+        description: "D3",
+      });
+      service.addDeliverableToPhase(phase.phaseId, {
+        title: "D4",
+        description: "D4",
+      });
 
       service.markDeliverableComplete(phase.phaseId, d1.deliverableId);
 

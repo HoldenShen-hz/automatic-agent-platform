@@ -21,17 +21,31 @@ import {
 
 // ── Mock AsyncSqlConnection Factory ───────────────────────────────────────────
 
-function createMockConnection(overrides: Partial<AsyncSqlConnection> = {}): AsyncSqlConnection {
+function createMockConnection(
+  overrides: Partial<AsyncSqlConnection> = {},
+): AsyncSqlConnection {
   return {
-    query: mock.fn(async <T>(_sql: string, ..._params: unknown[]): Promise<AsyncQueryResult<T>> => {
-      return { rows: [], rowCount: 0 };
-    }),
-    queryOne: mock.fn(async <T>(_sql: string, ..._params: unknown[]): Promise<T | undefined> => {
-      return undefined;
-    }),
-    execute: mock.fn(async (_sql: string, ..._params: unknown[]): Promise<number> => {
-      return 0;
-    }),
+    query: mock.fn(
+      async <T>(
+        _sql: string,
+        ..._params: unknown[]
+      ): Promise<AsyncQueryResult<T>> => {
+        return { rows: [], rowCount: 0 };
+      },
+    ),
+    queryOne: mock.fn(
+      async <T>(
+        _sql: string,
+        ..._params: unknown[]
+      ): Promise<T | undefined> => {
+        return undefined;
+      },
+    ),
+    execute: mock.fn(
+      async (_sql: string, ..._params: unknown[]): Promise<number> => {
+        return 0;
+      },
+    ),
     ...overrides,
   };
 }
@@ -56,7 +70,10 @@ describe("asyncQueryAll", () => {
     ];
     conn.query = mock.fn(async () => ({ rows: expectedRows, rowCount: 2 }));
 
-    const result = await asyncQueryAll<{ id: number; name: string }>(conn, "SELECT * FROM users");
+    const result = await asyncQueryAll<{ id: number; name: string }>(
+      conn,
+      "SELECT * FROM users",
+    );
 
     assert.deepEqual(result, expectedRows);
     assert.equal(conn.query.mock.calls.length, 1);
@@ -65,7 +82,10 @@ describe("asyncQueryAll", () => {
   it("returns empty array when query returns no rows", async () => {
     conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 }));
 
-    const result = await asyncQueryAll<{ id: number }>(conn, "SELECT * FROM empty");
+    const result = await asyncQueryAll<{ id: number }>(
+      conn,
+      "SELECT * FROM empty",
+    );
 
     assert.deepEqual(result, []);
   });
@@ -73,10 +93,18 @@ describe("asyncQueryAll", () => {
   it("passes sql and params to connection query", async () => {
     conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 }));
 
-    await asyncQueryAll(conn, "SELECT * FROM users WHERE age > ? AND status = ?", 18, "active");
+    await asyncQueryAll(
+      conn,
+      "SELECT * FROM users WHERE age > ? AND status = ?",
+      18,
+      "active",
+    );
 
     const call = conn.query.mock.calls[0];
-    assert.equal(call.arguments[0], "SELECT * FROM users WHERE age > ? AND status = ?");
+    assert.equal(
+      call.arguments[0],
+      "SELECT * FROM users WHERE age > ? AND status = ?",
+    );
     assert.deepEqual(call.arguments.slice(1), [18, "active"]);
   });
 
@@ -116,7 +144,10 @@ describe("asyncQueryAllOrEmpty", () => {
     const rows = [{ id: 1 }, { id: 2 }];
     conn.query = mock.fn(async () => ({ rows, rowCount: 2 }));
 
-    const result = await asyncQueryAllOrEmpty<{ id: number }>(conn, "SELECT * FROM test");
+    const result = await asyncQueryAllOrEmpty<{ id: number }>(
+      conn,
+      "SELECT * FROM test",
+    );
 
     assert.equal(result.length, 2);
   });
@@ -124,7 +155,10 @@ describe("asyncQueryAllOrEmpty", () => {
   it("returns empty array when no results", async () => {
     conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 }));
 
-    const result = await asyncQueryAllOrEmpty<{ id: number }>(conn, "SELECT * FROM empty");
+    const result = await asyncQueryAllOrEmpty<{ id: number }>(
+      conn,
+      "SELECT * FROM empty",
+    );
 
     assert.deepEqual(result, []);
   });
@@ -133,8 +167,14 @@ describe("asyncQueryAllOrEmpty", () => {
     const rows = [{ id: 1, name: "test" }];
     conn.query = mock.fn(async () => ({ rows, rowCount: 1 }));
 
-    const allResult = await asyncQueryAll<{ id: number; name: string }>(conn, "SELECT * FROM test");
-    const allOrEmptyResult = await asyncQueryAllOrEmpty<{ id: number; name: string }>(conn, "SELECT * FROM test");
+    const allResult = await asyncQueryAll<{ id: number; name: string }>(
+      conn,
+      "SELECT * FROM test",
+    );
+    const allOrEmptyResult = await asyncQueryAllOrEmpty<{
+      id: number;
+      name: string;
+    }>(conn, "SELECT * FROM test");
 
     assert.deepEqual(allResult, allOrEmptyResult);
   });
@@ -157,7 +197,10 @@ describe("asyncQueryOne", () => {
     const row = { id: 42, name: "Special" };
     conn.queryOne = mock.fn(async () => row);
 
-    const result = await asyncQueryOne<{ id: number; name: string }>(conn, "SELECT * FROM users WHERE id = 42");
+    const result = await asyncQueryOne<{ id: number; name: string }>(
+      conn,
+      "SELECT * FROM users WHERE id = 42",
+    );
 
     assert.deepEqual(result, row);
   });
@@ -165,7 +208,10 @@ describe("asyncQueryOne", () => {
   it("returns undefined when queryOne returns undefined", async () => {
     conn.queryOne = mock.fn(async () => undefined);
 
-    const result = await asyncQueryOne<{ id: number }>(conn, "SELECT * FROM users WHERE id = 999");
+    const result = await asyncQueryOne<{ id: number }>(
+      conn,
+      "SELECT * FROM users WHERE id = 999",
+    );
 
     assert.equal(result, undefined);
   });
@@ -173,7 +219,11 @@ describe("asyncQueryOne", () => {
   it("passes sql and params to connection queryOne", async () => {
     conn.queryOne = mock.fn(async () => undefined);
 
-    await asyncQueryOne(conn, "SELECT * FROM users WHERE email = ?", "test@example.com");
+    await asyncQueryOne(
+      conn,
+      "SELECT * FROM users WHERE email = ?",
+      "test@example.com",
+    );
 
     const call = conn.queryOne.mock.calls[0];
     assert.equal(call.arguments[0], "SELECT * FROM users WHERE email = ?");
@@ -197,7 +247,10 @@ describe("asyncExecute", () => {
   it("returns affected row count from execute", async () => {
     conn.execute = mock.fn(async () => 5);
 
-    const result = await asyncExecute(conn, "DELETE FROM users WHERE status = 'inactive'");
+    const result = await asyncExecute(
+      conn,
+      "DELETE FROM users WHERE status = 'inactive'",
+    );
 
     assert.equal(result, 5);
   });
@@ -213,10 +266,18 @@ describe("asyncExecute", () => {
   it("passes sql and params to connection execute", async () => {
     conn.execute = mock.fn(async () => 1);
 
-    await asyncExecute(conn, "INSERT INTO users (name, email) VALUES (?, ?)", "Alice", "alice@example.com");
+    await asyncExecute(
+      conn,
+      "INSERT INTO users (name, email) VALUES (?, ?)",
+      "Alice",
+      "alice@example.com",
+    );
 
     const call = conn.execute.mock.calls[0];
-    assert.equal(call.arguments[0], "INSERT INTO users (name, email) VALUES (?, ?)");
+    assert.equal(
+      call.arguments[0],
+      "INSERT INTO users (name, email) VALUES (?, ?)",
+    );
     assert.deepEqual(call.arguments.slice(1), ["Alice", "alice@example.com"]);
   });
 });
@@ -252,7 +313,8 @@ describe("asyncExecuteBatch", () => {
   });
 
   it("returns varying change counts per statement", async () => {
-    conn.execute = mock.fn(async () => 1);
+    let nextCount = 0;
+    conn.execute = mock.fn(async () => [10, 5][nextCount++] ?? 0);
 
     const results = await asyncExecuteBatch(conn, [
       { sql: "DELETE FROM table_a" }, // returns 10
@@ -273,8 +335,14 @@ describe("asyncExecuteBatch", () => {
     conn.execute = mock.fn(async () => 1);
 
     await asyncExecuteBatch(conn, [
-      { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["Alice", "alice@example.com"] },
-      { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["Bob", "bob@example.com"] },
+      {
+        sql: "INSERT INTO users (name, email) VALUES (?, ?)",
+        params: ["Alice", "alice@example.com"],
+      },
+      {
+        sql: "INSERT INTO users (name, email) VALUES (?, ?)",
+        params: ["Bob", "bob@example.com"],
+      },
     ]);
 
     const call1 = conn.execute.mock.calls[0];
@@ -286,9 +354,7 @@ describe("asyncExecuteBatch", () => {
   it("handles statements with no params", async () => {
     conn.execute = mock.fn(async () => 0);
 
-    await asyncExecuteBatch(conn, [
-      { sql: "DELETE FROM audit_log" },
-    ]);
+    await asyncExecuteBatch(conn, [{ sql: "DELETE FROM audit_log" }]);
 
     const call = conn.execute.mock.calls[0];
     assert.deepEqual(call.arguments.slice(1), []);
@@ -309,9 +375,13 @@ describe("asyncWithinTransaction", () => {
   });
 
   it("delegates to db.transaction with the connection", async () => {
-    const transactionMock = mock.fn(async <T>(_work: (conn: AsyncSqlConnection) => Promise<T>): Promise<T> => {
-      return await _work(conn);
-    });
+    const transactionMock = mock.fn(
+      async <T>(
+        _work: (conn: AsyncSqlConnection) => Promise<T>,
+      ): Promise<T> => {
+        return await _work(conn);
+      },
+    );
 
     const db = {
       filePath: "/test.db",
@@ -319,13 +389,15 @@ describe("asyncWithinTransaction", () => {
       transaction: transactionMock,
     } as unknown as AsyncSqlDatabase;
 
-    const workMock = mock.fn(async (_c: AsyncSqlConnection) => "transaction result");
+    const workMock = mock.fn(
+      async (_c: AsyncSqlConnection) => "transaction result",
+    );
 
     const result = await asyncWithinTransaction(db, workMock);
 
     assert.equal(result, "transaction result");
-    assert.equal(transactionMock.calls.length, 1);
-    assert.equal(workMock.calls.length, 1);
+    assert.equal(transactionMock.mock.calls.length, 1);
+    assert.equal(workMock.mock.calls.length, 1);
   });
 
   it("transaction receives the db's asyncConnection", async () => {
@@ -333,9 +405,11 @@ describe("asyncWithinTransaction", () => {
     const db = {
       filePath: "/test.db",
       asyncConnection: conn,
-      transaction: async <T>(_work: (c: AsyncSqlConnection) => Promise<T>): Promise<T> => {
-        receivedConn = c;
-        return await _work(c);
+      transaction: async <T>(
+        work: (c: AsyncSqlConnection) => Promise<T>,
+      ): Promise<T> => {
+        receivedConn = conn;
+        return await work(conn);
       },
     } as unknown as AsyncSqlDatabase;
 

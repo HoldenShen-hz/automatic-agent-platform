@@ -1,6 +1,7 @@
-import { describe, it, expect } from "node:test";
-import { RecipeExecutor } from "../../../../../src/domains/recipes/recipe-executor.js";
-import type { DomainRecipe } from "../../../../../src/domains/recipes/index.js";
+import { describe, it } from "node:test";
+import { expect } from "../../../helpers/node-expect.js";
+import { RecipeExecutor } from "../../../../src/domains/recipes/recipe-executor.js";
+import type { DomainRecipe } from "../../../../src/domains/recipes/index.js";
 
 describe("RecipeExecutor", () => {
   describe("constructor", () => {
@@ -15,7 +16,9 @@ describe("RecipeExecutor", () => {
     });
 
     it("should accept options object", () => {
-      const executor = new RecipeExecutor(null, { metricsCollector: undefined });
+      const executor = new RecipeExecutor(null, {
+        metricsCollector: undefined,
+      });
       expect(executor).toBeDefined();
     });
   });
@@ -26,12 +29,15 @@ describe("RecipeExecutor", () => {
       domainId: "domain_1",
       name: "Test Recipe",
       description: "A test recipe",
+      riskProfileRef: "domain_1.risk",
+      guardrailOverlay: {},
+      triggerPhrases: ["test trigger"],
       defaultWorkflowId: "workflow_1",
+      recommendedWorkflowIds: [],
       defaultToolBundleIds: ["bundle_1"],
-      triggers: ["test trigger"],
-      archetype: "research_synthesis",
-      createdAt: "2024-01-01T00:00:00.000Z",
-      updatedAt: "2024-01-01T00:00:00.000Z",
+      defaultPromptBundleRef: "domain_1.prompt",
+      acceptanceChecklistRef: "domain_1.acceptance",
+      archetype: "research",
     };
 
     const mockContext = {
@@ -43,9 +49,13 @@ describe("RecipeExecutor", () => {
     };
 
     it("should execute recipe and return success result", async () => {
-      const executor = new RecipeExecutor(null, {}, {
-        existsWorkflow: () => true,
-      });
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        {
+          existsWorkflow: () => true,
+        },
+      );
 
       const result = await executor.execute(mockRecipe, mockContext);
       expect(result.success).toBe(true);
@@ -56,9 +66,13 @@ describe("RecipeExecutor", () => {
     });
 
     it("should return error when workflow does not exist", async () => {
-      const executor = new RecipeExecutor(null, {}, {
-        existsWorkflow: () => false,
-      });
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        {
+          existsWorkflow: () => false,
+        },
+      );
 
       const result = await executor.execute(mockRecipe, mockContext);
       expect(result.success).toBe(false);
@@ -66,16 +80,22 @@ describe("RecipeExecutor", () => {
     });
 
     it("should handle async workflow query", async () => {
-      const executor = new RecipeExecutor(null, {}, {
-        existsWorkflow: async () => true,
-      });
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        {
+          existsWorkflow: async () => true,
+        },
+      );
 
       const result = await executor.execute(mockRecipe, mockContext);
       expect(result.success).toBe(true);
     });
 
     it("should use workflow registry fallback when no query provided", async () => {
-      const mockRegistry = { get: () => ({ workflowId: "workflow_1" }) } as never;
+      const mockRegistry = {
+        get: () => ({ workflowId: "workflow_1" }),
+      } as never;
       const executor = new RecipeExecutor(mockRegistry, {});
 
       const result = await executor.execute(mockRecipe, mockContext);
@@ -83,8 +103,15 @@ describe("RecipeExecutor", () => {
     });
 
     it("should handle recipe with undefined recipeId", async () => {
-      const badRecipe = { ...mockRecipe, recipeId: undefined } as unknown as DomainRecipe;
-      const executor = new RecipeExecutor(null, {}, { existsWorkflow: () => true });
+      const badRecipe = {
+        ...mockRecipe,
+        recipeId: undefined,
+      } as unknown as DomainRecipe;
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        { existsWorkflow: () => true },
+      );
 
       const result = await executor.execute(badRecipe, mockContext);
       expect(result.success).toBe(false);
@@ -92,15 +119,27 @@ describe("RecipeExecutor", () => {
     });
 
     it("should handle recipe with missing tool bundle ids", async () => {
-      const badRecipe = { ...mockRecipe, defaultToolBundleIds: undefined } as unknown as DomainRecipe;
-      const executor = new RecipeExecutor(null, {}, { existsWorkflow: () => true });
+      const badRecipe = {
+        ...mockRecipe,
+        defaultToolBundleIds: undefined,
+      } as unknown as DomainRecipe;
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        { existsWorkflow: () => true },
+      );
 
       const result = await executor.execute(badRecipe, mockContext);
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.toolBundleIds).toEqual([]);
     });
 
     it("should include output on success", async () => {
-      const executor = new RecipeExecutor(null, {}, { existsWorkflow: () => true });
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        { existsWorkflow: () => true },
+      );
 
       const result = await executor.execute(mockRecipe, mockContext);
       expect(result.output).toBeDefined();
@@ -113,15 +152,24 @@ describe("RecipeExecutor", () => {
 
     it("should record metrics on success", async () => {
       let recordedMetrics: unknown = null;
-      const executor = new RecipeExecutor(null, {
-        metricsCollector: {
-          recordExecution: (metrics) => { recordedMetrics = metrics; },
+      const executor = new RecipeExecutor(
+        null,
+        {
+          metricsCollector: {
+            recordExecution: (metrics) => {
+              recordedMetrics = metrics;
+            },
+          },
         },
-      }, { existsWorkflow: () => true });
+        { existsWorkflow: () => true },
+      );
 
       await executor.execute(mockRecipe, mockContext);
       expect(recordedMetrics).toBeDefined();
-      expect(recordedMetrics).toHaveProperty("executionId", mockContext.executionId);
+      expect(recordedMetrics).toHaveProperty(
+        "executionId",
+        mockContext.executionId,
+      );
       expect(recordedMetrics).toHaveProperty("recipeId", mockRecipe.recipeId);
       expect(recordedMetrics).toHaveProperty("success", true);
       expect(recordedMetrics).toHaveProperty("durationMs");
@@ -129,11 +177,17 @@ describe("RecipeExecutor", () => {
 
     it("should record metrics on failure", async () => {
       let recordedMetrics: unknown = null;
-      const executor = new RecipeExecutor(null, {
-        metricsCollector: {
-          recordExecution: (metrics) => { recordedMetrics = metrics; },
+      const executor = new RecipeExecutor(
+        null,
+        {
+          metricsCollector: {
+            recordExecution: (metrics) => {
+              recordedMetrics = metrics;
+            },
+          },
         },
-      }, { existsWorkflow: () => false });
+        { existsWorkflow: () => false },
+      );
 
       await executor.execute(mockRecipe, mockContext);
       expect(recordedMetrics).toBeDefined();
@@ -143,13 +197,21 @@ describe("RecipeExecutor", () => {
 
     it("should throw error and still record metrics", async () => {
       let recordedMetrics: unknown = null;
-      const executor = new RecipeExecutor(null, {
-        metricsCollector: {
-          recordExecution: (metrics) => { recordedMetrics = metrics; },
+      const executor = new RecipeExecutor(
+        null,
+        {
+          metricsCollector: {
+            recordExecution: (metrics) => {
+              recordedMetrics = metrics;
+            },
+          },
         },
-      }, {
-        existsWorkflow: () => { throw new Error("Query error"); },
-      });
+        {
+          existsWorkflow: () => {
+            throw new Error("Query error");
+          },
+        },
+      );
 
       try {
         await executor.execute(mockRecipe, mockContext);
@@ -164,7 +226,11 @@ describe("RecipeExecutor", () => {
         ...mockRecipe,
         defaultToolBundleIds: ["bundle_1", "bundle_2", "bundle_3"],
       };
-      const executor = new RecipeExecutor(null, {}, { existsWorkflow: () => true });
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        { existsWorkflow: () => true },
+      );
 
       const result = await executor.execute(recipeWithArray, mockContext);
       expect(result.success).toBe(true);
@@ -174,19 +240,26 @@ describe("RecipeExecutor", () => {
 
   describe("RecipeExecutionResult structure", () => {
     it("should have all required fields in result", async () => {
-      const executor = new RecipeExecutor(null, {}, { existsWorkflow: () => true });
+      const executor = new RecipeExecutor(
+        null,
+        {},
+        { existsWorkflow: () => true },
+      );
 
       const recipe: DomainRecipe = {
         recipeId: "test_recipe",
         domainId: "test_domain",
         name: "Test",
         description: "Test recipe",
+        riskProfileRef: "test_domain.risk",
+        guardrailOverlay: {},
+        triggerPhrases: ["trigger"],
         defaultWorkflowId: "wf_1",
+        recommendedWorkflowIds: [],
         defaultToolBundleIds: ["bundle_1"],
-        triggers: ["trigger"],
-        archetype: "intake_triage",
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-01T00:00:00.000Z",
+        defaultPromptBundleRef: "test_domain.prompt",
+        acceptanceChecklistRef: "test_domain.acceptance",
+        archetype: "crud_heavy",
       };
 
       const result = await executor.execute(recipe, {

@@ -44,7 +44,10 @@ export interface RecipeExecutorOptions {
 }
 
 export interface WorkflowQuery {
-  existsWorkflow(workflowId: string, tenantId?: string | null): Promise<boolean> | boolean;
+  existsWorkflow(
+    workflowId: string,
+    tenantId?: string | null,
+  ): Promise<boolean> | boolean;
 }
 
 export class RecipeExecutor {
@@ -60,21 +63,22 @@ export class RecipeExecutor {
   ): Promise<RecipeExecutionResult> {
     const startedAt = Date.now();
     let metrics: RecipeExecutionMetrics | null = null;
+    let parsedRecipe: DomainRecipe | null = null;
     try {
-      const parsed = DomainRecipeSchema.parse(recipe);
-      if (!await this.workflowExists(parsed.defaultWorkflowId)) {
+      parsedRecipe = DomainRecipeSchema.parse(recipe);
+      if (!(await this.workflowExists(parsedRecipe.defaultWorkflowId))) {
         const result = {
           success: false,
           executionId: context.executionId,
-          recipeId: parsed.recipeId,
-          workflowId: parsed.defaultWorkflowId,
-          toolBundleIds: [...parsed.defaultToolBundleIds],
-          error: `Workflow ${parsed.defaultWorkflowId} is not available.`,
+          recipeId: parsedRecipe.recipeId,
+          workflowId: parsedRecipe.defaultWorkflowId,
+          toolBundleIds: [...parsedRecipe.defaultToolBundleIds],
+          error: `Workflow ${parsedRecipe.defaultWorkflowId} is not available.`,
         };
         metrics = {
           executionId: context.executionId,
-          recipeId: parsed.recipeId,
-          workflowId: parsed.defaultWorkflowId,
+          recipeId: parsedRecipe.recipeId,
+          workflowId: parsedRecipe.defaultWorkflowId,
           success: false,
           durationMs: Date.now() - startedAt,
           error: result.error,
@@ -85,11 +89,11 @@ export class RecipeExecutor {
       const result = {
         success: true,
         executionId: context.executionId,
-        recipeId: parsed.recipeId,
-        workflowId: parsed.defaultWorkflowId,
-        toolBundleIds: [...parsed.defaultToolBundleIds],
+        recipeId: parsedRecipe.recipeId,
+        workflowId: parsedRecipe.defaultWorkflowId,
+        toolBundleIds: [...parsedRecipe.defaultToolBundleIds],
         output: {
-          summary: `Executed recipe ${parsed.recipeId} for workflow ${parsed.defaultWorkflowId}.`,
+          summary: `Executed recipe ${parsedRecipe.recipeId} for workflow ${parsedRecipe.defaultWorkflowId}.`,
           taskId: context.taskId,
           tenantId: context.tenantId,
           correlationId: context.correlationId,
@@ -98,8 +102,8 @@ export class RecipeExecutor {
       };
       metrics = {
         executionId: context.executionId,
-        recipeId: parsed.recipeId,
-        workflowId: parsed.defaultWorkflowId,
+        recipeId: parsedRecipe.recipeId,
+        workflowId: parsedRecipe.defaultWorkflowId,
         success: true,
         durationMs: Date.now() - startedAt,
       };
@@ -108,9 +112,16 @@ export class RecipeExecutor {
       const result = {
         success: false,
         executionId: context.executionId,
-        recipeId: recipe?.recipeId ?? "unknown_recipe",
-        workflowId: recipe?.defaultWorkflowId ?? "unknown_workflow",
-        toolBundleIds: Array.isArray(recipe?.defaultToolBundleIds) ? [...recipe.defaultToolBundleIds] : [],
+        recipeId: parsedRecipe?.recipeId ?? "unknown_recipe",
+        workflowId:
+          parsedRecipe?.defaultWorkflowId ??
+          recipe?.defaultWorkflowId ??
+          "unknown_workflow",
+        toolBundleIds: Array.isArray(parsedRecipe?.defaultToolBundleIds)
+          ? [...parsedRecipe.defaultToolBundleIds]
+          : Array.isArray(recipe?.defaultToolBundleIds)
+            ? [...recipe.defaultToolBundleIds]
+            : [],
         error: error instanceof Error ? error.message : String(error),
       };
       metrics = {
@@ -129,11 +140,16 @@ export class RecipeExecutor {
     }
   }
 
-  private async workflowExists(workflowId: string, tenantId?: string | null): Promise<boolean> {
+  private async workflowExists(
+    workflowId: string,
+    tenantId?: string | null,
+  ): Promise<boolean> {
     if (this.workflowQuery) {
       const result = this.workflowQuery.existsWorkflow(workflowId, tenantId);
       // Unwrap promised boolean or plain boolean
-      return typeof result === "boolean" ? result : await result;
+      if (typeof result === "boolean" ? result : await result) {
+        return true;
+      }
     }
     // Fallback: in-memory registry lookup
     return this.workflowRegistry?.get(workflowId) != null;

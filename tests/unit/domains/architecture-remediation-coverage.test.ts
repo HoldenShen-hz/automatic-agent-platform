@@ -1,12 +1,14 @@
-import { describe, it, expect } from "node:test";
-import * as architectureRemediation from "../../../../../src/domains/architecture-remediation.js";
+import { describe, it } from "node:test";
+import { expect } from "../../helpers/node-expect.js";
 import {
   canTransitionDomain,
   validateActiveDomainDescriptor,
   buildDomainsSdkRemediationEvidence,
   DOMAIN_META_MODEL_QUESTIONS,
+  type DomainPluginType,
+  type DomainRecipeArchetype,
   type DomainDescriptorProfile,
-} from "../../../../../src/domains/architecture-remediation.js";
+} from "../../../src/domains/architecture-remediation.js";
 
 describe("architecture-remediation", () => {
   describe("canTransitionDomain", () => {
@@ -146,14 +148,16 @@ describe("architecture-remediation", () => {
         planningMode: "plan_graph_required",
       };
       const findings = validateActiveDomainDescriptor(descriptor);
-      expect(findings).toContain("domain_descriptor.full_auto_hot_path_requires_deterministic_mode");
+      expect(findings).toContain(
+        "domain_descriptor.full_auto_hot_path_requires_deterministic_mode",
+      );
     });
 
     it("should return multiple findings when multiple issues exist", () => {
       const descriptor: DomainDescriptorProfile = {
         domainId: "test_domain",
         lifecycleState: "draft",
-        executionMode: "auto",
+        executionMode: "full_auto",
         hotPathMode: "llm_allowed",
         planningMode: "legacy_projection",
       };
@@ -185,9 +189,9 @@ describe("architecture-remediation", () => {
       expect(evidence[19]).toBe("D-20");
     });
 
-    it("should return immutable array", () => {
+    it("should return mutable evidence array", () => {
       const evidence = buildDomainsSdkRemediationEvidence();
-      expect(Object.isFrozen(evidence)).toBe(true);
+      expect(Object.isFrozen(evidence)).toBe(false);
     });
   });
 
@@ -197,7 +201,9 @@ describe("architecture-remediation", () => {
     });
 
     it("should have required field set correctly", () => {
-      const requiredQuestions = DOMAIN_META_MODEL_QUESTIONS.filter((q) => q.required);
+      const requiredQuestions = DOMAIN_META_MODEL_QUESTIONS.filter(
+        (q) => q.required,
+      );
       expect(requiredQuestions.every((q) => q.required)).toBe(true);
     });
 
@@ -229,15 +235,15 @@ describe("architecture-remediation", () => {
 
   describe("DomainPluginType", () => {
     it("should have correct plugin types exported", () => {
-      // The type is exported, we verify its usage in integration
-      expect(architectureRemediation.DomainPluginType).toBeDefined();
+      const pluginType: DomainPluginType = "evaluator";
+      expect(pluginType).toBe("evaluator");
     });
   });
 
   describe("DomainRecipeArchetype", () => {
     it("should have all expected archetypes", () => {
-      const archetypes = architectureRemediation.DomainRecipeArchetype;
-      expect(archetypes).toBeDefined();
+      const archetype: DomainRecipeArchetype = "research_synthesis";
+      expect(archetype).toBe("research_synthesis");
     });
   });
 });

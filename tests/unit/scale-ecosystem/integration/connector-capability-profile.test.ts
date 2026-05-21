@@ -142,7 +142,7 @@ test("ConnectorCapabilityProfileSchema requires positive rotation days (negative
 
 test("ConnectorCapabilityProfileSchema accepts zero grace period", () => {
   const result = ConnectorCapabilityProfileSchema.parse({
-    credentialRotationPolicy: { gracePeriodDays: 0 },
+    credentialRotationPolicy: { gracePeriodDays: 0, rotationDays: 30 },
   });
 
   assert.equal(result.credentialRotationPolicy.gracePeriodDays, 0);

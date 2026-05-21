@@ -2,23 +2,36 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { SandboxError, ValidationError, WorkflowStateError } from "../../platform/contracts/errors.js";
+import {
+  SandboxError,
+  ValidationError,
+  WorkflowStateError,
+} from "../../platform/contracts/errors.js";
 
-export function throwDivisionValidationError(code: string, details: Record<string, unknown> = {}): never {
+export function throwDivisionValidationError(
+  code: string,
+  details: Record<string, unknown> = {},
+): never {
   throw new ValidationError(code, code, {
     retryable: false,
     details,
   });
 }
 
-export function throwDivisionWorkflowError(code: string, details: Record<string, unknown> = {}): never {
+export function throwDivisionWorkflowError(
+  code: string,
+  details: Record<string, unknown> = {},
+): never {
   throw new WorkflowStateError(code, code, {
     retryable: false,
     details,
   });
 }
 
-export function throwDivisionSandboxError(code: string, details: Record<string, unknown> = {}): never {
+export function throwDivisionSandboxError(
+  code: string,
+  details: Record<string, unknown> = {},
+): never {
   throw new SandboxError(code, code, {
     retryable: false,
     details,
@@ -82,7 +95,9 @@ function resolveDefaultDivisionsRoot(): string {
     join(startDir, "../../../divisions"),
     join(startDir, "../../../../divisions"),
   ];
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]!;
+  return (
+    candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]!
+  );
 }
 
 export const DEFAULT_DIVISIONS_ROOT = resolveDefaultDivisionsRoot();
@@ -91,7 +106,10 @@ export function tokenizeYaml(raw: string): ParsedLine[] {
   return raw
     .split(/\r?\n/)
     .map((line, index) => ({ rawLine: line, lineNumber: index + 1 }))
-    .filter(({ rawLine }) => rawLine.trim().length > 0 && !rawLine.trimStart().startsWith("#"))
+    .filter(
+      ({ rawLine }) =>
+        rawLine.trim().length > 0 && !rawLine.trimStart().startsWith("#"),
+    )
     .map(({ rawLine, lineNumber }) => ({
       indent: rawLine.match(/^ */)?.[0].length ?? 0,
       text: rawLine.trim(),
@@ -117,15 +135,27 @@ export function parseLimitedYaml(raw: string, sourcePath: string): unknown {
   return value;
 }
 
-export function parseBlock(lines: ParsedLine[], startIndex: number, indent: number, sourcePath: string): [unknown, number] {
+export function parseBlock(
+  lines: ParsedLine[],
+  startIndex: number,
+  indent: number,
+  sourcePath: string,
+): [unknown, number] {
   const line = lines[startIndex];
   if (!line || line.indent < indent) return [{}, startIndex];
   if (line.indent !== indent) {
-    throwDivisionValidationError("yaml.invalid_indent", { sourcePath, lineNumber: line.lineNumber });
+    throwDivisionValidationError("yaml.invalid_indent", {
+      sourcePath,
+      lineNumber: line.lineNumber,
+    });
   }
-  return line.text.startsWith("- ")
+  return isYamlArrayItem(line.text)
     ? parseArray(lines, startIndex, indent, sourcePath)
     : parseObject(lines, startIndex, indent, sourcePath);
+}
+
+function isYamlArrayItem(text: string): boolean {
+  return text === "-" || text.startsWith("- ");
 }
 
 export function parseObject(
@@ -141,17 +171,29 @@ export function parseObject(
     if (!line) break;
     if (line.indent < indent) break;
     if (line.indent > indent) {
-      throwDivisionValidationError("yaml.invalid_indent", { sourcePath, lineNumber: line.lineNumber });
+      throwDivisionValidationError("yaml.invalid_indent", {
+        sourcePath,
+        lineNumber: line.lineNumber,
+      });
     }
     if (line.text.startsWith("- ")) break;
-    const [key, inlineValue] = splitKeyValue(line.text, sourcePath, line.lineNumber);
+    const [key, inlineValue] = splitKeyValue(
+      line.text,
+      sourcePath,
+      line.lineNumber,
+    );
     index += 1;
     if (inlineValue.length > 0) {
       result[key] = parseScalar(inlineValue);
       continue;
     }
     if (index < lines.length && (lines[index]?.indent ?? -1) > indent) {
-      const [nestedValue, nextIndex] = parseBlock(lines, index, indent + 2, sourcePath);
+      const [nestedValue, nextIndex] = parseBlock(
+        lines,
+        index,
+        indent + 2,
+        sourcePath,
+      );
       result[key] = nestedValue;
       index = nextIndex;
       continue;
@@ -174,26 +216,45 @@ export function parseArray(
     if (!line) break;
     if (line.indent < indent) break;
     if (line.indent > indent) {
-      throwDivisionValidationError("yaml.invalid_indent", { sourcePath, lineNumber: line.lineNumber });
+      throwDivisionValidationError("yaml.invalid_indent", {
+        sourcePath,
+        lineNumber: line.lineNumber,
+      });
     }
-    if (!line.text.startsWith("- ")) break;
-    const itemText = line.text.slice(2).trim();
+    if (!isYamlArrayItem(line.text)) break;
+    const itemText = line.text === "-" ? "" : line.text.slice(2).trim();
     index += 1;
     if (itemText.length === 0) {
       if (index >= lines.length || (lines[index]?.indent ?? -1) <= indent) {
         result.push(null);
         continue;
       }
-      const [nestedValue, nextIndex] = parseBlock(lines, index, indent + 2, sourcePath);
+      const [nestedValue, nextIndex] = parseBlock(
+        lines,
+        index,
+        indent + 2,
+        sourcePath,
+      );
       result.push(nestedValue);
       index = nextIndex;
       continue;
     }
     if (looksLikeKeyValue(itemText)) {
-      const [key, inlineValue] = splitKeyValue(itemText, sourcePath, line.lineNumber);
-      const objectValue: Record<string, unknown> = { [key]: inlineValue.length > 0 ? parseScalar(inlineValue) : null };
+      const [key, inlineValue] = splitKeyValue(
+        itemText,
+        sourcePath,
+        line.lineNumber,
+      );
+      const objectValue: Record<string, unknown> = {
+        [key]: inlineValue.length > 0 ? parseScalar(inlineValue) : null,
+      };
       if (index < lines.length && (lines[index]?.indent ?? -1) > indent) {
-        const [nestedValue, nextIndex] = parseObject(lines, index, indent + 2, sourcePath);
+        const [nestedValue, nextIndex] = parseObject(
+          lines,
+          index,
+          indent + 2,
+          sourcePath,
+        );
         Object.assign(objectValue, nestedValue);
         index = nextIndex;
       }
@@ -205,15 +266,25 @@ export function parseArray(
   return [result, index];
 }
 
-export function splitKeyValue(text: string, sourcePath: string, lineNumber: number): [string, string] {
+export function splitKeyValue(
+  text: string,
+  sourcePath: string,
+  lineNumber: number,
+): [string, string] {
   const separatorIndex = text.indexOf(":");
   if (separatorIndex <= 0) {
-    throwDivisionValidationError("yaml.invalid_mapping", { sourcePath, lineNumber });
+    throwDivisionValidationError("yaml.invalid_mapping", {
+      sourcePath,
+      lineNumber,
+    });
   }
   const key = text.slice(0, separatorIndex).trim();
   const value = text.slice(separatorIndex + 1).trim();
   if (key.length === 0) {
-    throwDivisionValidationError("yaml.invalid_mapping", { sourcePath, lineNumber });
+    throwDivisionValidationError("yaml.invalid_mapping", {
+      sourcePath,
+      lineNumber,
+    });
   }
   return [key, value];
 }
@@ -232,17 +303,25 @@ export function parseScalar(raw: string): unknown {
     return inner.split(",").map((item) => parseScalar(item.trim()));
   }
   if (/^-?\d+$/.test(raw)) return Number(raw);
-  if ((raw.startsWith("\"") && raw.endsWith("\"")) || (raw.startsWith("'") && raw.endsWith("'"))) {
+  if (
+    (raw.startsWith('"') && raw.endsWith('"')) ||
+    (raw.startsWith("'") && raw.endsWith("'"))
+  ) {
     return raw.slice(1, -1);
   }
   return raw;
 }
 
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(
+  value: unknown,
+): value is Record<string, unknown> {
   return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
-export function expectNonEmptyString(value: unknown, errorCode: string): string {
+export function expectNonEmptyString(
+  value: unknown,
+  errorCode: string,
+): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new ValidationError(errorCode, errorCode, { retryable: false });
   }
@@ -251,7 +330,9 @@ export function expectNonEmptyString(value: unknown, errorCode: string): string 
 
 export function toObjectArray(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((entry): entry is Record<string, unknown> => isPlainObject(entry));
+  return value.filter((entry): entry is Record<string, unknown> =>
+    isPlainObject(entry),
+  );
 }
 
 export function toStringArray(value: unknown): string[] {
@@ -264,6 +345,7 @@ export function toStringArray(value: unknown): string[] {
 
 export function toInteger<T>(value: unknown, fallback: T): number | T {
   if (typeof value === "number" && Number.isInteger(value)) return value;
-  if (typeof value === "string" && /^-?\d+$/.test(value.trim())) return Number(value.trim());
+  if (typeof value === "string" && /^-?\d+$/.test(value.trim()))
+    return Number(value.trim());
   return fallback;
 }
