@@ -1,0 +1,239 @@
+{
+  "version": "2026-05-21",
+  "gates": [
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-001",
+      "defaultSeverity": "P0",
+      "ciJob": "playbook-validate",
+      "runbookId": "D.35",
+      "owner": "mission-ops"
+    },
+    {
+      "gateId": "GATE-MISSION-OUTCOME-001",
+      "defaultSeverity": "P1",
+      "ciJob": "mission-outcome-validate",
+      "runbookId": "D.36",
+      "owner": "quality-owner"
+    },
+    {
+      "gateId": "GATE-SKILL-CANDIDATE-001",
+      "defaultSeverity": "P1",
+      "ciJob": "skill-candidate-validate",
+      "runbookId": "D.39A",
+      "owner": "skill-owner"
+    },
+    {
+      "gateId": "GATE-SKILLPACK-001",
+      "defaultSeverity": "P0",
+      "ciJob": "skillpack-validate",
+      "runbookId": "D.39B",
+      "owner": "skill-owner"
+    },
+    {
+      "gateId": "GATE-WORKFLOW-RECORDING-001",
+      "defaultSeverity": "P0",
+      "ciJob": "workflow-recording-policy-validate",
+      "runbookId": "D.40",
+      "owner": "security-owner"
+    },
+    {
+      "gateId": "GATE-WORKFLOW-RECORDING-002",
+      "defaultSeverity": "P0",
+      "ciJob": "workflow-recording-data-boundary-validate",
+      "runbookId": "D.40",
+      "owner": "security-owner"
+    },
+    {
+      "gateId": "GATE-WORKFLOW-RECORDING-003",
+      "defaultSeverity": "P1",
+      "ciJob": "workflow-recording-retention-validate",
+      "runbookId": "D.40",
+      "owner": "compliance-owner"
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "aa.mission.outcome.measurement_missing.count",
+      "owner": "quality-owner",
+      "gateId": "GATE-MISSION-OUTCOME-001"
+    },
+    {
+      "metric": "aa.failure_mode.detected.count",
+      "owner": "reliability-owner"
+    },
+    {
+      "metric": "aa.skill_candidate.conversion_without_approval.count",
+      "owner": "skill-owner",
+      "gateId": "GATE-SKILL-CANDIDATE-001"
+    },
+    {
+      "metric": "aa.workflow_recording.retention_failure.count",
+      "owner": "compliance-owner",
+      "gateId": "GATE-WORKFLOW-RECORDING-003"
+    }
+  ],
+  "events": [
+    "platform.mission.stage_exit_evaluated",
+    "platform.mission.failure_mode_detected",
+    "platform.mission.outcome_measured",
+    "workflow.recording.completed",
+    "workflow.recording.deleted",
+    "skill_candidate.created",
+    "skillpack.activated"
+  ],
+  "runbooks": [
+    {
+      "runbookId": "D.35",
+      "linkedGateIds": ["GATE-MISSION-PLAYBOOK-001"],
+      "linkedMetrics": ["aa.failure_mode.detected.count"]
+    },
+    {
+      "runbookId": "D.36",
+      "linkedGateIds": ["GATE-MISSION-OUTCOME-001"],
+      "linkedMetrics": ["aa.mission.outcome.measurement_missing.count"]
+    },
+    {
+      "runbookId": "D.39A",
+      "linkedGateIds": ["GATE-SKILL-CANDIDATE-001"],
+      "linkedMetrics": ["aa.skill_candidate.conversion_without_approval.count"]
+    },
+    {
+      "runbookId": "D.39B",
+      "linkedGateIds": ["GATE-SKILLPACK-001"],
+      "linkedMetrics": []
+    },
+    {
+      "runbookId": "D.40",
+      "linkedGateIds": [
+        "GATE-WORKFLOW-RECORDING-001",
+        "GATE-WORKFLOW-RECORDING-002",
+        "GATE-WORKFLOW-RECORDING-003"
+      ],
+      "linkedMetrics": ["aa.workflow_recording.retention_failure.count"]
+    }
+  ],
+  "ciJobs": [
+    {
+      "jobId": "playbook-validate",
+      "command": "npm run playbook:validate",
+      "artifact": "playbook-validation-report.json",
+      "blocks": ["GATE-MISSION-PLAYBOOK-001"]
+    },
+    {
+      "jobId": "stage-exit-e2e",
+      "command": "npm run test:e2e:stage-exit",
+      "artifact": "stage-exit-e2e-report.json",
+      "blocks": ["GATE-MISSION-PLAYBOOK-001"]
+    },
+    {
+      "jobId": "mission-outcome-validate",
+      "command": "npm run mission-outcome:validate",
+      "artifact": "mission-outcome-validation-report.json",
+      "blocks": ["GATE-MISSION-OUTCOME-001"]
+    },
+    {
+      "jobId": "skill-candidate-validate",
+      "command": "npm run skill-candidate:validate",
+      "artifact": "skill-candidate-validation-report.json",
+      "blocks": ["GATE-SKILL-CANDIDATE-001"]
+    },
+    {
+      "jobId": "skillpack-validate",
+      "command": "npm run skillpack:validate",
+      "artifact": "skillpack-validation-report.json",
+      "blocks": ["GATE-SKILLPACK-001"]
+    },
+    {
+      "jobId": "workflow-recording-policy-validate",
+      "command": "npm run workflow-recording:policy",
+      "artifact": "workflow-recording-policy-report.json",
+      "blocks": ["GATE-WORKFLOW-RECORDING-001"]
+    },
+    {
+      "jobId": "workflow-recording-data-boundary-validate",
+      "command": "npm run workflow-recording:data-boundary",
+      "artifact": "workflow-recording-data-boundary-report.json",
+      "blocks": ["GATE-WORKFLOW-RECORDING-002"]
+    },
+    {
+      "jobId": "workflow-recording-retention-validate",
+      "command": "npm run workflow-recording:retention",
+      "artifact": "workflow-recording-retention-report.json",
+      "blocks": ["GATE-WORKFLOW-RECORDING-003"]
+    }
+  ],
+  "playbooks": [
+    {
+      "playbookId": "mission-playbook-research",
+      "version": "1.0.0",
+      "missionType": "formal",
+      "title": "Research evidence playbook",
+      "owner": "mission-ops",
+      "status": "active",
+      "entryStageId": "scope",
+      "stages": [
+        {
+          "stageId": "scope",
+          "title": "Research scope",
+          "exitCriteria": [
+            {
+              "criterionId": "scope.evidence",
+              "name": "Scope brief exists",
+              "severity": "P0",
+              "gateId": "GATE-MISSION-PLAYBOOK-001",
+              "expression": {
+                "type": "evidence_exists",
+                "evidenceKind": "research_brief",
+                "minCount": 1
+              },
+              "requiredEvidenceRefs": ["evidence:research_brief"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:scope:missing_evidence"
+            }
+          ],
+          "failureModeRefs": ["failure:scope:missing_evidence"],
+          "defaultSkillRefs": ["skill:research-scope"],
+          "evidenceRequirements": ["research_brief"]
+        },
+        {
+          "stageId": "evidence_review",
+          "title": "Evidence review",
+          "exitCriteria": [
+            {
+              "criterionId": "evidence_review.evidence",
+              "name": "Claims are evidenced",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-OUTCOME-001",
+              "expression": {
+                "type": "evidence_exists",
+                "evidenceKind": "claim_evidence",
+                "minCount": 1
+              },
+              "requiredEvidenceRefs": ["evidence:claim_evidence"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:evidence_review:missing_evidence"
+            }
+          ],
+          "failureModeRefs": ["failure:evidence_review:missing_evidence"],
+          "defaultSkillRefs": ["skill:research-critic"],
+          "evidenceRequirements": ["claim_evidence"]
+        }
+      ],
+      "edges": [
+        {
+          "edgeId": "scope_to_evidence_review",
+          "fromStageId": "scope",
+          "toStageId": "evidence_review",
+          "requiredGateIds": ["GATE-MISSION-PLAYBOOK-001", "GATE-MISSION-OUTCOME-001"],
+          "requiresHitl": true,
+          "requiredCapabilities": ["mission.stage.advance"]
+        }
+      ],
+      "signatureRef": "signature:mission-playbook-research:1.0.0",
+      "rollbackRef": "rollback:mission-playbook-research:1.0.0",
+      "compatibilityRef": "compat:mission-playbook-research:1.0.0",
+      "createdAt": "2026-05-21T00:00:00.000Z",
+      "updatedAt": "2026-05-21T00:00:00.000Z"
+    }
+  ]
+}

@@ -1,13 +1,13 @@
 # Context Compaction And Overflow Contract
 
-> **OAPEFLIR Relationship**: This contract defines context management strategies across the OAPEFLIR 8 stages, corresponding to ADR-016 and ADR-060 Plan Hub.
-> **Updated**: 2026-04-17
+> **OAPEFLIR Association**: This contract defines context management strategies across the OAPEFLIR 8 stages, corresponding to ADR-016 and ADR-060 Plan Hub.
+> **Update Date**: 2026-04-17
 
 ## 1. Scope
 
 This contract defines a two-stage overflow handling strategy when LLM context approaches token limits.
 
-Related Documents:
+Related documents:
 
 - `context_propagation_contract.md`
 - `tool_output_sanitization_contract.md`

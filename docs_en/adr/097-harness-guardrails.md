@@ -1,10 +1,10 @@
-# ADR-097 Harness Guardrails
+# ADR-097: Harness Guardrails
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
-- **Observe**: Read five-layer signals: input, plan, tool, memory, output
+- **Observe**: Read five-layer signals: input, planning, tool, memory, output
 - **Assess**: Form guardrail findings and escalation recommendations
 - **Plan**: Set blocking points for each execution round
 - **Execute**: Intercept or escalate to human during runtime

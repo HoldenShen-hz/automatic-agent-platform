@@ -1,4 +1,4 @@
-# ADR-057 External System Integration Framework
+# ADR-057: External System Integration Framework
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -11,10 +11,10 @@ The platform needs to integrate with external systems (CRM, ERP, project managem
 
 ### Integration Patterns
 
-| Pattern | Description | Applicable Scenarios |
+| Pattern | Description | Applicable Scenario |
 |---------|-------------|---------------------|
-| webhook | Event push | High real-time requirements |
-| polling | Polling pull | External system has no webhook |
+| webhook | Event push | High real-time requirement |
+| polling | Polling pull | External system without webhook |
 | api_proxy | API proxy | Requires authentication and transformation |
 | file_transfer | File transfer | Batch data exchange |
 
@@ -37,13 +37,13 @@ interface ExternalAdapter {
 |------|-------------|
 | api_key | API Key |
 | oauth2 | OAuth 2.0 |
-| basic_auth | Username/password |
+| basic_auth | Username/Password |
 | jwt | JWT Token |
 
 ### Error Handling
 
 | Strategy | Description |
-|-----------|-------------|
+|----------|-------------|
 | retry | Retry |
 | circuit_break | Circuit breaker |
 | fallback | Fallback |
@@ -55,24 +55,27 @@ interface ExternalAdapter {
 - Authentication credential management
 - Traffic control
 - Audit logs
+- All external side effects must declare `side_effect_policy`
+- High-risk writes must generate `SideEffectRecord`
+- Compensation/retry that changes runtime truth must be coordinated through `RuntimeStateMachine` and X1 Reliability boundaries
 
 ## Consequences
 
-Pros:
+Advantages:
 
-- Unified framework reduces integration costs
-- Standardized error processing
+- Unified framework reduces integration cost
+- Standardized error handling
 - Governance capabilities ensure security
 
-Cons:
+Disadvantages:
 
 - Adapter development takes time
 - Maintaining multiple integrations increases complexity
 
 ## Cross References
 
-- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
-- [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [ADR-021 Inter-plane Communication Contract](./021-inter-plane-communication-contract.md)
 
 ## Source Section
 

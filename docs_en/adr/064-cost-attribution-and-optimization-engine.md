@@ -1,4 +1,4 @@
-# ADR-064 Cost Attribution and Optimization Engine
+# ADR-064: Cost Attribution and Optimization Engine
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -71,11 +71,11 @@ Advantages:
 - Budget control prevents overruns
 - Reports facilitate management decisions
 
-Costs:
+Disadvantages:
 
 - Metering increases overhead
-- Optimization recommendations
+- Optimization recommendations require data
 
 ## v4.3 ADR Remediation
 
-- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimensions, root cause being the cost engine ADR followed the linear workflow granularity, not migrating with v4.3 execution truth objects to `HarnessRun / NodeRun / BudgetSettlement`. Fix: The main text now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.
+- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimensions. Root cause was that the cost engine ADR followed the linear workflow granularity, not migrating with v4.3 execution truth objects to `HarnessRun / NodeRun / BudgetSettlement`. Fix: The text now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.

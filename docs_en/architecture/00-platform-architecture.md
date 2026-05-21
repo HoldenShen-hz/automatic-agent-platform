@@ -1,10 +1,21 @@
-# "Enterprise-level Agent Platform Overall Technical Architecture Design Document"
+# Platform Architecture Index
 
-> **Document Version**: v3.3
-> **Document Status**: Release
-> **Document Positioning**: Enterprise-level / platform-level Agent System overall technical architecture design document (stability first, complete AI operations, complete business domain access, complete vertical business domain deepening (24 domains), unified domain meta-model, multi-Agent collaboration protocol, complete intelligent interaction, complete organizational governance, complete scaled ecosystem, complete operational maturity, complete Harness engineering, complete Harness eight-pillar deepening, three-ring implementation priority, implementation-oriented version)
-> **Applicable Audience**: Architecture committee, platform R&D team, Runtime team, SRE, security team, governance team, business domain access team, AI/ML engineering team, business line leaders, non-technical business operators, organizational management, compliance/audit team, ecosystem partners, edge/field operations team, **vertical business domain architects (Quant Trading, E-commerce, Advertising, Financial Services, Data Engineering, Coding, User Operations, Industry Research, Academic Research, Knowledge Base, Finance/Accounting, Legal, Live Streaming, Creative Production, Game Dev, Game Publishing, HR, Supply Chain, Healthcare, Education, Customer Service, Content Moderation, IT Operations, Marketing)**
-> **Design Goal**: Build an enterprise-level Agent platform with stability, risk control, safety and reliability, and exception handling as first principles, enabling Agents to run in enterprise environments in a controlled, recoverable, and auditable manner as high-risk automation units; with complete AI operations capabilities (LLM abstraction, Prompt governance, model quality, cost control); providing structured business domain modeling and access framework; building an intelligent interaction layer for non-technical users; establishing complete organizational governance and scaled ecosystem layers; completing the operational maturity layer; **and introducing the Harness Runtime unified abstraction -- converging distributed constraints, tools, context, and feedback capabilities into a standardized Planner->Generator->Evaluator->Loop closed-loop runtime, upgrading Agents from one-shot model calls to constrained, executable, memorable, feedback-capable, recoverable engineered closed-loop systems**
+> 2026-05-14 Review: The historical 711KB monolithic architecture document has been archived to `docs_zh/architecture/archive/00-platform-architecture-monolith-2026-05-14.md`. This file remains as a short index to prevent the architecture entry point from continuing to bear unauditable oversized body content.
+
+## Current Reading Entry Points
+
+- Architecture directory guide: `docs_zh/architecture/README.md`
+- Design review issue table: `docs_zh/reviews/issues-table.md`
+- Implementation consistency audit: `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`
+- Contract documents: `docs_zh/contracts/`
+- ADR: `docs_zh/adr/`
+
+## Maintenance Rules
+
+- New architecture content should first fall into thematic documents or ADRs, not expand this index into a monolithic document.
+- When citing full historical text, link to the archived file and record the reason in the review table.
+- Architecture implementation closure is based on `issues-table.md` line-level evidence and `scripts/ci/audit-review-batch-resource-contracts.mjs` audit results.
+- Historical `five-plane-*` directory names, old "CEO/VP/Division" narrative, and v2.x layered descriptions serve only as compatible search entry points; current engineering naming follows `P1-P5 + X1`, `DomainDescriptor`, `HarnessRun/NodeRun` as the standard.
 
 ---
 

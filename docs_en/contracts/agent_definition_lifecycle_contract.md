@@ -11,7 +11,7 @@ This contract defines `§61`'s `AgentDefinition`, `AgentVersion`, and composite 
 - `AgentRolloutBinding`
 - `AgentRetirementPlan`
 
-## 3. AgentDefinition Minimum Fields
+## 3. `AgentDefinition` Minimum Fields
 
 - `agent_id`
 - `display_name`
@@ -30,7 +30,12 @@ This contract defines `§61`'s `AgentDefinition`, `AgentVersion`, and composite 
 - `deprecated`
 - `retired`
 
-## 4. AgentVersion Minimum Fields
+Rules:
+
+- `lifecycle_state` changes must be executed through explicit transition service; direct field overwrite is prohibited.
+- `active -> deprecated -> retired` migration must bind rollout / evidence / retirement audit records.
+
+## 4. `AgentVersion` Minimum Fields
 
 - `version_id`
 - `agent_id`
@@ -44,9 +49,8 @@ This contract defines `§61`'s `AgentDefinition`, `AgentVersion`, and composite 
 
 - unit: agent lifecycle, version snapshot integrity
 - integration: agent rollout / rollback / retirement
-- contract: retired agents must not be bound to new tasks
+- contract: retired agent must not be bound by new tasks
 
 ## v4.3 Contract Remediation
 
-- The canonical runtime handoff remains `PlanGraphBundle -> NodeAttemptReceipt`; agent lifecycle documents must not reintroduce linear `ExecutionPlan` / `ExecutionReceipt` terms.
-- Rollout bindings should only describe release governance and version ownership; execution truth remains in `HarnessRun` / `NodeRun`.
+- T-71: This document previously only gave state enums without defining controlled migration paths. The root cause was that agent lifecycle contract froze data shape first, then added governance chain, leading to implementation side easily writing fields directly. Fix: The text now explicitly states lifecycle can only advance through controlled transition service, and requires binding rollout and retirement audit evidence.

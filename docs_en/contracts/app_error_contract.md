@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,7 +21,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 This contract defines the platform's unified error model.
 
-It requires that all errors propagated to runtime, gateway, approval, recovery, and observability layers must first converge to `AppError`.
+It requires that all errors propagating to runtime, gateway, approval, recovery, and observability layers must first converge to `AppError`.
 
 ## 2. `AppError` Minimum Fields
 
@@ -30,29 +30,31 @@ It requires that all errors propagated to runtime, gateway, approval, recovery, 
 | `code` | `string` | Stable error code |
 | `category` | `validation \| policy \| auth \| budget \| provider \| tool \| sandbox \| storage \| workflow \| runtime \| tenant \| monetization \| external \| internal` | Error category |
 | `retryable` | `boolean` | Whether automatic retry is allowed |
-| `user_message` | `string` | User-facing safe hint |
+| `user_message` | `string` | User-facing safe message |
 | `internal_details` | `json?` | Internal troubleshooting details |
 | `source` | `gateway \| runtime \| workflow \| provider \| tool \| storage \| policy` | Primary source |
 | `trace_id` | `string?` | Trace ID |
-| `task_id?` | `string` | Associated task |
-| `execution_id?` | `string` | Associated execution |
+| `task_id?` | `string` | Associated task (legacy query alias) |
+| `harness_run_id?` | `string` | Associated HarnessRun |
+| `node_run_id?` | `string` | Associated NodeRun |
+| `execution_id?` | `string` | Legacy execution projection key |
 | `caused_by?` | `string` | Upstream error code or exception reference |
-| `occurred_at` | `timestamp` | Time of occurrence |
+| `occurred_at` | `timestamp` | Occurrence time |
 
 ## 3. Unified Rules
 
-- All errors must have a stable `code` and must not throw free-form text only.
+- All errors must have a stable `code`; free-form text exceptions are not allowed.
 - All errors must explicitly mark `retryable`.
-- `user_message` and `internal_details` must be separated.
-- Provider / tool native errors must first be adapted to `AppError` before entering upper layers.
+- `user_message` and `internal_details` must be separate.
+- Provider / tool native errors must be adapted to `AppError` before entering upper layers.
 
 ## 4. Category Semantics
 
-| Category | Meaning | Default Retry Advice |
+| Category | Meaning | Default Retry Recommendation |
 | --- | --- | --- |
-| `validation` | Input, schema, or configuration invalid | No |
+| `validation` | Input, schema, or config invalid | No |
 | `policy` | Policy, approval, or sensitive action denied | No |
-| `auth` | Identity or insufficient permissions | No |
+| `auth` | Identity or permission insufficient | No |
 | `budget` | Budget, quota, or cost exceeded | No |
 | `provider` | LLM provider failure | Depends on error code |
 | `tool` | Tool execution failure | Depends on tool and idempotency |
@@ -60,16 +62,16 @@ It requires that all errors propagated to runtime, gateway, approval, recovery, 
 | `storage` | Database, file, or index failure | Depends on error code |
 | `workflow` | Orchestration, dependency, or step inconsistency | Usually no |
 | `runtime` | Runtime, sandbox, timeout, or recovery failure | Depends on error code |
-| `tenant` | Tenant ownership, isolation, or organization boundary error | Usually no |
+| `tenant` | Tenant ownership, isolation, or org boundary error | Usually no |
 | `monetization` | Entitlement, quota, ledger, or billing error | Depends on error code |
 | `external` | External system fluctuation | Depends on error code |
 | `internal` | Uncategorized internal error | Default no |
 
 ## 5. Relationship with Retry and Recovery
 
-- `retryable=true` only indicates permission to enter the retry policy and does not equal mandatory retry.
+- `retryable=true` only indicates entering retry policy is allowed; it does not mean retry will definitely happen.
 - Retry still needs to consider `RetryPolicy`, remaining budget, tool idempotency, and execution mode.
-- Non-retryable errors entering dead-letter or human escalation must preserve the `AppError.code`.
+- When non-retryable errors enter dead-letter or human escalation, `AppError.code` must be preserved.
 
 ## 6. Standard Derived Types
 
@@ -96,4 +98,4 @@ It requires that all errors propagated to runtime, gateway, approval, recovery, 
 
 ## 8. Closure Conclusion
 
-The core of the error model is not "defining a few more exception classes", but ensuring that failures at any layer of the system can be uniformly classified, uniformly presented, and uniformly recovered.
+The core of the error model is not "define a few more exception classes", but ensuring that failures at any layer of the system can be uniformly classified, presented, and recovered.

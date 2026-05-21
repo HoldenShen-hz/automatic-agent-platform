@@ -47,6 +47,9 @@ export interface AuthorizationContext {
   readonly pluginTrusted?: boolean;
   readonly requiresTenantScope?: boolean;
   readonly manualTakeoverActive?: boolean;
+  readonly principalId?: string | null;
+  readonly timeOfDay?: "business_hours" | "off_hours";
+  readonly riskLevel?: "low" | "medium" | "high";
   /** Original principal when performing on-behalf-of/impersonation */
   readonly originalPrincipal?: {
     readonly type: PlatformPrincipalType;
@@ -55,10 +58,13 @@ export interface AuthorizationContext {
   };
 }
 
+export type AuthorizationEvaluationLayer = "rbac" | "capability" | "context_aware";
+
 export interface PrincipalAccessProfile {
   readonly principalType: PlatformPrincipalType;
   readonly roles: readonly PlatformRole[];
   readonly capabilities: readonly PlatformCapability[];
+  readonly evaluatedContext: AuthorizationContext | null;
 }
 
 export interface AuthorizationContextDecision {
@@ -68,6 +74,8 @@ export interface AuthorizationContextDecision {
   readonly matchedRuleRefs: readonly string[];
   readonly constraints: Record<string, unknown>;
   readonly explainSummary: string;
+  readonly evaluatedLayers: readonly AuthorizationEvaluationLayer[];
+  readonly deniedBy: AuthorizationEvaluationLayer | null;
 }
 
 const ROLE_CAPABILITY_MAP = {
@@ -219,6 +227,7 @@ export function resolvePrincipalAccessProfile(input: {
   principalType: PlatformPrincipalType;
   roles?: readonly PlatformRole[];
   capabilities?: readonly PlatformCapability[];
+  context?: AuthorizationContext;
 }): PrincipalAccessProfile {
   const roles = dedupeRoles(input.roles?.length ? input.roles : defaultRolesForPrincipalType(input.principalType));
   const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => capabilitiesForRole(role)));
@@ -229,6 +238,7 @@ export function resolvePrincipalAccessProfile(input: {
     principalType: input.principalType,
     roles: Object.freeze([...roles]),
     capabilities: Object.freeze([...requestedCapabilities]),
+    evaluatedContext: input.context ?? null,
   });
 }
 
@@ -254,34 +264,78 @@ export function evaluateAuthorizationContext(input: {
   mode?: string;
 }): AuthorizationContextDecision {
   const context = input.context;
+  const allLayers = Object.freeze<AuthorizationEvaluationLayer[]>(["rbac", "capability", "context_aware"]);
+  const rbacOnly = Object.freeze<AuthorizationEvaluationLayer[]>(["rbac"]);
+
+  function deny(
+    deniedBy: AuthorizationEvaluationLayer,
+    evaluatedLayers: readonly AuthorizationEvaluationLayer[],
+    reasonCode: string,
+    matchedRuleRefs: readonly string[],
+    constraints: Record<string, unknown>,
+    explainSummary: string,
+  ): AuthorizationContextDecision {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      reasonCode,
+      matchedRuleRefs,
+      constraints,
+      explainSummary,
+      evaluatedLayers,
+      deniedBy,
+    };
+  }
+
+  function allow(
+    evaluatedLayers: readonly AuthorizationEvaluationLayer[],
+    input: {
+      requiresApproval?: boolean;
+      reasonCode?: string | null;
+      matchedRuleRefs: readonly string[];
+      constraints: Record<string, unknown>;
+      explainSummary: string;
+    },
+  ): AuthorizationContextDecision {
+    return {
+      allowed: true,
+      requiresApproval: input.requiresApproval ?? false,
+      reasonCode: input.reasonCode ?? null,
+      matchedRuleRefs: input.matchedRuleRefs,
+      constraints: input.constraints,
+      explainSummary: input.explainSummary,
+      evaluatedLayers,
+      deniedBy: null,
+    };
+  }
 
   // N-0075: Tenant validation for impersonation/on-behalf-of
   if (context?.requiresTenantScope === true) {
     if (context.tenantId == null || context.tenantId.length === 0) {
-      return {
-        allowed: false,
-        requiresApproval: false,
-        reasonCode: "policy.context_tenant_scope_required",
-        matchedRuleRefs: ["context.tenant_scope_required"],
-        constraints: { tenantScopeRequired: true },
-        explainSummary: "Context-aware authorization requires a tenant scope for this action.",
-      };
+      return deny(
+        "context_aware",
+        allLayers,
+        "policy.context_tenant_scope_required",
+        ["context.tenant_scope_required"],
+        { tenantScopeRequired: true },
+        "Context-aware authorization requires a tenant scope for this action.",
+      );
     }
     const principalTenantId = input.principalTenantId ?? context.originalPrincipal?.tenantId ?? null;
     if (principalTenantId != null && principalTenantId.length > 0 && principalTenantId !== context.tenantId) {
-        return {
-          allowed: false,
-          requiresApproval: false,
-          reasonCode: "policy.context_tenant_mismatch",
-          matchedRuleRefs: ["context.tenant_mismatch"],
-          constraints: {
-            tenantScopeRequired: true,
-            requestedTenant: context.tenantId,
-            principalTenantId,
-            originalPrincipal: context.originalPrincipal ?? null,
-          },
-          explainSummary: "On-behalf-of authorization failed: original principal tenant does not match target tenant.",
-        };
+      return deny(
+        "context_aware",
+        allLayers,
+        "policy.context_tenant_mismatch",
+        ["context.tenant_mismatch"],
+        {
+          tenantScopeRequired: true,
+          requestedTenant: context.tenantId,
+          principalTenantId,
+          originalPrincipal: context.originalPrincipal ?? null,
+        },
+        "On-behalf-of authorization failed: original principal tenant does not match target tenant.",
+      );
     }
   }
 
@@ -290,93 +344,86 @@ export function evaluateAuthorizationContext(input: {
     && ["exec_command", "org_change", "install_extension"].includes(input.action)
     && !input.roles.some((role) => role === "platform_admin" || role === "human_operator" || role === "service_operator")
   ) {
-    return {
-      allowed: false,
-      requiresApproval: false,
-      reasonCode: "policy.context_production_operator_required",
-      matchedRuleRefs: ["context.production_operator_required"],
-      constraints: { environment: "production", requiredRoles: ["platform_admin", "human_operator", "service_operator"] },
-      explainSummary: "Production-scoped execution requires an operator-grade principal role.",
-    };
+    return deny(
+      "context_aware",
+      allLayers,
+      "policy.context_production_operator_required",
+      ["context.production_operator_required"],
+      { environment: "production", requiredRoles: ["platform_admin", "human_operator", "service_operator"] },
+      "Production-scoped execution requires an operator-grade principal role.",
+    );
   }
 
   const requiredCapabilities = inferCapabilitiesForAction(input.action);
   if (!roleGrantsCapabilities(input.roles, requiredCapabilities)) {
-    return {
-      allowed: false,
-      requiresApproval: false,
-      reasonCode: "policy.capability_not_granted",
-      matchedRuleRefs: ["role.capability_required"],
-      constraints: {
+    return deny(
+      "rbac",
+      rbacOnly,
+      "policy.capability_not_granted",
+      ["role.capability_required"],
+      {
         requiredCapabilities: [...requiredCapabilities],
         grantedRoles: [...input.roles],
       },
-      explainSummary: `Role(s) ${input.roles.join(", ")} do not grant required capability(ies) for action ${input.action}.`,
-    };
+      `Role(s) ${input.roles.join(", ")} do not grant required capability(ies) for action ${input.action}.`,
+    );
   }
 
   if (input.principalType === "plugin" && input.action === "network_access" && context?.pluginTrusted !== true) {
-    return {
-      allowed: false,
-      requiresApproval: false,
-      reasonCode: "policy.context_plugin_trust_required",
-      matchedRuleRefs: ["context.plugin_trust_required"],
-      constraints: { pluginTrusted: false },
-      explainSummary: "Plugin network access requires a trusted plugin context.",
-    };
+    return deny(
+      "context_aware",
+      allLayers,
+      "policy.context_plugin_trust_required",
+      ["context.plugin_trust_required"],
+      { pluginTrusted: false },
+      "Plugin network access requires a trusted plugin context.",
+    );
   }
 
   if (
     context?.dataClassification === "regulated"
     && (input.mode === "full-auto" || input.riskCategory === "sensitive_data")
   ) {
-    return {
-      allowed: true,
+    return allow(allLayers, {
       requiresApproval: true,
       reasonCode: "policy.context_regulated_data_requires_approval",
       matchedRuleRefs: ["context.regulated_data_requires_approval"],
       constraints: { dataClassification: "regulated" },
       explainSummary: "Regulated data access requires approval in the current execution context.",
-    };
+    });
   }
 
   if (context?.manualTakeoverActive === true) {
     const operatorRoles: readonly PlatformRole[] = ["platform_admin", "human_operator", "service_operator"];
     if (!input.roles.some((role) => operatorRoles.includes(role))) {
-      return {
-        allowed: false,
-        requiresApproval: false,
-        reasonCode: "policy.context_manual_takeover_operator_required",
-        matchedRuleRefs: ["context.manual_takeover_operator_required"],
-        constraints: {
+      return deny(
+        "context_aware",
+        allLayers,
+        "policy.context_manual_takeover_operator_required",
+        ["context.manual_takeover_operator_required"],
+        {
           manualTakeoverActive: true,
           requiredRoles: [...operatorRoles],
           originalPrincipal: context.originalPrincipal ?? null,
         },
-        explainSummary: "Manual takeover execution requires an operator-grade principal role.",
-      };
+        "Manual takeover execution requires an operator-grade principal role.",
+      );
     }
-    return {
-      allowed: true,
-      requiresApproval: false,
-      reasonCode: null,
+    return allow(allLayers, {
       matchedRuleRefs: ["context.manual_takeover_active"],
       constraints: {
         manualTakeoverActive: true,
         originalPrincipal: context.originalPrincipal ?? null,
       },
       explainSummary: "Manual takeover context recorded for audit and downstream controls.",
-    };
+    });
   }
 
-  return {
-    allowed: true,
-    requiresApproval: false,
-    reasonCode: null,
+  return allow(allLayers, {
     matchedRuleRefs: ["context.default_allow"],
     constraints: {},
     explainSummary: "Context-aware authorization allowed this action after capability and context checks passed.",
-  };
+  });
 }
 
 function dedupeRoles(roles: readonly PlatformRole[]): readonly PlatformRole[] {

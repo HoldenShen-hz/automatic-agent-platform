@@ -1,8 +1,8 @@
-# ADR-098 Harness HITL Runtime
+# ADR-098: Harness HITL Runtime
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Identify human intervention trigger conditions and evidence
 - **Assess**: Choose approve / reject / continue / abort
@@ -34,4 +34,4 @@ The architecture document requires HITL to be a native step type of Harness, not
 
 ## v4.3 ADR Remediation
 
-- A-26: This ADR originally used `waiting_hitl`; the root cause was early naming followed old harness draft and did not unify with canonical `NodeRun.status` enum to `awaiting_hitl`. Fix: The body now uses `NodeRun -> awaiting_hitl`.
+- A-26: This ADR originally used `waiting_hitl`. Root cause was early naming followed old harness draft and did not unify with canonical `NodeRun.status` enum to `awaiting_hitl`. Fix: The text now uses `NodeRun -> awaiting_hitl`.

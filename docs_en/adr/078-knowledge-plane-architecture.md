@@ -1,6 +1,6 @@
-# ADR-078 Knowledge Plane Architecture and Trust Model
+# ADR-078: Knowledge Plane Architecture and Trust Model
 
-- Status: Accepted
+- Status: Partially Superseded by current knowledge-plane contract baseline
 - Decision Date: 2026-04-17
 - Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model, ADR-017 Knowledge Architecture Refactor
 
@@ -144,17 +144,17 @@ interface Citation {
 }
 ```
 
-## Alternatives
+## Alternative Approaches
 
-### Option A: External Vector Database (Pinecone/Milvus)
+### Approach A: External Vector Database (Pinecone/Milvus)
 
-Pros: Optimal vector retrieval performance.
-Cons: Adds external dependency, violates §L R1-NO-EXTERNAL-RUNTIME.
+Advantages: Optimal vector retrieval performance.
+Disadvantages: Adds external dependency, violates §L R1-NO-EXTERNAL-RUNTIME.
 
-### Option B: Local SQLite + Vector Extension (Selected)
+### Approach B: Local SQLite + Vector Extension (selected)
 
-Pros: No external dependencies, aligns with SQLite-first principle.
-Cons: Vector retrieval performance lower than dedicated vector databases.
+Advantages: No external dependencies, aligns with SQLite-first principle.
+Disadvantages: Vector retrieval performance lower than dedicated vector databases.
 
 ## Consequences
 

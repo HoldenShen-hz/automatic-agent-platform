@@ -1,4 +1,4 @@
-# ADR-087 Ops Maturity Runtime
+# ADR-087: Ops Maturity Runtime
 
 ---
 
@@ -20,9 +20,9 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
-v2.7 `§59-§69` introduces the operations maturity layer. The current repository already has:
+Current authoritative scope corresponds to explainability, drift, debugger, edge, and ops maturity sections in `docs_zh/architecture/00-platform-architecture.md`. The current repository already has:
 
 - `src/ops-maturity/explainability`
 - `src/ops-maturity/emergency`
@@ -38,7 +38,7 @@ v2.7 `§59-§69` introduces the operations maturity layer. The current repositor
 
 Except for `drift-detection`, most are still skeleton-heavy.
 
-## Decisions
+## Decision
 
 ### 1. Operations Maturity Capabilities are Unified as a Runtime Extension Layer, Not a Scattered Toolbox
 

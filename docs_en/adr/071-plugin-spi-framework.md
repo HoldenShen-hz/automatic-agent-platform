@@ -1,4 +1,4 @@
-# ADR-071 Plugin SPI Interface System and Lifecycle
+# ADR-071: Plugin SPI Interface System and Lifecycle
 
 - Status: Accepted
 - Decision Date: 2026-04-17
@@ -15,7 +15,7 @@ The existing `PluginSPIRegistry` (`plugin-spi-registry.ts`, 829 lines) has alrea
 ### 1. Plugin SPI 4 Core Interfaces
 
 | Interface | Responsibility | Method Signature |
-|-----------|---------------|-------------------|
+|-----------|---------------|------------------|
 | `DomainRetrieverPlugin` | Retrieve relevant content from knowledge base/memory/context | `retrieve(query: RetrievalQuery): Promise<RetrievalResult[]>` |
 | `DomainValidatorPlugin` | Validate whether execution input/output complies with domain specifications | `validate(input: unknown, context: ValidationContext): Promise<ValidationResult>` |
 | `DomainPlannerPlugin` | Generate customized execution plans for specific domains | `plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>` |
@@ -75,17 +75,17 @@ interface PluginRegistryService {
 }
 ```
 
-## Alternatives
+## Alternative Approaches
 
-### Option A: Hardcoded Domain Logic
+### Approach A: Hardcoded Domain Logic
 
-Advantages: Best performance, no plugin overhead
-Costs: Each new domain requires modifying core code, cannot be dynamically loaded
+Advantages: Best performance, no plugin overhead.
+Disadvantages: Each new domain requires modifying core code, cannot be dynamically loaded.
 
-### Option B: Plugin SPI Dynamic Loading (Selected)
+### Approach B: Plugin SPI Dynamic Loading (selected)
 
-Advantages: Domain logic decoupled, supports hot updates, parallel multi-team development
-Costs: Adds runtime overhead (~5-10ms per invoke), requires isolation mechanism
+Advantages: Domain logic decoupled, supports hot updates, parallel multi-team development.
+Disadvantages: Adds runtime overhead (~5-10ms per invoke), requires isolation mechanism.
 
 ## Consequences
 
@@ -114,5 +114,5 @@ v4.3 valid references:
 
 ## v4.3 ADR Remediation
 
-- A-27: This ADR originally had `DomainPlannerPlugin.plan()` return `Promise<Plan>`. The root cause was that the Plugin SPI ADR followed an early linear plan interface draft and did not upgrade with the graph handoff contract. Fix: The main text now converges planner output to `Promise<PlanGraphBundle>`.
-- A-36: This ADR originally described untrusted plugin isolation as Worker threads. The root cause was that the implementation early on first delivered a same-process concurrency prototype, but the documentation never upgraded to the main architecture's requirement for separate process + IPC boundaries. Fix: The main text now explicitly states that untrusted plugins must go through separate process isolation.
+- A-27: This ADR originally had `DomainPlannerPlugin.plan()` return `Promise<Plan>`. Root cause was that the Plugin SPI ADR followed an early linear plan interface draft and did not upgrade with the graph handoff contract. Fix: The text now converges planner output to `Promise<PlanGraphBundle>`.
+- A-36: This ADR originally described untrusted plugin isolation as Worker threads. Root cause was that the implementation early on first delivered a same-process concurrency prototype, but the documentation never upgraded to the main architecture's requirement for separate process + IPC boundaries. Fix: The text now explicitly states that untrusted plugins must go through separate process isolation.

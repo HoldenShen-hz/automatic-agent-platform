@@ -1,19 +1,19 @@
 # Context Propagation Contract
 
-> **OAPEFLIR Relationship**: This contract defines context propagation across the OAPEFLIR 8 stages, corresponding to ADR-016.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Association**: This contract defines context propagation across the OAPEFLIR 8 stages, corresponding to ADR-016.
+> **Update Date**: 2026-04-17
 
 ## 1. Scope
 
 This contract defines runtime context propagation rules based on `AsyncLocalStorage`, avoiding the need to pass `taskId / sessionId / agentId / traceId / workdir` explicitly through deep call chains.
 
-Related Documents:
+Related documents:
 
 - `runtime_execution_contract.md`
 - `app_error_contract.md`
 - `observability_contract.md`
 - `tool_and_provider_execution_contract.md`
-- [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR 8-Stage Model](../adr/016-oapeflir-loop-model.md)
 
 ## 2. Goals
 
@@ -170,8 +170,8 @@ The focus of context propagation is not passing fewer parameters, but making "wh
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-18: This document previously used `task_id / execution_id / workflow_id` as ALS primary identity. Root cause: the context contract directly reused the old gateway/runtime parameter passing model and did not upgrade along with the `HarnessRun / NodeRun / PlanGraphBundle / NodeAttempt` truth model. Fix: The main text now elevates `harness_run_id / node_run_id / attempt_id / plan_graph_id / graph_version` to snapshot primary keys, with old fields retained only as compatibility query entries.
+- T-18: This document previously used `task_id / execution_id / workflow_id` as ALS primary identity. The root cause was that context contract directly reused old gateway/runtime parameter passing model and did not upgrade along with `HarnessRun / NodeRun / PlanGraphBundle / NodeAttempt` truth model. Fix: The text now elevates `harness_run_id / node_run_id / attempt_id / plan_graph_id / graph_version` to snapshot primary keys, old fields only retain as compatibility query entries.
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

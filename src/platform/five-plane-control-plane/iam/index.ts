@@ -55,6 +55,7 @@ export type {
   AuthorizationAction,
   AuthorizationContext,
   AuthorizationContextDecision,
+  AuthorizationEvaluationLayer,
   PlatformCapability,
   PlatformPrincipalType,
   PlatformRole,

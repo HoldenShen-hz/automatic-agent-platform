@@ -1,8 +1,8 @@
-# ADR-100 Domain Descriptor As Semantic Layer
+# ADR-100: Domain Descriptor As Semantic Layer
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Domain signals, terminology, risk, and knowledge boundary input
 - **Assess**: Domain descriptor completeness and consistency validation

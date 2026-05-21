@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage loop:
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment

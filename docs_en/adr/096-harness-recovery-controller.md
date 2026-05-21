@@ -1,4 +1,4 @@
-# ADR-096 Harness Recovery Controller
+# ADR-096: Harness Recovery Controller
 
 ---
 
@@ -18,7 +18,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Background
+## Context
 
 Harness failure recovery cannot rely on callers freely deciding, otherwise it will break consistency and audit.
 

@@ -41,7 +41,7 @@ This contract defines decision-level cost attribution, automatic optimization re
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-53: This document previously left `decision_ref` as a generic string. Root cause: the cost attribution contract long treated "decision source" as a report label and did not model runtime truth and budget settlement traceability as hard constraints. Fix: The main text now converges `CostAttributionRecord` to this set of traceable references: `harness_run_id / node_run_id / budget_settlement_ref / decision_directive_ref`, and prohibits costs without truth traceability from entering automatic optimization.
 

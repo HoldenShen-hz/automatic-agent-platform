@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage loop:
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -97,7 +97,6 @@ Payment providers must support at minimum:
 - `organization_account` is the Enterprise billing and policy attribution subject.
 - Workspace / project resource consumption is ultimately aggregated to the organization-level accounting boundary.
 - Organization-level billing projection must be able to trace back to `UsageRecord` and `BudgetLedger` under the tenant.
-
 
 ## v4.3 Architecture Remediation
 

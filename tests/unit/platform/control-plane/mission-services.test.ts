@@ -17,14 +17,19 @@ import { InMemoryMissionRepository } from "../../../../src/platform/five-plane-s
 import {
   MissionBudgetService,
   MissionGovernanceService,
+  MissionHandoffService,
+  LegacyMissionBackfillService,
   MissionHomeRegionService,
   MissionLifecycleService,
   MissionLiveGuard,
   MissionLearningPromotionGate,
   MissionObservabilityPolicy,
+  MissionPlaybookRegistry,
   MissionResolver,
   MissionRuntimeBindingService,
+  StageExitGateService,
   createMissionContextSnapshot,
+  validateMissionPlaybook,
 } from "../../../../src/platform/five-plane-control-plane/mission/index.js";
 
 const principal: PrincipalRef = {
@@ -106,8 +111,72 @@ test("Mission P1/P2 support services enforce observability, learning, and region
 
   const regions = new MissionHomeRegionService();
   assert.equal(regions.assignHomeRegion({ missionId: "mis_001", region: "us-east" }).epoch, 1);
+  regions.registerReadReplica("mis_001", "us-west");
+  assert.deepEqual(regions.routeRead({ missionId: "mis_001", preferredRegion: "us-west", consistency: "eventual" }), {
+    missionId: "mis_001",
+    region: "us-west",
+    source: "read_replica",
+    consistency: "eventual",
+  });
+  assert.equal(regions.routeRead({ missionId: "mis_001", preferredRegion: "us-west", consistency: "strong" }).region, "us-east");
   assert.equal(regions.assignHomeRegion({ missionId: "mis_001", region: "us-west" }).epoch, 2);
   assert.throws(() => regions.assertWriteEpoch("mis_001", 1));
+});
+
+test("LegacyMissionBackfillService batch backfills Task and Session mission refs with unresolved accounting", () => {
+  const service = new LegacyMissionBackfillService();
+  const missionRef = {
+    missionId: "mis_001",
+    missionSnapshotId: "msnap_001",
+    missionVersion: 1,
+    boundAt: "2026-05-21T00:00:00.000Z",
+    boundBy: principal.principalId,
+  };
+  const result = service.backfillBatch({
+    tasks: [{ id: "task_missing" }, { id: "task_existing", missionRef }],
+    sessions: [{ id: "session_missing" }, { id: "session_unresolved" }],
+    resolveMissionRef(record) {
+      return record.id === "session_unresolved" ? null : missionRef;
+    },
+  });
+
+  assert.equal(result.tasks[0]?.missionRef, missionRef);
+  assert.equal(result.sessions[0]?.missionRef, missionRef);
+  assert.equal(result.report.taskBackfilled, 1);
+  assert.equal(result.report.sessionBackfilled, 1);
+  assert.equal(result.report.unresolvedCount, 1);
+});
+
+test("MissionHandoffService requires trusted tenant pair for federated handoff", () => {
+  const source = createActiveMission().mission;
+  const targetRepo = new InMemoryMissionRepository();
+  const lifecycle = new MissionLifecycleService(targetRepo);
+  const target = lifecycle.createMission({
+    missionId: "mis_target",
+    tenantId: "tenant_002",
+    orgId: "org_002",
+    title: "Target Mission",
+    objective: "Receive handoff",
+    successCriteria: ["handoff accepted"],
+    ownerPrincipalId: "user_002",
+    domainId: "coding",
+    createdBy: "user_002",
+    traceId: "trace_target",
+    correlationId: "corr_target",
+  });
+  const service = new MissionHandoffService();
+  const input = {
+    sourceMission: source,
+    targetMission: target,
+    requestedBy: principal.principalId,
+    approvalRef: "approval:handoff",
+    auditRef: "audit:handoff",
+    reason: "Delegate to partner tenant",
+  };
+
+  assert.throws(() => service.requestFederated(input));
+  service.trustTenantPair(source.tenantId, target.tenantId);
+  assert.equal(service.requestFederated(input).targetMissionId, target.missionId);
 });
 
 test("MissionResolver handles explicit, ad hoc, and high-risk fail-closed paths", () => {
@@ -251,4 +320,184 @@ test("MissionRuntimeBindingService binds PlanGraphBundle, HarnessRun, and NodeRu
       actorId: principal.principalId,
     }),
   );
+});
+
+function createResearchPlaybook() {
+  return {
+    playbookId: "playbook_research_release",
+    version: "1.0.0",
+    missionType: "formal" as const,
+    title: "Research release",
+    owner: "mission-ops",
+    status: "active" as const,
+    entryStageId: "review",
+    stages: [{
+      stageId: "review",
+      title: "Review",
+      exitCriteria: [
+        {
+          criterionId: "review.evidence",
+          name: "Claims have evidence",
+          severity: "P0" as const,
+          gateId: "GATE-EVIDENCE-001",
+          expression: { type: "evidence_exists" as const, evidenceKind: "claim_evidence", minCount: 1 },
+          requiredEvidenceRefs: ["snapshot:evidence"],
+          requiredMetricRefs: [],
+        },
+        {
+          criterionId: "review.quality",
+          name: "Quality accepted",
+          severity: "P1" as const,
+          gateId: "GATE-MISSION-OUTCOME-001",
+          expression: {
+            type: "metric_threshold" as const,
+            metric: "aa.mission.outcome.quality_score",
+            operator: ">=" as const,
+            value: 0.85,
+          },
+          requiredEvidenceRefs: [],
+          requiredMetricRefs: ["aa.mission.outcome.quality_score"],
+        },
+      ],
+      failureModeRefs: ["failure:unsupported_claim"],
+      defaultSkillRefs: ["skill:research-review"],
+      evidenceRequirements: ["claim_evidence"],
+    }, {
+      stageId: "publish",
+      title: "Publish",
+      exitCriteria: [{
+        criterionId: "publish.outcome",
+        name: "Outcome report exists",
+        severity: "P1" as const,
+        gateId: "GATE-MISSION-OUTCOME-001",
+        expression: { type: "evidence_exists" as const, evidenceKind: "outcome_report", minCount: 1 },
+        requiredEvidenceRefs: ["snapshot:outcome"],
+        requiredMetricRefs: [],
+      }],
+      failureModeRefs: ["failure:missing_outcome"],
+      defaultSkillRefs: [],
+      evidenceRequirements: ["outcome_report"],
+    }],
+    edges: [{
+      edgeId: "review_to_publish",
+      fromStageId: "review",
+      toStageId: "publish",
+      requiredGateIds: ["GATE-EVIDENCE-001", "GATE-MISSION-OUTCOME-001"],
+      requiresHitl: true,
+      requiredCapabilities: ["mission.publish"],
+    }],
+    signatureRef: "sig:research-release",
+    rollbackRef: "rollback:research-release",
+    compatibilityRef: "compat:research-release",
+    createdAt: "2026-05-21T00:00:00.000Z",
+    updatedAt: "2026-05-21T00:00:00.000Z",
+  };
+}
+
+test("MissionPlaybookRegistry validates registry references and rejects unsafe P0 negation", () => {
+  const playbook = createResearchPlaybook();
+  const validation = validateMissionPlaybook(playbook, {
+    metricRefs: ["aa.mission.outcome.quality_score"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+  assert.equal(validation.valid, true);
+
+  const unsafe = validateMissionPlaybook({
+    ...playbook,
+    stages: [{
+      ...playbook.stages[0]!,
+      exitCriteria: [{
+        ...playbook.stages[0]!.exitCriteria[0]!,
+        expression: { type: "not", criterion: { type: "event_count", eventName: "mission.review.failed", operator: ">", value: 0 } },
+      }],
+    }, playbook.stages[1]!],
+  }, {
+    eventNames: ["mission.review.failed"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+
+  assert.equal(unsafe.valid, false);
+  assert.equal(unsafe.issues.some((issue) => issue.code === "mission.playbook.p0_unsafe_negation"), true);
+});
+
+test("StageExitGateService evaluates immutable snapshots, requires HITL for guarded edge, and appends evidence event", () => {
+  const { repository, mission } = createActiveMission();
+  const registry = new MissionPlaybookRegistry({
+    metricRefs: ["aa.mission.outcome.quality_score"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+  const playbook = registry.register(createResearchPlaybook());
+  const service = new StageExitGateService(registry, repository);
+  const stageInstance = {
+    stageInstanceId: "mstage_review_001",
+    missionId: mission.missionId,
+    playbookId: playbook.playbookId,
+    playbookVersion: playbook.version,
+    stageId: "review",
+    cycleIndex: 0,
+    status: "active" as const,
+    version: 0,
+    enteredAt: "2026-05-21T00:00:00.000Z",
+  };
+  const held = service.evaluate({
+    mission,
+    playbookId: playbook.playbookId,
+    playbookVersion: playbook.version,
+    stageInstance,
+    snapshot: {
+      metricValues: { "aa.mission.outcome.quality_score": 0.92 },
+      eventCounts: {},
+      evidenceCounts: {},
+      hitlDecisions: {},
+      snapshotRefs: ["snapshot:review:held"],
+    },
+    actorId: principal.principalId,
+    traceId: "trace_stage_held",
+    correlationId: "corr_stage_held",
+    evaluatedAt: "2026-05-21T00:01:00.000Z",
+  });
+  assert.equal(held.decision, "hold");
+  assert.deepEqual(held.failedCriterionIds, ["review.evidence"]);
+
+  const approvalRequired = service.evaluate({
+    mission,
+    playbookId: playbook.playbookId,
+    playbookVersion: playbook.version,
+    stageInstance,
+    snapshot: {
+      metricValues: { "aa.mission.outcome.quality_score": 0.92 },
+      eventCounts: {},
+      evidenceCounts: { claim_evidence: 2 },
+      hitlDecisions: {},
+      snapshotRefs: ["snapshot:review:ready"],
+    },
+    actorId: principal.principalId,
+    traceId: "trace_stage_hitl",
+    correlationId: "corr_stage_hitl",
+    evaluatedAt: "2026-05-21T00:02:00.000Z",
+  });
+  assert.equal(approvalRequired.decision, "require_hitl");
+  assert.deepEqual(approvalRequired.requiredActions, ["approve_stage_edge:review_to_publish"]);
+
+  const advanced = service.evaluate({
+    mission,
+    playbookId: playbook.playbookId,
+    playbookVersion: playbook.version,
+    stageInstance,
+    snapshot: {
+      metricValues: { "aa.mission.outcome.quality_score": 0.92 },
+      eventCounts: {},
+      evidenceCounts: { claim_evidence: 2 },
+      hitlDecisions: { "stage_edge:review_to_publish": "approved" },
+      snapshotRefs: ["snapshot:review:approved"],
+    },
+    actorId: principal.principalId,
+    traceId: "trace_stage_advance",
+    correlationId: "corr_stage_advance",
+    evaluatedAt: "2026-05-21T00:03:00.000Z",
+  });
+
+  assert.equal(advanced.decision, "advance");
+  assert.equal(advanced.targetStageId, "publish");
+  assert.equal(repository.listEvents(mission.missionId).at(-1)?.eventType, "platform.mission.stage_exit_evaluated");
 });

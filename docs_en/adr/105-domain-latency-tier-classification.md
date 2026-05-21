@@ -1,8 +1,8 @@
-# ADR-105 Domain Latency Tier Classification
+# ADR-105: Domain Latency Tier Classification
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Collect domain latency / SLA requirements
 - **Assess**: Classify as ultra-low latency, real-time, near-real-time, batch
@@ -26,6 +26,8 @@ Different domains have very different latency requirements; unified scheduling s
 
 - Each domain must declare latency tier
 - Platform allocates queue priority, resource pool, and recovery order accordingly
+- `deterministic_hot_path_only` domains must not interpret latency tier as allowing entry into unrestricted LLM loops; LLM participation must maintain controlled boundaries
+- This ADR only defines domain-level latency tier and does not serve as authorization for "unrestricted open LLM loops" outside v4.3 non-target boundaries
 
 ## Consequences
 

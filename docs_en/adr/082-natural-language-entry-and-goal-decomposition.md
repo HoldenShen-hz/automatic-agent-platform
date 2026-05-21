@@ -1,4 +1,4 @@
-# ADR-082 Natural Language Entry And Goal Decomposition
+# ADR-082: Natural Language Entry And Goal Decomposition
 
 ---
 
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 v2.7 `§39-§40` requires the platform to provide natural language entry and goal decomposition engine for end users. The repository already has:
 
@@ -29,7 +29,7 @@ v2.7 `§39-§40` requires the platform to provide natural language entry and goa
 
 But there is a lack of clear decision explaining how they connect with existing Runtime / OAPEFLIR / API contracts.
 
-## Decisions
+## Decision
 
 ### 1. Natural Language Entry and Execution Entry are Separated
 

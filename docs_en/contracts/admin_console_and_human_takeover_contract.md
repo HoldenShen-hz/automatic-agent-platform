@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines administrator console, on-call entry point, and human fallback takeover capabilities.
+This contract defines admin console, on-call entry point, and human fallback takeover capabilities.
 
 Related documents:
 
@@ -10,11 +10,11 @@ Related documents:
 - `diagnostics_snapshot_and_repro_bundle_contract.md`
 - `approval_and_hitl_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
-- Enable production on-call personnel to understand, takeover, and mitigate issues.
-- Allow tasks to have human repair of execution chain instead of just "retry" upon failure.
-- Isolate administrator capabilities from regular user capabilities.
+- Enable production on-call personnel to understand, take over, and mitigate issues.
+- When a task fails, not only "retry" is available, but also manual repair of the execution chain.
+- Isolate admin capabilities from ordinary user capabilities.
 
 ## 3. Console Minimum Modules
 
@@ -31,10 +31,10 @@ Related documents:
 
 ## 4. Human Takeover Minimum Actions
 
-- Takeover task
+- Take over a task
 - Modify next step input
-- Skip a specific `NodeRun`
-- Retry a specific `NodeAttempt`
+- Skip a `NodeRun`
+- Retry a `NodeAttempt`
 - Switch model
 - Switch worker
 - Manually supplement artifact
@@ -52,29 +52,29 @@ Related documents:
 
 ## 6. Security Boundaries
 
-- Human takeover must write audit logs.
-- High-risk takeover actions must pass through Policy Engine again.
-- Regular administrators must not have break-glass permissions by default.
-- Takeover actions must carry tenant / workspace / harness run / node run scope, and cannot use global fuzzy operations as substitutes.
-- Actions such as manually supplementing artifacts, switching workers, and forcibly ending tasks must retain before/after state difference evidence.
-- Any takeover action that changes runtime state must go through `RuntimeStateMachine.transition(command)` with budget reservation check, and must not directly modify state fields.
+- Human takeover must be audited.
+- High-risk takeover actions must be re-reviewed through Policy Engine.
+- Regular admins must not have break-glass permissions by default.
+- Takeover actions must be scoped to tenant / workspace / harness run / node run; global fuzzy operations cannot replace this.
+- Actions like manually supplementing artifacts, switching workers, or forcefully ending tasks must preserve before/after state difference evidence.
+- Any takeover action that changes runtime state must go through `RuntimeStateMachine.transition(command)` with budget reservation check; direct state field modification is not allowed.
 
 ## v4.3 Contract Remediation
 
-- T-70: Originally this document described human takeover actions as direct operations on "a step / an execution". The root cause was that the on-call console contract reused old step/execution operational semantics without connecting to runtime authority and budget gate. Fix: The main text now anchors takeover to `HarnessRun / NodeRun / NodeAttempt`, and mandates that state migration and budget reservation go through the formal control chain.
+- T-70: This document previously described human takeover actions as direct operations on "a step / an execution". Root cause: on-call console contract reused old step/execution operational semantics and did not connect to runtime authority and budget gate. Fix: The text now anchors takeover to `HarnessRun / NodeRun / NodeAttempt`, and mandates that state transitions and budget reservation go through the formal control chain.
 
-## 7. UI Objectives
+## 7. UI Goals
 
-Administrators should be able to see:
+Admin should be able to see:
 
 - Current task tree
 - Current execution and lease
 - Recent events
 - Current model, prompt, and policy versions
 - Current OAPEFLIR stage / loop iteration / timeline
-- Current alerts and restriction reasons
-- Current tenant / workspace affiliation and capability / entitlement restrictions
+- Current alerts and constraint reasons
+- Current tenant / workspace ownership and capability / entitlement limits
 
 ## 8. Closure Conclusion
 
-Industrial-grade systems must default to considering "automation will fail", and provide humans with a safe, auditable, and closable takeover entry point.
+Industrial-grade systems must assume "automation will fail" by default, and provide humans with a safe, auditable, and closeable takeover entry point.

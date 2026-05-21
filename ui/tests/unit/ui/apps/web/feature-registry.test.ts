@@ -13,6 +13,12 @@ describe("feature-registry", () => {
     expect(dashboard?.manifest.title).toBe("总览驾驶舱");
   });
 
+  it("contains Mission Console feature", () => {
+    const missionConsole = featureRegistry.find((feature) => feature.manifest.id === "mission-console");
+    expect(missionConsole).toBeDefined();
+    expect(missionConsole?.manifest.status).toBe("Implemented/Contracted");
+  });
+
   it("contains task-cockpit feature", () => {
     const taskCockpit = featureRegistry.find((f) => f.manifest.id === "task-cockpit");
     expect(taskCockpit).toBeDefined();

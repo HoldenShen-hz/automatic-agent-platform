@@ -6,7 +6,7 @@ This contract defines the hard boundary between the intelligence layer and the c
 
 Core principle: `LLM is responsible for suggestions, system code is responsible for decisions.`
 
-Related Documents:
+Related documents:
 
 - `policy_engine_contract.md`
 - `runtime_execution_contract.md`

@@ -1,6 +1,6 @@
-# ADR-072 OAPEFLIR Testing Strategy and New Module Test Matrix
+# ADR-072: OAPEFLIR Testing Strategy and New Module Test Matrix
 
-- Status: Accepted
+- Status: Partially Superseded by current layered test matrix and runtime contract tests
 - Decision Date: 2026-04-17
 - Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
 
@@ -40,7 +40,7 @@ The OAPEFLIR eight-stage architecture adds 7 core modules (agent-loop/planning/f
 | `knowledge/` | knowledge-plane-service, retrieval, vector-store, ingestion-pipeline | ingestion→retrieval E2E | retrieval accuracy golden | source pollution | ~150 |
 | `domain-registry/` | plugin-spi-registry, plugin-runtime-host, domain-registry-service | plugin load→execute | — | config injection | ~100 |
 | `plugins/` | github-adapter, basic-planner, coding-retriever | plugin registration→invoke | — | — | ~40 |
-| **Total** | | | | | | **~730** |
+| **Total** | | | | | **~730** |
 
 ### 3. E2E Test Design (5 Core Tests)
 
@@ -86,7 +86,7 @@ Verify: No sensitive info leakage in FactLayer
 
 ## v4.3 ADR Remediation
 
-- A-66: This ADR originally described OAPEFLIR testing as an "executable main chain where no stage is skipped" and used "continue after failed step" to describe replan. The root cause was that the test strategy ADR mixed cognitive stage views with runtime execution graphs. Fix: The main text now limits OAPEFLIR to view continuity verification, and anchors recovery/replanning at `GraphPatch / NodeRun`.
+- A-66: This ADR originally described OAPEFLIR testing as an "executable main chain where no stage is skipped" and used "continue after failed step" to describe replan. Root cause was that the test strategy ADR mixed cognitive stage views with runtime execution graphs. Fix: The text now limits OAPEFLIR to view continuity verification, and anchors recovery/replanning at `GraphPatch / NodeRun`.
 
 | Module | Operation | P99 Target | Test File |
 |--------|-----------|------------|-----------|
@@ -117,17 +117,17 @@ Verify: No sensitive info leakage in FactLayer
 | Replanning storm | 10 consecutive tool_failures | Backoff strategy triggered, task termination |
 | Memory overflow | Allocation exceeds limit | OOM captured, resource release |
 
-## Alternatives
+## Alternative Approaches
 
-### Option A: Unit Tests Only
+### Approach A: Unit Tests Only
 
-Pros: Fast coverage of core logic.
-Cons: No E2E verification, cannot detect cross-stage integration issues.
+Advantages: Fast coverage of core logic.
+Disadvantages: No E2E verification, cannot detect cross-stage integration issues.
 
-### Option B: Full Test Pyramid (Selected)
+### Approach B: Full Test Pyramid (selected)
 
-Pros: Unit/integration/golden/security/chaos layered, comprehensive coverage.
-Cons: High effort (~730 test cases + performance benchmarks).
+Advantages: Unit/integration/golden/security/chaos layered, comprehensive coverage.
+Disadvantages: High effort (~730 test cases + performance benchmarks).
 
 ## Consequences
 
@@ -141,7 +141,7 @@ Cons: High effort (~730 test cases + performance benchmarks).
 ## Cross References
 
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
-- [ADR-018 Rollout 11 State Machine](./018-rollout-eleven-state-machine.md)
+- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md) (ADR-018 only for historical reference)
 - `docs_zh/reviews/architecture-design-vs-implementation-review.md` §G1 Solution (original design_gap_analysis_v9.md archived)
 
 ## Source Sections

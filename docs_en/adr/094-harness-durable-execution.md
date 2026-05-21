@@ -1,4 +1,4 @@
-# ADR-094 Harness Durable Execution
+# ADR-094: Harness Durable Execution
 
 ---
 
@@ -18,13 +18,14 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Background
+## Context
 
 Without persistence, Harness can only do short-term computation, cannot support async, recovery, replay, and long-running tasks.
 
 ## Decision
 
 - Durable Harness is responsible for run persistence, checkpoint, restore, resume
+- `NodeAttempt` and its receipt / compensation lineage are part of the durable replay boundary
 - Async run must support pause / resume
 - Checkpoint is the authoritative entry point for recovery and replay
 
@@ -35,4 +36,4 @@ Without persistence, Harness can only do short-term computation, cannot support 
 
 ## v4.3 ADR Remediation
 
-- A-30: This ADR originally used `phase 8b` as the delivery gate terminology. The root cause was that the durable execution ADR followed the historical phase schedule and did not switch to the main architecture's unified ring terminology. Fix: The main text now changed to `Ring 2 durable-readiness`.
+- A-30: This ADR originally used `phase 8b` as the delivery gate terminology. Root cause was that the durable execution ADR followed the historical phase schedule and did not switch to the main architecture's unified ring terminology. Fix: The text now changed to `Ring 2 durable-readiness`.

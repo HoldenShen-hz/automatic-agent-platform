@@ -1,4 +1,4 @@
-# ADR-066 Compliance Report Auto-Generation Engine
+# ADR-066: Compliance Report Auto-Generation Engine
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -73,7 +73,7 @@ Advantages:
 - Reduces human error
 - Meets regulatory requirements
 
-Costs:
+Disadvantages:
 
 - Evidence collection adds system overhead
 - Report templates need maintenance

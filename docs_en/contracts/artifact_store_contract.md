@@ -1,11 +1,11 @@
 # Artifact Store Contract
 
-> **OAPEFLIR Association**: This contract defines the storage mechanism for the OAPEFLIR Artifact Plane, corresponding to ADR-016 §11 and design document §D.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Association**: This contract defines the OAPEFLIR Artifact Plane storage mechanism, corresponding to ADR-016 §11 and design document §D.
+> **Update Date**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the storage layout, metadata index, lifecycle, and reference semantics for file-based artifacts.
+This contract defines the storage layout, metadata index, lifecycle, and reference semantics for file-type artifacts.
 
 ## 2. Key Objects
 
@@ -34,10 +34,10 @@ This contract defines the storage layout, metadata index, lifecycle, and referen
 
 ## 4. Behavioral Constraints
 
-- Only indexes and references are stored in the DB; large BLOB bodies are not stored.
-- Artifact paths must be stable and reconstructible.
-- Deletion policies must not compromise the auditability of completed tasks.
-- Artifacts exposed externally must undergo permission checks.
+- Only index and reference are stored in DB; large BLOB body is not stored.
+- Artifact path must be stable and reconstructable.
+- Deletion policy must not break auditability of completed tasks.
+- Permission check must be performed when exposing artifacts externally.
 
 ## 5. Supplementary Rules
 
@@ -46,19 +46,19 @@ This contract defines the storage layout, metadata index, lifecycle, and referen
 Default local development layout:
 
 - `data/artifacts/<task_id>/<artifact_id>/`
-- Metadata is governed by DB authoritative index
+- Metadata uses DB authoritative index as the authority
 
-### 5.2 Object Storage Boundaries
+### 5.2 Object Storage Boundary
 
-- Object storage is responsible for artifact bodies, not for task truth state.
-- `artifact_id`, `storage_key`, and `checksum` must be mappable to each other.
-- After migrating to object storage, read interface semantics remain unchanged.
+- Object storage is responsible for artifact body; it is not responsible for task truth state.
+- `artifact_id`, `storage_key`, `checksum` must be mutually mappable.
+- After migration to object storage, read interface semantics remain unchanged.
 
 ### 5.3 GC and Cold Storage
 
-- Core artifacts of completed tasks must not be directly deleted within the audit window.
-- Reconstructible or low-value artifacts may enter cold storage or expire for deletion.
-- GC must execute according to retention policy and produce logs and audit records.
+- Core artifacts of completed tasks must not be directly deleted within audit window.
+- Rebuildable or low-value artifacts can enter cold storage or expire deletion.
+- GC must execute according to retention policy, and produce logs and audit records.
 
 ### 5.4 ArtifactLink / ArtifactBundle
 
@@ -79,12 +79,12 @@ Default local development layout:
 
 Rules:
 
-- Artifacts must be able to trace back to closed-loop objects such as feedback, learning, improvement, rollout, and diagnostics through `ref_id`.
-- Publish, preview, and governance-related artifacts must not exist only in filesystem paths; they must have structured indexes.
+- Artifacts must be able to back-chain to feedback / learning / improvement / rollout / diagnostics closed-loop objects via `ref_id`.
+- Publish / preview / governance related artifacts must not only exist in filesystem path; they must have structured index.
 
 ## v4.3 Contract Remediation
 
-- T-64: This document originally only required `task_id`. Root cause: The artifact store contract predated the v4.3 executable contract, resulting in artifact indexes lacking runtime lineage. Fix: Body now requires `harness_run_id / node_run_id / plan_graph_bundle_id` as the minimum runtime chain primary key, with `task_id` serving only as an aggregation query entry point.
+- T-64: This document previously only required `task_id`. The root cause was that artifact store contract predated v4.3 executable contract formation, causing artifact index to lack runtime lineage. Fix: The text now requires `harness_run_id / node_run_id / plan_graph_bundle_id` as the minimum run chain primary key; `task_id` is only an aggregate query entry.
 
 ### 5.5 ArtifactPublishService
 

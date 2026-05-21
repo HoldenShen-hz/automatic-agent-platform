@@ -53,7 +53,7 @@ This contract defines `§52` Region model, cross-region routing, and data reside
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-42: This document previously described cross-region contract as a pure candidate region scoring model. Root cause: the documentation only covered routing/residency selection and did not include multi-region truth write boundaries and takeover semantics in the contract. Fix: The main text now supplements `RegionDescriptor` with `provider / control_plane_endpoint / data_plane_endpoint / data_residency_policy`, and explicitly states that cross-region takeover must comply with CAS, lease transfer, and fencing token rotation.
 

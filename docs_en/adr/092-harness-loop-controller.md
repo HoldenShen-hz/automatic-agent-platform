@@ -1,4 +1,4 @@
-# ADR-092 Harness Loop Controller
+# ADR-092: Harness Loop Controller
 
 ---
 
@@ -18,7 +18,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Background
+## Context
 
 Harness needs to upgrade from single-round `runLoop()` to an iterable, interruptible, recoverable main control loop, otherwise it cannot support long-running tasks, retry, and async suspend.
 
@@ -36,4 +36,4 @@ Harness needs to upgrade from single-round `runLoop()` to an iterable, interrupt
 
 ## v4.3 ADR Remediation
 
-- A-33: This ADR originally used `step / decision` to record the main timeline. The root cause was that the loop controller ADR inherited semantic step narration, and did not rewrite as `NodeRun / NodeAttempt` became the execution truth object. Fix: The main text now converges the timeline subject to `NodeRun / NodeAttempt`, with step retained only as a semantic projection.
+- A-33: This ADR originally used `step / decision` to record the main timeline. Root cause was that the loop controller ADR inherited semantic step narration and did not rewrite as `NodeRun / NodeAttempt` became the execution truth object. Fix: The text now converges the timeline subject to `NodeRun / NodeAttempt`, with step retained only as a semantic projection.

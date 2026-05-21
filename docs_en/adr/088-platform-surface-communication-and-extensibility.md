@@ -4,11 +4,11 @@
 
 Accepted
 
-## Date
+## Decision Date
 
 2026-04-20
 
-## Background
+## Context
 
 [`../architecture/00-platform-architecture.md`](../architecture/00-platform-architecture.md) `§6`, `§7`, `§8`, `§22`, `§30` define API, service communication, extensibility, SDK/DX, Business Pack/Plugin governance. These chapters were previously scattered across API, event bus, plugin SPI, tool/skill/plugin contracts, but lacked a unified ADR explaining why these boundaries must be governed as platform surface capabilities.
 
@@ -57,7 +57,7 @@ Corresponding implementation boundaries:
 - integration tests: event bus, plugin lifecycle, marketplace install/publish flow must be able to run across boundaries.
 - denial tests: extensions without authentication, authorization, verification, or undeclared capability must not enter production execution chain.
 
-## Alternatives
+## Alternative Approaches
 
 1. **Create a separate ADR for each API/SDK action**: Avoids architecture decision fragmentation, but leads to ADR quantity inflation, difficult to maintain consistency.
 2. **Write extension runtime implementation details into ADR**: More comprehensive, but ADR becomes bloated, and implementation changes require ADR updates.

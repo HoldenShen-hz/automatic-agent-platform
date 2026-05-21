@@ -1,26 +1,26 @@
 # Contracts
 
 > `contracts/` is the platform's authoritative specification layer.
-> This directory defines canonical objects, minimum fields, state machines, protocol boundaries, and testing requirements. Current coverage analysis is recorded in `docs_zh/analysis/` and is not written into the contract body.
+> This defines canonical objects, minimum fields, state machines, protocol boundaries, and testing requirements; current coverage analysis is recorded in `docs_en/analysis/`, not in the contract body.
 
 ## 1. Usage Order
 
-When you need to modify the following content, refer to this directory first:
+When you need to change the following, check this directory first:
 
 - schema / DTO / event payload
-- State machines, lifecycles, approvals, and budget constraints
-- Storage models, execution protocols, and cross-plane boundaries
+- state machines, lifecycles, approvals, and budget constraints
+- storage models, execution protocols, cross-plane boundaries
 - domain / interaction / org-governance / scale-ecosystem / ops-maturity new capabilities
 
 Recommended order:
 
-1. First, consult this README's group index
-2. Then read the corresponding ADR
-3. Finally, examine the specific contract
+1. First consult this README's group index
+2. Then check the corresponding ADR
+3. Finally read the specific contract
 
 ## 2. v4.3 Contract Freeze Scope
 
-The v4.3 implementation entry points are governed by [ADR-109](../adr/109-contract-freeze.md), [ADR-110](../adr/110-runtime-state-machine-authority.md), [ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md), [ADR-112](../adr/112-mvp-ring-implementation-boundary.md), and the contract table below.
+v4.3 implementation entry points are governed by [ADR-109](../adr/109-contract-freeze.md), [ADR-110](../adr/110-runtime-state-machine-authority.md), [ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md), [ADR-112](../adr/112-mvp-ring-implementation-boundary.md), and the contract table below.
 
 | Frozen Contract | Contract Entry | Architecture Section |
 | --- | --- | --- |
@@ -37,33 +37,33 @@ The v4.3 implementation entry points are governed by [ADR-109](../adr/109-contra
 | `HumanResponsibilityRecord` | [decision-hitl-contract.md](./decision-hitl-contract.md) | `§21` / `§47` / `§58` |
 | `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent` | [event-envelope-contract.md](./event-envelope-contract.md) | `§28` / `§58` |
 
-Compatibility rules:
+Compatibility Rules:
 
-- `ExecutionPlan` is only permitted as a deprecated alias for `PlanGraphBundle` or for migration documentation.
-- `ExecutionReceipt` is only permitted as a deprecated alias for `NodeAttemptReceipt`.
-- `ControlDirective` must be split into runtime control semantics and business decision semantics; business decisions use `HarnessDecision` as the entry point.
-- `StateCommand` / `StateMutationCommand` are only permitted as internal compatible wrappers for `RuntimeStateMachine.transition(command)`.
-- `workflow_run`, `WorkflowStep`, `StepOutput`, legacy `task.*` / `workflow.*` events are only permitted as legacy/deprecated/projection/historical context, not as v4.3 new implementation entry points.
-- `oapeflir.view.*` and `oapeflir.rationale.*` are projection view events; truth consumers only consume `platform.*`.
+- `ExecutionPlan` is only allowed as a deprecated alias for `PlanGraphBundle` or for migration documentation.
+- `ExecutionReceipt` is only allowed as a deprecated alias for `NodeAttemptReceipt`.
+- `ControlDirective` must be split into execution control semantics and business decision semantics; business decisions use `HarnessDecision` as the entry point.
+- `StateCommand` / `StateMutationCommand` are only allowed as internal compatible wrappers for `RuntimeStateMachine.transition(command)`.
+- `workflow_run`, `WorkflowStep`, `StepOutput`, and old `task.*` / `workflow.*` events are only allowed as legacy/deprecated/projection/historical context, not as v4.3 new implementation entry points.
+- `oapeflir.view.*` and `oapeflir.rationale.*` are projection/view events; truth consumers only consume `platform.*`.
 
 ## 3. Architecture Section to Contract Group Mapping
 
-| Architecture Section | Primary ADR | Contract Group |
+| Architecture Section | Main ADRs | Contract Group |
 | --- | --- | --- |
 | `§1-§5` | `001`, `019`, `060`, `088` | Architecture governance, plane boundaries, context and result protocols |
 | `§6-§8` | `009`, `013`, `015`, `066`, `088` | API, communication, extensions, and plugin governance |
 | `§9-§12` | `005`, `008`, `009`, `089`, `090` | Stability, risk, security, observability |
 | `§13-§19` | `006`, `016`, `018`, `019`, `072`, `075`, `089`, `090` | OAPEFLIR, runtime, provider, prompt, eval, cost, delegation |
-| `§20-§32` | `009`, `012`, `013`, `017`, `020`, `078`, `079`, `080`, `088`, `089`, `090` | workflow, HITL, SDK, governance, configuration, data, HA, deployment |
+| `§20-§32` | `009`, `012`, `013`, `017`, `020`, `078`, `079`, `080`, `088`, `089`, `090` | workflow, HITL, SDK, governance, config, data, HA, deployment |
 | `§37-§44` | `081`, `082`, `083`, `084` | domain / interaction extension layer |
 | `§46-§51` | `085` | org-governance extension layer |
 | `§52-§57` | `086` | scale-ecosystem extension layer |
 | `§59-§69` | `087` | ops-maturity extension layer |
 
-Notes:
+Note:
 
-- The original architecture document does not define `§34`, `§35`, `§45`, `§58`, `§70`.
-- Coverage status is documented in [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md).
+- Original architecture document did not define `§34`, `§35`, `§45`, `§58`, `§70`.
+- Coverage status is in [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md).
 
 ## 4. Group Index
 
@@ -233,20 +233,20 @@ Notes:
 - [multimodal_gateway_contract.md](./multimodal_gateway_contract.md)
 - [platform_ops_agent_contract.md](./platform_ops_agent_contract.md)
 
-## 5. Relationship with ADR / Analysis
+## 5. Relationship with ADR / analysis
 
-- `adr/` explains why a contract was created.
+- `adr/` explains why a contract exists.
 - `contracts/` defines authoritative objects and constraints.
-- `analysis/` records whether contracts have been implemented and which areas are still weak.
+- `analysis/` records whether contracts have been implemented and what areas are still weak.
 
 Recommended entry points:
 
-- ADR index: [../adr/README.md](../adr/README.md)
-- Coverage matrix: [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
+- ADR index is in [../adr/README.md](../adr/README.md)
+- Coverage matrix is in [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
 
 ## 6. Maintenance Rules
 
-- Contracts only specify norms, not current completion status.
-- Fields, state enumerations, event names, and protocol semantics, once in implementation, must remain authoritative here.
-- If a contract change represents an architectural trade-off, an ADR must also be added alongside the contract modification.
-- If implementation temporarily diverges from the contract, record the gap in `analysis/`; do not write temporary state into the contract.
+- Contracts only write specifications, not current completion status.
+- Once fields, state enums, event names, and protocol semantics enter implementation, they must remain authoritative here.
+- If a contract change represents an architectural decision change, in addition to modifying the contract, you must also add an ADR.
+- If implementation and contract temporarily diverge, record the gap in `analysis/`, do not write temporary state into the contract.

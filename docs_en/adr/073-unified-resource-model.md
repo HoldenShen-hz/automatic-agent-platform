@@ -1,8 +1,8 @@
 # ADR-073: Unified Agent Resource Model
 
-Status: Accepted (phased)
-Date: 2026-04-13
-Updated: 2026-04-16
+- Status: Accepted (phased)
+- Date: 2026-04-13
+- Updated: 2026-04-16
 
 ## Context
 
@@ -216,5 +216,5 @@ After adopting this ADR, the meaning of the unified resource model is converged 
 
 ## v4.3 ADR Remediation
 
-- A-20: This ADR originally wrote `tasks / workflow / execution / ExecutionEnvelope` as the authoritative resource family. The root cause was that the unified resource model was first drafted from historical storage projection objects and was not subsequently rewritten as `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt` became runtime truth. Fix: The main text now changes the canonical resource subject to run/node/graph/receipt; old task/workflow/execution are retained only as projection resources.
-- A-29: This ADR originally repeatedly used `phase1-4` as the current completion boundary. The root cause was that the resource model ADR followed legacy scheduling naming and was not synchronized with the main architecture's migration to `Ring 1 / Ring 2 / Ring 3`. Fix: The main text now uses ring layering terminology; old phase names are no longer used as canonical delivery language.
+- A-20: This ADR originally wrote `tasks / workflow / execution / ExecutionEnvelope` as the authoritative resource family. Root cause was that the unified resource model was first drafted from historical storage projection objects and was not subsequently rewritten as `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt` became runtime truth. Fix: The text now changes the canonical resource subject to run/node/graph/receipt; old task/workflow/execution are retained only as projection resources.
+- A-29: This ADR originally repeatedly used `phase1-4` as the current completion boundary. Root cause was that the resource model ADR followed legacy scheduling naming and was not synchronized with the main architecture's migration to `Ring 1 / Ring 2 / Ring 3`. Fix: The text now uses ring layering terminology; old phase names are no longer used as canonical delivery language.

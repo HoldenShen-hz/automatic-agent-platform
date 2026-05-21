@@ -72,17 +72,17 @@
 | [064](./064-cost-attribution-and-optimization-engine.md) | Cost Attribution and Optimization Engine | Accepted | 2026-04-20 |
 | [065](./065-workflow-visual-debugger.md) | Workflow Visual Debugger Architecture | Accepted | 2026-04-20 |
 | [066](./066-compliance-report-auto-generation.md) | Compliance Report Auto-Generation Engine | Accepted | 2026-04-20 |
-| [071](./071-plugin-spi-framework.md) | Plugin SPI Framework (Renumbered Retention) | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
-| [069](./069-platform-self-operating-agent.md) | Platform Self-Operating Agent Architecture | Accepted | 2026-04-20 |
-| [070](./070-conclusion.md) | Conclusion | Accepted | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Accepted | 2026-04-17 |
-| [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | |
-| [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
-| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Accepted | 2026-04-17 |
-| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven-Class Signal Preprocessing | Accepted | 2026-04-17 |
-| [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four-Pattern Detector | Accepted | 2026-04-17 |
+| [069](./069-platform-self-operating-agent.md) | Platform Self-Operating Agent Architecture | Partially Superseded | 2026-04-20 |
+| [070](./070-conclusion.md) | Conclusion | Superseded by ADR-109 to ADR-113 | 2026-04-20 |
+| [071](./071-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Partially Superseded | 2026-04-17 |
+| [073](./073-unified-resource-model.md) | Unified Agent Resource Model | Accepted | 2026-04-13 |
+| [075](./075-controlled-rollout-release.md) | Six-Level Controlled Rollout and Rollout State Machine | Accepted | 2026-04-17 |
+| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Partially Superseded | 2026-04-17 |
+| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Preprocessing Types | Accepted | 2026-04-17 |
+| [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four Pattern Detectors | Accepted | 2026-04-17 |
 | [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
 | [082](./082-natural-language-entry-and-goal-decomposition.md) | Natural Language Entry And Goal Decomposition | Accepted | 2026-04-20 |
 | [083](./083-proactive-agent-and-progressive-autonomy.md) | Proactive Agent And Progressive Autonomy | Accepted | 2026-04-20 |
@@ -90,9 +90,9 @@
 | [085](./085-organization-governance-and-knowledge-boundary.md) | Organization Governance And Knowledge Boundary | Accepted | 2026-04-20 |
 | [086](./086-scale-ecosystem-and-cross-region-runtime.md) | Scale Ecosystem And Cross Region Runtime | Accepted | 2026-04-20 |
 | [087](./087-ops-maturity-runtime.md) | Ops Maturity Runtime | Accepted | 2026-04-20 |
-| [088](./088-platform-surface-communication-and-extensibility.md) | ADR 088: Platform Surface, Communication, and Extensibility | Accepted | |
-| [089](./089-ai-operations-governance-and-quality.md) | ADR 089: AI Operations Governance and Quality | Accepted | |
-| [090](./090-runtime-data-reliability-and-operations.md) | ADR 090: Runtime, Data Reliability, and Operations | Accepted | |
+| [088](./088-platform-surface-communication-and-extensibility.md) | Platform Surface, Communication, and Extensibility | Accepted | 2026-04-20 |
+| [089](./089-ai-operations-governance-and-quality.md) | AI Operations Governance and Quality | Accepted | 2026-04-20 |
+| [090](./090-runtime-data-reliability-and-operations.md) | Runtime, Data Reliability, and Operations | Accepted | 2026-04-20 |
 | [091](./091-harness-eight-pillar-model.md) | Harness Eight Pillar Model | Accepted | 2026-04-23 |
 | [092](./092-harness-loop-controller.md) | Harness Loop Controller | Accepted | 2026-04-23 |
 | [093](./093-harness-constraint-engine.md) | Harness Constraint Engine | Accepted | 2026-04-23 |
@@ -122,12 +122,13 @@
 - **Proposed**: Submitted, awaiting approval
 - **Accepted**: Accepted and implemented
 - **Superseded**: Superseded by new ADR
+- **Partially Superseded**: Partially superseded by newer ADRs (some sections remain valid)
 - **Deprecated**: Obsolete
 
 ## Notes
 
 - Historical directory retains both `003-memory-six-layers.md` and `003-memory-seven-layers.md`; where `seven-layers` is kept only as historical alias/redirect page, and canonical content uses `003-memory-six-layers.md` as the standard.
-- Original historical file has `066` number double-occupied, and subsequent retention of `071-plugin-spi-framework.md` as renumbered copy; to avoid breaking existing references, all are currently retained and explicitly listed in the index.
+- Plugin SPI ADR has been unified to `071-plugin-spi-framework.md`; the old duplicate `066-plugin-spi-framework.md` has been removed, and all references now point to ADR-071.
 - Newly added `091-108` are used to承接 Harness eight pillars and domain governance supplement items.
 - Newly added `109-112` are v4.3 Contract Freeze implementation entry points: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, and MVP / Hardening / Enterprise three-ring boundary.
 - `109-112` constrain old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming through freeze / authority / event namespace / ring boundary; historical ADR body text is retained and not directly rewritten.

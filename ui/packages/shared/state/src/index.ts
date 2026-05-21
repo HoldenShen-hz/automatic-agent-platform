@@ -30,6 +30,7 @@ import {
 import {
   createAgentsQuery,
   createIncidentsQuery,
+  createMissionsQuery,
   createQueuesQuery,
   createWorkersQuery,
 } from "./queries/mission-control-queries";
@@ -344,6 +345,11 @@ export function useQueuesQuery() {
 export function useAgentsQuery() {
   const client = useRestClient();
   return useQuery(createAgentsQuery(client));
+}
+
+export function useMissionsQuery() {
+  const client = useRestClient();
+  return useQuery(createMissionsQuery(client));
 }
 
 export function useAnalyticsQuery() {

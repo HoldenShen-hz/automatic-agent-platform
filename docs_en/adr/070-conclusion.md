@@ -1,6 +1,6 @@
-# ADR-070 Conclusion
+# ADR-070: Conclusion
 
-- Status: Accepted
+- Status: Superseded by ADR-109 to ADR-113
 - Decision Date: 2026-04-20
 
 ## Context
@@ -53,7 +53,7 @@ This ADR series covers the complete architecture from infrastructure to operatio
 
 ## v4.3 ADR Remediation
 
-- A-63: This ADR originally wrote "Phase 1-7" together with "OAPEFLIR loop invariance" as a primary architectural invariant. The root cause was that the summary ADR consolidated historical roadmap and cognitive model, without distinguishing between roadmap and runtime authority. Fix: The main text now uses the ring perspective, and runtime invariants are explicitly scoped to `HarnessRuntime + RuntimeStateMachine`.
+- A-63: This ADR originally wrote "Phase 1-7" together with "OAPEFLIR loop invariance" as a primary architectural invariant. Root cause was that the summary ADR consolidated historical roadmap and cognitive model, without distinguishing between roadmap and runtime authority. Fix: The text now uses the ring perspective, and runtime invariants are explicitly scoped to `HarnessRuntime + RuntimeStateMachine`.
 
 ## Follow-up Work
 

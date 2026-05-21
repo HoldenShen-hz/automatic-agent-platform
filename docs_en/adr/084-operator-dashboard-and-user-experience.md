@@ -1,4 +1,4 @@
-# ADR-084 Operator Dashboard And User Experience
+# ADR-084: Operator Dashboard And User Experience
 
 ---
 
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 v2.7 `§43-§44` requires the platform to provide not just infrastructure metrics, but also:
 
@@ -32,7 +32,7 @@ v2.7 `§43-§44` requires the platform to provide not just infrastructure metric
 
 The current repository already has `src/interaction/dashboard` and `src/interaction/ux`, but the latter is mostly still empty shells.
 
-## Decisions
+## Decision
 
 ### 1. Dashboards are Layered by Role, Not by Page
 

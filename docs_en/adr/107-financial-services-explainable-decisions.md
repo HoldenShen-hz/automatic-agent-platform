@@ -1,8 +1,8 @@
-# ADR-107 Financial Services Explainable Decisions
+# ADR-107: Financial Services Explainable Decisions
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Collect customers, rules, features, and evidence
 - **Assess**: Form financial decisions and rejection reasons

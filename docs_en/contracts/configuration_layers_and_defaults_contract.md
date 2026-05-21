@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,7 +21,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 This contract defines configuration layering, override priority, prompt / config / policy / flag decoupling rules, and the default value registry.
 
-Related Documents:
+Related documents:
 
 - `project_structure_contract.md`
 - `policy_engine_contract.md`
@@ -55,7 +55,7 @@ Rules:
 
 ## 3A. Configuration Governance Bundle
 
-The configuration governance layer uniformly loads and validates all configuration layers through `ConfigBundle`. The current phase must include the following 6 layers:
+The configuration governance layer uniformly loads and validates all configuration layers through `ConfigBundle`. The current phase must include the following 10 layers:
 
 | Layer Name | File Path | Responsibility |
 | --- | --- | --- |
@@ -83,7 +83,17 @@ The configuration governance layer uniformly loads and validates all configurati
 | `runtime` | `defaultTaskTimeoutMs` | Must be a positive number |
 | `runtime` | `defaultStepTimeoutMs` | Must be a positive number |
 | `runtime` | `maxConcurrentTasks` | Must be a positive integer |
-| `security` | `sandboxMode` | Must be one of `read_only \| workspace_write \| scoped_external_access \| restricted_exec` |
+| `runtime` | `apiDefaultTimeoutMs` | Must be a positive integer |
+| `runtime` | `apiMaxTimeoutMs` | Must be a positive integer |
+| `runtime` | `maxAgentRounds` | If declared, must be a positive integer |
+| `runtime` | `maxToolCalls` | If declared, must be a positive integer |
+| `runtime` | `retryMax` | Must be a positive integer |
+| `runtime` | `circuitBreaker.enabled` | Must be a boolean |
+| `runtime` | `circuitBreaker.threshold` | Must be a positive integer |
+| `runtime` | `rateLimit.enabled` | Must be a boolean |
+| `runtime` | `rateLimit.requestsPerMinute` | Must be a positive integer |
+| `runtime` | `configDriftReconciler.interval` | Must be a positive integer |
+| `security` | `sandboxMode` | Must be one of `read_only | workspace_write | scoped_external_access | restricted_exec` |
 | `security` | `remoteWorkerRegistration.challengeTtlMs` | Must be a positive number |
 | `security` | `remoteWorkerRegistration.allowedCapabilities` | Must be a non-empty string array |
 | `providers` | provider / profile references | Must exist matching items in model metadata registry |
@@ -95,6 +105,11 @@ The configuration governance layer uniformly loads and validates all configurati
 ### 3A.3 JSONC Support
 
 Configuration files support `//` line comments, `/* */` block comments, and trailing commas. Parse by stripping comments first, then JSON parse.
+
+### 3A.3A Schema Carrier
+
+- "versioned schema" refers to an authoritative and versioned configuration structure constraint; it does not mandate that it must be delivered as inline `$schema` or independent `*.schema.json` files.
+- Code-based authoritative executable schema / validator is allowed, as long as it is version-managed together with `configSchemaVersion`, and strongly validated at bundle load time.
 
 ### 3A.4 Sandbox Path Constraints
 

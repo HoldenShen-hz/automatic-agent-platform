@@ -1,6 +1,6 @@
-# ADR-069 Platform Self-Operating Agent Architecture
+# ADR-069: Platform Self-Operating Agent Architecture
 
-- Status: Accepted
+- Status: Partially Superseded by v4.3 control-plane and runtime authority ADRs
 - Decision Date: 2026-04-20
 
 ## Context
@@ -50,6 +50,8 @@ interface SelfOpsAgent {
 | Modify config | Yes | No |
 | Data operation | Yes | No |
 
+- Any action that modifies runtime truth objects must ultimately be sunk as `OperationalDirective` and landed via `RuntimeStateMachine.transition(command)`. SelfOpsAgent cannot directly write truth state.
+
 ### Manual Intervention
 
 - Complex issues escalate to human
@@ -64,7 +66,7 @@ Advantages:
 - Improves availability
 - Fast fault response
 
-Costs:
+Disadvantages:
 
 - Self-ops logic is complex
 - Permission boundaries require careful design

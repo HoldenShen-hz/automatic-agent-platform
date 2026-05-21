@@ -1,11 +1,11 @@
-# ADR-059 Agent Explainability and Decision Transparency
+# ADR-059: Agent Explainability and Decision Transparency
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
 
-Regulations like EU AI Act require AI decisions to be explainable. The platform needs to provide decision transparency mechanisms.
+EU AI Act and other regulations require AI decisions to be explainable. The platform needs to provide decision transparency mechanisms.
 
 ## Decision
 
@@ -40,8 +40,8 @@ interface DecisionRecord {
 |-----------|-------------|
 | Decision tree extraction | Extract rules from neural networks |
 | Attention visualization | Show key inputs |
-| Counterfactual analysis | "What if..." |
-| Case-based reasoning | Similar decision reference |
+| Counterfactual analysis | "What if..." scenarios |
+| Case-based reasoning | Similar decision references |
 
 ### Audit Logs
 
@@ -51,19 +51,19 @@ interface DecisionRecord {
 
 ### Compliance Reports
 
-- Automatically generate compliance reports
+- Automatically generated compliance reports
 - Support regulatory agency review
 - Regularly publish transparency reports
 
 ## Consequences
 
-Pros:
+Advantages:
 
-- Meets EU AI Act and other regulations
+- Meets EU AI Act and other regulatory requirements
 - Improves user trust
 - Facilitates problem identification and resolution
 
-Cons:
+Disadvantages:
 
 - Explanation generation adds latency
 - Storage costs increase
@@ -71,7 +71,7 @@ Cons:
 ## Cross References
 
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
-- [ADR-066 Compliance Report Auto Generation Engine](./066-compliance-report-auto-generation.md)
+- [ADR-066 Compliance Report Auto-generation Engine](./066-compliance-report-auto-generation.md)
 
 ## Source Section
 

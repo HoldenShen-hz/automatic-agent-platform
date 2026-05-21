@@ -4,11 +4,11 @@
 
 Accepted
 
-## Date
+## Decision Date
 
 2026-04-20
 
-## Background
+## Context
 
 `§15`-`§18`, `§21`, `§23`, `§27` define LLM Provider, Prompt, Eval, Cost, HITL, Compliance, SLO, and other AI operations capabilities. These capabilities were previously scattered across provider, prompt governance, quality, budget, approval contracts, but lacked a unified ADR explaining why the AI layer must be treated as a governable runtime, not a ordinary dependency.
 
@@ -57,7 +57,7 @@ Corresponding implementation boundaries:
 - integration tests: prompt/model release, HITL approval, cost attribution.
 - contract tests: AI actions without passing quality gates, budget, or data classification must not execute.
 
-## Alternatives
+## Alternative Approaches
 
 1. **Use model provider API as the platform primary contract**: Information is clear, but increases vendor lock-in risk.
 2. **Allow prompt to directly enter production**: Reduces governance cost, but cannot guarantee quality, compliance, and security.

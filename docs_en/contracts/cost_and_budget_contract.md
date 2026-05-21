@@ -6,7 +6,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -39,9 +39,11 @@ This contract defines cost estimation, real-time cost recording, budget threshol
 | `max_context_tokens` | `number` | Input context token ceiling |
 | `max_output_tokens` | `number` | Output token ceiling |
 | `max_steps` | `number` | Maximum allowed completed node count |
+| `max_node_runs` | `number` | Maximum allowed NodeRun count |
 | `max_duration_ms` | `number` | Total runtime duration ceiling |
 | `warn_at_ratio` | `number` | Warning threshold ratio |
-| `runtime_mode` | `full_auto \| supervised_auto \| manual_only \| incident-mode` | Runtime mode when budget is in effect (orthogonal to sandbox isolation level) |
+| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | Runtime mode when budget is in effect (orthogonal to sandbox isolation level) |
+| `rollout_guard` | `no_rollout \| approval_required \| rollout_allowed` | Release protection when budget threshold exceeded |
 | `sandbox_policy_mode` | `read_only \| workspace_write \| scoped_external_access \| restricted_exec` | Execution sandbox isolation level (orthogonal to runtime_mode, when combined must be validated through PolicyEngine for legitimacy) |
 
 Compatibility Note:
@@ -69,8 +71,8 @@ Rules:
 
 - `harness_run_id` is the budget subject association key (required).
 - `task_id` is only used for legacy traceable queries and must not be used as the budget judgment primary key.
-- `budget_reservation_id` associates the current cost with the BudgetReservation to which it belongs, used for budget settlement.
-- CostEvent must not use the deprecated `execution_id`; cost attribution must be associated with `harness_run_id / node_run_id / attempt_id`.
+- `budget_reservation_id` associates the current cost with the BudgetReservation to which it belongs, used for budget settlement chain and must be filled when entering settlement chain.
+- CostEvent must not use the deprecated legacy execution key; cost attribution must be associated with `harness_run_id / node_run_id / attempt_id`.
 
 ## 5. Behavioral Constraints
 
@@ -131,7 +133,7 @@ The following system internal operations generate model call costs and must be i
 Rules:
 
 - Implicit costs must participate in budget threshold checks and cannot bypass `BudgetPolicy` cumulative checks.
-- All cost attribution associations must use `harness_run_id / node_run_id / attempt_id` and must not use the deprecated `execution_id`.
+- All cost attribution associations must use `harness_run_id / node_run_id / attempt_id` and must not use the deprecated legacy execution key.
 - `task_id` is only a legacy traceable field and must not participate in budget judgment logic.
 - Skill cache hits do not generate model call costs, but cache storage and lookup computation costs are not counted toward token budget.
 - If compaction cost causes run to exceed `max_cost_usd`, it should trigger the same threshold actions (alert, approval, or circuit break) as normal model calls and must not silently pass through.
@@ -159,11 +161,11 @@ Rules:
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-41: This document previously reduced `BudgetPolicy` to three financial thresholds: `max_task_cost_usd / max_daily_cost_usd / max_monthly_cost_usd`. Root cause: the cost contract used report/billing口径 and did not upgrade to multi-dimensional budget constraints along with v4.3 runtime budget guard. Fix: The main text now changes canonical `BudgetPolicy` to `max_cost_usd / max_model_tokens / max_context_tokens / max_output_tokens / max_steps / max_duration_ms`, with old daily/monthly statistics retained only as billing projection guardrails.
 - T-15: Original `CostEvent` used `task_id` as required but `harness_run_id` as optional, budget subject hierarchy inverted. Fix: `harness_run_id` is now required, `task_id` demoted to optional legacy traceable field.
-- T-16: Implicit cost attribution rules still referenced the deprecated `execution_id`, not aligned with `node_run_id/attempt_id`. Fix: Attribution rules comprehensively changed to use `harness_run_id / node_run_id / attempt_id` and must no longer use `execution_id`.
+- T-16: Implicit cost attribution rules still referenced the deprecated legacy execution key, not aligned with `node_run_id/attempt_id`. Fix: Attribution rules comprehensively changed to use `harness_run_id / node_run_id / attempt_id` and must no longer use legacy execution key.
 - T-17: `CostEvent.budget_reservation_id` was only marked as optional in original text, but v4.3 budget settlement requires association with BudgetReservation. Fix: both the core and extended `CostEvent` field lists now explicitly carry `budget_reservation_id`, and settlement paths must fill it.
 
 Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

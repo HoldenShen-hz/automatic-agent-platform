@@ -251,6 +251,9 @@ export const MissionEventTypeSchema = z.enum([
   "platform.mission.budget_reserved",
   "platform.mission.budget_settled",
   "platform.mission.handoff_requested",
+  "platform.mission.stage_exit_evaluated",
+  "platform.mission.failure_mode_detected",
+  "platform.mission.outcome_measured",
 ]);
 export type MissionEventType = z.infer<typeof MissionEventTypeSchema>;
 
@@ -356,3 +359,6 @@ export function principalToMissionPrincipal(principal: PrincipalRef): string {
 export function riskRequiresFormalMission(riskClass: RiskClass): boolean {
   return riskClass === "high" || riskClass === "critical";
 }
+
+export * from "./playbook.js";
+export * from "./operating-model.js";

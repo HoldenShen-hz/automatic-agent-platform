@@ -1,4 +1,4 @@
-# ADR-062 Offline and Edge Deployment Architecture
+# ADR-062: Offline and Edge Deployment Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -33,7 +33,7 @@ interface EdgeRuntime {
 ### Data Sync Strategies
 
 | Sync Mode | Description | Network Requirements |
-|----------|-------------|---------------------|
+|-----------|-------------|---------------------|
 | realtime | Real-time sync | Stable connection |
 | batch | Batch sync | Intermittent connection |
 | delay_tolerant | Delay tolerant | Low bandwidth |
@@ -52,7 +52,7 @@ interface EdgeRuntime {
 |----------|-------------|
 | last_write_wins | Last write wins |
 | server_wins | Server priority |
-| merge | Merge conflicts |
+| merge | Only for projection / non-critical statistical object merge conflicts |
 | manual | Manual resolution |
 
 ## Consequences
@@ -63,7 +63,7 @@ Advantages:
 - Reduces network dependency
 - Expands applicable scope
 
-Costs:
+Disadvantages:
 
 - Sync complexity
 - Conflict handling complexity
@@ -79,4 +79,5 @@ Costs:
 
 ## v4.3 ADR Remediation
 
-- R3-60: This ADR defines `last_write_wins` as one of the conflict resolution strategies, which does not conflict with §25.11 truth data requirements. Root cause is that edge deployment scenarios (factories, stores, etc.) have different constraints for offline data sync versus centralized truth data systems. Fix: The main text now clarifies that `last_write_wins` applies only to edge temporary data sync scenarios, not to core state data requiring truth consistency; the latter must use `server_wins` or `merge` strategies.
+- R3-60: This ADR defines `last_write_wins` as one of the conflict resolution strategies, which does not conflict with §25.11 truth data requirements. Root cause is that edge deployment scenarios (factories, stores, etc.) have different constraints for offline data sync versus centralized truth data systems. Fix: The text now clarifies that `last_write_wins` applies only to edge temporary data sync scenarios, not to core state data requiring truth consistency; the latter must use `server_wins` or `merge` strategies.
+- `merge` is also only allowed for projection / cache / non-authoritative statistical objects; `truth / budget / side effect` must still go through centralized authoritative writer and fencing protection.

@@ -1,4 +1,4 @@
-# ADR-061 Agent Unified Lifecycle Management Architecture
+# ADR-061: Agent Unified Lifecycle Management Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -34,26 +34,26 @@ interface AgentComponent {
 ### Lifecycle States (§61.3 reconciliation)
 
 | State | Description |
-|------|-------------|
+|-------|-------------|
 | draft | Draft |
-| requirements_locked | Requirements Locked |
 | testing | Testing |
 | staging | Staging |
-| production | Production |
+| canary | Canary rollout in progress |
+| active | Current active version |
+| paused | Paused promotion |
 | deprecated | Deprecated |
-| retired | Retired |
 | archived | Archived |
-| superseded | Superseded (terminal state) |
+| removed | Removed (terminal state) |
 
 Constraints:
-- State transition order: draft → requirements_locked → testing → staging → production → deprecated → retired → archived → superseded
-- After requirements_locked, trivial requirement changes are not accepted; must go through change board process
-- archived state preserves audit history, cannot be reverted to active
-- superseded is terminal state, indicating fully replaced by new version
+- State transition order: draft → testing → staging → canary → active → paused → deprecated → archived → removed
+- `canary` and `active` respectively correspond to controlled rollout and default active version, no longer using `production / retired / superseded` mixed expressions.
+- archived state retains audit history, cannot be reverted to active state.
+- removed is terminal state, indicating both runtime surface and projection have completed cleanup.
 
 ## v4.3 ADR Remediation
 
-- R3-52: This ADR originally defined 8-state lifecycle (draft/requirements_locked/testing/staging/production/deprecated/retired/archived), root cause being the lifecycle ADR omitted the superseded terminal state. Fix: The main text now adds superseded terminal state, forming a 9-state complete state machine, aligned with §61.3 architecture requirements.
+- R3-52: This ADR previously used the historical terms `requirements_locked / production / retired / superseded`, which were not aligned with §61.3 rollout lifecycle. Fix: The text now unifies to `draft / testing / staging / canary / active / paused / deprecated / archived / removed` nine-state lifecycle.
 
 - Semantic versioning (major.minor.patch)
 - Version compatibility checking
@@ -79,7 +79,7 @@ Advantages:
 - Versioning supports rollback
 - Dependency management prevents conflicts
 
-Costs:
+Disadvantages:
 
 - Component version coordination is complex
 - Lifecycle state machine maintenance cost

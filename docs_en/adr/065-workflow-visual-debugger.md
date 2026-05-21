@@ -1,4 +1,4 @@
-# ADR-065 Workflow Visual Debugger Architecture
+# ADR-065: Workflow Visual Debugger Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -35,7 +35,7 @@ interface WorkflowDAGView {
 
 ## v4.3 ADR Remediation
 
-- A-62: This ADR originally anchored the debugger to `workflow_id / current_step / StepInspector`, root cause being the document inherited the old workflow debugger prototype without switching to the `HarnessRun / NodeRun` debugging model. Fix: The main text now changes the debugging anchor to harness/node semantics.
+- A-62: This ADR originally anchored the debugger to `workflow_id / current_step / StepInspector`. Root cause was the document inherited the old workflow debugger prototype without switching to the `HarnessRun / NodeRun` debugging model. Fix: The text now changes the debugging anchor to harness/node semantics.
 
 ### Debugging Features
 
@@ -81,7 +81,7 @@ Advantages:
 - Complete state facilitates problem location
 - Breakpoint support for fine-grained debugging
 
-Costs:
+Disadvantages:
 
 - Debugger development cost
 - Runtime overhead

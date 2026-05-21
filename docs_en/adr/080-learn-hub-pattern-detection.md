@@ -1,16 +1,16 @@
-# ADR-080 Learn Hub and Four Pattern Detectors
+# ADR-080: Learn Hub and Four Pattern Detectors
 
 - Status: Accepted
 - Decision Date: 2026-04-17
 - Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model, ADR-078 Knowledge Plane Architecture
 
-## Background
+## Context
 
 The LearningSignal produced by the OAPEFLIR Feedback Hub needs to be processed by the Learn Hub, extracting structured LearningObjects. The Learn Hub is the first ring of the secondary chain (F→L→I→R), responsible for identifying patterns, anomalies, corrections, and recovery playbooks from signals.
 
 The design requires supporting 3 learning types (R4-TYPES constraint): failure_pattern / user_correction / recovery_playbook, implemented through 4 initial pattern detectors.
 
-## Decisions
+## Decision
 
 ### 1. Three Learning Content Types (R4-TYPES Constraint)
 
@@ -156,17 +156,17 @@ Feedback.signal_preprocessed
         → RolloutScheduler schedules release
 ```
 
-## Alternatives
+## Alternative Approaches
 
-### Option A: No Learn Hub, feedback directly sent to Improve
+### Approach A: No Learn Hub, feedback directly sent to Improve
 
-Pros: Simple architecture.
-Cons: Cannot extract patterns, knowledge cannot accumulate.
+Advantages: Simple architecture.
+Disadvantages: Cannot extract patterns, knowledge cannot accumulate.
 
-### Option B: Complete Learn Hub + 4 Detectors (Selected)
+### Approach B: Complete Learn Hub + 4 Detectors (selected)
 
-Pros: Pattern recognition + knowledge accumulation + complete evidence chain.
-Cons: Higher implementation complexity (~1500 lines of code).
+Advantages: Pattern recognition + knowledge accumulation + complete evidence chain.
+Disadvantages: Higher implementation complexity (~1500 lines of code).
 
 ## Consequences
 
@@ -189,12 +189,12 @@ Cons: Higher implementation complexity (~1500 lines of code).
 
 - `§8` Learn Hub Design
 - `§8.1` 6 Learning Content Types (Ring 1 simplified to 3 types)
-
-## v4.3 ADR Remediation
-
-- A-65: This ADR originally wrote `Phase 1` and `EvidenceRef.executionId` as canonical constraints. The root cause was that the learn hub ADR did not synchronize the evidence chain primary key after runtime truth renaming. Fix: The main text now uses ring terminology and the evidence chain anchor switched to `harnessRunId / nodeRunId`.
 - `§8.2-8.4` LearningArtifact / LearningObject / FailurePattern interfaces
 - `§8.5` 4 initial failure patterns
 - `§8.6-8.7` ExperienceDistillation / StrategyLearning
 - `§L.7` R4-TYPES constraint
 - `§L.9` R4-EVIDENCE constraint
+
+## v4.3 ADR Remediation
+
+- A-65: This ADR originally wrote `Phase 1` and `EvidenceRef.executionId` as canonical constraints. Root cause was that the learn hub ADR did not synchronize the evidence chain primary key after runtime truth renaming. Fix: The text now uses ring terminology and the evidence chain anchor switched to `harnessRunId / nodeRunId`.

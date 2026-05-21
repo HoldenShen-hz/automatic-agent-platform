@@ -28,6 +28,7 @@
       "@aa/ui-core": ["packages/ui-core/src/index.tsx"],
       "@aa/ui-mobile": ["packages/ui-mobile/src/index.ts"],
       "@aa/feature-dashboard": ["packages/features/dashboard/src/index.tsx"],
+      "@aa/feature-mission-console": ["packages/features/mission-console/src/index.tsx"],
       "@aa/feature-task-cockpit": ["packages/features/task-cockpit/src/index.tsx"],
       "@aa/feature-workflow-cockpit": ["packages/features/workflow-cockpit/src/index.tsx"],
       "@aa/feature-approval": ["packages/features/approval/src/index.tsx"],

@@ -1,4 +1,4 @@
-# ADR-085 Organization Governance And Knowledge Boundary
+# ADR-085: Organization Governance And Knowledge Boundary
 
 ---
 
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 v2.7 `§46-§51` introduces the organization governance layer. The current repository already has:
 
@@ -32,7 +32,7 @@ v2.7 `§46-§51` introduces the organization governance layer. The current repos
 
 But most directories are still empty barrel stubs, lacking unified decisions.
 
-## Decisions
+## Decision
 
 ### 1. Organization Node is the Common Root Object for Governance, Approval, Knowledge, and Compliance
 

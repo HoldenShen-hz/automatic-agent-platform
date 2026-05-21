@@ -1,4 +1,4 @@
-# ADR-081 Domain Descriptor And Onboarding
+# ADR-081: Domain Descriptor And Onboarding
 
 ---
 
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 v2.7 `§37-§38` requires the platform to no longer treat business domains as opaque business packages, but instead use `DomainDescriptor` as a structured governance unit that unifies risk profiles, knowledge structures, evaluation frameworks, Prompt libraries, Recipes, and cross-domain interaction strategies.
 
@@ -30,7 +30,7 @@ The current repository already has `src/domains/*` directory and initial impleme
 - Onboarding runbooks can only rely on verbal agreements
 - Many directories under `src/domains/*` still remain as empty barrel stubs
 
-## Decisions
+## Decision
 
 ### 1. `DomainDescriptor` as the Domain Authoritative Root Object
 

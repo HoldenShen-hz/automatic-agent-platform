@@ -4,11 +4,11 @@
 
 Accepted
 
-## Date
+## Decision Date
 
 2026-04-20
 
-## Background
+## Context
 
 `§20`, `§24`-`§32`, `§33`, `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event/projection/DLQ, knowledge/memory/artifact, HA, deployment, and roadmap. These chapters together constitute the production operation foundation, but past ADRs mostly recorded single-point technical selections, lacking a unified decision for long-term operation.
 

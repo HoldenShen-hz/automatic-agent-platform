@@ -1,4 +1,5 @@
 import dashboard from "@aa/feature-dashboard";
+import missionConsole from "@aa/feature-mission-console";
 import taskCockpit from "@aa/feature-task-cockpit";
 import workflowCockpit from "@aa/feature-workflow-cockpit";
 import approval from "@aa/feature-approval";
@@ -36,6 +37,7 @@ export const missionControlFeatureContracts = [
 
 export const featureRegistry: readonly FeatureModule[] = [
   dashboard,
+  missionConsole,
   taskCockpit,
   workflowCockpit,
   approval,

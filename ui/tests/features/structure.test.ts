@@ -9,7 +9,7 @@ describe("feature split structure", () => {
       .filter((feature) => existsSync(join(featureRoot, feature, "src")))
       .sort();
 
-    expect(features.length).toBe(29);
+    expect(features.length).toBe(30);
 
     for (const feature of features) {
       const base = join(featureRoot, feature, "src");

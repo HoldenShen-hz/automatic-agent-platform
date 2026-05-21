@@ -6,14 +6,28 @@ import {
   mergeRuntimeConstraintSets,
   nextMissionStatus,
   riskRequiresFormalMission,
+  hashExitCriterionExpression,
+  ExitCriterionExpressionSchema,
+  MissionPlaybookSchema,
+  MissionStageInstanceSchema,
+  StageExitDecisionSchema,
+  StageExitSnapshotSchema,
+  type ExitCriterion,
+  type ExitCriterionEvaluationResult,
+  type ExitCriterionExpression,
   type MissionBinding,
   type MissionBudgetEnvelope,
   type MissionContextSnapshot,
   type MissionHandoffRequest,
+  type MissionPlaybook,
+  type MissionPlaybookStage,
   type MissionPermission,
   type MissionRecord,
   type MissionResolutionRequest,
   type MissionResolutionResult,
+  type MissionStageInstance,
+  type StageExitDecision,
+  type StageExitSnapshot,
   type MissionStatus,
   type RuntimeConstraintSet,
 } from "../../contracts/mission/index.js";
@@ -23,6 +37,8 @@ import {
   type CreateMissionRecordInput,
   type MissionRepository,
 } from "../../five-plane-state-evidence/truth/mission-repository.js";
+
+export * from "./operating-model.js";
 
 export interface MissionFeatureFlags {
   readonly enabled: boolean;
@@ -386,6 +402,12 @@ export class MissionRuntimeBindingService {
 }
 
 export class MissionHandoffService {
+  private readonly trustedTenantPairs = new Set<string>();
+
+  public trustTenantPair(sourceTenantId: string, targetTenantId: string): void {
+    this.trustedTenantPairs.add(`${sourceTenantId}:${targetTenantId}`);
+  }
+
   public request(input: Omit<MissionHandoffRequest, "handoffId" | "createdAt"> & {
     readonly handoffId?: string;
     readonly createdAt?: string;
@@ -395,6 +417,36 @@ export class MissionHandoffService {
       handoffId: input.handoffId ?? newId("mhandoff"),
       createdAt: input.createdAt ?? nowIso(),
     };
+  }
+
+  public requestFederated(input: {
+    readonly sourceMission: MissionRecord;
+    readonly targetMission: MissionRecord;
+    readonly requestedBy: string;
+    readonly approvalRef: string;
+    readonly auditRef: string;
+    readonly reason: string;
+    readonly budgetTransferRef?: string | null;
+  }): MissionHandoffRequest {
+    if (
+      input.sourceMission.tenantId !== input.targetMission.tenantId
+      && !this.trustedTenantPairs.has(`${input.sourceMission.tenantId}:${input.targetMission.tenantId}`)
+    ) {
+      throwMissionError("mission.handoff_trust_missing", "Cross-tenant Mission handoff requires an accepted trust pair", {
+        sourceTenantId: input.sourceMission.tenantId,
+        targetTenantId: input.targetMission.tenantId,
+      });
+    }
+    return this.request({
+      sourceMissionId: input.sourceMission.missionId,
+      targetMissionId: input.targetMission.missionId,
+      tenantId: input.sourceMission.tenantId,
+      requestedBy: input.requestedBy,
+      approvalRef: input.approvalRef,
+      budgetTransferRef: input.budgetTransferRef ?? null,
+      auditRef: input.auditRef,
+      reason: input.reason,
+    });
   }
 }
 
@@ -414,6 +466,402 @@ export class MissionOutcomeAnalyticsService {
       outcome: input.mission.status === "completed" ? "successful" : input.mission.status === "archived" ? "incomplete" : "active",
     };
   }
+}
+
+export interface MissionPlaybookValidationCatalog {
+  readonly metricRefs?: readonly string[];
+  readonly eventNames?: readonly string[];
+  readonly evidenceKinds?: readonly string[];
+  readonly maxExpressionDepth?: number;
+  readonly requireFailureModeRefs?: boolean;
+}
+
+export interface MissionPlaybookValidationIssue {
+  readonly code:
+    | "mission.playbook.duplicate_stage"
+    | "mission.playbook.entry_stage_missing"
+    | "mission.playbook.edge_stage_missing"
+    | "mission.playbook.exit_criteria_missing"
+    | "mission.playbook.failure_mode_missing"
+    | "mission.playbook.unknown_metric"
+    | "mission.playbook.unknown_event"
+    | "mission.playbook.unknown_evidence_kind"
+    | "mission.playbook.expression_depth_exceeded"
+    | "mission.playbook.p0_unsafe_negation";
+  readonly path: string;
+  readonly message: string;
+}
+
+export interface MissionPlaybookValidationResult {
+  readonly valid: boolean;
+  readonly issues: readonly MissionPlaybookValidationIssue[];
+}
+
+export class MissionPlaybookRegistry {
+  private readonly playbooks = new Map<string, MissionPlaybook>();
+  private readonly activeByMissionType = new Map<MissionPlaybook["missionType"], string>();
+
+  public constructor(private readonly catalog: MissionPlaybookValidationCatalog = {}) {}
+
+  public register(input: MissionPlaybook): MissionPlaybook {
+    const playbook = MissionPlaybookSchema.parse(input);
+    const validation = validateMissionPlaybook(playbook, this.catalog);
+    if (!validation.valid) {
+      throwMissionError("mission.playbook_invalid", "Mission playbook failed validation", {
+        playbookId: playbook.playbookId,
+        version: playbook.version,
+        issues: validation.issues,
+      });
+    }
+    const key = playbookKey(playbook.playbookId, playbook.version);
+    this.playbooks.set(key, playbook);
+    if (playbook.status === "active") {
+      this.activeByMissionType.set(playbook.missionType, key);
+    }
+    return playbook;
+  }
+
+  public get(playbookId: string, version: string): MissionPlaybook | null {
+    return this.playbooks.get(playbookKey(playbookId, version)) ?? null;
+  }
+
+  public resolveActive(missionType: MissionPlaybook["missionType"]): MissionPlaybook | null {
+    const key = this.activeByMissionType.get(missionType);
+    return key == null ? null : this.playbooks.get(key) ?? null;
+  }
+
+  public list(): readonly MissionPlaybook[] {
+    return [...this.playbooks.values()];
+  }
+}
+
+export interface StageExitGateInput {
+  readonly mission: MissionRecord;
+  readonly stageInstance: MissionStageInstance;
+  readonly playbookId: string;
+  readonly playbookVersion: string;
+  readonly snapshot: StageExitSnapshot;
+  readonly targetStageId?: string;
+  readonly actorId: string;
+  readonly traceId: string;
+  readonly correlationId: string;
+  readonly evaluatedAt?: string;
+}
+
+export class StageExitGateService {
+  public constructor(
+    private readonly playbooks: MissionPlaybookRegistry,
+    private readonly repository?: MissionRepository,
+  ) {}
+
+  public evaluate(input: StageExitGateInput): StageExitDecision {
+    const stageInstance = MissionStageInstanceSchema.parse(input.stageInstance);
+    const snapshot = StageExitSnapshotSchema.parse(input.snapshot);
+    const playbook = this.playbooks.get(input.playbookId, input.playbookVersion);
+    if (playbook == null) {
+      throwMissionError("mission.playbook_not_found", "Mission stage exit requires a registered playbook", {
+        playbookId: input.playbookId,
+        version: input.playbookVersion,
+      });
+    }
+    if (
+      stageInstance.missionId !== input.mission.missionId
+      || stageInstance.playbookId !== playbook.playbookId
+      || stageInstance.playbookVersion !== playbook.version
+    ) {
+      throwMissionError("mission.stage_binding_mismatch", "Mission stage does not match the stage exit playbook binding", {
+        missionId: input.mission.missionId,
+        stageInstanceId: stageInstance.stageInstanceId,
+        stagePlaybookId: stageInstance.playbookId,
+        requestedPlaybookId: playbook.playbookId,
+      });
+    }
+    if (stageInstance.status !== "active" && stageInstance.status !== "exit_evaluating") {
+      throwMissionError("mission.stage_not_exit_evaluable", "Mission stage is not eligible for exit evaluation", {
+        stageInstanceId: stageInstance.stageInstanceId,
+        stageStatus: stageInstance.status,
+      });
+    }
+    const stage = findPlaybookStage(playbook, stageInstance.stageId);
+    if (stage == null) {
+      throwMissionError("mission.stage_not_found", "Mission stage was not found in the bound playbook", {
+        stageId: stageInstance.stageId,
+        playbookId: playbook.playbookId,
+      });
+    }
+    const criterionResults = stage.exitCriteria.map((criterion) => evaluateExitCriterion(criterion, snapshot));
+    const failedCriterionIds = criterionResults.filter((result) => !result.passed).map((result) => result.criterionId);
+    const edge = resolveStageEdge(playbook, stage.stageId, input.targetStageId);
+    if (input.targetStageId != null && edge == null) {
+      throwMissionError("mission.stage_edge_not_found", "Requested Mission stage edge does not exist", {
+        fromStageId: stage.stageId,
+        targetStageId: input.targetStageId,
+      });
+    }
+    const hitlRequired = edge?.requiresHitl === true && snapshot.hitlDecisions[`stage_edge:${edge.edgeId}`] !== "approved";
+    const decision = StageExitDecisionSchema.parse({
+      decisionId: newId("mstage_decision"),
+      missionId: input.mission.missionId,
+      stageInstanceId: stageInstance.stageInstanceId,
+      stageId: stage.stageId,
+      playbookId: playbook.playbookId,
+      playbookVersion: playbook.version,
+      decision: failedCriterionIds.length > 0 ? "hold" : hitlRequired ? "require_hitl" : "advance",
+      targetStageId: edge?.toStageId ?? null,
+      criterionResults,
+      failedCriterionIds,
+      requiredActions: failedCriterionIds.length > 0
+        ? failedCriterionIds.map((criterionId) => `satisfy_exit_criterion:${criterionId}`)
+        : hitlRequired && edge != null ? [`approve_stage_edge:${edge.edgeId}`] : [],
+      evaluatedAt: input.evaluatedAt ?? nowIso(),
+    });
+    this.appendEvaluationEvent(input, decision);
+    return decision;
+  }
+
+  private appendEvaluationEvent(input: StageExitGateInput, decision: StageExitDecision): void {
+    if (this.repository == null) {
+      return;
+    }
+    this.repository.appendEvent({
+      eventType: "platform.mission.stage_exit_evaluated",
+      missionId: input.mission.missionId,
+      tenantId: input.mission.tenantId,
+      traceId: input.traceId,
+      correlationId: input.correlationId,
+      payload: {
+        decisionId: decision.decisionId,
+        stageInstanceId: decision.stageInstanceId,
+        stageId: decision.stageId,
+        playbookId: decision.playbookId,
+        playbookVersion: decision.playbookVersion,
+        decision: decision.decision,
+        targetStageId: decision.targetStageId,
+        failedCriterionIds: decision.failedCriterionIds,
+        criterionResultRefs: decision.criterionResults.map((result) => ({
+          criterionId: result.criterionId,
+          expressionHash: result.expressionHash,
+          passed: result.passed,
+        })),
+      },
+      occurredAt: decision.evaluatedAt,
+    });
+  }
+}
+
+export function validateMissionPlaybook(
+  input: MissionPlaybook,
+  catalog: MissionPlaybookValidationCatalog = {},
+): MissionPlaybookValidationResult {
+  const playbook = MissionPlaybookSchema.parse(input);
+  const issues: MissionPlaybookValidationIssue[] = [];
+  const stageIds = new Set<string>();
+  for (const [index, stage] of playbook.stages.entries()) {
+    if (stageIds.has(stage.stageId)) {
+      issues.push({
+        code: "mission.playbook.duplicate_stage",
+        path: `stages[${index}].stageId`,
+        message: `Duplicate stage id ${stage.stageId}`,
+      });
+    }
+    stageIds.add(stage.stageId);
+    if (stage.exitCriteria.length === 0) {
+      issues.push({
+        code: "mission.playbook.exit_criteria_missing",
+        path: `stages[${index}].exitCriteria`,
+        message: `Stage ${stage.stageId} must declare exit criteria`,
+      });
+    }
+    if (catalog.requireFailureModeRefs !== false && stage.failureModeRefs.length === 0) {
+      issues.push({
+        code: "mission.playbook.failure_mode_missing",
+        path: `stages[${index}].failureModeRefs`,
+        message: `Stage ${stage.stageId} must declare a failure mode reference`,
+      });
+    }
+    for (const [criterionIndex, criterion] of stage.exitCriteria.entries()) {
+      validateExitExpression(criterion.expression, {
+        catalog,
+        criterion,
+        path: `stages[${index}].exitCriteria[${criterionIndex}].expression`,
+        issues,
+        depth: 1,
+      });
+    }
+  }
+  if (!stageIds.has(playbook.entryStageId)) {
+    issues.push({
+      code: "mission.playbook.entry_stage_missing",
+      path: "entryStageId",
+      message: `Entry stage ${playbook.entryStageId} does not exist`,
+    });
+  }
+  for (const [index, edge] of playbook.edges.entries()) {
+    if (!stageIds.has(edge.fromStageId) || !stageIds.has(edge.toStageId)) {
+      issues.push({
+        code: "mission.playbook.edge_stage_missing",
+        path: `edges[${index}]`,
+        message: `Edge ${edge.edgeId} must reference existing stages`,
+      });
+    }
+  }
+  return { valid: issues.length === 0, issues };
+}
+
+function validateExitExpression(input: ExitCriterionExpression, state: {
+  readonly catalog: MissionPlaybookValidationCatalog;
+  readonly criterion: ExitCriterion;
+  readonly path: string;
+  readonly issues: MissionPlaybookValidationIssue[];
+  readonly depth: number;
+}): void {
+  const expression = ExitCriterionExpressionSchema.parse(input);
+  if (state.depth > (state.catalog.maxExpressionDepth ?? 8)) {
+    state.issues.push({
+      code: "mission.playbook.expression_depth_exceeded",
+      path: state.path,
+      message: `Exit criterion ${state.criterion.criterionId} exceeds the expression depth limit`,
+    });
+    return;
+  }
+  if (expression.type === "metric_threshold" && state.catalog.metricRefs != null && !state.catalog.metricRefs.includes(expression.metric)) {
+    state.issues.push({
+      code: "mission.playbook.unknown_metric",
+      path: `${state.path}.metric`,
+      message: `Metric ${expression.metric} is not registered for stage exit evaluation`,
+    });
+  }
+  if (expression.type === "event_count" && state.catalog.eventNames != null && !state.catalog.eventNames.includes(expression.eventName)) {
+    state.issues.push({
+      code: "mission.playbook.unknown_event",
+      path: `${state.path}.eventName`,
+      message: `Event ${expression.eventName} is not registered for stage exit evaluation`,
+    });
+  }
+  if (expression.type === "evidence_exists" && state.catalog.evidenceKinds != null && !state.catalog.evidenceKinds.includes(expression.evidenceKind)) {
+    state.issues.push({
+      code: "mission.playbook.unknown_evidence_kind",
+      path: `${state.path}.evidenceKind`,
+      message: `Evidence kind ${expression.evidenceKind} is not registered for stage exit evaluation`,
+    });
+  }
+  if (expression.type === "not" && state.criterion.severity === "P0") {
+    state.issues.push({
+      code: "mission.playbook.p0_unsafe_negation",
+      path: state.path,
+      message: `P0 exit criterion ${state.criterion.criterionId} must not use a top-level negation`,
+    });
+  }
+  if (expression.type === "not") {
+    validateExitExpression(expression.criterion, { ...state, path: `${state.path}.criterion`, depth: state.depth + 1 });
+  }
+  if (expression.type === "all_of" || expression.type === "any_of") {
+    for (const [index, criterion] of expression.criteria.entries()) {
+      validateExitExpression(criterion, { ...state, path: `${state.path}.criteria[${index}]`, depth: state.depth + 1 });
+    }
+  }
+}
+
+function evaluateExitCriterion(criterion: ExitCriterion, snapshot: StageExitSnapshot): ExitCriterionEvaluationResult {
+  const result = evaluateExitExpression(criterion.expression, snapshot);
+  return {
+    criterionId: criterion.criterionId,
+    expressionHash: hashExitCriterionExpression(criterion.expression),
+    passed: result.passed,
+    actualValue: result.actualValue,
+    expectedValue: result.expectedValue,
+    snapshotRefs: snapshot.snapshotRefs,
+    evidenceRefs: criterion.requiredEvidenceRefs,
+    ...(result.reasonCode != null ? { reasonCode: result.reasonCode } : {}),
+  };
+}
+
+function evaluateExitExpression(expression: ExitCriterionExpression, snapshot: StageExitSnapshot): {
+  readonly passed: boolean;
+  readonly actualValue: number | string | boolean | null;
+  readonly expectedValue: number | string | boolean | null;
+  readonly reasonCode?: string;
+} {
+  if (expression.type === "metric_threshold") {
+    const actual = snapshot.metricValues[expression.metric];
+    return actual == null
+      ? { passed: false, actualValue: null, expectedValue: expression.value, reasonCode: "mission.stage.metric_missing" }
+      : { passed: compareValues(actual, expression.operator, expression.value), actualValue: actual, expectedValue: expression.value };
+  }
+  if (expression.type === "event_count") {
+    const actual = snapshot.eventCounts[expression.eventName] ?? 0;
+    return { passed: compareValues(actual, expression.operator, expression.value), actualValue: actual, expectedValue: expression.value };
+  }
+  if (expression.type === "evidence_exists") {
+    const actual = snapshot.evidenceCounts[expression.evidenceKind] ?? 0;
+    const expected = expression.minCount ?? 1;
+    return { passed: actual >= expected, actualValue: actual, expectedValue: expected };
+  }
+  if (expression.type === "hitl_decision") {
+    const actual = snapshot.hitlDecisions[expression.decisionType] ?? null;
+    return {
+      passed: actual === expression.requiredDecision,
+      actualValue: actual,
+      expectedValue: expression.requiredDecision,
+      ...(actual == null ? { reasonCode: "mission.stage.hitl_missing" } : {}),
+    };
+  }
+  if (expression.type === "all_of" || expression.type === "any_of") {
+    const nested = expression.criteria.map((criterion) => evaluateExitExpression(criterion, snapshot));
+    const passed = expression.type === "all_of" ? nested.every((result) => result.passed) : nested.some((result) => result.passed);
+    return {
+      passed,
+      actualValue: passed,
+      expectedValue: true,
+      ...(passed ? {} : { reasonCode: `mission.stage.${expression.type}_failed` }),
+    };
+  }
+  if (expression.type === "not") {
+    const nested = evaluateExitExpression(expression.criterion, snapshot);
+    return { passed: !nested.passed, actualValue: !nested.passed, expectedValue: true };
+  }
+  return { passed: false, actualValue: null, expectedValue: true, reasonCode: "mission.stage.expression_unknown" };
+}
+
+function compareValues(
+  actual: number | string | boolean,
+  operator: "==" | "!=" | ">=" | ">" | "<=" | "<",
+  expected: number | string | boolean,
+): boolean {
+  if (operator === "==") {
+    return actual === expected;
+  }
+  if (operator === "!=") {
+    return actual !== expected;
+  }
+  if (typeof actual !== typeof expected || typeof actual === "boolean" || typeof expected === "boolean") {
+    return false;
+  }
+  switch (operator) {
+    case ">=":
+      return actual >= expected;
+    case ">":
+      return actual > expected;
+    case "<=":
+      return actual <= expected;
+    case "<":
+      return actual < expected;
+  }
+  return false;
+}
+
+function findPlaybookStage(playbook: MissionPlaybook, stageId: string): MissionPlaybookStage | null {
+  return playbook.stages.find((stage) => stage.stageId === stageId) ?? null;
+}
+
+function resolveStageEdge(playbook: MissionPlaybook, stageId: string, targetStageId?: string) {
+  return playbook.edges.find((edge) =>
+    edge.fromStageId === stageId && (targetStageId == null || edge.toStageId === targetStageId)
+  ) ?? null;
+}
+
+function playbookKey(playbookId: string, version: string): string {
+  return `${playbookId}@${version}`;
 }
 
 export class MissionObservabilityPolicy {
@@ -463,10 +911,76 @@ export class LegacyMissionBackfillService {
     }
     return { ...task, missionRef };
   }
+
+  public backfillSession<T extends { readonly missionRef?: unknown }>(
+    session: T,
+    missionRef: MissionBinding,
+  ): T & { readonly missionRef: MissionBinding } {
+    return this.backfillTask(session, missionRef);
+  }
+
+  public backfillBatch<TTask extends { readonly missionRef?: unknown }, TSession extends { readonly missionRef?: unknown }>(input: {
+    readonly tasks: readonly TTask[];
+    readonly sessions: readonly TSession[];
+    readonly resolveMissionRef: (record: TTask | TSession, kind: "task" | "session") => MissionBinding | null;
+  }): {
+    readonly tasks: readonly (TTask & { readonly missionRef?: unknown })[];
+    readonly sessions: readonly (TSession & { readonly missionRef?: unknown })[];
+    readonly report: {
+      readonly taskCount: number;
+      readonly sessionCount: number;
+      readonly taskBackfilled: number;
+      readonly sessionBackfilled: number;
+      readonly unresolvedCount: number;
+    };
+  } {
+    let taskBackfilled = 0;
+    let sessionBackfilled = 0;
+    let unresolvedCount = 0;
+    const tasks = input.tasks.map((task) => {
+      if (task.missionRef != null) {
+        return task;
+      }
+      const missionRef = input.resolveMissionRef(task, "task");
+      if (missionRef == null) {
+        unresolvedCount += 1;
+        return task;
+      }
+      taskBackfilled += 1;
+      return this.backfillTask(task, missionRef);
+    });
+    const sessions = input.sessions.map((session) => {
+      if (session.missionRef != null) {
+        return session;
+      }
+      const missionRef = input.resolveMissionRef(session, "session");
+      if (missionRef == null) {
+        unresolvedCount += 1;
+        return session;
+      }
+      sessionBackfilled += 1;
+      return this.backfillSession(session, missionRef);
+    });
+    return {
+      tasks,
+      sessions,
+      report: {
+        taskCount: input.tasks.length,
+        sessionCount: input.sessions.length,
+        taskBackfilled,
+        sessionBackfilled,
+        unresolvedCount,
+      },
+    };
+  }
 }
 
 export class MissionHomeRegionService {
   private readonly epochs = new Map<string, number>();
+  private readonly readRoutes = new Map<string, {
+    readonly homeRegion: string;
+    readonly readReplicaRegions: readonly string[];
+  }>();
 
   public assignHomeRegion(input: { readonly missionId: string; readonly region: string; readonly epoch?: number }): {
     readonly missionId: string;
@@ -475,7 +989,48 @@ export class MissionHomeRegionService {
   } {
     const epoch = input.epoch ?? (this.epochs.get(input.missionId) ?? 0) + 1;
     this.epochs.set(input.missionId, epoch);
+    const current = this.readRoutes.get(input.missionId);
+    this.readRoutes.set(input.missionId, {
+      homeRegion: input.region,
+      readReplicaRegions: current?.readReplicaRegions ?? [],
+    });
     return { missionId: input.missionId, region: input.region, epoch };
+  }
+
+  public registerReadReplica(missionId: string, region: string): void {
+    const current = this.readRoutes.get(missionId);
+    if (current == null) {
+      throwMissionError("mission.home_region_missing", "Mission read replica requires a home region", { missionId, region });
+    }
+    this.readRoutes.set(missionId, {
+      ...current,
+      readReplicaRegions: [...new Set([...current.readReplicaRegions, region])],
+    });
+  }
+
+  public routeRead(input: {
+    readonly missionId: string;
+    readonly preferredRegion?: string | null;
+    readonly consistency: "strong" | "eventual";
+  }): {
+    readonly missionId: string;
+    readonly region: string;
+    readonly source: "home" | "read_replica";
+    readonly consistency: "strong" | "eventual";
+  } {
+    const route = this.readRoutes.get(input.missionId);
+    if (route == null) {
+      throwMissionError("mission.home_region_missing", "Mission read route requires a home region", { missionId: input.missionId });
+    }
+    const replica = input.consistency === "eventual" && input.preferredRegion != null
+      ? route.readReplicaRegions.find((region) => region === input.preferredRegion)
+      : undefined;
+    return {
+      missionId: input.missionId,
+      region: replica ?? route.homeRegion,
+      source: replica == null ? "home" : "read_replica",
+      consistency: input.consistency,
+    };
   }
 
   public assertWriteEpoch(missionId: string, epoch: number): void {

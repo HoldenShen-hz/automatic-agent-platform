@@ -1,6 +1,7 @@
 import {
   fetchAgents,
   fetchIncidents,
+  fetchMissions,
   fetchQueues,
   fetchWorkers,
   type RESTClient,
@@ -12,6 +13,7 @@ export const missionControlQueryKeys = {
   workers: ["workers"] as const,
   queues: ["queues"] as const,
   agents: ["agents"] as const,
+  missions: ["missions"] as const,
 };
 
 export function createIncidentsQuery(client: RESTClient) {
@@ -28,4 +30,8 @@ export function createQueuesQuery(client: RESTClient) {
 
 export function createAgentsQuery(client: RESTClient) {
   return createReadonlyQuery(missionControlQueryKeys.agents, () => fetchAgents(client));
+}
+
+export function createMissionsQuery(client: RESTClient) {
+  return createReadonlyQuery(missionControlQueryKeys.missions, () => fetchMissions(client));
 }

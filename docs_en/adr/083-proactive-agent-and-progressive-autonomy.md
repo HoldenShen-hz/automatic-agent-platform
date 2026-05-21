@@ -1,4 +1,4 @@
-# ADR-083 Proactive Agent And Progressive Autonomy
+# ADR-083: Proactive Agent And Progressive Autonomy
 
 ---
 
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 v2.7 `§41-§42` requires the platform to support proactive agents and progressive autonomy. The current repository already has:
 
@@ -29,7 +29,7 @@ v2.7 `§41-§42` requires the platform to support proactive agents and progressi
 
 But they have not yet been connected by a unified decision.
 
-## Decisions
+## Decision
 
 ### 1. Proactive Agent Can Only Work Through Declarative TriggerDefinition
 
@@ -46,16 +46,14 @@ Proactive behavior must go through explicit trigger declaration, minimum include
 
 Implementation layer must explicitly distinguish `InteractionAutonomyLevel` and `UnifiedRuntimeMode`: the former determines suggestion/human-review/automatic interaction boundaries, the latter determines runtime degradation, pause, and `incident_mode`.
 
-Autonomy uses the 6-tier naming system defined in ADR-042 (aligned with ADR-042):
+Autonomy uses the 4-level naming system defined in ADR-042 (aligned with ADR-042):
 
 | Level | Name | Description |
 |-------|------|-------------|
-| **0** | `supervised` | Full human supervision |
-| **1** | `assisted` | Assisted suggestions |
-| **2** | `partial_auto` | Partial automation |
-| **3** | `high_auto` | High automation |
-| **4** | `full_auto` | Full automation (requires DomainRiskSpec approval in high-risk domains) |
-| **5** | `autonomous` | Autonomous decision-making (only available in high-maturity domains) |
+| **L1** | `suggestion` | Only generates suggestions |
+| **L2** | `supervised` | Execute after human confirmation |
+| **L3** | `semi_auto` | Low-risk auto-execute, high-risk escalate |
+| **L4** | `full_auto` | Auto-execute within explicit governance boundaries |
 
 Constraints:
 - High-risk domains cannot enter `full_auto` by default unless explicit `DomainRiskSpec` / `DomainRiskProfile` approval exists with human accountability boundaries
@@ -85,4 +83,4 @@ Each autonomy level change must record:
 
 ## v4.3 ADR Remediation
 
-- R3-55: This ADR originally defined a third set of autonomy naming system, incompatible with ADR-042's 6-tier system. The root cause was that the proactive agent ADR was drafted independently without alignment with the progressive autonomy ADR. Fix: The main text now explicitly declares adoption of ADR-042's 6-tier naming system (0-5), keeping them consistent.
+- R3-55: This ADR originally defined a third set of autonomy naming system, incompatible with ADR-042's system. Root cause was that the proactive agent ADR was drafted independently without alignment with the progressive autonomy ADR. Fix: The text now explicitly declares adoption of ADR-042's `suggestion / supervised / semi_auto / full_auto` four-level system, keeping them consistent.

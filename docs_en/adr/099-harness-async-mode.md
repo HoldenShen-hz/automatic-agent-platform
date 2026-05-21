@@ -1,8 +1,8 @@
-# ADR-099 Harness Async Mode
+# ADR-099: Harness Async Mode
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Receive async queue, sleep lease, and external events
 - **Assess**: Determine if execution can continue
@@ -34,4 +34,4 @@ Long-running tasks, external waits, and human approvals all require Harness to h
 
 ## v4.3 ADR Remediation
 
-- A-31: This ADR originally used `phase 8c` as delivery gate terminology; the root cause was that the async mode ADR followed historical phase scheduling and did not switch to the main architecture's unified ring terminology. Fix: The body now uses `Ring 2 async-readiness`.
+- A-31: This ADR originally used `phase 8c` as delivery gate terminology. Root cause was that the async mode ADR followed historical phase scheduling and did not switch to the main architecture's unified ring terminology. Fix: The text now changed to `Ring 2 async-readiness`.

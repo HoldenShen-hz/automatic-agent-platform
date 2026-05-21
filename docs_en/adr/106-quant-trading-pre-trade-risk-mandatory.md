@@ -1,8 +1,8 @@
-# ADR-106 Quant Trading Pre Trade Risk Mandatory
+# ADR-106: Quant Trading Pre Trade Risk Mandatory
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Read orders, positions, and risk thresholds
 - **Assess**: Perform pre-trade risk assessment

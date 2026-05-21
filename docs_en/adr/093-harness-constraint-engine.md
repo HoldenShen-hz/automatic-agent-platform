@@ -1,4 +1,4 @@
-# ADR-093 Harness Constraint Engine
+# ADR-093: Harness Constraint Engine
 
 ---
 
@@ -18,7 +18,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Background
+## Context
 
 If Harness does not have a unified constraint engine, risk, budget, and output governance will be scattered among callers.
 
@@ -36,4 +36,4 @@ If Harness does not have a unified constraint engine, risk, budget, and output g
 
 ## v4.3 ADR Remediation
 
-- A-37: This ADR originally reduced `ConstraintPack` to `risk_policy + output_policy`. The root cause was that when the constraint engine ADR was drafted, it only covered risk and output governance, without including budget, sandbox, and approval requirements into the unified constraint pack. Fix: The main text now adds `budget_envelope / sandbox_requirement / approval_requirement` to the minimum set.
+- A-37: This ADR originally reduced `ConstraintPack` to `risk_policy + output_policy`. Root cause was that when the constraint engine ADR was drafted, it only covered risk and output governance, without including budget, sandbox, and approval requirements into the unified constraint pack. Fix: The text now adds `budget_envelope / sandbox_requirement / approval_requirement` to the minimum set.

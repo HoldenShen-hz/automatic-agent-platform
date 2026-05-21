@@ -1,4 +1,4 @@
-# ADR-063 Agent Behavior Drift Detection Architecture
+# ADR-063: Agent Behavior Drift Detection Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -60,7 +60,7 @@ Advantages:
 - Prevents quality degradation
 - Automated response
 
-Costs:
+Disadvantages:
 
 - False positives may disrupt business
 - Detection algorithm requires tuning

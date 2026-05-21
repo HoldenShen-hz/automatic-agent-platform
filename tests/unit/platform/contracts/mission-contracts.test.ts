@@ -1,10 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   DEFAULT_RUNTIME_CONSTRAINT_SET,
+  ExitCriterionExpressionSchema,
   MissionErrorEnvelopeSchema,
+  MissionOperatingModelRegistryPatchSchema,
+  MissionPlaybookSchema,
   MissionRecordSchema,
+  MissionStageInstanceSchema,
   RuntimeConstraintSetSchema,
   buildMissionEtag,
   computeMissionSnapshotHash,
@@ -127,4 +132,73 @@ test("MissionErrorEnvelope requires trace and correlation identifiers", () => {
       traceId: "trace_001",
     }),
   );
+});
+
+test("Mission playbook contracts keep stage governance separate from runtime nodes", () => {
+  const playbook = MissionPlaybookSchema.parse({
+    playbookId: "playbook_research",
+    version: "1.0.0",
+    missionType: "formal",
+    title: "Research release",
+    owner: "mission-ops",
+    status: "active",
+    entryStageId: "review",
+    stages: [{
+      stageId: "review",
+      title: "Review",
+      exitCriteria: [{
+        criterionId: "review.evidence",
+        name: "Evidence exists",
+        severity: "P0",
+        gateId: "GATE-EVIDENCE-001",
+        expression: { type: "evidence_exists", evidenceKind: "claim_evidence" },
+        requiredEvidenceRefs: ["evidence:snapshot"],
+        requiredMetricRefs: [],
+      }],
+      failureModeRefs: ["failure:unsupported_claim"],
+      defaultSkillRefs: [],
+      evidenceRequirements: ["claim_evidence"],
+    }],
+    edges: [],
+    signatureRef: "sig:research",
+    rollbackRef: "rollback:research",
+    compatibilityRef: "compat:research",
+    createdAt: "2026-05-21T00:00:00.000Z",
+    updatedAt: "2026-05-21T00:00:00.000Z",
+  });
+  const stage = MissionStageInstanceSchema.parse({
+    stageInstanceId: "mstage_001",
+    missionId: "mis_001",
+    playbookId: playbook.playbookId,
+    playbookVersion: playbook.version,
+    stageId: "review",
+    cycleIndex: 0,
+    status: "active",
+    version: 0,
+    enteredAt: "2026-05-21T00:00:00.000Z",
+  });
+
+  assert.equal(playbook.stages[0]?.stageId, "review");
+  assert.equal(stage.stageId, "review");
+  assert.equal("nodeId" in stage, false);
+  assert.throws(() =>
+    ExitCriterionExpressionSchema.parse({
+      type: "metric_threshold",
+      metric: "aa.mission.outcome.quality_score",
+      operator: ">=",
+      value: 0.8,
+      window: { type: "stage", stageInstanceId: "mstage_001" },
+    }),
+  );
+});
+
+test("Mission operating model validation registry patch stays machine parseable", () => {
+  const patch = MissionOperatingModelRegistryPatchSchema.parse(JSON.parse(readFileSync(
+    new URL("../../../../config/validation/mission-operating-model-registry.json", import.meta.url),
+    "utf8",
+  )));
+
+  assert.equal(patch.ciJobs.some((job) => job.jobId === "playbook-validate"), true);
+  assert.equal(patch.gates.some((gate) => gate.gateId === "GATE-WORKFLOW-RECORDING-003"), true);
+  assert.equal(patch.events.includes("platform.mission.outcome_measured"), true);
 });

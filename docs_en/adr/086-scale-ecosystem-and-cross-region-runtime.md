@@ -1,4 +1,4 @@
-# ADR-086 Scale Ecosystem And Cross Region Runtime
+# ADR-086: Scale Ecosystem And Cross Region Runtime
 
 ---
 
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 v2.7 `§52-§57` requires the platform to enter the scale operation and open ecosystem stage. The current repository already has:
 
@@ -33,7 +33,7 @@ v2.7 `§52-§57` requires the platform to enter the scale operation and open eco
 
 But the maturity of these directories is visibly inconsistent.
 
-## Decisions
+## Decision
 
 ### 1. Multi-Region Routing Must Simultaneously Be Constrained by Data Residency and Execution Proximity
 

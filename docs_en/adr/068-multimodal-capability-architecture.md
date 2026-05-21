@@ -1,4 +1,4 @@
-# ADR-068 Multimodal Capability Architecture
+# ADR-068: Multimodal Capability Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -68,7 +68,7 @@ Advantages:
 - Improves user experience
 - Supports more scenarios
 
-Costs:
+Disadvantages:
 
 - Provider integration complex
 - Multimodal understanding cost high

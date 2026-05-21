@@ -1,8 +1,8 @@
-# ADR-103 Four Phase Domain Onboarding
+# ADR-103: Four Phase Domain Onboarding
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Collect domain modeling and dependency input
 - **Assess**: Check readiness and certification requirements

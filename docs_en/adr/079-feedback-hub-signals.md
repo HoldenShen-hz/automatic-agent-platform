@@ -1,16 +1,16 @@
-# ADR-079 Feedback Hub and Seven Signal Preprocessing Types
+# ADR-079: Feedback Hub and Seven Signal Preprocessing Types
 
 - Status: Accepted
 - Decision Date: 2026-04-17
 - Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
 
-## Background
+## Context
 
 The `DualChannelStepOutput` from the OAPEFLIR Execute stage needs to be collected by the Feedback Hub, processed, and converted into LearningSignal. The Feedback Hub is the critical bridge between the main chain (O→A→P→E) and the secondary chain (F→L→I→R).
 
 The design requires supporting 7 feedback source types, implementing signal deduplication, correlation, and filtering preprocessing, with decoupled integration to the Learn Hub via DurableEventBus.
 
-## Decisions
+## Decision
 
 ### 1. Seven Feedback Sources
 
@@ -79,7 +79,7 @@ interface Feedback {
 
 ## v4.3 ADR Remediation
 
-- A-67: This ADR originally used `executionId` as the Feedback/Signal primary chain key. The root cause was that the feedback hub was modeled under old execution semantics and the signal chain was not updated to `NodeAttemptReceipt`. Fix: The main text now anchors the signal to `harnessRunId / nodeRunId / receiptId`.
+- A-67: This ADR originally used `executionId` as the Feedback/Signal primary chain key. Root cause was that the feedback hub was modeled under old execution semantics and the signal chain was not updated to `NodeAttemptReceipt`. Fix: The text now anchors the signal to `harnessRunId / nodeRunId / receiptId`.
 
 ### 4. SignalPreprocessor
 
@@ -159,17 +159,17 @@ eventBus.subscribe('execution:completed', async (event) => {
 });
 ```
 
-## Alternatives
+## Alternative Approaches
 
-### Option A: Polling-based signal collection
+### Approach A: Polling-based signal collection
 
-Pros: Simple implementation.
-Cons: High latency, high resource consumption.
+Advantages: Simple implementation.
+Disadvantages: High latency, high resource consumption.
 
-### Option B: Event-driven + active collection (Selected)
+### Approach B: Event-driven + active collection (selected)
 
-Pros: Low latency, strong signal correlation capability.
-Cons: Requires DurableEventBus support.
+Advantages: Low latency, strong signal correlation capability.
+Disadvantages: Requires DurableEventBus support.
 
 ## Consequences
 

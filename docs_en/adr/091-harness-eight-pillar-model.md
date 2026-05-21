@@ -1,4 +1,4 @@
-# ADR-091 Harness Eight Pillar Model
+# ADR-091: Harness Eight Pillar Model
 
 ---
 
@@ -18,7 +18,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Background
+## Context
 
 `§45` requires Harness to no longer be just a thin loop of planner/generator/evaluator, but to become a formal runtime object carrying constraints, tools, memory, feedback, persistence, evaluation, HITL, and observability.
 
@@ -50,5 +50,5 @@ Each pillar must have an independent code entry, tests, and acceptance evidence;
 
 ## v4.3 ADR Remediation
 
-- A-5: This ADR historically followed the Improve/Release chain's `Rollout` terminology. The root cause was that the harness acceptance gate and release control surface naming were not timely synchronized to the main architecture's `Release` terminology. Fix: The main text now explicitly requires that improvement promotion semantics in all eight pillars uniformly use `Release`.
-- A-12: This ADR originally followed old phase acceptance and deployment expression historical context. The root cause was that when the harness eight-pillar ADR formed, it still carried old release implementation terminology. Fix: The main text now explicitly aligns the release subject to `ReleaseChannel` / `ReleaseDecisionView`, no longer using `DeploymentSlot` as the harness canonical release semantics.
+- A-5: This ADR historically followed the Improve/Release chain's `Rollout` terminology. Root cause was that the harness acceptance gate and release control surface naming were not timely synchronized to the main architecture's `Release` terminology. Fix: The text now explicitly requires that improvement promotion semantics in all eight pillars uniformly use `Release`.
+- A-12: This ADR originally followed old phase acceptance and deployment expression historical context. Root cause was that when the harness eight-pillar ADR formed, it still carried old release implementation terminology. Fix: The text now explicitly aligns the release subject to `ReleaseChannel` / `ReleaseDecisionView`, no longer using `DeploymentSlot` as the harness canonical release semantics.

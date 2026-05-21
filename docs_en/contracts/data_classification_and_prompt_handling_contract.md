@@ -2,9 +2,9 @@
 
 ---
 
-## OAPEFLIR Correlation
+## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,7 +21,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 This contract defines data classification and whether data of different levels is permitted to enter prompts, logs, memory, and cross-worker transmission.
 
-Related Documents:
+Related documents:
 
 - `sandbox_and_auth_contract.md`
 - `tool_output_sanitization_contract.md`
@@ -109,7 +109,7 @@ Not all text should be given directly to the model; data classification and prom
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-29: This document previously only defined "can a certain level enter prompt/log/memory" static tables, without defining taint propagation hard rules between input and output. Root cause: early data classification documentation focused on access matrices and omitted downgrade proof chains for derived objects such as summaries, tool results, and memory candidates. Fix: The main text now adds `DataTaintPropagationRecord` and explicitly states "output `data_class` must not be lower than the highest input level unless sanitization proof + redaction report + reviewer/policy evidence are all available".
 

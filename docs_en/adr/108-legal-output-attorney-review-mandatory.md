@@ -1,8 +1,8 @@
-# ADR-108 Legal Output Attorney Review Mandatory
+# ADR-108: Legal Output Attorney Review Mandatory
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Collect legal issues, evidence, and draft output
 - **Assess**: Determine if attorney review threshold is met

@@ -161,6 +161,37 @@ export interface DashboardSnapshotDTO {
   readonly uptimePercent?: number | null;
 }
 
+export interface MissionDTO {
+  readonly missionId: string;
+  readonly tenantId: string;
+  readonly type: "ad_hoc" | "formal" | "program" | "incident" | "scheduled";
+  readonly status: "draft" | "active" | "paused" | "frozen" | "completed" | "archived";
+  readonly priority: "low" | "normal" | "high" | "critical";
+  readonly title: string;
+  readonly objective: string;
+  readonly successCriteria: readonly string[];
+  readonly domainId: string | null;
+  readonly ownerPrincipalId: string;
+  readonly budgetEnvelopeRef: string | null;
+  readonly updatedAt: string;
+}
+
+export interface MissionResourceDTO {
+  readonly id: string;
+  readonly missionId: string;
+  readonly type: "task" | "run" | "evidence";
+  readonly status: string;
+  readonly title: string;
+  readonly ref: string;
+  readonly updatedAt: string;
+}
+
+export interface MissionBudgetSummaryDTO {
+  readonly missionId: string;
+  readonly budgetEnvelopeRef: string | null;
+  readonly status: "configured" | "not_configured";
+}
+
 export interface WorkflowStepDTO {
   readonly id: string;
   readonly title: string;

@@ -1,4 +1,4 @@
-# ADR-067 Capacity Planning and Cost Prediction Engine
+# ADR-067: Capacity Planning and Cost Prediction Engine
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -6,6 +6,11 @@
 ## Context
 
 The platform needs to predict capacity requirements and cost trends, supporting proactive scaling decisions.
+
+Current scope:
+
+- Ring 1 only requires stable collection of capacity signals and formation of auditable prediction inputs.
+- Ring 3 enters cross-region, cross-ecosystem automated capacity planning and strategy coordination.
 
 ## Decision
 
@@ -27,6 +32,24 @@ interface CapacityForecast {
   predictions: MetricPrediction[];
   confidence: number;
   recommendations: Recommendation[];
+}
+
+interface CapacityScenario {
+  scenario_id: string;
+  assumptions: string[];
+  forecast: CapacityForecast;
+}
+
+interface CapacityAlert {
+  alert_id: string;
+  forecast_ref: string;
+  severity: "warning" | "critical";
+}
+
+interface CapacityRecommendation {
+  recommendation_id: string;
+  scenario_ref: string;
+  action: "scale_up" | "scale_down" | "rebalance" | "defer";
 }
 
 interface MetricPrediction {
@@ -79,7 +102,7 @@ Advantages:
 - Cost prediction supports budget planning
 - Optimization recommendations reduce cost
 
-Costs:
+Disadvantages:
 
 - Prediction models require data accumulation
 - Prediction accuracy depends on model quality

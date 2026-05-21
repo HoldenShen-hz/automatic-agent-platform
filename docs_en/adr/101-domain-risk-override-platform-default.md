@@ -1,8 +1,8 @@
-# ADR-101 Domain Risk Override Over Platform Default
+# ADR-101: Domain Risk Override Over Platform Default
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Platform default risk matrix and domain-specialized risk input
 - **Assess**: Determine if domain override is allowed
@@ -27,6 +27,7 @@ Platform default risk matrix is insufficient to cover high-sensitivity domains s
 - Domain risk profile takes precedence over platform default risk matrix
 - Any override must leave an audit reason
 - Without explicit domain risk profile, high-risk automation is prohibited
+- `advisory_only`, `human_accountable`, `deterministic_hot_path_only` domains are prohibited from bypassing human accountability boundaries by default
 
 ## Consequences
 

@@ -80,8 +80,6 @@ Rules:
 - integration: evidence store -> report pipeline
 - contract: reports with missing evidence must not be marked as complete
 
-
-
 ## v4.3 Architecture Remediation
 
 The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.

@@ -1,8 +1,8 @@
-# ADR-102 Domain Recipe As Onboarding Accelerator
+# ADR-102: Domain Recipe As Onboarding Accelerator
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
 - **Observe**: Collect domain patterns and onboarding requirements
 - **Assess**: Select the most suitable recipe archetype

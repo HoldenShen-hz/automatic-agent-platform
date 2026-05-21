@@ -1,4 +1,4 @@
-# ADR-075 Six-Level Controlled Rollout and Rollout State Machine
+# ADR-075: Six-Level Controlled Rollout and Rollout State Machine
 
 - Status: Accepted
 - Decision Date: 2026-04-17
@@ -89,6 +89,7 @@ interface ImprovementCandidate {
 type ImprovementCandidateStatus =
   | 'candidate_created'
   | 'under_review'
+  | 'quarantined'
   | 'approved'
   | 'rejected'
   | 'evaluation_enabled'
@@ -107,14 +108,16 @@ type ImprovementCandidateStatus =
                    Manual Rejection
 candidate_created ──→ rejected
       ↑
-      │ Auto-evaluation triggered
+      │ Auto-evaluation triggered / quarantine released
       │
 under_review ──→ approved
+      │
+      └────────→ quarantined
       ↑                  │
       │                  ↓
       │            evaluation_enabled (L1)
       │                  │
-      │                  ↓ (metrics meet threshold)
+      │                  ↓ (metrics met)
       │              canary_5 (L2)
       │                  │
       │                  ↓ (sustained N minutes without rollback)
@@ -135,6 +138,7 @@ auto_rollback → rolled_back
 
 Constraints:
 - `candidate_created` is the initial state; `rejected` / `rolled_back` are terminal states
+- `quarantined` indicates the candidate is temporarily frozen due to guardrail, evidence gap, or regression risk, and cannot enter rollout levels until released
 - After `auto_rollback` is triggered, transition is only allowed to `rolled_back`, direct recovery is not permitted
 - After `released`, if serious issues are discovered, the change board process must be followed to rollback
 ```
@@ -158,17 +162,17 @@ interface RolloutScheduler {
 }
 ```
 
-## Alternatives
+## Alternative Approaches
 
-### Option A: Off/Suggest/Shadow Only (Ring 1 Simplified)
+### Approach A: Off/Suggest/Shadow Only (Ring 1 Simplified)
 
-Pros: Simple implementation, low risk.
-Cons: Cannot implement progressive rollout, limited benefits.
+Advantages: Simple implementation, low risk.
+Disadvantages: Cannot implement progressive rollout, limited benefits.
 
-### Option B: Six-Level Controlled Rollout (Selected)
+### Approach B: Six-Level Controlled Rollout (selected)
 
-Pros: Complete progressive rollout capability, supports automatic rollback.
-Cons: Higher implementation complexity (~500 lines of code + monitoring integration).
+Advantages: Complete progressive rollout capability, supports automatic rollback.
+Disadvantages: Higher implementation complexity (~500 lines of code + monitoring integration).
 
 ## Consequences
 
@@ -195,5 +199,5 @@ Cons: Higher implementation complexity (~500 lines of code + monitoring integrat
 
 ## v4.3 ADR Remediation
 
-- A-35: This ADR originally named the `L1` level directly as `shadow` and used `shadow_enabled` as the rollout status simultaneously. The root cause was that release level and rollout status, two separate dimensions, were mixed into one naming system, continuing the historical shadow terminology from ADR-018. Fix: The main text now changes `L1` to `evaluate_0` and status to `evaluation_enabled`, thereby cleanly separating level and status, avoiding level numbering conflicts with old shadow semantics.
-- R3-63: This ADR originally defined `ImprovementCandidateStatus` as 12 states. The root cause was that the state machine design did not converge to a canonical simplified model. Fix: The main text now simplifies the state machine to a 4-state core (candidate_created/under_review/released/rolled_back), with other intermediate states classified under the rollout level dimension.
+- A-35: This ADR originally named the `L1` level directly as `shadow` and used `shadow_enabled` as the rollout status simultaneously. Root cause was that release level and rollout status, two separate dimensions, were mixed into one naming system, continuing the historical shadow terminology from ADR-018. Fix: The text now changes `L1` to `evaluate_0` and status to `evaluation_enabled`, thereby cleanly separating level and status, avoiding level numbering conflicts with old shadow semantics.
+- R3-63: This ADR originally defined `ImprovementCandidateStatus` as 12 states. Root cause was that the state machine design did not converge to a canonical simplified model. Fix: The text now simplifies the state machine to a 4-state core (candidate_created/under_review/released/rolled_back), with other intermediate states classified under the rollout level dimension.

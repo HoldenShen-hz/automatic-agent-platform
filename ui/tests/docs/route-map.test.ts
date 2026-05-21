@@ -6,6 +6,7 @@ describe("ui route map", () => {
     const routes = featureRegistry.map((feature) => feature.route.path);
     for (const requiredRoute of [
       "/mission-control/dashboard",
+      "/mission-control/missions",
       "/mission-control/tasks",
       "/mission-control/workflows",
       "/mission-control/approvals",
