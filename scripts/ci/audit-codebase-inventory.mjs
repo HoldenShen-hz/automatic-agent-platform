@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 

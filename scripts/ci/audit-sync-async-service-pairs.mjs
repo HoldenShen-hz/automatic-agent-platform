@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 

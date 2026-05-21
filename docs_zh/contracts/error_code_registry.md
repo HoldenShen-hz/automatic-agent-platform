@@ -69,6 +69,8 @@
 | `runtime.recovery_required` | `runtime` | `true` | 需要恢复流程 |
 | `runtime.stale_lock_detected` | `runtime` | `true` | 检测到过期锁或陈旧运行 |
 | `runtime.context_overflow` | `runtime` | `true` | 上下文超限需裁剪或压缩 |
+| `contract.legacy_surface_used` | `contract` | `false` | 触达仅为兼容保留的 legacy contract surface |
+| `contract.deprecated_surface_used` | `contract` | `false` | 触达已弃用 contract surface，需迁移到 canonical surface |
 | `tenant.not_found` | `tenant` | `false` | 找不到租户或工作区归属 |
 | `tenant.boundary_violation` | `tenant` | `false` | 访问跨租户边界 |
 | `tenant.workspace_mismatch` | `tenant` | `false` | workspace 与 tenant / org 归属不一致 |
@@ -81,6 +83,8 @@
 - provider 的 `5xx` 映射到 `provider.temporary_unavailable`
 - 文件锁获取冲突映射到 `tool.file_lock_conflict`
 - 文件锁等待超时映射到 `tool.file_lock_timeout`
+- 历史兼容告警 `AA_LEGACY_CONTRACT` 映射到 `contract.legacy_surface_used`
+- 历史兼容告警 `AA_DEPRECATED_CONTRACT` 映射到 `contract.deprecated_surface_used`
 
 ## 5. 补充规则
 

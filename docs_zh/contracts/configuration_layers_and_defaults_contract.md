@@ -156,7 +156,7 @@
 ### 5.2 Metadata Source 优先级
 
 - 系统内置 `bundled_snapshot`（带快照日期，如 `2026-04-05.bundled`）作为离线基线。
-- 本地 `config/providers/models.json` 存在时覆��内置快照（`local_override`）。
+- 本地 `config/providers/models.json` 存在时覆盖内置快照（`local_override`）。
 - 远端刷新为未来扩展预留（`remote_refresh`）。
 - 本地文件不存在时静默回退到内置快照，不报错。
 

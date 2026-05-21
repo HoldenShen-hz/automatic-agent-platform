@@ -199,6 +199,15 @@ export class SimpleReflectionEngine implements ReflectionEngine {
 
   private analyzeRootCause(failureMode: string, records: EvidenceRecord[]): string {
     // Simple pattern-based root cause analysis
+    const first = records[0];
+    // Check repair rounds and cost first (these are quantitative signals)
+    if (first && first.repairRounds > 1) {
+      return 'Multiple repair rounds indicate complex problem requiring better planning';
+    }
+    if (first && first.costUsd > 0.50) {
+      return 'High cost suggests inefficient approach or excessive tool usage';
+    }
+    // Then check failure mode categories
     if (failureMode.includes('type') || failureMode.includes('schema')) {
       return 'Type checking and schema validation errors suggest inconsistent interface definitions';
     }
@@ -207,13 +216,6 @@ export class SimpleReflectionEngine implements ReflectionEngine {
     }
     if (failureMode.includes('security') || failureMode.includes('forbidden')) {
       return 'Security violations suggest insufficient guardrails in tool usage';
-    }
-    const first = records[0];
-    if (first && first.repairRounds > 1) {
-      return 'Multiple repair rounds indicate complex problem requiring better planning';
-    }
-    if (first && first.costUsd > 0.50) {
-      return 'High cost suggests inefficient approach or excessive tool usage';
     }
     return 'Root cause analysis inconclusive - needs manual investigation';
   }

@@ -11,13 +11,13 @@
     }
   },
   "disambiguation": {
-    "threshold": 0.8,
+    "threshold": 0.82,
     "lowConfidenceThreshold": 0.5,
     "maxClarificationQuestions": 3,
     "enableProactiveClarification": true
   },
   "intent": {
-    "minConfidenceForAutoConfirm": 0.85,
+    "minConfidenceForAutoConfirm": 0.82,
     "fallbackIntent": "task_query"
   },
   "entityExtraction": {
@@ -25,7 +25,15 @@
     "minMessageLength": 6
   },
   "guardrails": {
-    "additionalPromptInjectionPatterns": [],
-    "additionalGenericAmbiguousPatterns": []
+    "additionalPromptInjectionPatterns": [
+      "(?i)ignore\\s+(all|any|previous|prior)\\s+instructions",
+      "(?i)reveal\\s+(system|developer)\\s+prompt",
+      "(?i)act\\s+as\\s+if\\s+guardrails\\s+are\\s+disabled"
+    ],
+    "additionalGenericAmbiguousPatterns": [
+      "(?i)^do\\s+it$",
+      "(?i)^handle\\s+this$",
+      "(?i)^same\\s+as\\s+before$"
+    ]
   }
 }

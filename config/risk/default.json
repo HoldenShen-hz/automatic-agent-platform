@@ -58,6 +58,7 @@
     "single_task": 1,
     "workflow": 2,
     "tenant": 3,
+    "organization": 4,
     "platform": 5
   },
   "historicalFailureRateThresholds": {
@@ -79,9 +80,9 @@
   },
   "riskLevelActions": {
     "low": {
-      "autoExecute": true,
+      "autoExecute": false,
       "logLevel": "info",
-      "requiresApproval": false,
+      "requiresApproval": true,
       "approvalType": "standard",
       "sideEffect": "normal",
       "evidenceLevel": "basic"

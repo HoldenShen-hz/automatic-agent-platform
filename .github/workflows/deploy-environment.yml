@@ -100,6 +100,8 @@ jobs:
     timeout-minutes: 30
     environment: ${{ inputs.environment }}
     env:
+      DEPLOY_ENV: ${{ inputs.environment }}
+      ROLLOUT_STRATEGY: ${{ inputs.rollout_strategy }}
       DEPLOYMENT_AUTH_TOKEN: ${{ inputs.deployment_secret_ref }}
       CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
       IMAGE_REGISTRY: ${{ format('{0}/{1}', vars.CONTAINER_REGISTRY_HOST != '' && vars.CONTAINER_REGISTRY_HOST || 'ghcr.io', vars.CONTAINER_REGISTRY_NAMESPACE != '' && vars.CONTAINER_REGISTRY_NAMESPACE || github.repository_owner) }}
@@ -135,40 +137,40 @@ jobs:
       - name: Set deployment namespace
         id: namespace
         run: |
-          case "${{ inputs.environment }}" in
+          case "$DEPLOY_ENV" in
             pre-prod)
-              echo "namespace=automatic-agent-preprod" >> $GITHUB_OUTPUT
+              echo "namespace=automatic-agent-preprod" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "namespace=automatic-agent-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+              echo "namespace=automatic-agent-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
       - name: Resolve rollout target
         id: rollout
         run: |
-          STRATEGY="${{ inputs.rollout_strategy }}"
+          STRATEGY="$ROLLOUT_STRATEGY"
           if [ "$STRATEGY" = "canary" ]; then
-            echo "release_name=automatic-agent-canary" >> $GITHUB_OUTPUT
-            echo "fullname_override=automatic-agent-canary" >> $GITHUB_OUTPUT
-            echo "replica_count=1" >> $GITHUB_OUTPUT
-            echo "rollout_strategy=canary" >> $GITHUB_OUTPUT
+            echo "release_name=automatic-agent-canary" >> "$GITHUB_OUTPUT"
+            echo "fullname_override=automatic-agent-canary" >> "$GITHUB_OUTPUT"
+            echo "replica_count=1" >> "$GITHUB_OUTPUT"
+            echo "rollout_strategy=canary" >> "$GITHUB_OUTPUT"
           elif [ "$STRATEGY" = "blue_green" ]; then
             CURRENT_SELECTOR=$(kubectl get svc automatic-agent -n "${{ steps.namespace.outputs.namespace }}" -o jsonpath='{.spec.selector.app\.kubernetes\.io/instance}' 2>/dev/null || echo "")
             SLOT="green"
             if [ "$CURRENT_SELECTOR" = "automatic-agent-green" ]; then
               SLOT="blue"
             fi
-            echo "release_name=automatic-agent-${SLOT}" >> $GITHUB_OUTPUT
-            echo "fullname_override=automatic-agent-${SLOT}" >> $GITHUB_OUTPUT
-            echo "replica_count=2" >> $GITHUB_OUTPUT
-            echo "rollout_strategy=blue_green" >> $GITHUB_OUTPUT
-            echo "slot=${SLOT}" >> $GITHUB_OUTPUT
+            echo "release_name=automatic-agent-${SLOT}" >> "$GITHUB_OUTPUT"
+            echo "fullname_override=automatic-agent-${SLOT}" >> "$GITHUB_OUTPUT"
+            echo "replica_count=2" >> "$GITHUB_OUTPUT"
+            echo "rollout_strategy=blue_green" >> "$GITHUB_OUTPUT"
+            echo "slot=${SLOT}" >> "$GITHUB_OUTPUT"
           else
-            echo "release_name=automatic-agent" >> $GITHUB_OUTPUT
-            echo "fullname_override=" >> $GITHUB_OUTPUT
-            echo "replica_count=1" >> $GITHUB_OUTPUT
-            echo "rollout_strategy=rolling" >> $GITHUB_OUTPUT
+            echo "release_name=automatic-agent" >> "$GITHUB_OUTPUT"
+            echo "fullname_override=" >> "$GITHUB_OUTPUT"
+            echo "replica_count=1" >> "$GITHUB_OUTPUT"
+            echo "rollout_strategy=rolling" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create namespace if not exists
@@ -181,7 +183,7 @@ jobs:
             deploy/helm/automatic-agent
             --namespace "${{ steps.namespace.outputs.namespace }}"
             --create-namespace
-            -f "deploy/helm/automatic-agent/values-${{ inputs.environment }}.yaml"
+            -f "deploy/helm/automatic-agent/values-${DEPLOY_ENV}.yaml"
             --set "image.tag=${IMAGE_TAG}"
             --set "image.registry=${IMAGE_REGISTRY}"
             --set "image.repository=${IMAGE_REPOSITORY}"
@@ -210,12 +212,12 @@ jobs:
 
       - name: Promote rollout
         run: |
-          STRATEGY="${{ inputs.rollout_strategy }}"
+          STRATEGY="$ROLLOUT_STRATEGY"
           NAMESPACE="${{ steps.namespace.outputs.namespace }}"
           if [ "$STRATEGY" = "canary" ]; then
             helm upgrade --install automatic-agent deploy/helm/automatic-agent \
               --namespace "$NAMESPACE" \
-              -f "deploy/helm/automatic-agent/values-${{ inputs.environment }}.yaml" \
+              -f "deploy/helm/automatic-agent/values-${DEPLOY_ENV}.yaml" \
               --set "image.tag=${IMAGE_TAG}" \
               --set "image.registry=${IMAGE_REGISTRY}" \
               --set "image.repository=${IMAGE_REPOSITORY}" \
@@ -249,8 +251,8 @@ jobs:
       - name: Record deployment info
         run: |
           echo "Deployed image: ${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}"
-          echo "Environment: ${{ inputs.environment }}"
-          echo "Rollout strategy: ${{ inputs.rollout_strategy }}"
+          echo "Environment: ${DEPLOY_ENV}"
+          echo "Rollout strategy: ${ROLLOUT_STRATEGY}"
           echo "Release name: ${{ steps.rollout.outputs.release_name }}"
           echo "Build commit: ${{ github.sha }}"
           echo "Build timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -262,6 +264,8 @@ jobs:
     timeout-minutes: 20
     environment: ${{ inputs.environment }}
     env:
+      DEPLOY_ENV: ${{ inputs.environment }}
+      ROLLOUT_STRATEGY: ${{ inputs.rollout_strategy }}
       DEPLOYMENT_AUTH_TOKEN: ${{ inputs.deployment_secret_ref }}
       CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -286,21 +290,21 @@ jobs:
       - name: Set namespace
         id: namespace
         run: |
-          case "${{ inputs.environment }}" in
+          case "$DEPLOY_ENV" in
             pre-prod)
-              echo "namespace=automatic-agent-preprod" >> $GITHUB_OUTPUT
+              echo "namespace=automatic-agent-preprod" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "namespace=automatic-agent-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+              echo "namespace=automatic-agent-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
               ;;
           esac
       - name: Rollback
         run: |
           RELEASE_NAME="automatic-agent"
-          if [ "${{ inputs.rollout_strategy }}" = "canary" ]; then
+          if [ "$ROLLOUT_STRATEGY" = "canary" ]; then
             RELEASE_NAME="automatic-agent-canary"
-          elif [ "${{ inputs.rollout_strategy }}" = "blue_green" ]; then
-            CURRENT_SELECTOR=$(kubectl get svc automatic-agent -n ${{ steps.namespace.outputs.namespace }} -o jsonpath='{.spec.selector.app\.kubernetes\.io/instance}' 2>/dev/null || echo "")
+          elif [ "$ROLLOUT_STRATEGY" = "blue_green" ]; then
+            CURRENT_SELECTOR=$(kubectl get svc automatic-agent -n "${{ steps.namespace.outputs.namespace }}" -o jsonpath='{.spec.selector.app\.kubernetes\.io/instance}' 2>/dev/null || echo "")
             RELEASE_NAME="${CURRENT_SELECTOR:-automatic-agent}"
           fi
           PREVIOUS_REVISION=$(helm history "${RELEASE_NAME}" --namespace "${{ steps.namespace.outputs.namespace }}" -o json \
@@ -310,6 +314,6 @@ jobs:
             exit 0
           fi
           helm rollback ${RELEASE_NAME} ${PREVIOUS_REVISION} \
-            --namespace ${{ steps.namespace.outputs.namespace }} \
+            --namespace "${{ steps.namespace.outputs.namespace }}" \
             --wait --timeout 5m
           echo "::warning::Deployment failed — rolled back to previous release"

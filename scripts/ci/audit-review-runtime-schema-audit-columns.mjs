@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { existsSync, readFileSync } from "node:fs";
 
 const schemaPath = "src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts";

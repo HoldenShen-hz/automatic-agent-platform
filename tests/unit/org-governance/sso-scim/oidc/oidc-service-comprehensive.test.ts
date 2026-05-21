@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OidcIdentityService, InMemoryOidcStateStore } from "../../../../src/org-governance/sso-scim/oidc/oidc-service.js";
-import type { OidcProviderConfig } from "../../../../src/org-governance/sso-scim/oidc/index.js";
+import { OidcIdentityService, InMemoryOidcStateStore } from "../../../../../src/org-governance/sso-scim/oidc/oidc-service.js";
+import type { OidcProviderConfig } from "../../../../../src/org-governance/sso-scim/oidc/index.js";
 
 function createOidcConfig(): OidcProviderConfig {
   return {
@@ -216,7 +216,7 @@ test("OidcIdentityService fetchUserInfo returns null on network error with fallb
     const userInfo = await service.fetchUserInfo("access-token");
     // In non-production with fallback, should return simulated user info
     assert.ok(userInfo !== null);
-    assert.equal(userInfo!.sub, expect.any(String));
+    assert.ok(typeof userInfo!.sub === "string" && userInfo!.sub.length > 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -253,8 +253,8 @@ test("OidcIdentityService fetchUserInfo uses configured userInfoEndpoint", async
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("OidcIdentityService exchangeCodeForTokens deletes state after use", async () => {
-  const service = new OidcIdentityService(createOidcConfig());
   const store = new InMemoryOidcStateStore();
+  const service = new OidcIdentityService(createOidcConfig(), store);
 
   const { state } = service.initiateFlow("https://app.example.com/callback");
 

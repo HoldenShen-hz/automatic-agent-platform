@@ -1,0 +1,20 @@
+{{- if .Values.monitoring.prometheusRule.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "automatic-agent.fullname" . }}
+  labels:
+    {{- include "automatic-agent.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: automatic-agent
+      rules:
+        - alert: AutomaticAgentPodUnavailable
+          expr: absent(up{job="{{ include "automatic-agent.fullname" . }}-metrics"})
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent metrics target is absent
+            description: The metrics service target has disappeared for 5 minutes.
+{{- end }}

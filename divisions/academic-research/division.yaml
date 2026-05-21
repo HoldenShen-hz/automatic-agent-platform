@@ -34,7 +34,7 @@ risk_profile:
   domainId: academic-research
   riskLevel: medium
   advisoryOnly: false
-  humanAccountable: false
+  humanAccountable: true
   deterministicHotPathOnly: false
   regulatoryClass: unregulated
 # §37: DomainEvalSpec

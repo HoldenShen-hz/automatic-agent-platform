@@ -33,6 +33,10 @@ jobs:
     name: Preflight
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      deploy_environment: ${{ steps.validate.outputs.deploy_environment }}
+      image_tag: ${{ steps.validate.outputs.image_tag }}
+      image_repository: ${{ steps.validate.outputs.image_repository }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,6 +50,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate workflow inputs
+        id: validate
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_REPOSITORY: ${{ inputs.image_repository }}
+          REGISTRY_SECRET_REF: ${{ inputs.registry_secret_ref }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_ENVIRONMENT" =~ ^(dev|test|staging|pre-prod|prod)$ ]] || {
+            echo "::error::Invalid environment"; exit 1;
+          }
+          [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || {
+            echo "::error::Invalid image_tag"; exit 1;
+          }
+          [[ "$IMAGE_REPOSITORY" =~ ^[a-z0-9]+([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*$ ]] || {
+            echo "::error::Invalid image_repository"; exit 1;
+          }
+          [[ "$REGISTRY_SECRET_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$ ]] || {
+            echo "::error::Invalid registry_secret_ref"; exit 1;
+          }
+          echo "deploy_environment=$DEPLOY_ENVIRONMENT" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "image_repository=$IMAGE_REPOSITORY" >> "$GITHUB_OUTPUT"
+
       - name: Build
         run: npm run build
 
@@ -53,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: preflight
     timeout-minutes: 30
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
+    environment: ${{ needs.preflight.outputs.deploy_environment || 'prod' }}
     env:
       REGISTRY_HOST: ${{ vars.CONTAINER_REGISTRY_HOST != '' && vars.CONTAINER_REGISTRY_HOST || 'ghcr.io' }}
       REGISTRY_NAMESPACE: ${{ vars.CONTAINER_REGISTRY_NAMESPACE != '' && vars.CONTAINER_REGISTRY_NAMESPACE || github.repository_owner }}
@@ -72,9 +101,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_REGISTRY }}/${{ inputs.image_repository }}
+          images: ${{ env.IMAGE_REGISTRY }}/${{ needs.preflight.outputs.image_repository }}
           tags: |
-            type=raw,value=${{ inputs.image_tag }}
+            type=raw,value=${{ needs.preflight.outputs.image_tag }}
             type=sha,prefix=sha-
 
       - name: Build and push
@@ -86,3 +115,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true

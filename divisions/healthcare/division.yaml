@@ -27,7 +27,7 @@ domain_descriptor:
     - guideline
     - care_pathway
   recipeArchetype: compliance
-  lifecycleState: canary
+  lifecycleState: active
 # §37: DomainRiskProfile
 risk_profile:
   profileId: healthcare.risk

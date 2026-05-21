@@ -27,7 +27,7 @@ domain_descriptor:
     - policy
     - matter
   recipeArchetype: compliance
-  lifecycleState: canary
+  lifecycleState: active
 # §37: DomainRiskProfile
 risk_profile:
   profileId: legal.risk

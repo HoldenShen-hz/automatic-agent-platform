@@ -4,6 +4,9 @@ metadata:
   name: {{ include "automatic-agent.fullname" . }}
   labels:
     {{- include "automatic-agent.labels" . | nindent 4 }}
+{{- if le (int .Values.terminationGracePeriodSeconds) (int .Values.lifecycle.preStopSleepSeconds) }}
+{{- fail "terminationGracePeriodSeconds must be greater than lifecycle.preStopSleepSeconds" }}
+{{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
@@ -22,11 +25,14 @@ spec:
         {{- include "automatic-agent.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "automatic-agent.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -41,6 +47,12 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ $resolvedImage }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: http
               containerPort: 3000
@@ -77,16 +89,20 @@ spec:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
             {{- end }}
+            - name: tmp
+              mountPath: /tmp
           lifecycle:
             preStop:
               exec:
-                command: ["sleep", "5"]
+                command: ["sleep", "{{ .Values.lifecycle.preStopSleepSeconds }}"]
       volumes:
         {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "automatic-agent.fullname" . }}-data
         {{- end }}
+        - name: tmp
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

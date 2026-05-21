@@ -25,7 +25,11 @@ check("publish environment approval", /environment:\s*\$\{\{/.test(publish), "pu
 check("publish buildx action", /docker\/build-push-action@v6/.test(publish), "publish uses Buildx build-push action");
 check("publish gha cache", /cache-from:\s*type=gha/.test(publish) && /cache-to:\s*type=gha,mode=max/.test(publish), "publish uses GitHub Actions Docker cache");
 check("publish sha tag", /type=sha,prefix=sha-/.test(publish), "publish emits sha tag");
-check("publish explicit image tag", /type=raw,value=\$\{\{ inputs\.image_tag \}\}/.test(publish), "publish uses explicit input image_tag");
+check(
+  "publish explicit image tag",
+  /type=raw,value=\$\{\{\s*(inputs\.image_tag|needs\.preflight\.outputs\.image_tag)\s*\}\}/.test(publish),
+  "publish uses an explicit validated image tag",
+);
 
 const dockerfile = read("Dockerfile");
 check("docker runtime non-root", /USER node/.test(dockerfile), "runtime container uses node user");

@@ -8,9 +8,8 @@ metadata:
 spec:
   accessModes:
     {{- toYaml .Values.persistence.accessModes | nindent 4 }}
-  {{- if .Values.persistence.storageClass }}
-  storageClassName: {{ .Values.persistence.storageClass }}
-  {{- end }}
+  storageClassName: {{ .Values.persistence.storageClass | quote }}
+  volumeMode: {{ .Values.persistence.volumeMode | quote }}
   resources:
     requests:
       storage: {{ .Values.persistence.size }}

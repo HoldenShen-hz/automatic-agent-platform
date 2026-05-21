@@ -13,7 +13,7 @@ import {
   buildSamlAudience,
   SAML_SIGNATURE_ALGORITHMS,
   type SamlProviderConfig,
-} from "../../../../src/org-governance/sso-scim/saml/index.js";
+} from "../../../../../src/org-governance/sso-scim/saml/index.js";
 
 function createValidProvider(): SamlProviderConfig {
   return {
@@ -247,6 +247,8 @@ test("SamlProviderConfig type correctly infers from schema", () => {
     entryPoint: "https://idp.example.com/saml",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
+    allowIdpInitiated: false,
   };
 
   assert.equal(config.providerId, "typed-idp");

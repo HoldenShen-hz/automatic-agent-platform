@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { existsSync, readFileSync } from "node:fs";
 
 const planPath = "docs_zh/operations/dependency-upgrade-plan.md";

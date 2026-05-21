@@ -8,7 +8,7 @@ import test from "node:test";
 import type { RolloutRecord } from "../../../../src/ops-maturity/drift-detection/rollout-manager.js";
 import {
   InMemoryRolloutRepository,
-} from "../../../../src/ops-maturity/drift-detection/rollout-repository.js";
+} from "../../../../src/ops-maturity/drift-detection/learning/rollout-repository.js";
 
 function createTestRecord(proposalId: string = "prop_1"): RolloutRecord {
   return {

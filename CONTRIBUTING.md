@@ -60,9 +60,9 @@ Key environment variables:
    - Run `npm test` to ensure tests pass
    - Run `npm run lint` to check code style
 
-3. **Commit** using clear, descriptive messages:
+3. **Commit** using short imperative subjects:
    ```bash
-   git commit -m "feat: add new tool registration API"
+   git commit -m "Add new tool registration API"
    ```
 
 4. **Push** and create a pull request:
@@ -102,14 +102,12 @@ Key environment variables:
 
 ## Commit Message Convention
 
-Format: `<type>(<scope>): <description>`
-
-Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+Prefer short imperative subjects that describe the behavioral change directly.
 
 Examples:
-- `feat(core): add Phase 1B DAG planning`
-- `fix(security): patch timing attack vulnerability in API key comparison`
-- `docs(api): update http-api-server documentation`
+- `Add Phase 1B DAG planning`
+- `Patch API key timing comparison`
+- `Update HTTP API server documentation`
 
 ## Useful Commands
 

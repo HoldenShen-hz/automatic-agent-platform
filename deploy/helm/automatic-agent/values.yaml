@@ -13,11 +13,17 @@ imagePullSecrets: []
 serviceAccount:
   create: true
   name: ""  # Defaults to release name
+  automountServiceAccountToken: false
 
 service:
   type: ClusterIP
   port: 3000
   metricsPort: 9090
+
+metricsService:
+  enabled: true
+  type: ClusterIP
+  annotations: {}
 
 rolloutStrategy: rolling
 
@@ -51,6 +57,34 @@ podDisruptionBudget:
   enabled: false
   minAvailable: 1
 
+networkPolicy:
+  enabled: true
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+  prometheusRule:
+    enabled: true
+
+resourceQuota:
+  enabled: true
+  pods: "10"
+  requestsCpu: "4"
+  requestsMemory: 4Gi
+  limitsCpu: "8"
+  limitsMemory: 8Gi
+
+limitRange:
+  enabled: true
+  default:
+    cpu: "1"
+    memory: 512Mi
+  defaultRequest:
+    cpu: 250m
+    memory: 256Mi
+
 env:
   AA_API_HOST: "0.0.0.0"
   AA_API_PORT: "3000"
@@ -62,6 +96,7 @@ env:
   AA_OTEL_SERVICE_NAME: "automatic-agent"
 
 secrets:
+  allowInlineSecrets: false
   AA_API_JWT_SECRET: ""
   ANTHROPIC_API_KEY: ""
   OPENAI_API_KEY: ""
@@ -90,6 +125,7 @@ persistence:
     - ReadWriteOnce
   size: 10Gi
   mountPath: /app/data
+  volumeMode: Filesystem
 
 livenessProbe:
   enabled: true
@@ -121,6 +157,9 @@ startupProbe:
   failureThreshold: 30
 
 terminationGracePeriodSeconds: 30
+
+lifecycle:
+  preStopSleepSeconds: 5
 
 nodeSelector: {}
 

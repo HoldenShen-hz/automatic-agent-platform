@@ -4,7 +4,7 @@
   "allowDestructiveActions": false,
   "remoteWorkerRegistration": {
     "challengeTtlMs": 300000,
-    "allowedCapabilities": ["edit", "mcp"],
+    "allowedCapabilities": ["mcp"],
     "mcpPolicy": {
       "allowNetworkEgress": false,
       "allowedDomains": [],

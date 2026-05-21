@@ -62,20 +62,20 @@
 | `release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
 | `stream.chunk_emitted` | `tier3` | gateway streaming bridge | UI / channel client | 否 | 否 |
 | `dispatch:ticket_created` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
-| `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | ��议 |
+| `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
 | `dispatch:decision_recorded` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
 | `dispatch:execution_preempted` | `tier2` | execution priority preemption service | inspect_projection | 否 | 否 |
 | `dispatch:ticket_reconciled` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
 | `dispatch:ticket_requeued` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
 | `dispatch:ticket_rebuilt` | `tier2` | execution DB queue disconnect repair service | inspect_projection | 否 | 否 |
-| `worker:claim_accepted` | `tier2` | execution worker handshake service | inspect_projection | 否 | ��议 |
+| `worker:claim_accepted` | `tier2` | execution worker handshake service | inspect_projection | 否 | 建议 |
 | `worker:claim_rejected` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |
 | `worker:heartbeat_recorded` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |
 | `worker:writeback_recorded` | `tier2` | execution worker writeback service | inspect_projection | 否 | 建议 |
 | `worker:writeback_rejected` | `tier2` | execution worker writeback service | inspect_projection | 否 | 否 |
 | `worker:lease_released_after_writeback` | `tier2` | execution worker writeback service | inspect_projection | 否 | 否 |
 | `takeover:session_opened` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
-| `takeover:action_applied` | `tier2` | human takeover service | inspect_projection | 否 | ��议 |
+| `takeover:action_applied` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
 | `takeover:acknowledged` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
 | `takeover:completed` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
 | `takeover:timeout` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
@@ -84,18 +84,18 @@
 | `takeover:request_enqueued` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
 | `takeover:request_processed` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
 | `takeover:ack_expired` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
-| `recovery:repair_applied` | `tier2` | runtime repair service | inspect_projection | 否 | 建��� |
-| `recovery:decision_recorded` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建�� |
+| `recovery:repair_applied` | `tier2` | runtime repair service | inspect_projection | 否 | 建议 |
+| `recovery:decision_recorded` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建议 |
 | `recovery:dead_lettered` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建议 |
 | `recovery:cancelled` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 否 |
 | `skill:execution_started` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
-| `skill:cache_miss` | `tier2` | skill execution service | inspect_projection | 否 | �� |
+| `skill:cache_miss` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:cache_hit` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:cache_stored` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:step_started` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:retry_scheduled` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:step_succeeded` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
-| `skill:step_failed` | `tier2` | skill execution service | inspect_projection | ��� | 否 |
+| `skill:step_failed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:execution_completed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 
 ## 5. 消费者规范

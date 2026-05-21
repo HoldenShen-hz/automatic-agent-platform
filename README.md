@@ -1,6 +1,6 @@
 # Automatic Agent Platform
 
-Enterprise automatic-agent platform baseline built on Node.js 20/22 + TypeScript ESM. The repository now follows the v2.7 seven-layer architecture defined in `docs_zh/architecture/00-platform-architecture.md`, with ADR, contract, source, and test coverage tracked in `docs_zh/analysis/00-architecture-coverage-matrix.md`.
+Enterprise automatic-agent platform baseline built on Node.js 20/22 + TypeScript ESM. The repository follows a seven-layer architecture documented in `docs_zh/architecture/00-platform-architecture.md` and `docs_en/architecture/00-platform-architecture.md`; inside that architecture, the runtime implementation is organized around five execution planes under `src/platform/five-plane-*`.
 
 ## Quick Start
 
@@ -9,6 +9,8 @@ npm ci
 npm run build
 npm test
 ```
+
+`npm test` runs the repository baseline gate (`typecheck`, repo hygiene audits, `test:raw`, coverage gate, and stable validation). Use `npm run test:unit`, `npm run test:integration`, `npm run test:golden`, or `npm run test:raw` for narrower loops.
 
 Common local commands:
 
@@ -46,7 +48,8 @@ Stable script overview:
 
 ## Documentation
 
-- `docs_zh/architecture/00-platform-architecture.md` — v2.7 architecture source
+- `docs_zh/architecture/00-platform-architecture.md` — 中文架构源文档
+- `docs_en/architecture/00-platform-architecture.md` — English architecture source
 - `docs_zh/architecture/01-code-structure.md` — code structure design
 - `docs_zh/migration/README.md` — migration rules and E2E workflow migration index
 - `docs_zh/adr/` — architectural decisions
@@ -82,7 +85,7 @@ tests/
 
 ## Current Notes
 
-- `src/core/runtime/` is retained only as a compatibility shim layer; canonical orchestration/runtime code lives under `src/platform/five-plane-execution/` and `src/platform/five-plane-orchestration/`.
+- `src/core/runtime/` remains as a compatibility surface for legacy imports; primary runtime changes should land in the five-plane modules unless a compatibility export is intentionally required.
 - Root docs, ADR, contracts, and review matrices are expected to stay consistent. If a boundary changes, update the matching contract and tests in the same change.
 
 ## License

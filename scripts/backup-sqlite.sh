@@ -20,6 +20,7 @@ set -euo pipefail
 DB_PATH="${AA_DB_PATH:-data/sqlite/automatic-agent.db}"
 BACKUP_DIR="${BACKUP_DIR:-backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
+LOCK_DIR="${BACKUP_DIR}/.backup_lock.d"
 
 mkdir -p "$(dirname "$DB_PATH")"
 DB_PATH="$(cd "$(dirname "$DB_PATH")" && pwd)/$(basename "$DB_PATH")"
@@ -27,30 +28,22 @@ DB_PATH="$(cd "$(dirname "$DB_PATH")" && pwd)/$(basename "$DB_PATH")"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_PATH="${BACKUP_DIR}/backup_${TIMESTAMP}.db"
 ENCRYPTED_BACKUP_PATH="${BACKUP_PATH}.enc"
-PID_FILE="${BACKUP_DIR}/.backup_lock"
 
 # Ensure backup directory exists
 mkdir -p "$BACKUP_DIR"
 
-# Safety: refuse to run if a backup is already in progress
-if [ -f "$PID_FILE" ]; then
-  PID=$(cat "$PID_FILE" 2>/dev/null || echo "")
-  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    echo "ERROR: Backup already in progress (PID $PID). refusing to start." >&2
-    exit 1
-  else
-    echo "WARNING: Stale lock file found. Removing." >&2
-    rm -f "$PID_FILE"
-  fi
+# Safety: refuse to run if a backup is already in progress.
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  echo "ERROR: Backup already in progress. refusing to start." >&2
+  exit 1
 fi
-
-# Record our PID
-echo $$ > "$PID_FILE"
-trap 'rm -f "$PID_FILE"' EXIT
+echo $$ > "${LOCK_DIR}/pid"
+trap 'rm -rf "$LOCK_DIR"' EXIT
 
 # SQLite online backup (WAL-safe — does not require db lock)
 echo "Starting backup: $DB_PATH -> $BACKUP_PATH"
-sqlite3 "$DB_PATH" ".backup '$BACKUP_PATH'" || {
+ESCAPED_BACKUP_PATH=${BACKUP_PATH//\'/\'\'}
+sqlite3 "$DB_PATH" ".backup '$ESCAPED_BACKUP_PATH'" || {
   echo "ERROR: SQLite backup command failed." >&2
   rm -f "$BACKUP_PATH"
   exit 1
@@ -78,7 +71,7 @@ if [ -n "${AA_BACKUP_ENCRYPTION_KEY_FILE:-}" ]; then
     rm -f "$BACKUP_PATH"
     exit 1
   fi
-  openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+  openssl enc -aes-256-gcm -salt -pbkdf2 -iter 200000 \
     -pass "file:${AA_BACKUP_ENCRYPTION_KEY_FILE}" \
     -in "$BACKUP_PATH" \
     -out "$ENCRYPTED_BACKUP_PATH"
@@ -93,7 +86,14 @@ if [ -n "${AA_BACKUP_REMOTE_URI:-}" ]; then
   if command -v rclone >/dev/null 2>&1; then
     rclone copyto "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")"
   elif command -v aws >/dev/null 2>&1 && [[ "$AA_BACKUP_REMOTE_URI" == s3://* ]]; then
-    aws s3 cp "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")"
+    if [ -n "${AA_BACKUP_S3_KMS_KEY_ID:-}" ]; then
+      aws s3 cp "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")" \
+        --sse aws:kms \
+        --sse-kms-key-id "$AA_BACKUP_S3_KMS_KEY_ID"
+    else
+      aws s3 cp "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")" \
+        --sse AES256
+    fi
   else
     echo "ERROR: remote backup requested but neither rclone nor compatible aws s3 is available" >&2
     exit 1
@@ -103,7 +103,7 @@ fi
 
 # Clean up backups older than RETENTION_DAYS
 COUNT_BEFORE=$(find "$BACKUP_DIR" -name "backup_*.db*" -type f 2>/dev/null | wc -l | tr -d ' ')
-find "$BACKUP_DIR" -name "backup_*.db*" -mtime "+${RETENTION_DAYS}" -delete
+find "$BACKUP_DIR" -maxdepth 1 -name "backup_*.db*" -type f -mtime "+${RETENTION_DAYS}" -delete
 COUNT_AFTER=$(find "$BACKUP_DIR" -name "backup_*.db*" -type f 2>/dev/null | wc -l | tr -d ' ')
 DELETED=$((COUNT_BEFORE - COUNT_AFTER))
 if [ "$DELETED" -gt 0 ]; then
