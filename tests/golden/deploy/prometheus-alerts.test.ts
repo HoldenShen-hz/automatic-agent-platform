@@ -81,3 +81,19 @@ test("[SYS-OBS-5.2] prometheus rules have at least 3 alerting rules", () => {
 
   assert.ok(alertCount >= 3, `Expected at least 3 alert rules, found ${alertCount}`);
 });
+
+test("[SYS-OBS-5.2] prometheus alert queries use exporter metric units and current backlog names", () => {
+  const content = readFileSync(
+    "deploy/prometheus/rules/automatic-agent.yml",
+    "utf8",
+  );
+
+  assert.match(content, /http_request_duration_ms_bucket/);
+  assert.doesNotMatch(content, /http_request_duration_seconds_bucket/);
+  assert.match(content, /queued_tasks/);
+  assert.doesNotMatch(content, /\bqueue_depth\b/);
+  assert.match(content, /dead_letter_count/);
+  assert.doesNotMatch(content, /dlq_entries_total/);
+  assert.match(content, /outbox_pending/);
+  assert.doesNotMatch(content, /outbox_pending_total/);
+});

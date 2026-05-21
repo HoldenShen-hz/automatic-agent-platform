@@ -72,6 +72,7 @@ test("PrometheusMetricsExporter exports histogram and runtime gauges", () => {
   assert.match(output, /http_request_duration_ms_bucket\{le="50",method="GET",path="\/health",status="200"\} 1/);
   assert.match(output, /active_executions 2/);
   assert.match(output, /queued_tasks 7/);
+  assert.match(output, /outbox_pending 4/);
   assert.match(output, /redis_connection_errors\{component="redis-rate-limiter"\} 2/);
   assert.match(output, /queue_enqueue_failures_total\{backend="redis",mode="sync"\} 1/);
   assert.match(output, /alert_delivery_failures_total\{channel="pagerduty"\} 3/);

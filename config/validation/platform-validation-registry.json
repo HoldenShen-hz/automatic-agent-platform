@@ -1,0 +1,58 @@
+{
+  "version": "2026-05-21",
+  "sources": {
+    "eventRegistry": "src/platform/five-plane-state-evidence/events/event-registry.ts",
+    "metricMap": "config/validation/platform-monitoring-metric-map.json",
+    "runbook": "deploy/runbooks/production-alert-runbook.md"
+  },
+  "ciJobs": [
+    { "jobId": "contract-validate", "script": "contract:validate", "artifact": "contract-report.json" },
+    { "jobId": "schema-strict", "script": "schema:strict", "artifact": "schema-report.json" },
+    { "jobId": "mutation-critical", "script": "test:mutation:critical", "artifact": "mutation-report.json" },
+    { "jobId": "research-e2e", "script": "test:e2e:research", "artifact": "research-e2e-report.json" },
+    { "jobId": "hitl-e2e", "script": "test:e2e:hitl", "artifact": "hitl-e2e-report.json" },
+    { "jobId": "projection-replay", "script": "test:replay", "artifact": "projection-diff.json" },
+    { "jobId": "dr-restore", "script": "test:dr:restore", "artifact": "restore-report.json" },
+    { "jobId": "tool-registry-validate", "script": "tool-registry:validate", "artifact": "tool-registry-audit.json" },
+    { "jobId": "plugin-validate", "script": "plugin:validate", "artifact": "plugin-validation.json" },
+    { "jobId": "connector-egress", "script": "connector:egress:test", "artifact": "connector-egress.json" },
+    { "jobId": "security-scan", "script": "security:scan", "artifact": "security-report.json" },
+    { "jobId": "security-tenant", "script": "security:tenant", "artifact": "tenant-isolation.json" },
+    { "jobId": "data-governance", "script": "data-governance:validate", "artifact": "data-governance-report.json" },
+    { "jobId": "budget-invariant", "script": "budget:invariant", "artifact": "budget-report.json" },
+    { "jobId": "rsm-contract", "script": "rsm:contract", "artifact": "rsm-report.json" },
+    { "jobId": "cas-concurrency", "script": "cas:concurrency", "artifact": "cas-report.json" },
+    { "jobId": "lease-fencing", "script": "lease:fencing", "artifact": "lease-fencing-report.json" },
+    { "jobId": "sideeffect-e2e", "script": "sideeffect:e2e", "artifact": "sideeffect-report.json" },
+    { "jobId": "config-validate", "script": "config:validate", "artifact": "config-report.json" },
+    { "jobId": "config-drift", "script": "config:drift", "artifact": "config-drift-report.json" },
+    { "jobId": "model-provider", "script": "model:provider:test", "artifact": "model-provider-report.json" },
+    { "jobId": "repo-parity", "script": "repo:parity", "artifact": "repo-parity-report.json" },
+    { "jobId": "dispatch-validate", "script": "dispatch:validate", "artifact": "dispatch-report.json" },
+    { "jobId": "test-quality", "script": "test:quality", "artifact": "test-quality-report.json" },
+    { "jobId": "test-reality", "script": "test:reality", "artifact": "test-reality-report.json" },
+    { "jobId": "autonomy-validate", "script": "autonomy:validate", "artifact": "autonomy-report.json" },
+    { "jobId": "rollout-validate", "script": "rollout:validate", "artifact": "rollout-report.json" },
+    { "jobId": "docs-canonical", "script": "docs:canonical", "artifact": "docs-canonical-report.json" },
+    { "jobId": "contract-drift", "script": "contract:drift", "artifact": "contract-drift-report.json" },
+    { "jobId": "docs-registry", "script": "docs:registry", "artifact": "docs-registry-report.json" },
+    { "jobId": "observability-smoke", "script": "observability:smoke", "artifact": "observability-report.json" },
+    { "jobId": "evidence-bundle", "script": "validation:bundle", "artifact": "validation-bundle.json" },
+    { "jobId": "artifact-integrity", "script": "artifact:integrity", "artifact": "artifact-integrity-report.json" },
+    { "jobId": "gpu-capacity", "script": "gpu:capacity", "artifact": "gpu-capacity-report.json", "conditional": true }
+  ],
+  "gates": [
+    { "gateId": "GATE-STATE-001", "ciJob": "projection-replay", "runbookId": "runtime-state" },
+    { "gateId": "GATE-HITL-001", "ciJob": "hitl-e2e", "runbookId": "hitl" },
+    { "gateId": "GATE-OBS-001", "ciJob": "observability-smoke", "runbookId": "observability" },
+    { "gateId": "GATE-DR-001", "ciJob": "dr-restore", "runbookId": "restore" },
+    { "gateId": "GATE-EVIDENCE-BUNDLE-001", "ciJob": "evidence-bundle", "runbookId": "evidence" }
+  ],
+  "runbooks": [
+    { "runbookId": "runtime-state", "path": "deploy/runbooks/production-alert-runbook.md" },
+    { "runbookId": "hitl", "path": "deploy/runbooks/production-alert-runbook.md" },
+    { "runbookId": "observability", "path": "deploy/runbooks/production-alert-runbook.md" },
+    { "runbookId": "restore", "path": "deploy/runbooks/production-alert-runbook.md" },
+    { "runbookId": "evidence", "path": "deploy/runbooks/production-alert-runbook.md" }
+  ]
+}

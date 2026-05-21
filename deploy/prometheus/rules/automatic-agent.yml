@@ -13,7 +13,7 @@ groups:
 
       # High Latency - SLO: p95 latency < 1s
       - alert: AutomaticAgentHighLatency
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket[5m])) by (le)) > 1000
         for: 5m
         labels:
           severity: warning
@@ -22,7 +22,7 @@ groups:
           description: HTTP request p95 latency has exceeded 1 second for 5 minutes.
 
       - alert: AutomaticAgentCriticalLatency
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 3
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket[5m])) by (le)) > 3000
         for: 3m
         labels:
           severity: critical
@@ -32,7 +32,7 @@ groups:
 
       # Queue Depth High
       - alert: AutomaticAgentQueueDepthHigh
-        expr: sum(queue_depth{queue=~".*"}) > 100
+        expr: sum(queued_tasks) > 100
         for: 10m
         labels:
           severity: warning
@@ -41,7 +41,7 @@ groups:
           description: Task queue depth has exceeded 100 entries for 10 minutes.
 
       - alert: AutomaticAgentQueueBacklog
-        expr: sum(queue_depth{queue=~".*"}) > 500
+        expr: sum(queued_tasks) > 500
         for: 5m
         labels:
           severity: critical
@@ -51,7 +51,7 @@ groups:
 
       # Worker Pool Exhaustion
       - alert: AutomaticAgentWorkerPoolExhaustion
-        expr: sum(workers_active) / sum(workers_total) > 0.9
+        expr: sum(active_executions) / clamp_min(sum(total_workers), 1) > 0.9
         for: 5m
         labels:
           severity: warning
@@ -60,7 +60,7 @@ groups:
           description: Worker pool utilization has exceeded 90% for 5 minutes.
 
       - alert: AutomaticAgentWorkerPoolCritical
-        expr: sum(workers_active) / sum(workers_total) > 0.95
+        expr: sum(active_executions) / clamp_min(sum(total_workers), 1) > 0.95
         for: 2m
         labels:
           severity: critical
@@ -80,7 +80,7 @@ groups:
 
       # Outbox Pending Entries Growing
       - alert: AutomaticAgentOutboxGrowing
-        expr: increase(outbox_pending_total[15m]) > 100
+        expr: outbox_pending > 100
         for: 15m
         labels:
           severity: warning
@@ -89,7 +89,7 @@ groups:
           description: Outbox pending entries have increased by more than 100 in the last 15 minutes.
 
       - alert: AutomaticAgentOutboxBacklog
-        expr: outbox_pending_total > 1000
+        expr: outbox_pending > 1000
         for: 15m
         labels:
           severity: critical
@@ -99,7 +99,7 @@ groups:
 
       # DLQ Entries Accumulating
       - alert: AutomaticAgentDLQAccumulating
-        expr: increase(dlq_entries_total[30m]) > 10
+        expr: dead_letter_count > 10
         for: 15m
         labels:
           severity: warning
@@ -108,7 +108,7 @@ groups:
           description: Dead letter queue has received more than 10 entries in 30 minutes.
 
       - alert: AutomaticAgentDLQCritical
-        expr: dlq_entries_total > 100
+        expr: dead_letter_count > 100
         for: 5m
         labels:
           severity: critical
@@ -173,20 +173,10 @@ groups:
 
       # Orchestration Queue Latency
       - alert: AutomaticAgentOrchestrationLatency
-        expr: histogram_quantile(0.95, sum(rate(orchestration_step_duration_seconds_bucket[5m])) by (le)) > 2
+        expr: histogram_quantile(0.95, sum(rate(oapeflir_stage_duration_ms_bucket[5m])) by (le)) > 2000
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: automatic-agent orchestration step p95 exceeds 2s
           description: Multi-step orchestration p95 latency has exceeded 2 seconds.
-
-      # Recovery Queue Buildup
-      - alert: AutomaticAgentRecoveryQueueBuildup
-        expr: recovery_queue_depth > 50
-        for: 15m
-        labels:
-          severity: warning
-        annotations:
-          summary: automatic-agent recovery queue buildup
-          description: Recovery queue has over 50 pending executions for 15 minutes.

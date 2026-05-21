@@ -139,6 +139,11 @@ export class PrometheusMetricsExporter {
     lines.push(`${this.metricName("dead_letter_count")} ${summary.recoveryMetrics.deadLetterCount}`);
 
     lines.push("");
+    lines.push(`# HELP ${this.metricName("outbox_pending")} Current unpublished transactional outbox entries.`);
+    lines.push(`# TYPE ${this.metricName("outbox_pending")} gauge`);
+    lines.push(`${this.metricName("outbox_pending")} ${this.getOutboxPendingCount()}`);
+
+    lines.push("");
     lines.push(`# HELP ${this.metricName("provider_success_rate")} Rolling provider success rate.`);
     lines.push(`# TYPE ${this.metricName("provider_success_rate")} gauge`);
     lines.push(`${this.metricName("provider_success_rate")} ${summary.runtimeMetrics.providerSuccessRate}`);
@@ -355,6 +360,18 @@ export class PrometheusMetricsExporter {
       .prepare("SELECT COUNT(*) AS count FROM workflow_step_outputs")
       .get() as { count: number } | undefined;
     return Number(row?.count ?? 0);
+  }
+
+  private getOutboxPendingCount(): number {
+    try {
+      const row = this.db.connection
+        .prepare("SELECT COUNT(*) AS count FROM outbox WHERE status = 'pending'")
+        .get() as { count: number } | undefined;
+      return Number(row?.count ?? 0);
+    } catch {
+      // Older or reduced schemas can expose metrics before the outbox table is migrated.
+      return 0;
+    }
   }
 
   private getHttpRequestCounts(): HttpRequestMetric[] {

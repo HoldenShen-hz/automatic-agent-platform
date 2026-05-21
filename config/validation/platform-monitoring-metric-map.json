@@ -1,0 +1,57 @@
+{
+  "version": "2026-05-21",
+  "metrics": [
+    {
+      "purpose": "http-latency",
+      "exporterMetric": "http_request_duration_ms",
+      "alertMetric": "http_request_duration_ms_bucket",
+      "dashboardMetric": "http_request_duration_ms_bucket",
+      "unit": "milliseconds"
+    },
+    {
+      "purpose": "queue-depth",
+      "exporterMetric": "queued_tasks",
+      "alertMetric": "queued_tasks",
+      "dashboardMetric": "queued_tasks",
+      "unit": "tasks"
+    },
+    {
+      "purpose": "worker-capacity",
+      "exporterMetric": "total_workers",
+      "alertMetric": "total_workers",
+      "dashboardMetric": "total_workers",
+      "unit": "workers"
+    },
+    {
+      "purpose": "dead-letter-backlog",
+      "exporterMetric": "dead_letter_count",
+      "alertMetric": "dead_letter_count",
+      "dashboardMetric": "dead_letter_count",
+      "unit": "records"
+    },
+    {
+      "purpose": "outbox-backlog",
+      "exporterMetric": "outbox_pending",
+      "alertMetric": "outbox_pending",
+      "dashboardMetric": "outbox_pending",
+      "unit": "records"
+    },
+    {
+      "purpose": "orchestration-latency",
+      "exporterMetric": "oapeflir_stage_duration_ms",
+      "alertMetric": "oapeflir_stage_duration_ms_bucket",
+      "dashboardMetric": "oapeflir_stage_duration_ms",
+      "unit": "milliseconds"
+    }
+  ],
+  "forbiddenAlertMetrics": [
+    "http_request_duration_seconds_bucket",
+    "queue_depth",
+    "workers_active",
+    "workers_total",
+    "dlq_entries_total",
+    "outbox_pending_total",
+    "orchestration_step_duration_seconds_bucket",
+    "recovery_queue_depth"
+  ]
+}
