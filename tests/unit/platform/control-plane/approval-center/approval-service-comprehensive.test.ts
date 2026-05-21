@@ -227,10 +227,10 @@ describe("ApprovalService", () => {
 
   describe("ApprovalService.applyDecision", () => {
     beforeEach(() => {
-      mockRepository.getApproval.mock.reset();
-      mockRepository.updateApprovalDecisionCas.mock.reset();
-      mockRepository.insertEvent.mock.reset();
-      mockDirectiveSink.emitDecisionDirective.mock.reset();
+      mockRepository.getApproval.mock.resetCalls();
+      mockRepository.updateApprovalDecisionCas.mock.resetCalls();
+      mockRepository.insertEvent.mock.resetCalls();
+      mockDirectiveSink.emitDecisionDirective.mock.resetCalls();
     });
 
     it("should apply approved decision and emit directive", () => {

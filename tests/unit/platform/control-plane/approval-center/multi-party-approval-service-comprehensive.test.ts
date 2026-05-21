@@ -31,11 +31,11 @@ describe("MultiPartyApprovalService", () => {
   };
 
   beforeEach(() => {
-    mockRepository.insertApproval.mock.reset();
-    mockRepository.insertEvent.mock.reset();
-    mockRepository.getApproval.mock.reset();
-    mockRepository.updateApprovalDecisionCas.mock.reset();
-    mockRepository.updateApprovalRequest.mock.reset();
+    mockRepository.insertApproval.mock.resetCalls();
+    mockRepository.insertEvent.mock.resetCalls();
+    mockRepository.getApproval.mock.resetCalls();
+    mockRepository.updateApprovalDecisionCas.mock.resetCalls();
+    mockRepository.updateApprovalRequest.mock.resetCalls();
   });
 
   describe("createMultiPartyRequest", () => {

@@ -28,9 +28,9 @@ describe("ApprovalTimeoutExecutor", () => {
   };
 
   beforeEach(() => {
-    mockApprovalService.applyDecision.mock.reset();
-    mockApprovalRepo.listApprovalsByStatus.mock.reset();
-    mockApprovalRepo.getApproval.mock.reset();
+    mockApprovalService.applyDecision.mock.resetCalls();
+    mockApprovalRepo.listApprovalsByStatus.mock.resetCalls();
+    mockApprovalRepo.getApproval.mock.resetCalls();
   });
 
   describe("constructor", () => {

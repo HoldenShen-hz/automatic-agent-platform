@@ -119,7 +119,8 @@ export class CryptoShreddingService {
   private readonly auditTrail: ShredAuditTrail;
   private readonly piiFields: PiiFieldSpec[];
 
-  constructor(options?: {
+  constructor(options: {
+    dekManager: DekManager;
     auditTrail?: ShredAuditTrail;
     piiFields?: PiiFieldSpec[];
   }) {

@@ -344,7 +344,7 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
         args[2],
         args[3],
         typeof args[4] === "string" || args[4] == null ? args[4] : undefined,
-        typeof args[5] === "string" || args[5] == null ? args[5] : undefined,
+        args[4] !== undefined ? typeof args[4] === "string" || args[4] == null ? args[4] : undefined : undefined,
       ];
     }
     return null;
