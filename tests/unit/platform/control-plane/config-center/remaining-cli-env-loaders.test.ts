@@ -168,7 +168,7 @@ test("loadShadowSnapshotCliEnv parses shadow snapshot config", () => {
 
 test("loadMemoryCliEnv parses memory config", () => {
   const config = loadMemoryCliEnv({
-    AA_MEMORY_ACTION: "store",
+    AA_MEMORY_ACTION: "remember",
     AA_MEMORY_SCOPE: "task",
     AA_TASK_ID: "task-123",
     AA_MEMORY_TEXT: "some memory text",
@@ -195,9 +195,9 @@ test("buildMemoryProviderQuery builds query from memory config", () => {
 
 test("buildStructuredMemoryContentFromCliEnv returns structured content", () => {
   const config = loadMemoryCliEnv({
-    AA_MEMORY_ACTION: "store",
-    AA_WORK_CONTEXT: "working on API design",
-    AA_TOP_OF_MIND: "performance optimization",
+    AA_MEMORY_ACTION: "remember",
+    AA_MEMORY_WORK_CONTEXT: "working on API design",
+    AA_MEMORY_TOP_OF_MIND: "performance optimization",
   });
   const content = buildStructuredMemoryContentFromCliEnv(config);
   assert.ok(content != null);
@@ -207,7 +207,7 @@ test("buildStructuredMemoryContentFromCliEnv returns structured content", () => 
 
 test("buildStructuredMemoryContentFromCliEnv returns undefined when no content fields", () => {
   const config = loadMemoryCliEnv({
-    AA_MEMORY_ACTION: "store",
+    AA_MEMORY_ACTION: "remember",
   });
   const content = buildStructuredMemoryContentFromCliEnv(config);
   assert.equal(content, undefined);

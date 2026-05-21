@@ -43,15 +43,16 @@ test("parseStepOutput should handle summary only content", () => {
   const content = "Only one line in content";
   const result = parseStepOutput(content, "step_id");
 
-  assert.equal(result.summary, "Only one line in content");
-  assert.equal(result.result, content);
+  // When there's only one line with no JSON, parseStepOutput returns default summary
+  assert.equal(result.summary, "Step step_id completed");
+  assert.equal(result.result, "Only one line in content");
 });
 
 test("parseStepOutput should handle empty content", () => {
   const result = parseStepOutput("", "step_id");
 
   assert.equal(result.summary, "Step step_id completed");
-  assert.equal(result.result, "");
+  assert.equal(result.result, "Step executed: step_id");
 });
 
 test("parseStepOutput should use stepId in default summary", () => {

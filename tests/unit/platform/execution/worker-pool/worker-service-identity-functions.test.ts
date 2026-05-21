@@ -8,7 +8,7 @@ import test from "node:test";
 import {
   mergeExecutionIds,
   normalizeLeaseReason,
-} from "../../../../../src/platform/five-plane-execution/worker-pool/worker-service-identity.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-handshake-support.js";
 
 import type { WorkerHandshakeDecision } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-types.js";
 

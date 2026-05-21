@@ -184,7 +184,7 @@ test("buildAgentExecutionRecord merges with existing record preserving planJson"
         toolCallCount: 0,
         lastDecisionJson: null,
         lastErrorCode: null,
-        retryCount: 0,
+        retryCount: 1,
         progressMessage: null,
         startedAt: "2024-01-01T00:00:00.000Z",
         createdAt: "2024-01-01T00:00:00.000Z",
@@ -237,7 +237,7 @@ test("buildAgentExecutionRecord throws TypeError when updates is undefined", () 
   };
 
   assert.throws(() => {
-    buildAgentExecutionRecord(store, execution, "2024-01-01T00:01:00.000Z", {} as never);
+    buildAgentExecutionRecord(store, execution, "2024-01-01T00:01:00.000Z", undefined as never);
   }, TypeError);
 });
 

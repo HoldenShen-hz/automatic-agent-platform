@@ -121,17 +121,18 @@ describe("executeWorkerSnapshotUpsert", () => {
     await executeWorkerSnapshotUpsert(mockConnection, snapshotWithNulls);
 
     const call = mockExecute.mock.calls[0];
-    // Should use default values for null fields
-    assert.ok(call.arguments[0].includes("'local'")); // default placement
-    assert.ok(call.arguments[0].includes("'standard'")); // default isolation
+    // placement defaults to "local" when undefined (passed as $4, index 3)
+    assert.ok(call.arguments[3] === "local");
+    // isolationLevel defaults to "standard" when undefined (passed as $5, index 4)
+    assert.ok(call.arguments[4] === "standard");
   });
 
-  it("should pass all 36 parameters to execute", async () => {
+  it("should pass all 37 parameters to execute", async () => {
     await executeWorkerSnapshotUpsert(mockConnection, baseSnapshot);
 
     const call = mockExecute.mock.calls[0];
-    // Should have 36 parameters (worker_id + 34 columns + version check + version insert)
-    assert.strictEqual(call.arguments.length, 36);
+    // Should have 37 parameters (SQL string + worker_id + 34 columns + version check + version insert)
+    assert.strictEqual(call.arguments.length, 37);
   });
 
   it("should set insertedVersion to 1 when version is undefined or 0", async () => {
@@ -140,8 +141,8 @@ describe("executeWorkerSnapshotUpsert", () => {
     await executeWorkerSnapshotUpsert(mockConnection, snapshotNoVersion);
 
     const call = mockExecute.mock.calls[0];
-    // The 35th argument should be 1 (insertedVersion)
-    assert.strictEqual(call.arguments[34], 1);
+    // The 36th argument (index 35) should be 1 (insertedVersion)
+    assert.strictEqual(call.arguments[35], 1);
   });
 
   it("should use existing version when version > 0", async () => {
@@ -150,7 +151,7 @@ describe("executeWorkerSnapshotUpsert", () => {
     await executeWorkerSnapshotUpsert(mockConnection, snapshotWithVersion);
 
     const call = mockExecute.mock.calls[0];
-    // The 35th argument should be the version
-    assert.strictEqual(call.arguments[34], 3);
+    // The 36th argument (index 35) should be the version
+    assert.strictEqual(call.arguments[35], 3);
   });
 });

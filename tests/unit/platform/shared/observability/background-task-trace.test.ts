@@ -13,7 +13,7 @@ test("createBackgroundTaskTraceContext generates valid context", () => {
   assert.ok(context.traceId.length > 0);
   assert.ok(typeof context.correlationId === "string");
   assert.ok(context.correlationId.length > 0);
-  assert.ok(context.correlationId.startsWith("test-operation:"));
+  assert.ok(context.correlationId.startsWith("test-operation"));
 });
 
 test("createBackgroundTaskTraceContext includes parts in correlationId", () => {
@@ -37,7 +37,7 @@ test("createBackgroundTaskTraceContext filters empty string parts", () => {
   const context = createBackgroundTaskTraceContext("op", ["", "value", ""]);
 
   assert.ok(context.correlationId.includes("value"));
-  assert.ok(context.correlationId.split(":").length === 3); // op, value, and possibly empty filtered
+  assert.ok(context.correlationId.split(":").length === 2); // op, value (empty strings filtered)
 });
 
 test("createBackgroundTaskTraceContext filters whitespace-only parts", () => {

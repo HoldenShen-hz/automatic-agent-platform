@@ -81,7 +81,7 @@ export function buildAgentExecutionRecord(
   const executionId = legacySignature ? execution.id : executionIdOrOccurredAt;
   const occurredAt = legacySignature ? executionIdOrOccurredAt : occurredAtOrUpdates;
   const updates = legacySignature ? occurredAtOrUpdates : maybeUpdates;
-  if (!updates) {
+  if (updates === undefined || updates === null) {
     throw new TypeError("buildAgentExecutionRecord requires updates");
   }
   const existing = store.worker.getAgentExecutionRecord(executionId);
