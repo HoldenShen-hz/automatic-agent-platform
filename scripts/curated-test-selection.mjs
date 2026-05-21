@@ -9,6 +9,8 @@ const EXCLUDED_PREFIXES = [
   "tests/integration/org-governance/",
   "tests/integration/platform/control-plane/",
   "tests/integration/platform/execution/",
+  "tests/integration/platform/interface/",
+  "tests/integration/platform/orchestration/",
   "tests/integration/platform/five-plane-orchestration/",
   "tests/integration/platform/interface/channel-gateway/",
   "tests/integration/platform/interface/console-backend/",
@@ -24,8 +26,10 @@ const EXCLUDED_PREFIXES = [
   "tests/integration/testing/",
   "tests/integration/ui/",
   "tests/leaks/",
+  "tests/performance/",
   "tests/unit/interaction/",
   "tests/unit/ops-maturity/",
+  "tests/unit/platform/execution/",
   "tests/unit/org-governance/knowledge-boundary/",
   "tests/unit/platform/cost-management/",
   "tests/unit/platform/five-plane-control-plane/",
@@ -56,7 +60,17 @@ const EXCLUDED_PREFIXES = [
   "tests/unit/testing/",
   "tests/unit/helpers/",
   "tests/unit/ui/",
+  "tests/golden/",
 ];
+
+const INCLUDED_PREFIXES = [
+  "tests/unit/platform/state-evidence/truth/sqlite/repositories/",
+];
+
+const INCLUDED_FILES = new Set([
+  "tests/integration/platform/interface/api/mission-routes.test.ts",
+  "tests/integration/platform/interface/api/mission-task-binding.test.ts",
+]);
 
 const EXCLUDED_FILES = new Set([
   "tests/e2e/execution-ticket-lifecycle.test.ts",
@@ -68,6 +82,7 @@ const EXCLUDED_FILES = new Set([
   "tests/integration/platform/interface/console-backend.test.ts",
   "tests/integration/platform/interface/scheduler.test.ts",
   "tests/integration/sdk/admin-sdk-integration.test.ts",
+  "tests/integration/sdk/client-sdk-integration-extended.test.ts",
   "tests/integration/sdk/cli/billing-cli.test.ts",
   "tests/integration/sdk/migrate-sqlite-to-pg-integration-2278-2279.test.ts",
   "tests/integration/cross-plane-event-propagation.test.ts",
@@ -87,11 +102,14 @@ const EXCLUDED_FILES = new Set([
   "tests/unit/scale-ecosystem/pack-security-service.test.ts",
   "tests/unit/scale-ops-runtime-catalog.test.ts",
   "tests/unit/sdk/admin-sdk-e2e.test.ts",
+  "tests/unit/sdk/cli/dlq-manager-operations-2282-2283.test.ts",
   "tests/unit/sdk/cli/model-routing.test.ts",
   "tests/unit/sdk/cli/shadow-snapshot.test.ts",
   "tests/unit/sdk/pack-sdk/pack-lifecycle-edge-cases.test.ts",
   "tests/unit/sdk/pack-sdk/pack-test-local-service-edge-cases.test.ts",
   "tests/unit/docs/adr/adr-018-superseded-history.test.ts",
+  "tests/unit/platform/orchestration/escalation/escalation-state-machine.test.ts",
+  "tests/unit/platform/orchestration/harness/replay-worker.test.ts",
   "tests/unit/scripts/coverage-lib.test.ts",
 ]);
 
@@ -126,6 +144,12 @@ function normalizeRelativeTestPath(filePath) {
 
 export function shouldIncludeCuratedTest(relativePath) {
   const normalizedPath = normalizeRelativeTestPath(relativePath);
+  if (INCLUDED_FILES.has(normalizedPath)) {
+    return true;
+  }
+  if (INCLUDED_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))) {
+    return true;
+  }
   if (EXCLUDED_FILES.has(normalizedPath)) {
     return false;
   }

@@ -41,12 +41,12 @@ function emitCompiledTestsForCoverage() {
     throw new Error("No curated source tests matched for coverage compilation");
   }
 
-  const coverageTsconfigPath = path.join(process.cwd(), ".cache", "tsconfig.coverage-curated.json");
+  const coverageTsconfigPath = path.join(process.cwd(), "tsconfig.coverage-curated.json");
   writeFileSync(
     coverageTsconfigPath,
     `${JSON.stringify(
       {
-        extends: "../tsconfig.build-test.json",
+        extends: "./tsconfig.build-test.json",
         compilerOptions: {
           incremental: false,
           noEmitOnError: false,
