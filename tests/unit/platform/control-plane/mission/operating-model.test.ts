@@ -25,12 +25,12 @@ import { AppError } from "../../../../../src/platform/contracts/errors.js";
 // Helper to create minimal test data
 function createTestMissionRecord(overrides: Partial<{
   missionId: string;
-  missionType: string;
+  type: string;
   tenantId: string;
-}> = {}): { missionId: string; missionType: string; tenantId: string } {
+}> = {}): { missionId: string; type: string; tenantId: string } {
   return {
     missionId: overrides.missionId ?? "mission-test-001",
-    missionType: overrides.missionType ?? "formal",
+    type: overrides.type ?? "formal",
     tenantId: overrides.tenantId ?? "tenant-test",
   };
 }
@@ -252,7 +252,7 @@ test("MissionFailureModeRegistry detect finds matching modes", () => {
   registry.register(mode);
 
   const input: MissionFailureModeDetectionInput = {
-    mission: createTestMissionRecord({ missionType: "formal" }),
+    mission: createTestMissionRecord({ type: "formal" }),
     stageInstance: createTestStageInstance({ stageId: "design" }),
     snapshot: createTestSnapshot(),
     evidenceRefs: ["evidence-1", "evidence-2"],
@@ -363,6 +363,7 @@ test("WorkflowRecordingService registers policy", () => {
     retentionMs: 30 * 24 * 60 * 60 * 1000, // 30 days
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
+    owner: "owner-team",
   };
 
   const registered = service.registerPolicy(policy);
@@ -380,6 +381,7 @@ test("WorkflowRecordingService complete creates trace", () => {
     retentionMs: 7 * 24 * 60 * 60 * 1000,
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
+    owner: "owner-team",
   });
 
   const input: WorkflowRecordingInput = {
@@ -409,6 +411,7 @@ test("WorkflowRecordingService complete requires enabled policy", () => {
     retentionMs: 7 * 24 * 60 * 60 * 1000,
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
+    owner: "owner-team",
   });
 
   const input: WorkflowRecordingInput = {
@@ -421,7 +424,7 @@ test("WorkflowRecordingService complete requires enabled policy", () => {
     toolRefs: [],
   };
 
-  assert.throws(() => service.complete(input), /workflow recording policy required/);
+  assert.throws(() => service.complete(input), /Workflow recording requires an enabled policy/);
 });
 
 test("WorkflowRecordingService complete rejects disallowed surface", () => {
@@ -435,6 +438,7 @@ test("WorkflowRecordingService complete rejects disallowed surface", () => {
     retentionMs: 7 * 24 * 60 * 60 * 1000,
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
+    owner: "owner-team",
   });
 
   const input: WorkflowRecordingInput = {
@@ -461,6 +465,7 @@ test("WorkflowRecordingService get returns stored trace", () => {
     retentionMs: 7 * 24 * 60 * 60 * 1000,
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
+    owner: "owner-team",
   });
 
   const created = service.complete({
@@ -507,7 +512,7 @@ test("SkillCandidatePipeline creates candidate from valid trace", () => {
     toolRefs: [],
     expiresAt: "2027-01-01T00:00:00.000Z",
     createdAt: "2026-01-01T00:00:00.000Z",
-    deletionProofRef: null,
+    deletionProofRef: "proof-001",
   };
 
   const candidate = pipeline.createCandidate({

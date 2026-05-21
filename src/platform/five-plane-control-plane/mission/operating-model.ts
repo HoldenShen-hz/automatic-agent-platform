@@ -321,7 +321,7 @@ export class SkillCandidatePipeline {
     readonly requiredPermissions: readonly string[];
     readonly createdAt?: string;
   }): SkillCandidate {
-    if (input.trace.deletionProofRef != null || input.trace.dataClass === "restricted" && input.trace.redactionReportRef == null) {
+    if (input.trace.deletionProofRef == null || input.trace.dataClass === "restricted" && input.trace.redactionReportRef == null) {
       throwOperatingModelError("mission.skill_candidate_trace_unsafe", "Workflow trace is not eligible for SkillCandidate promotion", {
         traceId: input.trace.traceId,
       });

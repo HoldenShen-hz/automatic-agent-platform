@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type {
+  AgentRoundLoopInput,
+  AgentRoundLoopResult,
+  ToolCallResult,
+} from "../../../src/core/runtime/planner/index.js";
 
 /**
  * Tests for src/core/runtime/planner/index.ts
@@ -16,19 +21,19 @@ test("planner re-exports buildStepOutput function", async () => {
   assert.ok("buildStepOutput" in mod, "should export buildStepOutput function");
 });
 
-test("planner re-exports AgentRoundLoopInput interface", async () => {
-  const mod = await import("../../../src/core/runtime/planner/index.js");
-  assert.ok("AgentRoundLoopInput" in mod, "should export AgentRoundLoopInput interface");
+test("planner re-exports AgentRoundLoopInput interface", () => {
+  // AgentRoundLoopInput is a TypeScript interface - verify it exists as a type export
+  type _ = AgentRoundLoopInput;
 });
 
-test("planner re-exports AgentRoundLoopResult interface", async () => {
-  const mod = await import("../../../src/core/runtime/planner/index.js");
-  assert.ok("AgentRoundLoopResult" in mod, "should export AgentRoundLoopResult interface");
+test("planner re-exports AgentRoundLoopResult interface", () => {
+  // AgentRoundLoopResult is a TypeScript interface - verify it exists as a type export
+  type _ = AgentRoundLoopResult;
 });
 
-test("planner re-exports ToolCallResult interface", async () => {
-  const mod = await import("../../../src/core/runtime/planner/index.js");
-  assert.ok("ToolCallResult" in mod, "should export ToolCallResult interface");
+test("planner re-exports ToolCallResult interface", () => {
+  // ToolCallResult is a TypeScript interface - verify it exists as a type export
+  type _ = ToolCallResult;
 });
 
 test("planner exports are functions or interfaces", async () => {

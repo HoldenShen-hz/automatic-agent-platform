@@ -46,9 +46,9 @@ test("sortTicketsForDeterministicDispatch sorts by priority descending", () => {
 
 test("sortTicketsForDeterministicDispatch sorts by criticalPathRank within same priority", () => {
   const tickets = [
-    makeTicket({ id: "1", priority: "normal", criticalPathRank: 1 }),
-    makeTicket({ id: "2", priority: "normal", criticalPathRank: 3 }),
-    makeTicket({ id: "3", priority: "normal", criticalPathRank: 2 }),
+    makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 1 }),
+    makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 3 }),
+    makeTicket({ id: "ticket_3", priority: "normal", criticalPathRank: 2 }),
   ];
 
   const sorted = sortTicketsForDeterministicDispatch(tickets);
@@ -60,9 +60,9 @@ test("sortTicketsForDeterministicDispatch sorts by criticalPathRank within same 
 
 test("sortTicketsForDeterministicDispatch sorts by riskClass within same priority and rank", () => {
   const tickets = [
-    makeTicket({ id: "1", priority: "normal", criticalPathRank: 0, riskClass: "low" }),
-    makeTicket({ id: "2", priority: "normal", criticalPathRank: 0, riskClass: "critical" }),
-    makeTicket({ id: "3", priority: "normal", criticalPathRank: 0, riskClass: "medium" }),
+    makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, riskClass: "low" }),
+    makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, riskClass: "critical" }),
+    makeTicket({ id: "ticket_3", priority: "normal", criticalPathRank: 0, riskClass: "medium" }),
   ];
 
   const sorted = sortTicketsForDeterministicDispatch(tickets);
@@ -74,9 +74,9 @@ test("sortTicketsForDeterministicDispatch sorts by riskClass within same priorit
 
 test("sortTicketsForDeterministicDispatch sorts by schedulerSeed as tiebreaker", () => {
   const tickets = [
-    makeTicket({ id: "1", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "z" }),
-    makeTicket({ id: "2", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "a" }),
-    makeTicket({ id: "3", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "m" }),
+    makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "z" }),
+    makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "a" }),
+    makeTicket({ id: "ticket_3", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "m" }),
   ];
 
   const sorted = sortTicketsForDeterministicDispatch(tickets);
@@ -88,8 +88,8 @@ test("sortTicketsForDeterministicDispatch sorts by schedulerSeed as tiebreaker",
 
 test("sortTicketsForDeterministicDispatch handles missing riskClass", () => {
   const tickets = [
-    makeTicket({ id: "1", priority: "normal", criticalPathRank: 0, riskClass: undefined }),
-    makeTicket({ id: "2", priority: "normal", criticalPathRank: 0, riskClass: "high" }),
+    makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, riskClass: undefined }),
+    makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, riskClass: "high" }),
   ];
 
   const sorted = sortTicketsForDeterministicDispatch(tickets);
@@ -100,8 +100,8 @@ test("sortTicketsForDeterministicDispatch handles missing riskClass", () => {
 
 test("sortTicketsForDeterministicDispatch handles missing schedulerSeed", () => {
   const tickets = [
-    makeTicket({ id: "1", priority: "normal", criticalPathRank: 0, schedulerSeed: undefined }),
-    makeTicket({ id: "2", priority: "normal", criticalPathRank: 0, schedulerSeed: "abc" }),
+    makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, schedulerSeed: undefined }),
+    makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, schedulerSeed: "abc" }),
   ];
 
   const sorted = sortTicketsForDeterministicDispatch(tickets);

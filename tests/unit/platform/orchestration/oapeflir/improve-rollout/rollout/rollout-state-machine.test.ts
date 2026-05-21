@@ -1,8 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// RolloutStateMachine tests
+// RolloutStateMachine tests - stateless transition-based API
 import { RolloutStateMachine } from "../../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.js";
+import type { ImprovementCandidate } from "../../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
+
+function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
+  return {
+    candidateId: "ic_test_123",
+    taskId: "task_123",
+    sourceSignalRefs: ["signal_1"],
+    sourceLearningObjectIds: ["lo_1"],
+    changeScope: "task_template",
+    description: "Test candidate",
+    expectedBenefit: "Test benefit",
+    status: "approved",
+    createdAt: Date.now(),
+    ...overrides,
+  } as ImprovementCandidate;
+}
 
 test("RolloutStateMachine can be instantiated", () => {
   const machine = new RolloutStateMachine();
@@ -12,47 +28,50 @@ test("RolloutStateMachine can be instantiated", () => {
 test("RolloutStateMachine has required state transition methods", () => {
   const machine = new RolloutStateMachine();
   assert.equal(typeof machine.transition, "function");
-  assert.equal(typeof machine.getCurrentState, "function");
-  assert.equal(typeof machine.reset, "function");
 });
 
-test("RolloutStateMachine.reset returns to initial state", () => {
+test("RolloutStateMachine.transition creates a rollout record", () => {
   const machine = new RolloutStateMachine();
-  machine.reset();
-  const state = machine.getCurrentState();
-  assert.ok(state !== undefined);
+  const candidate = createMockCandidate({ status: "approved" });
+
+  const record = machine.transition(candidate, "L1_evaluate");
+
+  assert.ok(record.recordId.startsWith("rollout_"));
+  assert.equal(record.candidateId, "ic_test_123");
+  assert.equal(record.level, "L1_evaluate");
+  assert.equal(record.status, "evaluation_enabled");
 });
 
-test("RolloutStateMachine.transition is callable", () => {
+test("RolloutStateMachine.transition rejects invalid transitions", () => {
   const machine = new RolloutStateMachine();
-  assert.doesNotThrow(() => {
-    machine.transition("advance");
+  const candidate = createMockCandidate({ status: "approved" });
+
+  assert.throws(
+    () => machine.transition(candidate, "L5_full"),
+    /Invalid rollout transition/,
+  );
+});
+
+test("RolloutStateMachine.transition allows candidate_created to reject", () => {
+  const machine = new RolloutStateMachine();
+  const candidate = createMockCandidate({ status: "candidate_created" });
+
+  const record = machine.transition(candidate, "L0_off", {
+    targetStatus: "rejected",
   });
+
+  assert.equal(record.status, "rejected");
+  assert.equal(record.level, "L0_off");
 });
 
-test("RolloutStateMachine.getCurrentState returns current state", () => {
+test("RolloutStateMachine.transition handles canary progression", () => {
   const machine = new RolloutStateMachine();
-  const state = machine.getCurrentState();
-  assert.ok(state !== undefined);
-  assert.equal(typeof state, "object");
-});
+  const candidate = createMockCandidate({ status: "evaluation_enabled" });
 
-test("RolloutStateMachine multiple transitions", () => {
-  const machine = new RolloutStateMachine();
-  machine.reset();
-  machine.transition("advance");
-  machine.transition("advance");
-  const state = machine.getCurrentState();
-  assert.ok(state !== undefined);
-});
+  const record = machine.transition(candidate, "L2_canary", {
+    targetStatus: "canary_5",
+  });
 
-test("RolloutStateMachine instance maintains separate state", () => {
-  const machine1 = new RolloutStateMachine();
-  const machine2 = new RolloutStateMachine();
-  machine1.transition("advance");
-  const state1 = machine1.getCurrentState();
-  const state2 = machine2.getCurrentState();
-  // Each instance maintains its own state
-  assert.ok(state1 !== undefined);
-  assert.ok(state2 !== undefined);
+  assert.equal(record.level, "L2_canary");
+  assert.equal(record.status, "canary_5");
 });
