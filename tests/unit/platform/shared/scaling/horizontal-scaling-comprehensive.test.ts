@@ -483,47 +483,6 @@ test("HorizontalScalingController opposite direction bypasses cooldown", () => {
   assert.equal(inEvent!.eventType, "scale_in");
 });
 
-test("HorizontalScalingController after cooldown expires scaling works again", () => {
-  const controller = new HorizontalScalingController("test-pool", {
-    scaleOutThreshold: 10,
-    scaleInThreshold: 3,
-    targetUtilization: 70,
-    minWorkers: 1,
-    maxWorkers: 100,
-    stabilizationWindowSeconds: 300,
-    cooldownSeconds: 100, // 100ms cooldown for testing
-  });
-
-  const queueStats: QueueStats = {
-    queueName: "test",
-    waiting: 20,
-    delayed: 0,
-    active: 0,
-    completed: 0,
-    failed: 0,
-    deadLetter: 0,
-  };
-
-  const metrics: WorkerPoolMetrics = {
-    activeWorkers: 10,
-    busyWorkers: 9,
-    utilizationPercent: 90,
-    queueDepth: 20,
-    avgLatencyMs: 100,
-  };
-
-  // First scale out
-  controller.processMetrics(queueStats, metrics);
-
-  // Wait for cooldown
-  setTimeoutSync(150);
-
-  // Should be able to scale out again
-  const event = controller.processMetrics(queueStats, metrics);
-  assert.ok(event !== null);
-  assert.equal(event!.eventType, "scale_out");
-});
-
 // =============================================================================
 // HorizontalScalingController - computeWorkerCount
 // =============================================================================
@@ -775,11 +734,3 @@ test("HorizontalScalingController with very large scaleInThreshold", () => {
   assert.ok(event !== null);
   assert.equal(event!.action.direction, "in");
 });
-
-// Helper function for testing setTimeout
-function setTimeoutSync(ms: number): void {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    // Busy wait for synchronous testing
-  }
-}

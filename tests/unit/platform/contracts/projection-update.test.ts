@@ -45,7 +45,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => createProjectionUpdate(input as CreateProjectionUpdateInput),
-        /projection_update.projection_id_required/,
+        /Projection update requires a projectionId/,
       );
     });
 
@@ -60,7 +60,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => createProjectionUpdate(input as CreateProjectionUpdateInput),
-        /projection_update.projection_type_required/,
+        /Projection update requires a projectionType/,
       );
     });
 
@@ -75,7 +75,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => createProjectionUpdate(input as CreateProjectionUpdateInput),
-        /projection_update.triggered_by_required/,
+        /Projection update requires a triggeredBy/,
       );
     });
 
@@ -90,7 +90,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => createProjectionUpdate(input as CreateProjectionUpdateInput),
-        /projection_update.invalid_version/,
+        /Projection update version must be a non-negative integer/,
       );
     });
 
@@ -105,7 +105,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => createProjectionUpdate(input as CreateProjectionUpdateInput),
-        /projection_update.invalid_version/,
+        /Projection update version must be a non-negative integer/,
       );
     });
 
@@ -185,7 +185,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => validateProjectionUpdate(update),
-        /projection_update.projection_id_required/,
+        /Projection update requires a projectionId/,
       );
     });
 
@@ -204,7 +204,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => validateProjectionUpdate(update),
-        /projection_update.idempotency_key_required/,
+        /Projection update requires an idempotencyKey/,
       );
     });
 
@@ -223,7 +223,7 @@ describe("contracts/projection-update", () => {
       };
       assert.throws(
         () => validateProjectionUpdate(update),
-        /projection_update.invalid_version/,
+        /Projection update version must be a non-negative integer/,
       );
     });
   });

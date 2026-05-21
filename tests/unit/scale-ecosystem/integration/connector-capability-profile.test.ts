@@ -10,7 +10,7 @@ import test from "node:test";
 import {
   ConnectorCapabilityProfileSchema,
   ConnectorManifestSchema,
-} from "../../../../src/scale-ecosystem/integration/connector-registry/index.js";
+} from "../../../../src/scale-ecosystem/integration/connector-registry/index.ts";
 
 test("ConnectorCapabilityProfileSchema parses valid profile", () => {
   const result = ConnectorCapabilityProfileSchema.parse({

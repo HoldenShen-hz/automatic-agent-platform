@@ -409,11 +409,13 @@ test.describe("GameDevRetriever comprehensive tests", () => {
 
     test("score varies based on tokenBudget for assets namespace", async () => {
       const plugin = createGameDevRetrieverPlugin();
-      const smallBudgetResults = await plugin.retrieve({
-        taskId: "task_small_budget",
+      // With very small budget, tokenBudget/4000 will be small
+      // score = Math.min(0.86, 0.54 + Math.min(tokenBudget/4000, 0.18))
+      const tinyBudgetResults = await plugin.retrieve({
+        taskId: "task_tiny_budget",
         intent: "texture",
         context: {},
-        tokenBudget: 1000,
+        tokenBudget: 100,
       });
 
       const largeBudgetResults = await plugin.retrieve({
@@ -424,15 +426,17 @@ test.describe("GameDevRetriever comprehensive tests", () => {
       });
 
       // Asset scores should be affected by tokenBudget
-      const smallBudgetAssetScore = smallBudgetResults.find(
+      const tinyBudgetAssetScore = tinyBudgetResults.find(
         (r) => r.namespace === "gamedev/assets",
       )?.score;
       const largeBudgetAssetScore = largeBudgetResults.find(
         (r) => r.namespace === "gamedev/assets",
       )?.score;
 
-      if (smallBudgetAssetScore !== undefined && largeBudgetAssetScore !== undefined) {
-        assert.notEqual(smallBudgetAssetScore, largeBudgetAssetScore);
+      if (tinyBudgetAssetScore !== undefined && largeBudgetAssetScore !== undefined) {
+        // With tiny budget (100), score = 0.54 + 0.025 = 0.565
+        // With large budget (10000), score = 0.54 + 0.18 = 0.72 (capped)
+        assert.ok(tinyBudgetAssetScore < largeBudgetAssetScore);
       }
     });
   });

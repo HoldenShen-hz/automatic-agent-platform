@@ -11,10 +11,8 @@ import {
   validatePromptBundle,
   type PromptBundle,
   type PromptBundleSegment,
-  type PromptBundleConstraints,
   type PromptBundleMetadata,
   type PromptBundleTrafficAllocation,
-  type TrafficTargeting,
   type PromptLifecycleStatus,
 } from "../../../../src/platform/contracts/prompt-bundle/index.js";
 
@@ -178,7 +176,7 @@ describe("contracts/prompt-bundle", () => {
             systemPrompt: validSegment,
             compatibilityMatrix: validCompatibilityMatrix,
           }),
-        /prompt_bundle.invalid_name/,
+        /Bundle name must be non-empty/,
       );
     });
 
@@ -194,7 +192,7 @@ describe("contracts/prompt-bundle", () => {
             systemPrompt: { content: "", templateVariables: [], channel: "system" },
             compatibilityMatrix: validCompatibilityMatrix,
           }),
-        /prompt_bundle.invalid_systemPrompt/,
+        /systemPrompt content must be non-empty/,
       );
     });
 
@@ -210,7 +208,7 @@ describe("contracts/prompt-bundle", () => {
             systemPrompt: validSegment,
             compatibilityMatrix: validCompatibilityMatrix,
           }),
-        /prompt_bundle.invalid_version/,
+        /Prompt bundle version must be a positive integer/,
       );
     });
 
@@ -226,7 +224,7 @@ describe("contracts/prompt-bundle", () => {
             systemPrompt: validSegment,
             compatibilityMatrix: validCompatibilityMatrix,
           }),
-        /prompt_bundle.invalid_domain/,
+        /Bundle domain must be non-empty/,
       );
     });
 
@@ -250,7 +248,7 @@ describe("contracts/prompt-bundle", () => {
               trafficAllocation: { weight: 150 },
             },
           }),
-        /prompt_bundle.invalid_traffic_weight/,
+        /traffic allocation weight must be between 0 and 100/,
       );
     });
 
@@ -274,7 +272,7 @@ describe("contracts/prompt-bundle", () => {
               trafficAllocation: { weight: 100 },
             },
           }),
-        /prompt_bundle.invalid_lifecycle_status/,
+        /Deprecated bundles cannot retain lifecycleStatus active/,
       );
     });
   });
@@ -306,7 +304,7 @@ describe("contracts/prompt-bundle", () => {
             systemPrompt: validSegment,
             compatibilityMatrix: validCompatibilityMatrix,
           }),
-        /prompt_bundle.invalid_display_version/,
+        /Bundle displayVersion must be non-empty/,
       );
     });
 
@@ -322,7 +320,7 @@ describe("contracts/prompt-bundle", () => {
             systemPrompt: validSegment,
             compatibilityMatrix: validCompatibilityMatrix,
           }),
-        /prompt_bundle.invalid_task_type/,
+        /Bundle taskType must be non-empty/,
       );
     });
 
@@ -339,7 +337,7 @@ describe("contracts/prompt-bundle", () => {
             userPrompt: { content: "", templateVariables: [], channel: "user" },
             compatibilityMatrix: validCompatibilityMatrix,
           }),
-        /prompt_bundle.invalid_userPrompt/,
+        /userPrompt content must be non-empty/,
       );
     });
   });
@@ -373,7 +371,7 @@ describe("contracts/prompt-bundle", () => {
       (bundle as PromptBundle).bundleId = "";
       assert.throws(
         () => validatePromptBundle(bundle),
-        /prompt_bundle.invalid_bundle_id/,
+        /Bundle id must be non-empty/,
       );
     });
   });

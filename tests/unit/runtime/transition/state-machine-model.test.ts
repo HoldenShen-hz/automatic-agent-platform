@@ -37,16 +37,34 @@ test("taskStateMachine allows valid task status transitions", () => {
 
 test("taskStateMachine rejects invalid task status transitions", () => {
   // Cannot go back from terminal states
-  assert.throws(() => taskStateMachine.assertTransition("done", "in_progress"), /invalid_transition/);
-  assert.throws(() => taskStateMachine.assertTransition("failed", "in_progress"), /invalid_transition/);
-  assert.throws(() => taskStateMachine.assertTransition("cancelled", "in_progress"), /invalid_transition/);
+  assert.throws(
+    () => taskStateMachine.assertTransition("done", "in_progress"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => taskStateMachine.assertTransition("failed", "in_progress"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => taskStateMachine.assertTransition("cancelled", "in_progress"),
+    /invalid_transition/,
+  );
 
   // Cannot skip to done from queued
-  assert.throws(() => taskStateMachine.assertTransition("queued", "done"), /invalid_transition/);
+  assert.throws(
+    () => taskStateMachine.assertTransition("queued", "done"),
+    /invalid_transition/,
+  );
 
   // Cannot transition from done
-  assert.throws(() => taskStateMachine.assertTransition("done", "failed"), /invalid_transition/);
-  assert.throws(() => taskStateMachine.assertTransition("done", "cancelled"), /invalid_transition/);
+  assert.throws(
+    () => taskStateMachine.assertTransition("done", "failed"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => taskStateMachine.assertTransition("done", "cancelled"),
+    /invalid_transition/,
+  );
 });
 
 test("taskStateMachine allows same-state no-op transitions", () => {
@@ -89,15 +107,30 @@ test("workflowStateMachine allows valid workflow status transitions", () => {
 
 test("workflowStateMachine rejects invalid workflow status transitions", () => {
   // Cannot transition from terminal states
-  assert.throws(() => workflowStateMachine.assertTransition("completed", "running"), /invalid_transition/);
-  assert.throws(() => workflowStateMachine.assertTransition("failed", "running"), /invalid_transition/);
-  assert.throws(() => workflowStateMachine.assertTransition("cancelled", "running"), /invalid_transition/);
+  assert.throws(
+    () => workflowStateMachine.assertTransition("completed", "running"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => workflowStateMachine.assertTransition("failed", "running"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => workflowStateMachine.assertTransition("cancelled", "running"),
+    /invalid_transition/,
+  );
 
   // Cannot go directly to completed from created
-  assert.throws(() => workflowStateMachine.assertTransition("created", "completed"), /invalid_transition/);
+  assert.throws(
+    () => workflowStateMachine.assertTransition("created", "completed"),
+    /invalid_transition/,
+  );
 
   // Paused cannot go directly to completed
-  assert.throws(() => workflowStateMachine.assertTransition("paused", "completed"), /invalid_transition/);
+  assert.throws(
+    () => workflowStateMachine.assertTransition("paused", "completed"),
+    /invalid_transition/,
+  );
 });
 
 test("workflowStateMachine allows same-state no-op transitions", () => {
@@ -143,12 +176,24 @@ test("sessionStateMachine allows valid session status transitions", () => {
 
 test("sessionStateMachine rejects invalid session status transitions", () => {
   // Cannot transition from terminal states
-  assert.throws(() => sessionStateMachine.assertTransition("completed", "streaming"), /invalid_transition/);
-  assert.throws(() => sessionStateMachine.assertTransition("failed", "streaming"), /invalid_transition/);
-  assert.throws(() => sessionStateMachine.assertTransition("cancelled", "streaming"), /invalid_transition/);
+  assert.throws(
+    () => sessionStateMachine.assertTransition("completed", "streaming"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => sessionStateMachine.assertTransition("failed", "streaming"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => sessionStateMachine.assertTransition("cancelled", "streaming"),
+    /invalid_transition/,
+  );
 
   // Cannot go to paused from open directly
-  assert.throws(() => sessionStateMachine.assertTransition("open", "paused"), /invalid_transition/);
+  assert.throws(
+    () => sessionStateMachine.assertTransition("open", "paused"),
+    /invalid_transition/,
+  );
 });
 
 test("sessionStateMachine allows same-state no-op transitions", () => {
@@ -228,16 +273,40 @@ test("executionStateMachine allows valid execution status transitions", () => {
 
 test("executionStateMachine rejects invalid execution status transitions", () => {
   // Cannot skip states arbitrarily
-  assert.throws(() => executionStateMachine.assertTransition("created", "succeeded"), /invalid_transition/);
-  assert.throws(() => executionStateMachine.assertTransition("created", "queued"), /invalid_transition/);
-  assert.throws(() => executionStateMachine.assertTransition("executing", "queued"), /invalid_transition/);
-  assert.throws(() => executionStateMachine.assertTransition("executing", "dispatching"), /invalid_transition/);
+  assert.throws(
+    () => executionStateMachine.assertTransition("created", "succeeded"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => executionStateMachine.assertTransition("created", "queued"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => executionStateMachine.assertTransition("executing", "queued"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => executionStateMachine.assertTransition("executing", "dispatching"),
+    /invalid_transition/,
+  );
 
   // Cannot recover from terminal states
-  assert.throws(() => executionStateMachine.assertTransition("succeeded", "executing"), /invalid_transition/);
-  assert.throws(() => executionStateMachine.assertTransition("failed", "executing"), /invalid_transition/);
-  assert.throws(() => executionStateMachine.assertTransition("cancelled", "executing"), /invalid_transition/);
-  assert.throws(() => executionStateMachine.assertTransition("superseded", "executing"), /invalid_transition/);
+  assert.throws(
+    () => executionStateMachine.assertTransition("succeeded", "executing"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => executionStateMachine.assertTransition("failed", "executing"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => executionStateMachine.assertTransition("cancelled", "executing"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => executionStateMachine.assertTransition("superseded", "executing"),
+    /invalid_transition/,
+  );
 });
 
 test("executionStateMachine allows same-state no-op transitions", () => {
@@ -260,25 +329,51 @@ test("approvalStateMachine allows valid approval status transitions", () => {
 
 test("approvalStateMachine rejects invalid approval status transitions", () => {
   // Cannot transition from terminal states
-  assert.throws(() => approvalStateMachine.assertTransition("approved", "rejected"), /invalid_transition/);
-  assert.throws(() => approvalStateMachine.assertTransition("approved", "cancelled"), /invalid_transition/);
-  assert.throws(() => approvalStateMachine.assertTransition("rejected", "approved"), /invalid_transition/);
-  assert.throws(() => approvalStateMachine.assertTransition("expired", "approved"), /invalid_transition/);
-  assert.throws(() => approvalStateMachine.assertTransition("cancelled", "approved"), /invalid_transition/);
+  assert.throws(
+    () => approvalStateMachine.assertTransition("approved", "rejected"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => approvalStateMachine.assertTransition("approved", "cancelled"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => approvalStateMachine.assertTransition("rejected", "approved"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => approvalStateMachine.assertTransition("expired", "approved"),
+    /invalid_transition/,
+  );
+  assert.throws(
+    () => approvalStateMachine.assertTransition("cancelled", "approved"),
+    /invalid_transition/,
+  );
 
-  // Cannot transition from requested to anything except terminal
-  assert.throws(() => approvalStateMachine.assertTransition("requested", "requested"), /invalid_transition/);
+  // Requested can be retried as an idempotent no-op.
+  approvalStateMachine.assertTransition("requested", "requested");
 });
 
 test("approvalStateMachine rejects all transitions from terminal states", () => {
-  const terminalStates = ["approved", "rejected", "expired", "cancelled"] as const;
+  const terminalStates = [
+    "approved",
+    "rejected",
+    "expired",
+    "cancelled",
+  ] as const;
   for (const from of terminalStates) {
-    for (const to of ["approved", "rejected", "expired", "cancelled", "requested"] as const) {
+    for (const to of [
+      "approved",
+      "rejected",
+      "expired",
+      "cancelled",
+      "requested",
+    ] as const) {
       if (from !== to) {
         assert.throws(
           () => approvalStateMachine.assertTransition(from, to),
           /invalid_transition/,
-          `Should reject ${from} -> ${to}`
+          `Should reject ${from} -> ${to}`,
         );
       }
     }
@@ -293,19 +388,19 @@ test("each state machine is isolated and entity-specific", () => {
   // Task transitions don't affect workflow machine
   assert.throws(
     () => workflowStateMachine.assertTransition("created", "completed"),
-    /invalid_transition/
+    /invalid_transition/,
   );
 
   // Workflow transitions don't affect execution machine
   assert.throws(
     () => executionStateMachine.assertTransition("created", "succeeded"),
-    /invalid_transition/
+    /invalid_transition/,
   );
 
-  // Execution transitions don't affect approval machine
+  // Terminal approval states do not reopen as requested.
   assert.throws(
-    () => approvalStateMachine.assertTransition("requested", "cancelled"),
-    /invalid_transition/
+    () => approvalStateMachine.assertTransition("approved", "requested"),
+    /invalid_transition/,
   );
 });
 
@@ -319,7 +414,7 @@ test("workflowStateMachine cancelling is only transition from cancelling", () =>
   // Cannot go back to running from cancelling
   assert.throws(
     () => workflowStateMachine.assertTransition("cancelling", "running"),
-    /invalid_transition/
+    /invalid_transition/,
   );
 });
 

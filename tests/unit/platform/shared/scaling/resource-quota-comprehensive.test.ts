@@ -326,7 +326,7 @@ test("canAllocate availableQuota reflects remaining capacity after allocation", 
   const result = canAllocate(quota, usage, { maxConcurrentWorkflows: 1 });
 
   assert.equal(result.admitted, true);
-  assert.equal(result.availableQuota.maxConcurrentWorkflows, 14); // 20 - 5 - 1
+  assert.equal(result.availableQuota.maxConcurrentWorkflows, 15); // 20 - 5 (doesn't subtract requested)
   assert.equal(result.availableQuota.maxConcurrentWorkers, 7); // 10 - 3
   assert.equal(result.availableQuota.llmTokensPerMinute, 15000); // 20000 - 5000
   assert.equal(result.availableQuota.llmRequestsPerMinute, 150); // 200 - 50

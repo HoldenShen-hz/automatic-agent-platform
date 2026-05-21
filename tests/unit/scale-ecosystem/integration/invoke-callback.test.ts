@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { invokeCallback } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
+import { invokeCallback } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.ts";
 
 test("invokeCallback returns false when server is unreachable", async () => {
   const result = await invokeCallback("http://localhost:9999/callback", {

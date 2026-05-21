@@ -15,6 +15,60 @@ import {
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
+function insertApprovalParents(
+  store: AuthoritativeTaskStore,
+  taskId: string,
+  executionId: string,
+  now: string,
+): void {
+  store.insertTask({
+    id: taskId,
+    parentId: null,
+    rootId: taskId,
+    divisionId: "general_ops",
+    title: "Approval Transition Parent",
+    status: "in_progress",
+    source: "user",
+    priority: "normal",
+    inputJson: "{}",
+    normalizedInputJson: "{}",
+    outputJson: null,
+    estimatedCostUsd: 0,
+    actualCostUsd: 0,
+    errorCode: null,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+  });
+  store.insertExecution({
+    id: executionId,
+    taskId,
+    workflowId: "single_agent_minimal",
+    parentExecutionId: null,
+    agentId: "agent",
+    roleId: "general_executor",
+    runKind: "task_run",
+    status: "blocked",
+    inputRef: null,
+    traceId: "trace-approval-parent",
+    attempt: 1,
+    timeoutMs: 60000,
+    budgetUsdLimit: 1,
+    requiresApproval: 1,
+    sandboxMode: "workspace_write",
+    allowedToolsJson: "[]",
+    allowedPathsJson: "[]",
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: now,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 // =============================================================================
 // TASK TRANSITION SERVICE TESTS
 // =============================================================================
@@ -145,7 +199,7 @@ test("TaskTransitionService.transition throws on invalid transition", () => {
           actorType: "system",
           occurredAt: nowIso(),
         }),
-      /invalid_transition|transition_cas_failed/
+      /invalid_transition|transition_cas_failed/,
     );
   } finally {
     cleanupPath(workspace);
@@ -187,7 +241,7 @@ test("WorkflowTransitionService.transition applies valid status change", () => {
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -250,7 +304,7 @@ test("WorkflowTransitionService.transition throws on status mismatch", () => {
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -276,7 +330,7 @@ test("WorkflowTransitionService.transition throws on status mismatch", () => {
           actorType: "system",
           occurredAt: nowIso(),
         }),
-      /transition_fromStatus_mismatch/
+      /transition_fromStatus_mismatch/,
     );
   } finally {
     cleanupPath(workspace);
@@ -414,8 +468,8 @@ test("ExecutionTransitionService.transition applies valid status change", () => 
       occurredAt: nowIso(),
     });
 
-    const snapshot = store.loadExecutionSnapshot(executionId);
-    assert.equal(snapshot.execution.status, "prechecking");
+    const execution = store.getExecution(executionId);
+    assert.equal(execution?.status, "prechecking");
   } finally {
     cleanupPath(workspace);
   }
@@ -495,9 +549,9 @@ test("ExecutionTransitionService sets startedAt for prechecking", () => {
       occurredAt: nowAfter,
     });
 
-    const snapshot = store.loadExecutionSnapshot(executionId);
-    assert.equal(snapshot.execution.status, "prechecking");
-    assert.ok(snapshot.execution.startedAt !== null);
+    const execution = store.getExecution(executionId);
+    assert.equal(execution?.status, "prechecking");
+    assert.ok(execution?.startedAt !== null);
   } finally {
     cleanupPath(workspace);
   }
@@ -577,9 +631,9 @@ test("ExecutionTransitionService sets finishedAt for terminal statuses", () => {
       occurredAt: nowAfter,
     });
 
-    const snapshot = store.loadExecutionSnapshot(executionId);
-    assert.equal(snapshot.execution.status, "succeeded");
-    assert.ok(snapshot.execution.finishedAt !== null);
+    const execution = store.getExecution(executionId);
+    assert.equal(execution?.status, "succeeded");
+    assert.ok(execution?.finishedAt !== null);
   } finally {
     cleanupPath(workspace);
   }
@@ -599,13 +653,16 @@ test("ApprovalTransitionService.transition applies valid status change", () => {
     const service = new ApprovalTransitionService(repository as any);
 
     const approvalId = newId("approval");
+    const taskId = newId("task");
+    const executionId = newId("exec");
     const now = nowIso();
 
     db.transaction(() => {
+      insertApprovalParents(store, taskId, executionId, now);
       store.insertApproval({
         id: approvalId,
-        taskId: "task-approval-1",
-        executionId: "exec-approval-1",
+        taskId,
+        executionId,
         status: "requested",
         requestJson: JSON.stringify({}),
         responseJson: null,
@@ -627,8 +684,8 @@ test("ApprovalTransitionService.transition applies valid status change", () => {
       occurredAt: nowIso(),
     });
 
-    const snapshot = store.loadApprovalSnapshot(approvalId);
-    assert.equal(snapshot.approval.status, "approved");
+    const approval = store.getApproval(approvalId);
+    assert.equal(approval?.status, "approved");
   } finally {
     cleanupPath(workspace);
   }
@@ -644,13 +701,16 @@ test("ApprovalTransitionService.transition throws on invalid transition", () => 
     const service = new ApprovalTransitionService(repository as any);
 
     const approvalId = newId("approval");
+    const taskId = newId("task");
+    const executionId = newId("exec");
     const now = nowIso();
 
     db.transaction(() => {
+      insertApprovalParents(store, taskId, executionId, now);
       store.insertApproval({
         id: approvalId,
-        taskId: "task-approval-2",
-        executionId: "exec-approval-2",
+        taskId,
+        executionId,
         status: "approved",
         requestJson: JSON.stringify({}),
         responseJson: JSON.stringify({ decision: "approved" }),
@@ -673,7 +733,7 @@ test("ApprovalTransitionService.transition throws on invalid transition", () => 
           actorType: "human",
           occurredAt: nowIso(),
         }),
-      /invalid_transition|transition_cas_failed/
+      /invalid_transition|transition_cas_failed/,
     );
   } finally {
     cleanupPath(workspace);
@@ -795,7 +855,7 @@ test("TransitionService can transition workflow status via facade", () => {
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -909,13 +969,16 @@ test("TransitionService can transition approval status via facade", () => {
     const service = new TransitionService(db, store);
 
     const approvalId = newId("approval");
+    const taskId = newId("task");
+    const executionId = newId("exec");
     const now = nowIso();
 
     db.transaction(() => {
+      insertApprovalParents(store, taskId, executionId, now);
       store.insertApproval({
         id: approvalId,
-        taskId: "task-facade-approval",
-        executionId: "exec-facade-approval",
+        taskId,
+        executionId,
         status: "requested",
         requestJson: JSON.stringify({}),
         responseJson: null,
@@ -937,8 +1000,8 @@ test("TransitionService can transition approval status via facade", () => {
       occurredAt: nowIso(),
     });
 
-    const snapshot = store.loadApprovalSnapshot(approvalId);
-    assert.equal(snapshot.approval.status, "approved");
+    const approval = store.getApproval(approvalId);
+    assert.equal(approval?.status, "approved");
   } finally {
     cleanupPath(workspace);
   }

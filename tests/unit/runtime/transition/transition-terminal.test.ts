@@ -46,7 +46,7 @@ test("TransitionService.transitionTaskTerminalState transitions task to done", (
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -153,7 +153,7 @@ test("TransitionService.transitionTaskTerminalState transitions task to failed",
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -261,7 +261,7 @@ test("TransitionService.transitionTaskTerminalState transitions task to cancelle
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -371,7 +371,7 @@ test("Terminal state done maps execution to succeeded", () => {
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -437,9 +437,9 @@ test("Terminal state done maps execution to succeeded", () => {
 
     service.transitionTaskTerminalState(input);
 
-    const execSnapshot = store.loadExecutionSnapshot(executionId);
-    assert.equal(execSnapshot.execution.status, "succeeded");
-    assert.ok(execSnapshot.execution.finishedAt !== null);
+    const execution = store.getExecution(executionId);
+    assert.equal(execution?.status, "succeeded");
+    assert.ok(execution?.finishedAt !== null);
   } finally {
     cleanupPath(workspace);
   }
@@ -478,7 +478,7 @@ test("Terminal state failed maps execution to failed", () => {
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -545,9 +545,9 @@ test("Terminal state failed maps execution to failed", () => {
 
     service.transitionTaskTerminalState(input);
 
-    const execSnapshot = store.loadExecutionSnapshot(executionId);
-    assert.equal(execSnapshot.execution.status, "failed");
-    assert.ok(execSnapshot.execution.lastErrorCode !== null);
+    const execution = store.getExecution(executionId);
+    assert.equal(execution?.status, "failed");
+    assert.ok(execution?.lastErrorCode !== null);
   } finally {
     cleanupPath(workspace);
   }
@@ -586,7 +586,7 @@ test("Terminal state cancelled maps workflow to cancelled", () => {
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -696,7 +696,7 @@ test("TransitionService.transitionBlockedForApproval creates approval and transi
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",
@@ -775,8 +775,8 @@ test("TransitionService.transitionBlockedForApproval creates approval and transi
     assert.equal(taskSnapshot.task.status, "awaiting_decision");
 
     // Verify approval record was created
-    const approvalSnapshot = store.loadApprovalSnapshot(result.approvalId);
-    assert.equal(approvalSnapshot.approval.status, "requested");
+    const approval = store.getApproval(result.approvalId);
+    assert.equal(approval?.status, "requested");
   } finally {
     cleanupPath(workspace);
   }
@@ -819,7 +819,7 @@ test("TransitionService.applyTaskTerminalState without transaction wrapping", ()
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
+      store.insertWorkflowState({
         id: taskId,
         taskId,
         name: "Test Workflow",

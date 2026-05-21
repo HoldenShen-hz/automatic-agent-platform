@@ -9,9 +9,15 @@ import { createCodingRetrieverPlugin } from "../../../../src/plugins/retrievers/
 function createTestFixture(): string {
   const fixtureRoot = mkdtempSync(join(tmpdir(), "coding-retriever-comprehensive-"));
 
+  function writeFixture(relativePath: string, content: string): void {
+    const absolutePath = join(fixtureRoot, relativePath);
+    mkdirSync(dirname(absolutePath), { recursive: true });
+    writeFileSync(absolutePath, content, "utf8");
+  }
+
   // Create a file with a function
-  writeFileSync(
-    join(fixtureRoot, "src", "calculate.ts"),
+  writeFixture(
+    "src/calculate.ts",
     [
       "export function add(a: number, b: number): number {",
       "  return a + b;",
@@ -21,12 +27,11 @@ function createTestFixture(): string {
       "  return a - b;",
       "}",
     ].join("\n"),
-    "utf8",
   );
 
   // Create a file with a class
-  writeFileSync(
-    join(fixtureRoot, "src", "math.ts"),
+  writeFixture(
+    "src/math.ts",
     [
       "export class Calculator {",
       "  private value: number = 0;",
@@ -40,12 +45,11 @@ function createTestFixture(): string {
       "  }",
       "}",
     ].join("\n"),
-    "utf8",
   );
 
   // Create a file with an interface
-  writeFileSync(
-    join(fixtureRoot, "src", "types.ts"),
+  writeFixture(
+    "src/types.ts",
     [
       "export interface Result {",
       "  readonly value: number;",
@@ -54,7 +58,6 @@ function createTestFixture(): string {
       "",
       "export type Operation = 'add' | 'subtract';",
     ].join("\n"),
-    "utf8",
   );
 
   return fixtureRoot;
@@ -317,7 +320,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
       const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
       const results = await plugin.retrieve({
         taskId: "task_empty",
-        intent: "export",
+        intent: "function",
         context: {},
         tokenBudget: 1000,
       });

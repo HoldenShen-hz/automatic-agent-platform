@@ -30,9 +30,15 @@ describe("forensic-snapshot", () => {
       assert.strictEqual(snapshot.snapshotId, "snapshot-001");
       assert.strictEqual(snapshot.scope, "platform/us-east-1");
       assert.strictEqual(snapshot.collectedAt, "2026-05-21T10:00:00Z");
-      assert.deepStrictEqual(snapshot.artifactIds, ["artifact-1", "artifact-2"]);
+      assert.deepStrictEqual(snapshot.artifactIds, [
+        "artifact-1",
+        "artifact-2",
+      ]);
       assert.deepStrictEqual(snapshot.runtimeState, { cpu: 0.8, memory: 0.6 });
-      assert.deepStrictEqual(snapshot.configurationRefs, ["config-1", "config-2"]);
+      assert.deepStrictEqual(snapshot.configurationRefs, [
+        "config-1",
+        "config-2",
+      ]);
       assert.deepStrictEqual(snapshot.logRefs, ["log-1", "log-2", "log-3"]);
       assert.strictEqual(snapshot.planeAcknowledgments.length, 2);
     });
@@ -111,7 +117,10 @@ describe("forensic-snapshot", () => {
 
       assert.strictEqual(snapshot.planeAcknowledgments.length, 5);
       assert.strictEqual(snapshot.planeAcknowledgments[0].plane, "P1");
-      assert.strictEqual(snapshot.planeAcknowledgments[1].localStopState, "failed");
+      assert.strictEqual(
+        snapshot.planeAcknowledgments[1].localStopState,
+        "failed",
+      );
     });
   });
 
@@ -133,11 +142,11 @@ describe("forensic-snapshot", () => {
 
       const summary = summarizeForensicSnapshot(snapshot);
 
-      assert.include(summary, "scope=platform/global");
-      assert.include(summary, "artifacts=3");
-      assert.include(summary, "configs=2");
-      assert.include(summary, "logs=1");
-      assert.include(summary, "planes=3");
+      assert.match(summary, /scope=platform\/global/);
+      assert.match(summary, /artifacts=3/);
+      assert.match(summary, /configs=2/);
+      assert.match(summary, /logs=1/);
+      assert.match(summary, /planes=3/);
     });
 
     it("should handle empty artifact arrays", () => {
@@ -153,10 +162,10 @@ describe("forensic-snapshot", () => {
 
       const summary = summarizeForensicSnapshot(snapshot);
 
-      assert.include(summary, "artifacts=0");
-      assert.include(summary, "configs=0");
-      assert.include(summary, "logs=0");
-      assert.include(summary, "planes=0");
+      assert.match(summary, /artifacts=0/);
+      assert.match(summary, /configs=0/);
+      assert.match(summary, /logs=0/);
+      assert.match(summary, /planes=0/);
     });
 
     it("should handle non-array artifactIds (defensive)", () => {
@@ -172,7 +181,7 @@ describe("forensic-snapshot", () => {
 
       const summary = summarizeForensicSnapshot(snapshot);
 
-      assert.include(summary, "artifacts=0");
+      assert.match(summary, /artifacts=0/);
     });
 
     it("should handle non-array configurationRefs (defensive)", () => {
@@ -188,7 +197,7 @@ describe("forensic-snapshot", () => {
 
       const summary = summarizeForensicSnapshot(snapshot);
 
-      assert.include(summary, "configs=0");
+      assert.match(summary, /configs=0/);
     });
 
     it("should handle non-array logRefs (defensive)", () => {
@@ -204,7 +213,7 @@ describe("forensic-snapshot", () => {
 
       const summary = summarizeForensicSnapshot(snapshot);
 
-      assert.include(summary, "logs=0");
+      assert.match(summary, /logs=0/);
     });
 
     it("should handle non-array planeAcknowledgments (defensive)", () => {
@@ -215,12 +224,14 @@ describe("forensic-snapshot", () => {
         artifactIds: [],
         configurationRefs: [],
         logRefs: [],
-        planeAcknowledgments: { length: 7 } as unknown as readonly PlaneForensicEvidence[],
+        planeAcknowledgments: {
+          length: 7,
+        } as unknown as readonly PlaneForensicEvidence[],
       } as ForensicSnapshot;
 
       const summary = summarizeForensicSnapshot(snapshot);
 
-      assert.include(summary, "planes=0");
+      assert.match(summary, /planes=0/);
     });
 
     it("should format summary as comma-separated key=value pairs", () => {
@@ -242,10 +253,19 @@ describe("forensic-snapshot", () => {
 
       assert.strictEqual(parts.length, 5);
       assert.strictEqual(parts.filter((p) => p.startsWith("scope=")).length, 1);
-      assert.strictEqual(parts.filter((p) => p.startsWith("artifacts=")).length, 1);
-      assert.strictEqual(parts.filter((p) => p.startsWith("configs=")).length, 1);
+      assert.strictEqual(
+        parts.filter((p) => p.startsWith("artifacts=")).length,
+        1,
+      );
+      assert.strictEqual(
+        parts.filter((p) => p.startsWith("configs=")).length,
+        1,
+      );
       assert.strictEqual(parts.filter((p) => p.startsWith("logs=")).length, 1);
-      assert.strictEqual(parts.filter((p) => p.startsWith("planes=")).length, 1);
+      assert.strictEqual(
+        parts.filter((p) => p.startsWith("planes=")).length,
+        1,
+      );
     });
   });
 });
