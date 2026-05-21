@@ -41,6 +41,7 @@ export class DatadogTransport implements LogTransport {
   private readonly agent: Agent;
   private readonly requestFactory: DatadogRequestFactory;
   private timer: NodeJS.Timeout | null = null;
+  private flushInFlight: Promise<void> | null = null;
 
   constructor(private readonly config: DatadogTransportConfig) {
     this.batchSize = config.batchSize ?? 100;
@@ -51,7 +52,7 @@ export class DatadogTransport implements LogTransport {
     this.agent = config.agent ?? DEFAULT_DATADOG_HTTPS_AGENT;
     this.requestFactory = config.requestFactory ?? request;
     this.timer = setInterval(() => {
-      void this.flushInternal();
+      void this.requestFlush();
     }, this.flushIntervalMs);
     this.timer.unref();
   }
@@ -59,8 +60,18 @@ export class DatadogTransport implements LogTransport {
   write(entry: StructuredLogEntry): void {
     this.batch.push(entry);
     if (this.batch.length >= this.batchSize) {
-      void this.flushInternal();
+      void this.requestFlush();
     }
+  }
+
+  private requestFlush(): Promise<void> {
+    if (this.flushInFlight != null) {
+      return this.flushInFlight;
+    }
+    this.flushInFlight = this.flushInternal().finally(() => {
+      this.flushInFlight = null;
+    });
+    return this.flushInFlight;
   }
 
   private async flushInternal(): Promise<void> {
@@ -125,7 +136,7 @@ export class DatadogTransport implements LogTransport {
   }
 
   async flush(): Promise<void> {
-    await this.flushInternal();
+    await this.requestFlush();
   }
 
   async close(): Promise<void> {
@@ -133,6 +144,6 @@ export class DatadogTransport implements LogTransport {
       clearInterval(this.timer);
       this.timer = null;
     }
-    await this.flushInternal();
+    await this.requestFlush();
   }
 }

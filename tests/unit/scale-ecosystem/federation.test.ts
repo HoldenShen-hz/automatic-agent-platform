@@ -100,7 +100,7 @@ test("FederationGateway.registerOrganization adds org to registry", async () => 
 test("FederationGateway.registerOrganization emits audit event", async () => {
   const gateway = createFederationGateway({ enableAudit: true });
   let eventEmitted = false;
-  gateway.on("federation-event", () => {
+  gateway.on("federation:event", () => {
     eventEmitted = true;
   });
   await gateway.registerOrganization({

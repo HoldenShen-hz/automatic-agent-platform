@@ -142,8 +142,17 @@ function assertIsoTimestamp(value: string, code: string): string {
  * Used for parsing component JSON fields that may be malformed.
  */
 function parseJsonObject(value: string): Record<string, boolean> {
-  const parsed = JSON.parse(value) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value) as unknown;
+  } catch (error) {
+    platformOperatorLogger.debug("platform_operator.invalid_json_object", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return {};
+  }
   if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    platformOperatorLogger.debug("platform_operator.non_object_json", {});
     return {};
   }
   const result: Record<string, boolean> = {};

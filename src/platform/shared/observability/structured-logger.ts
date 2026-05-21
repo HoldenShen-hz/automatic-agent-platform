@@ -25,7 +25,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { appendFileSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, statSync, unlinkSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 
@@ -181,8 +181,8 @@ export class StructuredLogger {
     let safeFilePath: string;
     try {
       safeFilePath = safePath(options.filePath, baseDir);
-    } catch {
-      // Invalid path - silently disable sink to avoid crashing the logging path
+    } catch (error) {
+      reportStructuredLoggerInternalError("structured_logger.invalid_file_sink_path", error);
       StructuredLogger.globalFileSink = null;
       return;
     }
@@ -414,7 +414,7 @@ export class StructuredLogger {
    * @returns Array of recent log entries for the task
    */
   public recentByTask(taskId: string, limit = 50): StructuredLogEntry[] {
-    return this.recent(this.count).filter((entry) => entry.taskId === taskId).slice(-limit);
+    return this.recentBy((entry) => entry.taskId === taskId, limit);
   }
 
   /**
@@ -424,7 +424,7 @@ export class StructuredLogger {
    * @returns Array of recent log entries for the trace
    */
   public recentByTrace(traceId: string, limit = 50): StructuredLogEntry[] {
-    return this.recent(this.count).filter((entry) => entry.traceId === traceId).slice(-limit);
+    return this.recentBy((entry) => entry.traceId === traceId, limit);
   }
 
   /**
@@ -434,7 +434,7 @@ export class StructuredLogger {
    * @returns Array of recent log entries for the correlation
    */
   public recentByCorrelation(correlationId: string, limit = 50): StructuredLogEntry[] {
-    return this.recent(this.count).filter((entry) => entry.correlationId === correlationId).slice(-limit);
+    return this.recentBy((entry) => entry.correlationId === correlationId, limit);
   }
 
   public getBufferSummary(): StructuredLoggerBufferSummary {
@@ -476,8 +476,8 @@ export class StructuredLogger {
             }
           });
       }
-    } catch {
-      // File sink failures must not take down the caller path.
+    } catch (error) {
+      reportStructuredLoggerInternalError("structured_logger.file_sink_failure", error);
     }
   }
 
@@ -496,12 +496,12 @@ export class StructuredLogger {
       try {
         const result = transport.write(entry);
         if (result instanceof Promise) {
-          void result.catch(() => {
-            // Transport failures must not take down the caller path.
+          void result.catch((error) => {
+            reportStructuredLoggerInternalError("structured_logger.transport_write_failed", error);
           });
         }
-      } catch {
-        // Transport write must not take down the caller path.
+      } catch (error) {
+        reportStructuredLoggerInternalError("structured_logger.transport_write_failed", error);
       }
     }
   }
@@ -525,8 +525,8 @@ export class StructuredLogger {
     // Check asynchronously if rotation is needed to avoid blocking the event loop
     // and prevent race condition between statSync (sync) and appendFile (async)
     state.scheduled = true;
-    this.checkRotationAsync(sink).catch(() => {
-      // Rotation check errors should not affect logging
+    this.checkRotationAsync(sink).catch((error) => {
+      reportStructuredLoggerInternalError("structured_logger.rotation_check_failed", error);
       state.scheduled = false;
     });
   }
@@ -540,7 +540,8 @@ export class StructuredLogger {
     let currentBytes = 0;
     try {
       currentBytes = (await fsPromises.stat(sink.filePath)).size;
-    } catch {
+    } catch (error) {
+      reportStructuredLoggerInternalError("structured_logger.rotation_stat_failed", error);
       state.scheduled = false;
       return;
     }
@@ -550,8 +551,7 @@ export class StructuredLogger {
       return;
     }
 
-    // Schedule async rotation
-    setImmediate(() => void this.performRotation(sink));
+    await this.performRotation(sink);
   }
 
   private async performRotation(sink: StructuredLoggerFileSink): Promise<void> {
@@ -560,8 +560,10 @@ export class StructuredLogger {
       if (archiveCount === 0) {
         try {
           await fsPromises.unlink(sink.filePath);
-        } catch {
-          // File may not exist
+        } catch (error) {
+          if (!isMissingFileError(error)) {
+            reportStructuredLoggerInternalError("structured_logger.rotation_unlink_failed", error);
+          }
         }
         const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
         if (state != null) {
@@ -573,30 +575,36 @@ export class StructuredLogger {
         return;
       }
 
-      const oldestArchivePath = `${sink.filePath}.${archiveCount}`;
+      const oldestArchivePath = buildArchivePath(sink.filePath, archiveCount);
       try {
         await fsPromises.unlink(oldestArchivePath);
-      } catch {
-        // File may not exist
+      } catch (error) {
+        if (!isMissingFileError(error)) {
+          reportStructuredLoggerInternalError("structured_logger.rotation_archive_unlink_failed", error);
+        }
       }
 
       for (let index = archiveCount - 1; index >= 1; index -= 1) {
-        const fromPath = `${sink.filePath}.${index}`;
-        const toPath = `${sink.filePath}.${index + 1}`;
+        const fromPath = buildArchivePath(sink.filePath, index);
+        const toPath = buildArchivePath(sink.filePath, index + 1);
         try {
           await renameWithCrossDeviceFallback(fromPath, toPath);
-        } catch {
-          // File may not exist
+        } catch (error) {
+          if (!isMissingFileError(error)) {
+            reportStructuredLoggerInternalError("structured_logger.rotation_archive_rename_failed", error);
+          }
         }
       }
 
       try {
-        await renameWithCrossDeviceFallback(sink.filePath, `${sink.filePath}.1`);
-      } catch {
-        // File may not exist
+        await renameWithCrossDeviceFallback(sink.filePath, buildArchivePath(sink.filePath, 1));
+      } catch (error) {
+        if (!isMissingFileError(error)) {
+          reportStructuredLoggerInternalError("structured_logger.rotation_active_rename_failed", error);
+        }
       }
-    } catch {
-      // Rotation errors should not affect logging
+    } catch (error) {
+      reportStructuredLoggerInternalError("structured_logger.rotation_failed", error);
     } finally {
       const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
       if (state != null) {
@@ -606,6 +614,26 @@ export class StructuredLogger {
         }
       }
     }
+  }
+
+  private recentBy(
+    predicate: (entry: StructuredLogEntry) => boolean,
+    limit: number,
+  ): StructuredLogEntry[] {
+    const actualLimit = Math.max(0, Math.min(limit, this.count));
+    if (actualLimit === 0 || this.count === 0) {
+      return [];
+    }
+
+    const reversed: StructuredLogEntry[] = [];
+    for (let offset = 1; offset <= this.count && reversed.length < actualLimit; offset += 1) {
+      const index = (this.head - offset + this.retentionLimit) % this.retentionLimit;
+      const entry = this.buffer[index];
+      if (entry !== undefined && predicate(entry)) {
+        reversed.push(entry);
+      }
+    }
+    return reversed.reverse();
   }
 }
 
@@ -619,6 +647,18 @@ const LOG_LEVEL_ORDER: Record<StructuredLogLevel, number> = {
 
 function compareLogLevels(left: StructuredLogLevel, right: StructuredLogLevel): number {
   return LOG_LEVEL_ORDER[left] - LOG_LEVEL_ORDER[right];
+}
+
+function reportStructuredLoggerInternalError(code: string, error: unknown): void {
+  process.stderr.write(`${code}:${error instanceof Error ? error.message : String(error)}\n`);
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function buildArchivePath(filePath: string, index: number): string {
+  return join(dirname(filePath), `${basename(filePath)}.${index}`);
 }
 
 function normalizeStructuredService(value: string | undefined): string {

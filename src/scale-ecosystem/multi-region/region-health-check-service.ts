@@ -138,6 +138,7 @@ export class RegionHealthCheckService {
    * Unregister a region from health monitoring
    */
   public unregisterRegion(regionId: string): void {
+    this.circuitBreakers.get(regionId)?.reset();
     this.configs.delete(regionId);
     this.healthResults.delete(regionId);
     this.consecutiveFailures.delete(regionId);
@@ -431,7 +432,7 @@ export class RegionHealthCheckService {
     const startTime = Date.now();
     try {
       // Use HTTP HEAD request to measure latency with minimal payload
-      const url = endpoint.endsWith("/") ? endpoint.slice(0, -1) : endpoint;
+      const url = resolveRegionHealthEndpoint(endpoint);
       await fetch(`${url}/health`, {
         method: "HEAD",
         signal: controller.signal,
@@ -483,6 +484,20 @@ export class RegionHealthCheckService {
       this.consecutiveFailures.set(regionId, 0);
     }
   }
+}
+
+function resolveRegionHealthEndpoint(endpoint: string): string {
+  const parsed = new URL(endpoint);
+  const isLoopbackHost = parsed.hostname === "localhost"
+    || parsed.hostname === "127.0.0.1"
+    || parsed.hostname === "::1";
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLoopbackHost)) {
+    throw new Error("region_health_check.invalid_endpoint_protocol");
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error("region_health_check.invalid_endpoint_credentials");
+  }
+  return parsed.toString().replace(/\/$/, "");
 }
 
 /**

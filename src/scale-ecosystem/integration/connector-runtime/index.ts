@@ -32,8 +32,12 @@ export function buildConnectorExecutionKey(request: ConnectorExecutionRequest): 
  * Returns true if the callback was delivered successfully, false otherwise.
  */
 export async function invokeCallback(callbackUrl: string, result: ConnectorExecutionResult): Promise<boolean> {
+  const endpoint = resolveCallbackUrl(callbackUrl);
+  if (endpoint == null) {
+    return false;
+  }
   try {
-    const response = await fetch(callbackUrl, {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -43,7 +47,29 @@ export async function invokeCallback(callbackUrl: string, result: ConnectorExecu
       signal: AbortSignal.timeout(10_000),
     });
     return response.ok;
-  } catch {
+  } catch (error) {
+    process.stderr.write(`connector_runtime.callback_failed:${error instanceof Error ? error.message : String(error)}\n`);
     return false;
+  }
+}
+
+function resolveCallbackUrl(value: string): string | null {
+  try {
+    const endpoint = new URL(value);
+    const isLoopbackHost = endpoint.hostname === "localhost"
+      || endpoint.hostname === "127.0.0.1"
+      || endpoint.hostname === "::1";
+    if (endpoint.protocol !== "https:" && endpoint.protocol !== "http:") {
+      return null;
+    }
+    if (endpoint.protocol === "http:" && !isLoopbackHost) {
+      return null;
+    }
+    if (endpoint.username || endpoint.password) {
+      return null;
+    }
+    return endpoint.toString();
+  } catch {
+    return null;
   }
 }

@@ -674,7 +674,11 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
     }
     this.publishBatchFlushTimer = setTimeout(() => {
       this.publishBatchFlushTimer = null;
-      void this.flushBatch();
+      void this.flushBatch().catch((error) => {
+        logger.error("durable_event_bus_async.batch_flush_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }, this.options.batchFlushIntervalMs);
     this.publishBatchFlushTimer.unref?.();
   }
@@ -684,7 +688,11 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
    */
   private startBatchFlushTimer(): void {
     this.batchFlushTimer = setInterval(() => {
-      this.flushBatch();
+      void this.flushBatch().catch((error) => {
+        logger.error("durable_event_bus_async.batch_flush_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }, this.options.batchFlushIntervalMs);
     this.batchFlushTimer.unref?.();
   }

@@ -66,10 +66,7 @@ export class CacheInvalidationEngine {
    * Bulk invalidation for multiple tags.
    */
   async invalidateTags(tags: string[]): Promise<number> {
-    let total = 0;
-    for (const tag of tags) {
-      total += await this.cache.invalidateByTag(tag);
-    }
-    return total;
+    const counts = await Promise.all(tags.map((tag) => this.cache.invalidateByTag(tag)));
+    return counts.reduce((sum, count) => sum + count, 0);
   }
 }

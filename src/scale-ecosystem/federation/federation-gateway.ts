@@ -590,7 +590,7 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
     if (this.config.enableAudit) {
       this.auditLog.push(event);
     }
-    this.emit("federation-event", event);
+    this.emit("federation:event", event);
   }
 
   getAuditLog(orgId?: string, limit?: number): FederationEvent[] {

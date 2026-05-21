@@ -54,7 +54,10 @@ export class RedisCacheStore implements CacheStore {
   private parseStoredEntry<T>(raw: string): { value: T; meta: CacheMeta } | null {
     try {
       return JSON.parse(raw) as { value: T; meta: CacheMeta };
-    } catch {
+    } catch (error) {
+      logger.warn("redis_cache_store.invalid_cached_entry", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
@@ -122,7 +125,12 @@ export class RedisCacheStore implements CacheStore {
         }
       }
       return { hit: true, value: entry.value, layer: "L2", meta: entry.meta };
-    } catch {
+    } catch (error) {
+      logger.warn("redis_cache_store.expired_entry_cleanup_failed", {
+        namespace,
+        key,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await this.delete(namespace, key);
       return { hit: false, value: null, reason: "not_found" };
     }
@@ -158,9 +166,7 @@ export class RedisCacheStore implements CacheStore {
 
     const indexTtlMs = ttlMs != null ? ttlMs + REDIS_INDEX_TTL_GRACE_MS : null;
     await this.extendIndexTtl(this.namespaceSetKey(namespace), indexTtlMs);
-    for (const tag of meta.tags) {
-      await this.extendIndexTtl(this.tagSetKey(tag), indexTtlMs);
-    }
+    await Promise.all(meta.tags.map((tag) => this.extendIndexTtl(this.tagSetKey(tag), indexTtlMs)));
   }
 
   async delete(namespace: string, key: string): Promise<void> {
@@ -257,9 +263,8 @@ export class RedisCacheStore implements CacheStore {
         cursor, "MATCH", tagPattern, "COUNT", 100
       );
       cursor = nextCursor;
-      for (const tagKey of keys) {
-        cleaned += await this.cleanupIndexSet(tagKey);
-      }
+      const counts = await Promise.all(keys.map((tagKey) => this.cleanupIndexSet(tagKey)));
+      cleaned += counts.reduce((sum, count) => sum + count, 0);
     } while (cursor !== "0");
     cursor = "0";
     do {
@@ -267,9 +272,8 @@ export class RedisCacheStore implements CacheStore {
         cursor, "MATCH", namespacePattern, "COUNT", 100
       );
       cursor = nextCursor;
-      for (const namespaceKey of keys) {
-        cleaned += await this.cleanupIndexSet(namespaceKey);
-      }
+      const counts = await Promise.all(keys.map((namespaceKey) => this.cleanupIndexSet(namespaceKey)));
+      cleaned += counts.reduce((sum, count) => sum + count, 0);
     } while (cursor !== "0");
     return cleaned;
   }

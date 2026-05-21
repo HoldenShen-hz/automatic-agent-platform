@@ -112,7 +112,7 @@ test("PgvectorSemanticVectorStore upserts records and executes vector similarity
   });
 
   assert.equal(store.inspect().backend, "pgvector");
-  assert.ok(executed[0]?.sql.includes("knowledge_semantic_vectors"));
+  assert.ok(executed[0]?.sql.includes("\"public\".\"knowledge_semantic_vectors\""));
   assert.equal(typeof executed[0]?.params[6], "string");
   assert.ok(String(executed[0]?.params[6]).startsWith("["));
   assert.ok(queried.some((item) => item.sql.includes("pg_extension")));

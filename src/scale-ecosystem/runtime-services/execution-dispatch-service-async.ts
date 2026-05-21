@@ -16,6 +16,7 @@
 
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { randomUUID } from "node:crypto";
 import type { AdmissionBackpressureSnapshot } from "../../platform/five-plane-execution/dispatcher/admission-controller.js";
 import type {
   CreateExecutionTicketInput,
@@ -619,7 +620,7 @@ export class ExecutionDispatchServiceAsync extends LocalTypedEventEmitter<Record
    * Generates a unique operation ID.
    */
   private generateOperationId(): string {
-    return `op_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    return `op_${randomUUID()}`;
   }
 
   /**

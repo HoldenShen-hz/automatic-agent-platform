@@ -2,14 +2,18 @@ export type LocalEventListener<TPayload = unknown> = (payload: TPayload) => void
 
 export class LocalTypedEventEmitter<TEvents extends Record<string, unknown>> {
   private readonly listenerMap = new Map<keyof TEvents, Set<LocalEventListener>>();
-  private maxListeners = 100;
+  private maxListeners = 0;
 
   public on<TEvent extends keyof TEvents>(
     event: TEvent,
     listener: LocalEventListener<TEvents[TEvent]>,
   ): this {
     const listeners = this.getListeners(event);
-    if (!listeners.has(listener as LocalEventListener) && listeners.size >= this.maxListeners) {
+    if (
+      this.maxListeners > 0
+      && !listeners.has(listener as LocalEventListener)
+      && listeners.size >= this.maxListeners
+    ) {
       throw new Error(`local_typed_event_emitter.max_listeners_exceeded:${String(event)}`);
     }
     listeners.add(listener as LocalEventListener);
@@ -17,7 +21,7 @@ export class LocalTypedEventEmitter<TEvents extends Record<string, unknown>> {
   }
 
   public setMaxListeners(maxListeners: number): this {
-    if (!Number.isInteger(maxListeners) || maxListeners < 1) {
+    if (!Number.isInteger(maxListeners) || maxListeners < 0) {
       throw new Error("local_typed_event_emitter.invalid_max_listeners");
     }
     this.maxListeners = maxListeners;
@@ -73,7 +77,7 @@ export class LocalTypedEventEmitter<TEvents extends Record<string, unknown>> {
     return true;
   }
 
-  protected removeAllListeners<TEvent extends keyof TEvents>(event?: TEvent): this {
+  public removeAllListeners<TEvent extends keyof TEvents>(event?: TEvent): this {
     if (event == null) {
       this.listenerMap.clear();
     } else {

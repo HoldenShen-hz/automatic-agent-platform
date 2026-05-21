@@ -18,6 +18,7 @@
 
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { randomUUID } from "node:crypto";
 import type {
   WorkerWritebackInput,
   WorkerWritebackDecision,
@@ -720,7 +721,14 @@ export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter
    */
   private startBatchFlushTimer(): void {
     this.batchFlushTimer = setInterval(() => {
-      this.flushBatch();
+      if (this.batchFlushPromise != null) {
+        return;
+      }
+      void this.flushBatch().catch((error) => {
+        logger.error("execution_worker_writeback_service.batch_flush_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }, this.options.batchFlushIntervalMs);
     this.batchFlushTimer.unref?.();
   }
@@ -855,7 +863,7 @@ export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter
    * Generates a unique operation ID.
    */
   private generateOperationId(): string {
-    return `wb_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    return `wb_${randomUUID()}`;
   }
 
   /**

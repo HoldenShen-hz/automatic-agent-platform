@@ -18,6 +18,7 @@
 
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { randomUUID } from "node:crypto";
 import type { TaskTerminalStatus } from "../../platform/contracts/types/status.js";
 import type { TakeoverActionResult } from "../../platform/five-plane-control-plane/incident-control/human-takeover-service.js";
 import { HumanTakeoverService } from "../../platform/five-plane-control-plane/incident-control/human-takeover-service.js";
@@ -912,7 +913,7 @@ export class HumanTakeoverServiceAsync extends LocalTypedEventEmitter<Record<str
    * Generates a unique operation ID.
    */
   private generateOperationId(): string {
-    return `hto_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    return `hto_${randomUUID()}`;
   }
 
   /**

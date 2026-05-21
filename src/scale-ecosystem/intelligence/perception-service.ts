@@ -247,13 +247,22 @@ function deriveRecommendedActions(items: readonly IntelItemRecord[]): Recommende
   });
 }
 
+function parseJsonArray<T>(value: string): T[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed as T[] : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Builds Markdown-formatted intel brief for human review */
 function buildBriefMarkdown(
   brief: IntelBriefRecord,
   items: readonly IntelItemRecord[],
   proposals: readonly ActionProposalRecord[],
 ): string {
-  const recommendedActions = JSON.parse(brief.recommendedActionsJson) as RecommendedPerceptionAction[];
+  const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(brief.recommendedActionsJson);
   const lines = [
     "# Intel Brief",
     "",
@@ -451,7 +460,7 @@ export class PerceptionService {
       return existing;
     }
 
-    const recommendedActions = JSON.parse(brief.recommendedActionsJson) as RecommendedPerceptionAction[];
+    const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(brief.recommendedActionsJson);
     const proposals = recommendedActions.map((action) => {
       const createdAt = nowIso();
       return {
@@ -485,7 +494,7 @@ export class PerceptionService {
   public exportBrief(briefId: string, accountId?: string | null, tenantId?: string | null): ExportIntelBriefResult {
     this.assertFeatureEnabled(accountId ?? null);
     const brief = this.requireBrief(briefId, tenantId ?? undefined);
-    const itemIds = JSON.parse(brief.itemIdsJson) as string[];
+    const itemIds = parseJsonArray<string>(brief.itemIdsJson);
 
     // Retrieve and sort items to match the brief order
     const items = this.store
@@ -498,7 +507,7 @@ export class PerceptionService {
       ...(tenantId !== undefined ? { tenantId } : {}),
       ...(accountId !== undefined ? { accountId } : {}),
     });
-    const recommendedActions = JSON.parse(brief.recommendedActionsJson) as RecommendedPerceptionAction[];
+    const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(brief.recommendedActionsJson);
 
     this.ensurePerceptionArtifactTask(brief.generatedAt);
 

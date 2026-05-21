@@ -146,11 +146,12 @@ export class SliCollectionService {
    */
   initializeDefaultSlos(): SloDefinition[] {
     const created: SloDefinition[] = [];
+    const existingNames = new Set(this.sloAlertingService.listSlos().map((slo) => slo.name));
     for (const input of DEFAULT_SLO_DEFINITIONS) {
-      const existing = this.sloAlertingService.listSlos().find((s) => s.name === input.name);
-      if (!existing) {
+      if (!existingNames.has(input.name)) {
         const slo = this.sloAlertingService.defineSlo(input);
         created.push(slo);
+        existingNames.add(input.name);
       }
     }
     return created;

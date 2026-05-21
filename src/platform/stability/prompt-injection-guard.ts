@@ -165,7 +165,8 @@ async function fetchMLSemanticAssessment(
   mlModelEndpoint: string,
 ): Promise<{ score: number; signals: string[]; blocked: boolean } | null> {
   try {
-    const response = await fetch(mlModelEndpoint, {
+    const endpoint = resolveRemoteAssessmentEndpoint(mlModelEndpoint, "mlModelEndpoint");
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input }),
@@ -183,7 +184,8 @@ async function fetchMLSemanticAssessment(
       signals: data.signals ?? [],
       blocked: data.blocked ?? false,
     };
-  } catch {
+  } catch (error) {
+    reportPromptGuardError("prompt_injection_guard.ml_endpoint_failed", error);
     return null;
   }
 }
@@ -272,7 +274,8 @@ async function fetchLLMJudgeAssessment(
   llmJudgeEndpoint: string,
 ): Promise<{ score: number; signals: string[]; blocked: boolean } | null> {
   try {
-    const response = await fetch(llmJudgeEndpoint, {
+    const endpoint = resolveRemoteAssessmentEndpoint(llmJudgeEndpoint, "llmJudgeEndpoint");
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input }),
@@ -290,7 +293,8 @@ async function fetchLLMJudgeAssessment(
       signals: data.signals ?? [],
       blocked: data.blocked ?? false,
     };
-  } catch {
+  } catch (error) {
+    reportPromptGuardError("prompt_injection_guard.llm_judge_endpoint_failed", error);
     return null;
   }
 }
@@ -390,6 +394,27 @@ function shouldDeferTopLevelBlock(
     && lexicalSignals.has("tool_escape")
     && behavioralSignals.size === 1
     && behavioralSignals.has("behavioral_execution_takeover");
+}
+
+function resolveRemoteAssessmentEndpoint(value: string, field: string): string {
+  const endpoint = new URL(value);
+  const isLoopbackHost = endpoint.hostname === "localhost"
+    || endpoint.hostname === "127.0.0.1"
+    || endpoint.hostname === "::1";
+  if (endpoint.protocol !== "https:") {
+    throw new Error(`prompt_injection_guard.invalid_endpoint_protocol:${field}`);
+  }
+  if (endpoint.username || endpoint.password) {
+    throw new Error(`prompt_injection_guard.invalid_endpoint_credentials:${field}`);
+  }
+  if (isLoopbackHost) {
+    throw new Error(`prompt_injection_guard.disallowed_endpoint_host:${field}`);
+  }
+  return endpoint.toString();
+}
+
+function reportPromptGuardError(code: string, error: unknown): void {
+  process.stderr.write(`${code}:${error instanceof Error ? error.message : String(error)}\n`);
 }
 
 export function classifyPromptInjectionRisk(

@@ -457,7 +457,7 @@ test("DataReplicatorService.handleIncomingEvent calls registered handler", async
     aggregateId: "task-1",
     payload: {},
     timestamp: "2026-04-20T00:00:00.000Z",
-    checksum: "abc",
+    checksum: computeChecksum({}, "sha256"),
   });
 
   assert.equal(handlerCalled, true);

@@ -50,11 +50,6 @@ test("LocalTypedEventEmitter - setMaxListeners() validates integer input", () =>
   const emitter = new LocalTypedEventEmitter<TestEvents>();
 
   assert.throws(
-    () => emitter.setMaxListeners(0),
-    /local_typed_event_emitter\.invalid_max_listeners/,
-  );
-
-  assert.throws(
     () => emitter.setMaxListeners(-1),
     /local_typed_event_emitter\.invalid_max_listeners/,
   );
@@ -73,6 +68,7 @@ test("LocalTypedEventEmitter - setMaxListeners() validates integer input", () =>
 test("LocalTypedEventEmitter - setMaxListeners() accepts valid values", () => {
   const emitter = new LocalTypedEventEmitter<TestEvents>();
 
+  assert.equal(emitter.setMaxListeners(0).getMaxListeners(), 0);
   assert.equal(emitter.setMaxListeners(10).getMaxListeners(), 10);
   assert.equal(emitter.setMaxListeners(1).getMaxListeners(), 1);
   assert.equal(emitter.setMaxListeners(1000).getMaxListeners(), 1000);
@@ -81,7 +77,7 @@ test("LocalTypedEventEmitter - setMaxListeners() accepts valid values", () => {
 test("LocalTypedEventEmitter - getMaxListeners() returns current limit", () => {
   const emitter = new LocalTypedEventEmitter<TestEvents>();
 
-  assert.equal(emitter.getMaxListeners(), 100);
+  assert.equal(emitter.getMaxListeners(), 0);
   emitter.setMaxListeners(50);
   assert.equal(emitter.getMaxListeners(), 50);
 });

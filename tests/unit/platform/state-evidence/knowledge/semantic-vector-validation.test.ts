@@ -39,7 +39,7 @@ test("validateSemanticVectorReadiness verifies pgvector extension, table, ivffla
     },
     async execute(sql: string, ...params: unknown[]): Promise<number> {
       executed.push({ sql, params });
-      if (sql.includes("INSERT INTO public.knowledge_semantic_vectors")) {
+      if (sql.includes("INSERT INTO \"public\".\"knowledge_semantic_vectors\"")) {
         insertedKnowledgeRef = String(params[0]);
       }
       return 1;
@@ -84,8 +84,8 @@ test("validateSemanticVectorReadiness verifies pgvector extension, table, ivffla
   assert.equal(report.vectorBackend, "pgvector");
   assert.equal(report.checks.find((check) => check.name === "semantic_roundtrip")?.ok, true);
   assert.equal(report.checks.find((check) => check.name === "semantic_ivfflat_index_present")?.ok, true);
-  assert.ok(executed.some((entry) => entry.sql.includes("INSERT INTO public.knowledge_semantic_vectors")));
-  assert.ok(executed.some((entry) => entry.sql.includes("DELETE FROM public.knowledge_semantic_vectors")));
+  assert.ok(executed.some((entry) => entry.sql.includes("INSERT INTO \"public\".\"knowledge_semantic_vectors\"")));
+  assert.ok(executed.some((entry) => entry.sql.includes("DELETE FROM \"public\".\"knowledge_semantic_vectors\"")));
 });
 
 test("validateSemanticVectorReadiness fails closed when storage is not postgres", async () => {

@@ -449,8 +449,8 @@ export class ConnectorFrameworkService {
         this.manifests.set(id, manifest);
         this.registerBuiltInConnectorInstance(manifest);
       }
-    } catch {
-      // Ignore corrupt file — start empty
+    } catch (error) {
+      process.stderr.write(`connector_framework.load_manifests_failed:${error instanceof Error ? error.message : String(error)}\n`);
     }
   }
 
@@ -468,8 +468,8 @@ export class ConnectorFrameworkService {
           this.bindings.set(connectorId, filtered);
         }
       }
-    } catch {
-      // Ignore corrupt file — start empty
+    } catch (error) {
+      process.stderr.write(`connector_framework.load_bindings_failed:${error instanceof Error ? error.message : String(error)}\n`);
     }
   }
 
@@ -482,8 +482,8 @@ export class ConnectorFrameworkService {
       for (const [connectorId, reports] of entries) {
         this.health.set(connectorId, reports);
       }
-    } catch {
-      // Ignore corrupt file — start empty
+    } catch (error) {
+      process.stderr.write(`connector_framework.load_health_failed:${error instanceof Error ? error.message : String(error)}\n`);
     }
   }
 

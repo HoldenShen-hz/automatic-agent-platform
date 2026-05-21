@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { nowIso } from "../../../platform/contracts/types/ids.js";
 import { CrossBorderTransferComplianceService } from "../cross-border-transfer-compliance-service.js";
 import { getRpoRtoTrackingService } from "../rpo-rto-tracking.js";
@@ -29,6 +29,7 @@ export function shouldReplicateToRegion(policy: ReplicationPolicy, targetRegionI
 
 export interface ReplicationEvent {
   eventId: string;
+  sequenceNumber?: number;
   sourceRegionId: string;
   targetRegionId: string;
   aggregateType: string;
@@ -256,6 +257,10 @@ export class DataReplicatorService {
   private readonly compensateReplicationFailure: ReplicationFailureCompensator | undefined;
   private readonly lagMeasurements = new Map<string, ReplicationLagMeasurement>();
   private readonly sourceSequences = new Map<string, number>();
+  private readonly eventSequenceByTarget = new Map<string, number>();
+  private readonly processedIncomingEventIds = new Set<string>();
+  private readonly processedIncomingEventOrder: string[] = [];
+  private static readonly MAX_TRACKED_INCOMING_EVENT_IDS = 10_000;
 
   public constructor(config: DataReplicatorConfig) {
     this.config = { ...config };
@@ -358,7 +363,8 @@ export class DataReplicatorService {
       effectivePayload = assessment.dataMinimizer.minimizedPayload ?? payload;
     }
     const event: ReplicationEvent = {
-      eventId: `repl_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      eventId: `repl_${randomUUID()}`,
+      sequenceNumber: this.nextSequenceNumber(targetRegionId),
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
       aggregateType,
@@ -413,7 +419,7 @@ export class DataReplicatorService {
       const delivery = await this.deliverEventWithRetries(targetRegionId, event);
       if (delivery.success) {
         this.replicationOutboxStore.acknowledge(targetRegionId, event.eventId);
-        lastSequence++;
+        lastSequence = Math.max(lastSequence, event.sequenceNumber ?? (lastSequence + 1));
         continue;
       }
       errors.push(delivery.error);
@@ -476,9 +482,16 @@ export class DataReplicatorService {
    * Handle incoming replication event (called by remote region)
    */
   public async handleIncomingEvent(event: ReplicationEvent): Promise<void> {
+    if (!this.validateEvent(event)) {
+      throw new Error(`replication.invalid_checksum:${event.eventId}`);
+    }
+    if (this.hasProcessedIncomingEvent(event.eventId)) {
+      return;
+    }
     const handler = this.eventHandlers.get(event.sourceRegionId);
     if (handler) {
       await handler(event);
+      this.recordProcessedIncomingEvent(event.eventId);
     }
   }
 
@@ -528,7 +541,7 @@ export class DataReplicatorService {
     const lagMs = pendingEvents * (this.config.flushIntervalMs / Math.max(1, this.config.batchSize));
 
     const measurement: ReplicationLagMeasurement = {
-      measurementId: `lag_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      measurementId: `lag_${randomUUID()}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
       measuredAt: nowIso(),
@@ -600,6 +613,32 @@ export class DataReplicatorService {
       attemptCount: Math.max(this.config.retryAttempts, 1),
       error: lastError,
     };
+  }
+
+  private nextSequenceNumber(targetRegionId: string): number {
+    const key = `${this.config.sourceRegionId}:${targetRegionId}`;
+    const nextSequence = (this.eventSequenceByTarget.get(key) ?? 0) + 1;
+    this.eventSequenceByTarget.set(key, nextSequence);
+    this.sourceSequences.set(key, nextSequence);
+    return nextSequence;
+  }
+
+  private hasProcessedIncomingEvent(eventId: string): boolean {
+    return this.processedIncomingEventIds.has(eventId);
+  }
+
+  private recordProcessedIncomingEvent(eventId: string): void {
+    if (this.processedIncomingEventIds.has(eventId)) {
+      return;
+    }
+    this.processedIncomingEventIds.add(eventId);
+    this.processedIncomingEventOrder.push(eventId);
+    if (this.processedIncomingEventOrder.length > DataReplicatorService.MAX_TRACKED_INCOMING_EVENT_IDS) {
+      const evicted = this.processedIncomingEventOrder.shift();
+      if (evicted != null) {
+        this.processedIncomingEventIds.delete(evicted);
+      }
+    }
   }
 }
 

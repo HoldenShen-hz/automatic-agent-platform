@@ -17,6 +17,7 @@
 
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { randomUUID } from "node:crypto";
 import type {
   ExecutionWorkerHandshakeServiceOptions,
   WorkerClaimExecutionInput,
@@ -151,6 +152,7 @@ export class ExecutionWorkerHandshakeServiceAsync extends LocalTypedEventEmitter
   // Batching
   private readonly batchQueue: BatchItem<unknown>[] = [];
   private batchFlushTimer: ReturnType<typeof setInterval> | null = null;
+  private batchFlushPromise: Promise<void> | null = null;
 
   // Circuit breaker
   private circuitBreaker: CircuitBreakerMetrics = {
@@ -652,7 +654,11 @@ export class ExecutionWorkerHandshakeServiceAsync extends LocalTypedEventEmitter
    */
   private startBatchFlushTimer(): void {
     this.batchFlushTimer = setInterval(() => {
-      this.flushBatch();
+      void this.flushBatch().catch((error) => {
+        logger.error("execution_worker_handshake_service.batch_flush_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }, this.options.batchFlushIntervalMs);
     this.batchFlushTimer.unref?.();
   }
@@ -661,25 +667,38 @@ export class ExecutionWorkerHandshakeServiceAsync extends LocalTypedEventEmitter
    * Flushes the batch queue.
    */
   private async flushBatch(): Promise<void> {
+    if (this.batchFlushPromise != null) {
+      await this.batchFlushPromise;
+      return;
+    }
     if (this.batchQueue.length === 0 || this.disposed) {
       return;
     }
 
-    const batch = this.batchQueue.splice(0, this.options.batchSize);
-    const startedAt = Date.now();
+    this.batchFlushPromise = (async () => {
+      const batch = this.batchQueue.splice(0, this.options.batchSize);
+      const startedAt = Date.now();
 
-    // Process batch items concurrently
-    await Promise.allSettled(
-      batch.map((item) =>
-        item
-          .operation()
-          .then(item.resolve)
-          .catch((error) => item.reject(error instanceof Error ? error : new Error(String(error))))
-      )
-    );
+      await Promise.allSettled(
+        batch.map((item) =>
+          item
+            .operation()
+            .then(item.resolve)
+            .catch((error) => item.reject(error instanceof Error ? error : new Error(String(error))))
+        )
+      );
 
-    const durationMs = Date.now() - startedAt;
-    this.emit("batch_flush", { type: "batch_flush", batchSize: batch.length, durationMs });
+      const durationMs = Date.now() - startedAt;
+      this.emit("batch_flush", { type: "batch_flush", batchSize: batch.length, durationMs });
+    })();
+    try {
+      await this.batchFlushPromise;
+    } finally {
+      this.batchFlushPromise = null;
+      if (this.batchQueue.length > 0 && !this.disposed) {
+        await this.flushBatch();
+      }
+    }
   }
 
   /**
@@ -773,7 +792,7 @@ export class ExecutionWorkerHandshakeServiceAsync extends LocalTypedEventEmitter
    * Generates a unique operation ID.
    */
   private generateOperationId(): string {
-    return `op_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    return `op_${randomUUID()}`;
   }
 
   /**
