@@ -10,6 +10,7 @@ export * as networkEgressAudit from "./network-egress-audit.js";
 export * as networkEgressPolicy from "./network-egress-policy.js";
 export * as outboundUrlPolicy from "./outbound-url-policy.js";
 export * as policyEngine from "./policy-engine.js";
+export * as researchSourceGovernance from "./research-source-governance.js";
 export * as sandboxPolicy from "./sandbox-policy.js";
 export * as secretManagementSupport from "./secret-management-support.js";
 export * as threatModel from "./threat-model/index.js";
@@ -33,9 +34,7 @@ export type {
   SecretProviderValue,
 } from "./env-secret-provider.js";
 export { SecretManagementService } from "./secret-management-service.js";
-export type {
-  SecretAuthorizationContext,
-} from "./secret-management-service.js";
+export type { SecretAuthorizationContext } from "./secret-management-service.js";
 export {
   createRestrictedExecPolicy,
   createScopedExternalAccessPolicy,

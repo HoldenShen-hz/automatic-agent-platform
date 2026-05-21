@@ -16,3 +16,4 @@ export * from "./quality-config-loader.js";
 export * from "./quality-gate-evidence-service.js";
 export * from "./cross-provider-judge-service.js";
 export * from "./judge-provider-registry-service.js";
+export * from "./research-quality-validation.js";

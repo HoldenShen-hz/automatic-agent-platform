@@ -35,3 +35,4 @@ export * from "./stable-runtime-validator.js";
 export * from "./stable-worker-handshake-rehearsal.js";
 export * from "./stable-worker-writeback-rehearsal.js";
 export * from "./vcr-replay-fixture.js";
+export * from "./platform-validation-readiness.js";

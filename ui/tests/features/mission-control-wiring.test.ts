@@ -20,6 +20,17 @@ describe("mission control panel wiring", () => {
     expect(vm.panelGroups.flatMap((group) => group.panels)).toHaveLength(28);
     expect(vm.trendValues.length).toBeGreaterThanOrEqual(6);
     expect(vm.panelGroups[0]?.panels[0]?.value).toBe("healthy");
+    expect(vm.drilldownTrail).toEqual([
+      "Mission",
+      "Task",
+      "HarnessRun",
+      "PlanGraphBundle",
+      "NodeRun",
+      "NodeAttempt",
+      "Tool/Model/Connector",
+      "Evidence/Artifact",
+    ]);
+    expect(vm.operatorWorkflowChecks).toContain("HITL decision");
   });
 
   it("maps stability data into structured health rows", () => {
@@ -32,15 +43,21 @@ describe("mission control panel wiring", () => {
     );
 
     expect(vm.rows).toHaveLength(9);
-    expect(vm.rows.find((row) => row.key === "P99 Latency")?.value).toContain("ms");
-    expect(vm.items.length).toBeGreaterThanOrEqual(defaultMockApiShape.incidents.length);
+    expect(vm.rows.find((row) => row.key === "P99 Latency")?.value).toContain(
+      "ms",
+    );
+    expect(vm.items.length).toBeGreaterThanOrEqual(
+      defaultMockApiShape.incidents.length,
+    );
   });
 
   it("maps analytics into layer summaries and breakdown-ready metrics", () => {
     const vm = mapAnalyticsToVm(defaultMockApiShape.analytics);
 
     expect(vm.layerSummaries).toHaveLength(6);
-    expect(vm.layerSummaries.find((item) => item.layer === "workflows")?.metricCount).toBeGreaterThan(0);
+    expect(
+      vm.layerSummaries.find((item) => item.layer === "workflows")?.metricCount,
+    ).toBeGreaterThan(0);
     expect(vm.metrics).toHaveLength(defaultMockApiShape.analytics.length);
   });
 });

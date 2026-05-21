@@ -31,6 +31,9 @@ if (mode === "monitoring" || mode === "registry" || mode === "bundle") {
 if (mode === "bundle" || mode === "artifacts") {
   validateGeneratedArtifacts();
 }
+if (mode === "bundle") {
+  validateProductReports();
+}
 if (mode === "gpu-capacity") {
   validateGpuCapacitySeam();
 }
@@ -199,6 +202,23 @@ function validateGeneratedArtifacts() {
     metricRegistryArtifact.targetMetrics.length === 0
   ) {
     issues.push("artifact.metric_registry_target_metrics_missing");
+  }
+}
+
+function validateProductReports() {
+  for (const path of [
+    "reports/ui-validation-report.json",
+    "reports/research-validation-report.json",
+    "reports/observability-validation-report.json",
+    "reports/capacity-validation-report.json",
+    "reports/gpu-validation-report.json",
+    "reports/scorecard-validation-report.json",
+    "reports/freeze-validation-report.json",
+  ]) {
+    requireFile(
+      `artifacts/validation/platform/${path}`,
+      `artifact.product.${path}.missing`,
+    );
   }
 }
 

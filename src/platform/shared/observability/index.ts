@@ -18,6 +18,7 @@ export * from "./task-situation-report-service.js";
 export * from "./metrics-server.js";
 export * from "./otel-bootstrap.js";
 export * from "./otel-tracer.js";
+export * from "./validation-semantic-conventions.js";
 export * from "./runtime-metrics-registry.js";
 export * from "./system-situation-model.js";
 export * from "./system-situation-builder.js";

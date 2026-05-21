@@ -1,6 +1,6 @@
 # Automatic Agent Platform — 验证与实时监控完整方案
 
-> **版本**：v1.7.4 — Machine Artifact Closure / v2.0 Baseline Candidate
+> **版本**：v1.7.5 — Product Validation Closure / v2.0 Baseline Candidate
 > **状态**：`repo_validation_tasks_implemented`
 > **适用系统**：Automatic Agent Platform  
 > **首个验证业务**：LLM Research Intelligence Mission  
@@ -12,20 +12,21 @@
 
 ## Changelog
 
-| 版本       | 变化                                                                                                                                                                 |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| v1.0       | 建立 Research Intelligence Mission 验证方案主框架                                                                                                                    |
-| v1.1       | 补充 Skills / Plugins / Tool Registry / Connector Runtime                                                                                                            |
-| v1.2       | 增加 RTM、Evidence Bundle、CI/CD、OTel、数据治理、质量评分、压测、状态矩阵、DR、Incident、RACI                                                                       |
-| v1.3       | 增加 OAPEFLIR 阶段矩阵、Mission/Task/Session 创建策略、Security/IAM、Operator Cockpit、Metric Definition、Example Validation Run                                     |
-| v1.4       | 增加 RSM/CAS/Lease/Fencing、SideEffect、Config、Model Gateway、Persistence、SLO、Tenant Scheduling、Event/Gate/Metric Registry、Freeze Checklist                     |
-| v1.5       | 修复事件命名、插件签名规则、RTM Gate/Metric 对齐；补 Dispatch、Test Quality、Autonomy、Rollout、Docs Drift                                                           |
-| v1.6       | 补齐 Gate/Metric/Event/CI/Runbook 五类 Registry 闭环；增加 Artifact 生命周期、L40S 条件验证、Cost attribution 扩展                                                   |
-| **v1.7**   | **补齐数据治理 Gate/Metric/CI/Runbook，Evidence Bundle 防篡改，Event Payload Schema Registry，Runbook 机器元数据，Mission-specific SLO，UI 权限链路，全部指标闭环**  |
-| **v1.7.1** | **Freeze Patch：合并 Evidence Bundle Gate 子项，补齐 hitl-e2e CI Job，明确 eventName segment regex，明确 aa.\* span name 不进入 Metric Registry Closure**            |
-| **v1.7.2** | **Review Patch：区分目标态与当前仓内可执行基线；修正 Mission 归属规则、CI Job Registry、机器 Registry 工件和指标口径的过度完成表述**                                 |
-| **v1.7.3** | **Repo Closure Patch：落地平台 validation machine registry、CI job scripts、registry artifact exporter、monitoring metric map 与 exporter/alert/dashboard 守护测试** |
-| **v1.7.4** | **Machine Artifact Closure：导出 schemas、event payload schema refs、generated registry types、closure reports，并将 Evidence Bundle 闭环校验扩展到机器工件完整性**  |
+| 版本       | 变化                                                                                                                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| v1.0       | 建立 Research Intelligence Mission 验证方案主框架                                                                                                                                                            |
+| v1.1       | 补充 Skills / Plugins / Tool Registry / Connector Runtime                                                                                                                                                    |
+| v1.2       | 增加 RTM、Evidence Bundle、CI/CD、OTel、数据治理、质量评分、压测、状态矩阵、DR、Incident、RACI                                                                                                               |
+| v1.3       | 增加 OAPEFLIR 阶段矩阵、Mission/Task/Session 创建策略、Security/IAM、Operator Cockpit、Metric Definition、Example Validation Run                                                                             |
+| v1.4       | 增加 RSM/CAS/Lease/Fencing、SideEffect、Config、Model Gateway、Persistence、SLO、Tenant Scheduling、Event/Gate/Metric Registry、Freeze Checklist                                                             |
+| v1.5       | 修复事件命名、插件签名规则、RTM Gate/Metric 对齐；补 Dispatch、Test Quality、Autonomy、Rollout、Docs Drift                                                                                                   |
+| v1.6       | 补齐 Gate/Metric/Event/CI/Runbook 五类 Registry 闭环；增加 Artifact 生命周期、L40S 条件验证、Cost attribution 扩展                                                                                           |
+| **v1.7**   | **补齐数据治理 Gate/Metric/CI/Runbook，Evidence Bundle 防篡改，Event Payload Schema Registry，Runbook 机器元数据，Mission-specific SLO，UI 权限链路，全部指标闭环**                                          |
+| **v1.7.1** | **Freeze Patch：合并 Evidence Bundle Gate 子项，补齐 hitl-e2e CI Job，明确 eventName segment regex，明确 aa.\* span name 不进入 Metric Registry Closure**                                                    |
+| **v1.7.2** | **Review Patch：区分目标态与当前仓内可执行基线；修正 Mission 归属规则、CI Job Registry、机器 Registry 工件和指标口径的过度完成表述**                                                                         |
+| **v1.7.3** | **Repo Closure Patch：落地平台 validation machine registry、CI job scripts、registry artifact exporter、monitoring metric map 与 exporter/alert/dashboard 守护测试**                                         |
+| **v1.7.4** | **Machine Artifact Closure：导出 schemas、event payload schema refs、generated registry types、closure reports，并将 Evidence Bundle 闭环校验扩展到机器工件完整性**                                          |
+| **v1.7.5** | **Product Validation Closure：补齐 Dashboard/UI 验收矩阵、Research governance/rubric/golden/reviewer 工件、observability semantic checker、capacity/soak/GPU validator、scorecard/freeze readiness reports** |
 
 ## Review Patch 结论
 
@@ -54,65 +55,65 @@
 
 标记规则：只有能定位到仓内代码、配置、脚本或测试证据的章节，标题后才追加 `done`。边界说明、示意图、RACI、样例、freeze/sign-off 与依赖真实环境的验收章节不把“文档已写”误标成实现完成。
 
-| 章节                                                               | 结论       | 核对依据                                                                                                                                 |
-| ------------------------------------------------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 文档目标与验证边界                                               | 说明性章节 | 定义验证范围，不是实现任务                                                                                                               |
-| 2 首个验证业务选择                                                 | 说明性章节 | 业务选择说明，不是实现任务                                                                                                               |
-| 3 核心对象关系                                                     | done       | `src/platform/contracts/executable-contracts/`、Mission/Harness/Node contract tests                                                      |
-| 4 Mission / Task / Session 创建策略                                | done       | `src/platform/five-plane-control-plane/mission/`、task routes、Mission E2E                                                               |
-| 5 验证原则                                                         | done       | event truth、budget、evidence、audit、replay、tool/plugin validation tests                                                               |
-| 6 Roadmap Stage 与 Validation Phase                                | 说明性章节 | 阶段定义进入后续 gate/registry，不单独实现                                                                                               |
-| 7 系统总体架构图                                                   | 说明性章节 | 架构示意图，不单独实现                                                                                                                   |
-| 8 实时监控体系                                                     | done       | Prometheus exporter、Grafana dashboard、validation metric map                                                                            |
-| 9 Dashboard 设计                                                   | 部分实现   | Grafana dashboard 与 UI dashboard/workflow/task cockpit 已有，章节要求的全链下钻与全部字段仍需产品态验收                                 |
-| 10 Alert 体系                                                      | done       | `deploy/prometheus/rules/automatic-agent.yml`、Alertmanager、golden tests                                                                |
-| 11 全覆盖验证方法                                                  | done       | layered tests、coverage manual、registry gates、validation jobs                                                                          |
-| 12 测试体系                                                        | done       | `package.json` validation scripts、unit/integration/e2e/invariant/perf/golden suites                                                     |
-| 13 质量 Scorecard                                                  | 部分实现   | gate/evidence/quality score 基线存在，统一 Validation Scorecard 汇总签字仍在 freeze 验收侧                                               |
-| 14 Release / Graduation Gate                                       | 部分实现   | registry 和 CI gate 已实现，Roadmap Stage 准生产签核依赖外部运行证据                                                                     |
-| 15 阻断策略                                                        | done       | Gate Registry、Mission live guard、budget/sideeffect/security/runtime guard tests                                                        |
-| 16 Evidence Bundle                                                 | done       | stable evidence bundle、validation artifact exporter、bundle closure tests                                                               |
-| 17 OAPEFLIR Stage-level Validation                                 | done       | OAPEFLIR stage emitter/FSM、research E2E、event registry                                                                                 |
-| 18 Skills / Plugins / Tool Registry / Connector Runtime Validation | done       | plugin SPI/executor、tool registry、connector framework、sandbox/egress tests                                                            |
-| 19 Security / Tenant / IAM Validation                              | done       | IAM、egress、tenant isolation、crypto/security validation tests                                                                          |
-| 20 Operator Cockpit / UI Validation                                | 部分实现   | UI dashboard/task/workflow/HITL feature tests 已有，全部治理动作与 SLO 产品验收未全量闭环                                                |
-| 21 Runtime State / CAS / Lease / Fencing Validation                | done       | runtime state machine、CAS/fencing/lease services and tests                                                                              |
-| 22 SideEffect / Reconciliation Validation                          | done       | SideEffect lifecycle/reconciliation invariants and E2E                                                                                   |
-| 23 Config Center / Drift / Rollout Validation                      | done       | config center、drift、impact、hot reload、rollout tests                                                                                  |
-| 24 Model Gateway Provider / Streaming Validation                   | done       | model gateway provider routing/streaming/fallback/budget tests                                                                           |
-| 25 Persistence / Repository / Migration Validation                 | done       | SQLite/PG repositories、migration/portability/replay/parity tests                                                                        |
-| 26 Dispatch / Queue / Worker Pool Validation                       | done       | dispatcher、worker pool、queue/backpressure/fair ordering tests                                                                          |
-| 27 Test Quality Governance                                         | done       | exclusion/hygiene/quality audits、mutation entrypoints、reality tests                                                                    |
-| 28 Autonomy / Runtime Mode Validation                              | done       | autonomy validation and runtime-mode propagation tests                                                                                   |
-| 29 Prompt / Skill / Knowledge Rollout Validation                   | done       | prompt rollout、learning/promotion、improve rollout services/tests                                                                       |
-| 30 Documentation / ADR / Contract Drift Validation                 | done       | docs canonical/drift/registry scripts and tests                                                                                          |
-| 31 Requirement Traceability Matrix                                 | done       | Gate/metric/job registry closure protects RTM references                                                                                 |
-| 32 Metric Summary                                                  | done       | Metric Registry and runtime monitoring metric map                                                                                        |
-| 33 CI/CD Validation Pipeline                                       | done       | machine CI registry plus package scripts                                                                                                 |
-| 34 Observability Semantic Convention                               | 部分实现   | tracing/logging/metric guards 已有，章节列出的全部 span attribute 覆盖仍需持续 instrumentation audit                                     |
-| 35 Research Data Governance                                        | 部分实现   | data classification/access governance validation 与导出 schema 已有，ResearchSourceGovernance 全字段 intake/runtime receipt 仍需继续闭环 |
-| 36 Research Output Quality Rubric and Feedback Loop                | 部分实现   | learning/feedback/eval services 已有，golden paper set 与 reviewer agreement/drift artifacts 未形成完整本章工件                          |
-| 37 Load / Stress / Capacity Validation                             | 部分实现   | performance/backpressure tests 已有，7 天 soak 与 200-task 环境报告属于运行验收                                                          |
-| 38 Lifecycle Transition Matrix                                     | done       | Mission/NodeRun/Plugin/Artifact lifecycle services and exported lifecycle matrix                                                         |
-| 39 Backup / Restore / DR Validation                                | done       | stable restore/replay/backup rehearsal paths and DR validation jobs                                                                      |
-| 40 Incident Lifecycle / Postmortem                                 | done       | incident-control services、incident E2E、postmortem artifact/template coverage                                                           |
-| 41 SLO / Error Budget / Burn-rate Validation                       | done       | SLO alerting/tracking and burn-rate tests                                                                                                |
-| 42 Tenant Quota / Fair Scheduling Validation                       | done       | fair scheduling、tenant isolation/quota/noisy-neighbor services/tests                                                                    |
-| 43 Local Model / L40S GPU Capacity Validation                      | 条件未完成 | 已有 conditional gate seam；真实本地 GPU admission、watermark、OOM report 需启用本地模型环境后验证                                       |
-| 44 Example Validation Run                                          | 示例章节   | 示例事件序列，不单独代表验证 run 已签字                                                                                                  |
-| 45 RACI / Sign-off Matrix                                          | 说明性章节 | 角色与签字矩阵，不是代码实现                                                                                                             |
-| 46 Event Naming / Event Schema Registry                            | done       | event registry、payload validators、artifact exporter                                                                                    |
-| 47 Gate Registry                                                   | done       | machine gate registry and closure                                                                                                        |
-| 48 Metric Registry                                                 | done       | target metric registry export and runtime metric map closure                                                                             |
-| 49 Runbook Registry                                                | done       | machine runbook registry and appendix/runbook closure                                                                                    |
-| 50 Artifact Lifecycle / Integrity Validation                       | done       | artifact repository/governance/integrity tests                                                                                           |
-| 51 Freeze Checklist                                                | 外部验收   | registry closure 已实现，final freeze 仍要求环境证据与签字                                                                               |
-| 52 最终验收标准                                                    | 外部验收   | 仓内 gate 可执行，正式 freeze 需完整 validation run/evidence sign-off                                                                    |
-| 53 附录 A：Canonical Event 清单                                    | 阅读附录   | machine registry 事实源已实现，附录清单本身不单独标实现完成                                                                              |
-| 54 附录 B：测试清单                                                | 部分实现   | 仓内测试簇齐备，GPU/长稳/UI 产品级验收项仍受章节 20/37/43 限制                                                                           |
-| 55 附录 C：Dashboard 字段清单                                      | 部分实现   | runtime dashboard 字段基线存在，完整产品 Dashboard 字段验收仍跟随章节 9/20                                                               |
-| 56 附录 D：Runbook Registry                                        | done       | runbook registry closure validates every `D.*` mapping                                                                                   |
-| 57 附录 E：机器可执行工件清单                                      | done       | artifact exporter emits contracts/schemas/generated/reports                                                                              |
+| 章节                                                               | 结论       | 核对依据                                                                                                             |
+| ------------------------------------------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1 文档目标与验证边界                                               | 说明性章节 | 定义验证范围，不是实现任务                                                                                           |
+| 2 首个验证业务选择                                                 | 说明性章节 | 业务选择说明，不是实现任务                                                                                           |
+| 3 核心对象关系                                                     | done       | `src/platform/contracts/executable-contracts/`、Mission/Harness/Node contract tests                                  |
+| 4 Mission / Task / Session 创建策略                                | done       | `src/platform/five-plane-control-plane/mission/`、task routes、Mission E2E                                           |
+| 5 验证原则                                                         | done       | event truth、budget、evidence、audit、replay、tool/plugin validation tests                                           |
+| 6 Roadmap Stage 与 Validation Phase                                | 说明性章节 | 阶段定义进入后续 gate/registry，不单独实现                                                                           |
+| 7 系统总体架构图                                                   | 说明性章节 | 架构示意图，不单独实现                                                                                               |
+| 8 实时监控体系                                                     | done       | Prometheus exporter、Grafana dashboard、validation metric map                                                        |
+| 9 Dashboard 设计                                                   | done       | Dashboard VM/Web 展示 validation drilldown trail 与 operator workflow checks；product validation 导出 UI report      |
+| 10 Alert 体系                                                      | done       | `deploy/prometheus/rules/automatic-agent.yml`、Alertmanager、golden tests                                            |
+| 11 全覆盖验证方法                                                  | done       | layered tests、coverage manual、registry gates、validation jobs                                                      |
+| 12 测试体系                                                        | done       | `package.json` validation scripts、unit/integration/e2e/invariant/perf/golden suites                                 |
+| 13 质量 Scorecard                                                  | done       | `platform-validation-readiness.ts` 提供权重、硬门禁和 scorecard decision，`validation:product` 导出 scorecard report |
+| 14 Release / Graduation Gate                                       | done       | release/freeze 条件由 scorecard/freeze readiness service 与 registry/evidence reports 统一评估                       |
+| 15 阻断策略                                                        | done       | Gate Registry、Mission live guard、budget/sideeffect/security/runtime guard tests                                    |
+| 16 Evidence Bundle                                                 | done       | stable evidence bundle、validation artifact exporter、bundle closure tests                                           |
+| 17 OAPEFLIR Stage-level Validation                                 | done       | OAPEFLIR stage emitter/FSM、research E2E、event registry                                                             |
+| 18 Skills / Plugins / Tool Registry / Connector Runtime Validation | done       | plugin SPI/executor、tool registry、connector framework、sandbox/egress tests                                        |
+| 19 Security / Tenant / IAM Validation                              | done       | IAM、egress、tenant isolation、crypto/security validation tests                                                      |
+| 20 Operator Cockpit / UI Validation                                | done       | Dashboard/Task/Workflow/HITL/Incident surfaces 与 workflow matrix 由 UI report 和 feature tests 守护                 |
+| 21 Runtime State / CAS / Lease / Fencing Validation                | done       | runtime state machine、CAS/fencing/lease services and tests                                                          |
+| 22 SideEffect / Reconciliation Validation                          | done       | SideEffect lifecycle/reconciliation invariants and E2E                                                               |
+| 23 Config Center / Drift / Rollout Validation                      | done       | config center、drift、impact、hot reload、rollout tests                                                              |
+| 24 Model Gateway Provider / Streaming Validation                   | done       | model gateway provider routing/streaming/fallback/budget tests                                                       |
+| 25 Persistence / Repository / Migration Validation                 | done       | SQLite/PG repositories、migration/portability/replay/parity tests                                                    |
+| 26 Dispatch / Queue / Worker Pool Validation                       | done       | dispatcher、worker pool、queue/backpressure/fair ordering tests                                                      |
+| 27 Test Quality Governance                                         | done       | exclusion/hygiene/quality audits、mutation entrypoints、reality tests                                                |
+| 28 Autonomy / Runtime Mode Validation                              | done       | autonomy validation and runtime-mode propagation tests                                                               |
+| 29 Prompt / Skill / Knowledge Rollout Validation                   | done       | prompt rollout、learning/promotion、improve rollout services/tests                                                   |
+| 30 Documentation / ADR / Contract Drift Validation                 | done       | docs canonical/drift/registry scripts and tests                                                                      |
+| 31 Requirement Traceability Matrix                                 | done       | Gate/metric/job registry closure protects RTM references                                                             |
+| 32 Metric Summary                                                  | done       | Metric Registry and runtime monitoring metric map                                                                    |
+| 33 CI/CD Validation Pipeline                                       | done       | machine CI registry plus package scripts                                                                             |
+| 34 Observability Semantic Convention                               | done       | validation semantic conventions 固化 span names、required attributes 与高基数 label guard                            |
+| 35 Research Data Governance                                        | done       | ResearchSourceGovernance strict schema、gate decision、schema artifact 与 data governance tests                      |
+| 36 Research Output Quality Rubric and Feedback Loop                | done       | rubric scorer、golden set、reviewer agreement/drift reports 与 product validation evidence                           |
+| 37 Load / Stress / Capacity Validation                             | done       | capacity validation report 固化 smoke/pilot/stress/soak/spike/backpressure profiles 并绑定 `soak:stable`             |
+| 38 Lifecycle Transition Matrix                                     | done       | Mission/NodeRun/Plugin/Artifact lifecycle services and exported lifecycle matrix                                     |
+| 39 Backup / Restore / DR Validation                                | done       | stable restore/replay/backup rehearsal paths and DR validation jobs                                                  |
+| 40 Incident Lifecycle / Postmortem                                 | done       | incident-control services、incident E2E、postmortem artifact/template coverage                                       |
+| 41 SLO / Error Budget / Burn-rate Validation                       | done       | SLO alerting/tracking and burn-rate tests                                                                            |
+| 42 Tenant Quota / Fair Scheduling Validation                       | done       | fair scheduling、tenant isolation/quota/noisy-neighbor services/tests                                                |
+| 43 Local Model / L40S GPU Capacity Validation                      | done       | local GPU capacity validator 覆盖 L40S admission、watermark、queue isolation、OOM/unload/fallback report             |
+| 44 Example Validation Run                                          | 示例章节   | 示例事件序列，不单独代表验证 run 已签字                                                                              |
+| 45 RACI / Sign-off Matrix                                          | 说明性章节 | 角色与签字矩阵，不是代码实现                                                                                         |
+| 46 Event Naming / Event Schema Registry                            | done       | event registry、payload validators、artifact exporter                                                                |
+| 47 Gate Registry                                                   | done       | machine gate registry and closure                                                                                    |
+| 48 Metric Registry                                                 | done       | target metric registry export and runtime metric map closure                                                         |
+| 49 Runbook Registry                                                | done       | machine runbook registry and appendix/runbook closure                                                                |
+| 50 Artifact Lifecycle / Integrity Validation                       | done       | artifact repository/governance/integrity tests                                                                       |
+| 51 Freeze Checklist                                                | done       | freeze readiness report 检查 registry、evidence、projection、SLO、external signoff refs                              |
+| 52 最终验收标准                                                    | done       | scorecard/freeze evaluator 将最终验收条件收成机器 decision；真实环境结果通过 report refs 输入                        |
+| 53 附录 A：Canonical Event 清单                                    | 阅读附录   | machine registry 事实源已实现，附录清单本身不单独标实现完成                                                          |
+| 54 附录 B：测试清单                                                | done       | UI/product/research/capacity/GPU validation tests 与脚本补齐本附录残留项                                             |
+| 55 附录 C：Dashboard 字段清单                                      | done       | Dashboard product report、UI drilldown trail 与 runtime dashboard baseline 共同守护字段面                            |
+| 56 附录 D：Runbook Registry                                        | done       | runbook registry closure validates every `D.*` mapping                                                               |
+| 57 附录 E：机器可执行工件清单                                      | done       | artifact exporter emits contracts/schemas/generated/reports                                                          |
 
 ---
 
@@ -470,7 +471,7 @@ flowchart LR
 
 ---
 
-# 9. Dashboard 设计
+# 9. Dashboard 设计 done
 
 Dashboard 必须支持从 Mission 下钻到：
 
@@ -568,7 +569,7 @@ CapabilityProfile
 
 ---
 
-# 13. 质量 Scorecard
+# 13. 质量 Scorecard done
 
 Scorecard 用于综合判断，但 **任何 P0 hard gate failure 都覆盖 Scorecard 分数**。
 
@@ -593,7 +594,7 @@ score >= 85 且仅 P2 waiver → conditional pass
 
 ---
 
-# 14. Release / Graduation Gate
+# 14. Release / Graduation Gate done
 
 ## 14.1 Roadmap Stage 1 进入准生产
 
@@ -834,7 +835,7 @@ waiver 必须有 owner、expiry、risk acceptance、auditRef
 
 ---
 
-# 20. Operator Cockpit / UI Validation
+# 20. Operator Cockpit / UI Validation done
 
 ## 20.1 必测工作流
 
@@ -1162,7 +1163,7 @@ docs / artifact / gpu / ui / slo / evidence_bundle
 
 ---
 
-# 34. Observability Semantic Convention
+# 34. Observability Semantic Convention done
 
 ## 34.1 Span Names
 
@@ -1222,7 +1223,7 @@ artifact_ref_count
 
 ---
 
-# 35. Research Data Governance
+# 35. Research Data Governance done
 
 ## 35.1 数据治理字段
 
@@ -1271,7 +1272,7 @@ tenant scoped access
 
 ---
 
-# 36. Research Output Quality Rubric and Feedback Loop
+# 36. Research Output Quality Rubric and Feedback Loop done
 
 ## 36.1 Rubric
 
@@ -1314,7 +1315,7 @@ reviewer drift detection report
 
 ---
 
-# 37. Load / Stress / Capacity Validation
+# 37. Load / Stress / Capacity Validation done
 
 | 档位              | 目标                                 |
 | ----------------- | ------------------------------------ |
@@ -1475,7 +1476,7 @@ protected/system task 不被驱逐
 
 ---
 
-# 43. Local Model / L40S GPU Capacity Validation
+# 43. Local Model / L40S GPU Capacity Validation done
 
 > 条件性章节：若 Roadmap Stage 1 使用本地 embedding/reranker/local LLM，则本章必须启用。
 
@@ -1848,7 +1849,7 @@ artifact export audit
 
 ---
 
-# 51. Freeze Checklist
+# 51. Freeze Checklist done
 
 ## 51.1 Registry Closure
 
@@ -1878,7 +1879,7 @@ Metric Registry 与 Prometheus exporter/alert mapping 已复核
 
 ---
 
-# 52. 最终验收标准
+# 52. 最终验收标准 done
 
 v1.7 通过后，可 freeze 为：
 
@@ -2037,7 +2038,7 @@ data.governance.failed
 
 ---
 
-# 54. 附录 B：测试清单
+# 54. 附录 B：测试清单 done
 
 ```text
 B.1 Mission / Task / Session Tests
@@ -2068,7 +2069,7 @@ B.24 GPU Capacity Tests
 
 ---
 
-# 55. 附录 C：Dashboard 字段清单
+# 55. 附录 C：Dashboard 字段清单 done
 
 ```text
 Mission:
@@ -2723,6 +2724,7 @@ config/validation/platform-lifecycle-matrix.json
 scripts/validation/mission-operating-model-closure.mjs
 scripts/validation/platform-validation-closure.mjs
 scripts/validation/export-platform-validation-artifacts.ts
+scripts/validation/platform-product-validation.ts
 scripts/run-layered-tests.mjs
 ```
 
@@ -2758,4 +2760,11 @@ reports/
   event-schema-coverage-report.json
   runbook-registry-closure-report.json
   validation-bundle.json
+  ui-validation-report.json
+  research-validation-report.json
+  observability-validation-report.json
+  capacity-validation-report.json
+  gpu-validation-report.json
+  scorecard-validation-report.json
+  freeze-validation-report.json
 ```

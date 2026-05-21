@@ -7,3 +7,4 @@ export * from "./model-gateway-baseline.js";
 export * from "./model-gateway-bootstrap.js";
 export * from "./provider-registry/index.js";
 export * from "./router/index.js";
+export * from "./local-gpu-capacity-validation.js";
