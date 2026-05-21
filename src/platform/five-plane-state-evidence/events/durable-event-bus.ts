@@ -707,7 +707,12 @@ export class DurableEventBus {
       return;
     }
     const timer = setTimeout(() => {
-      void this.enqueueDelivery(consumerId, true);
+      void this.enqueueDelivery(consumerId, true).catch((error) => {
+        eventBusLogger.warn("event_bus.delivery_schedule_failed", {
+          consumerId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }, 0);
     timer.unref?.();
   }
@@ -763,7 +768,14 @@ export class DurableEventBus {
       if (this.disposed || !this.subscribers.has(consumerId)) {
         return;
       }
-      void this.enqueueDelivery(consumerId, true).finally(() => {
+      void this.enqueueDelivery(consumerId, true)
+        .catch((error) => {
+          eventBusLogger.warn("event_bus.polling_enqueue_failed", {
+            consumerId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        })
+        .finally(() => {
         try {
           if (!this.disposed && this.subscribers.has(consumerId)) {
             const queueDepth = this.pendingForConsumer(consumerId).length;
@@ -776,7 +788,7 @@ export class DurableEventBus {
             error: err instanceof Error ? err.message : String(err),
           });
         }
-      });
+        });
     }, delayMs);
     timer.unref?.();
     this.pollingTimers.set(consumerId, timer);

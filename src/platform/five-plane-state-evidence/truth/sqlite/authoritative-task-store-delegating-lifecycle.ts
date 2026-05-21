@@ -43,22 +43,8 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
   }
 
   public override updateTaskStatus(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskStatus"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskStatus"]> {
-    if (
-      args.length >= 4
-      && typeof args[0] === "string"
-      && typeof args[1] === "string"
-      && typeof args[2] === "string"
-      && this.isIsoTimestamp(args[3])
-      && !this.isIsoTimestamp(args[2])
-    ) {
-      const legacyArgs = args as unknown as [
-        string,
-        string,
-        string,
-        string,
-        (string | null | undefined)?,
-        (string | null | undefined)?,
-      ];
+    const legacyArgs = this.asLegacyTaskStatusArgs(args);
+    if (legacyArgs != null) {
       return this.task.updateTaskStatus(
         legacyArgs[0],
         legacyArgs[2],
@@ -139,52 +125,30 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
   }
 
   public override updateExecutionStatus(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]> {
-    if (
-      args.length >= 4
-      && typeof args[0] === "string"
-      && typeof args[1] === "string"
-      && this.isIsoTimestamp(args[2])
-      && typeof args[3] === "string"
-      && !this.isIsoTimestamp(args[3])
-    ) {
-      const legacyArgs = args as unknown as [
-        string,
-        string,
-        string,
-        string,
-        (string | null | undefined)?,
-        (string | null | undefined)?,
-      ];
+    const sixArgLegacy = this.asLegacyExecutionStatusArgs(args);
+    if (sixArgLegacy != null) {
       return this.execution.updateExecutionStatus(
-        legacyArgs[0],
-        legacyArgs[1],
-        legacyArgs[2],
+        sixArgLegacy[0],
+        sixArgLegacy[1],
+        sixArgLegacy[2],
         null,
-        legacyArgs[4] ?? null,
-        legacyArgs[5] ?? legacyArgs[3],
+        sixArgLegacy[4] ?? null,
+        sixArgLegacy[5] ?? sixArgLegacy[3],
       ) as ReturnType<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>;
     }
-    if (
-      args.length === 4
-      && typeof args[0] === "string"
-      && typeof args[1] === "string"
-      && typeof args[2] === "string"
-      && args[3] != null
-      && this.isIsoTimestamp(args[3])
-      && !this.isIsoTimestamp(args[2])
-    ) {
-      const legacyArgs = args as unknown as [string, string, string, string];
+    const fourArgLegacy = this.asCompactLegacyExecutionStatusArgs(args);
+    if (fourArgLegacy != null) {
       const terminalFinishedAt =
-        legacyArgs[1] === "failed" || legacyArgs[1] === "succeeded" || legacyArgs[1] === "cancelled"
-          ? legacyArgs[3]
+        fourArgLegacy[1] === "failed" || fourArgLegacy[1] === "succeeded" || fourArgLegacy[1] === "cancelled"
+          ? fourArgLegacy[3]
           : null;
       return this.execution.updateExecutionStatus(
-        legacyArgs[0],
-        legacyArgs[1],
-        legacyArgs[3],
+        fourArgLegacy[0],
+        fourArgLegacy[1],
+        fourArgLegacy[3],
         null,
         terminalFinishedAt,
-        legacyArgs[2],
+        fourArgLegacy[2],
       ) as ReturnType<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>;
     }
     return this.delegateLegacy("updateExecutionStatus", "execution", "updateExecutionStatus", ...args);
@@ -361,6 +325,69 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
 
   public override listEntitlementDecisionsForAccount(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listEntitlementDecisionsForAccount"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listEntitlementDecisionsForAccount"]> {
     return this.delegateLegacy("listEntitlementDecisionsForAccount", "billing", "listEntitlementDecisionsForAccount", ...args);
+  }
+
+  private asLegacyTaskStatusArgs(
+    args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskStatus"]>,
+  ): [string, string, string, string, (string | null | undefined)?, (string | null | undefined)?] | null {
+    if (
+      args.length >= 4
+      && typeof args[0] === "string"
+      && typeof args[1] === "string"
+      && typeof args[2] === "string"
+      && this.isIsoTimestamp(args[3])
+      && !this.isIsoTimestamp(args[2])
+    ) {
+      return [
+        args[0],
+        args[1],
+        args[2],
+        args[3],
+        typeof args[4] === "string" || args[4] == null ? args[4] : undefined,
+        typeof args[5] === "string" || args[5] == null ? args[5] : undefined,
+      ];
+    }
+    return null;
+  }
+
+  private asLegacyExecutionStatusArgs(
+    args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>,
+  ): [string, string, string, string, (string | null | undefined)?, (string | null | undefined)?] | null {
+    if (
+      args.length >= 4
+      && typeof args[0] === "string"
+      && typeof args[1] === "string"
+      && this.isIsoTimestamp(args[2])
+      && typeof args[3] === "string"
+      && !this.isIsoTimestamp(args[3])
+    ) {
+      return [
+        args[0],
+        args[1],
+        args[2],
+        args[3],
+        typeof args[4] === "string" || args[4] == null ? args[4] : undefined,
+        typeof args[5] === "string" || args[5] == null ? args[5] : undefined,
+      ];
+    }
+    return null;
+  }
+
+  private asCompactLegacyExecutionStatusArgs(
+    args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>,
+  ): [string, string, string, string] | null {
+    if (
+      args.length === 4
+      && typeof args[0] === "string"
+      && typeof args[1] === "string"
+      && typeof args[2] === "string"
+      && typeof args[3] === "string"
+      && this.isIsoTimestamp(args[3])
+      && !this.isIsoTimestamp(args[2])
+    ) {
+      return [args[0], args[1], args[2], args[3]];
+    }
+    return null;
   }
 }
 /* c8 ignore stop */

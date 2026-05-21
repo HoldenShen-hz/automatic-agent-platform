@@ -1,4 +1,5 @@
 import type { EventRecord, TraceContext } from "../../contracts/types/domain.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 import { DurableEventBus, type EventHandler } from "./durable-event-bus.js";
 import { getEventSchema, type KnownEventType } from "./event-registry.js";
@@ -290,6 +291,25 @@ function toEventPayloadRecord(payload: object): Record<string, unknown> {
   return payload as Record<string, unknown>;
 }
 
+function parseTypedEventPayload<TPayload>(event: EventRecord): TPayload {
+  try {
+    return JSON.parse(event.payloadJson) as TPayload;
+  } catch (error) {
+    throw new ValidationError(
+      "typed_event_bus.invalid_payload_json",
+      "typed_event_bus.invalid_payload_json",
+      {
+        retryable: false,
+        details: {
+          eventId: event.id,
+          eventType: event.eventType,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      },
+    );
+  }
+}
+
 /**
  * Union type of all event types that have typed payloads.
  */
@@ -376,7 +396,7 @@ export class TypedEventBus {
       }
       await handler({
         event: event as EventRecord & { eventType: TType },
-        payload: JSON.parse(event.payloadJson) as TypedEventPayloadMap[TType],
+        payload: parseTypedEventPayload<TypedEventPayloadMap[TType]>(event),
       });
     };
     this.bus.subscribe(consumerId, typedHandler);
@@ -421,7 +441,7 @@ export class TypedEventBus {
       }
       await subscriber.handler({
         event: event as EventRecord & { eventType: TypedEventType },
-        payload: JSON.parse(event.payloadJson) as TypedEventPayloadMap[TypedEventType],
+        payload: parseTypedEventPayload<TypedEventPayloadMap[TypedEventType]>(event),
       });
     }
   }

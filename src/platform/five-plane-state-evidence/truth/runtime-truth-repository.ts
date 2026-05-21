@@ -702,19 +702,28 @@ function getAggregateId(aggregateType: RuntimeStateAggregateType, aggregate: Run
 function bindInitialCommandLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
   command: RuntimeTransitionCommand<TAggregate>,
 ): TAggregate {
-  if (
-    command.aggregateType !== "HarnessRun"
-    && command.aggregateType !== "NodeRun"
-    && command.aggregateType !== "SideEffectRecord"
-  ) {
-    return command.aggregate;
+  switch (command.aggregateType) {
+    case "HarnessRun":
+      return {
+        ...(command.aggregate as HarnessRun),
+        ...(command.leaseId != null ? { leaseId: command.leaseId } : {}),
+        ...(command.fencingToken != null ? { fencingToken: command.fencingToken } : {}),
+      } as TAggregate;
+    case "NodeRun":
+      return {
+        ...(command.aggregate as NodeRun),
+        ...(command.leaseId != null ? { leaseId: command.leaseId } : {}),
+        ...(command.fencingToken != null ? { fencingToken: command.fencingToken } : {}),
+      } as TAggregate;
+    case "SideEffectRecord":
+      return {
+        ...(command.aggregate as SideEffectRecord),
+        ...(command.leaseId != null ? { leaseId: command.leaseId } : {}),
+        ...(command.fencingToken != null ? { fencingToken: command.fencingToken } : {}),
+      } as TAggregate;
+    default:
+      return command.aggregate;
   }
-
-  return {
-    ...(command.aggregate as unknown as Record<string, unknown>),
-    ...(command.leaseId != null ? { leaseId: command.leaseId } : {}),
-    ...(command.fencingToken != null ? { fencingToken: command.fencingToken } : {}),
-  } as TAggregate;
 }
 
 function buildAggregateEventKey(aggregateType: RuntimeStateAggregateType, aggregateId: string): string {

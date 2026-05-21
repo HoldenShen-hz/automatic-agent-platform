@@ -88,6 +88,10 @@ export class PostgresFenceRepository {
     return (await this.conn.execute(`DELETE FROM fence_records WHERE fence_key = $1`, key)) > 0;
   }
 
+  public async deleteByOwnerNode(nodeId: string): Promise<number> {
+    return this.conn.execute(`DELETE FROM fence_records WHERE owner_node_id = $1`, nodeId);
+  }
+
   public async deleteExpired(now: Date): Promise<number> {
     return this.conn.execute(
       `DELETE FROM fence_records

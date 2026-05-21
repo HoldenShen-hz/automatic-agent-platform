@@ -153,10 +153,14 @@ function loadTableCounts(db: SqliteDatabase): Record<string, number> {
   const tables = ["tasks", "workflow_state", "executions", "sessions", "workflow_step_outputs", "events", "event_consumer_acks"];
   return Object.fromEntries(
     tables.map((table) => {
-      const row = db.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count?: number } | undefined;
+      const row = db.connection.prepare(`SELECT COUNT(*) AS count FROM ${quoteIdentifier(table)}`).get() as { count?: number } | undefined;
       return [table, Number(row?.count ?? 0)];
     }),
   );
+}
+
+function quoteIdentifier(value: string): string {
+  return `"${value.replace(/"/g, "\"\"")}"`;
 }
 
 async function measureScenario(

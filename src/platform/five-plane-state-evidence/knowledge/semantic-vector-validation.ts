@@ -55,6 +55,7 @@ export async function validateSemanticVectorReadiness(
   const env = options.env ?? process.env;
   const schema = validateIdentifier(env.AA_KNOWLEDGE_PGVECTOR_SCHEMA?.trim() || "public");
   const tableName = validateIdentifier(env.AA_KNOWLEDGE_PGVECTOR_TABLE?.trim() || "knowledge_semantic_vectors");
+  const qualifiedTableName = quoteQualifiedIdentifier(schema, tableName);
   const warnings: string[] = [];
   const checks: SemanticVectorReadinessCheck[] = [];
   const rawBackend = env.AA_KNOWLEDGE_VECTOR_BACKEND?.trim() ?? env.AA_KNOWLEDGE_SEMANTIC_BACKEND?.trim() ?? "local_hash";
@@ -166,7 +167,7 @@ export async function validateSemanticVectorReadiness(
     errorCode: tablePresent ? null : "knowledge.semantic_pgvector_table_missing",
     errorMessage: tablePresent ? null : "knowledge.semantic_pgvector_table_missing",
     details: {
-      qualifiedTableName: `${schema}.${tableName}`,
+      qualifiedTableName,
     },
   });
   if (!tablePresent) {
@@ -254,7 +255,7 @@ export async function validateSemanticVectorReadiness(
     });
   } finally {
     cleanupDeleted = await options.database.asyncConnection.execute(
-      `DELETE FROM ${schema}.${tableName} WHERE knowledge_ref = $1`,
+      `DELETE FROM ${qualifiedTableName} WHERE knowledge_ref = $1`,
       probeKnowledgeRef,
     ).catch((error) => {
       cleanupError = error instanceof Error ? error.message : String(error);
@@ -275,4 +276,8 @@ function validateIdentifier(value: string): string {
     throw new Error(`knowledge.semantic_pgvector_identifier_invalid:${value}`);
   }
   return value;
+}
+
+function quoteQualifiedIdentifier(schema: string, tableName: string): string {
+  return `"${schema}"."${tableName}"`;
 }

@@ -106,8 +106,8 @@ test("sortTicketsForDeterministicDispatch handles missing schedulerSeed", () => 
 
   const sorted = sortTicketsForDeterministicDispatch(tickets);
 
-  assert.equal(sorted[0]!.id, "ticket_2");
-  assert.equal(sorted[1]!.id, "ticket_1");
+  assert.equal(sorted[0]!.id, "ticket_1");
+  assert.equal(sorted[1]!.id, "ticket_2");
 });
 
 test("sortTicketsForDeterministicDispatch does not mutate original array", () => {

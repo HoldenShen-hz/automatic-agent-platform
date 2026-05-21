@@ -278,7 +278,7 @@ export class PgvectorSemanticVectorStore implements SemanticVectorStore {
   }
 
   private qualifiedTableName(): string {
-    return `${this.schema}.${this.tableName}`;
+    return quoteQualifiedIdentifier(this.schema, this.tableName);
   }
 }
 
@@ -319,6 +319,10 @@ function validateIdentifier(value: string, code: string): string {
     });
   }
   return value;
+}
+
+function quoteQualifiedIdentifier(schema: string, tableName: string): string {
+  return `"${schema}"."${tableName}"`;
 }
 
 function isSupportedEmbedding(embedding: readonly number[] | null): embedding is readonly number[] {

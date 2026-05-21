@@ -122,9 +122,7 @@ export class AsyncFencingTokenService {
   public async clearAllFences(): Promise<void> {
     await this.database.transaction(async (conn) => {
       const repo = new PostgresFenceRepository(conn);
-      for (const fence of await repo.getFencesForNode(this.nodeId)) {
-        await repo.delete(buildFenceKey(fence.executionId, fence.ownerNodeId));
-      }
+      await repo.deleteByOwnerNode(this.nodeId);
     });
   }
 
