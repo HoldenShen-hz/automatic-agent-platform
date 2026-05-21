@@ -5,19 +5,15 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert";
+import {
+  DEFAULT_APPROVAL_POLICY_BUNDLE,
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
 
 describe("ApprovalPolicyEngine Types", () => {
-  let typesModule: any;
-
-  beforeEach(() => {
-    delete require.cache[require.resolve("./approval-policy-engine/types.js")];
-    delete require.cache[require.resolve("./approval-policy-engine/types.ts")];
-    typesModule = require("./approval-policy-engine/types.js");
-  });
 
   describe("DEFAULT_APPROVAL_POLICY_BUNDLE", () => {
     it("should have valid structure", () => {
-      const bundle = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
+      const bundle = DEFAULT_APPROVAL_POLICY_BUNDLE;
 
       assert.ok(bundle.bundleId);
       assert.ok(bundle.version);
@@ -30,13 +26,13 @@ describe("ApprovalPolicyEngine Types", () => {
     });
 
     it("should have at least one rule", () => {
-      const bundle = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
+      const bundle = DEFAULT_APPROVAL_POLICY_BUNDLE;
 
       assert.ok(bundle.rules.length > 0);
     });
 
     it("should have rules with all required fields", () => {
-      const bundle = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
+      const bundle = DEFAULT_APPROVAL_POLICY_BUNDLE;
 
       for (const rule of bundle.rules) {
         assert.ok(rule.ruleId, "Each rule should have ruleId");
@@ -49,7 +45,7 @@ describe("ApprovalPolicyEngine Types", () => {
     });
 
     it("should have valid rule actions", () => {
-      const bundle = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
+      const bundle = DEFAULT_APPROVAL_POLICY_BUNDLE;
       const validActions = ["require_approval", "deny", "allow", "require_multi_party_approval"];
 
       for (const rule of bundle.rules) {
@@ -61,7 +57,7 @@ describe("ApprovalPolicyEngine Types", () => {
     });
 
     it("should have valid operators in conditions", () => {
-      const bundle = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
+      const bundle = DEFAULT_APPROVAL_POLICY_BUNDLE;
       const validOperators = ["eq", "neq", "in", "nin", "gt", "gte", "lt", "lte", "contains"];
 
       for (const rule of bundle.rules) {
@@ -140,7 +136,7 @@ describe("ApprovalPolicyEngine Types", () => {
 
   describe("ApprovalPolicyBundle", () => {
     it("should have version with semantic versioning format", () => {
-      const bundle = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
+      const bundle = DEFAULT_APPROVAL_POLICY_BUNDLE;
       const versionPattern = /^\d+\.\d+\.\d+$/;
 
       assert.ok(versionPattern.test(bundle.version), `Version ${bundle.version} should match semantic versioning`);
@@ -150,7 +146,7 @@ describe("ApprovalPolicyEngine Types", () => {
   describe("VersionedPolicyBundle", () => {
     it("should extend ApprovalPolicyBundle with version fields", () => {
       const versionedBundle = {
-        ...typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE,
+        ...DEFAULT_APPROVAL_POLICY_BUNDLE,
         status: "active" as const,
         previousVersion: "1.0.0",
         changeSummary: "Initial release",
@@ -166,7 +162,7 @@ describe("ApprovalPolicyEngine Types", () => {
 
       for (const status of validStatuses) {
         const bundle = {
-          ...typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE,
+          ...DEFAULT_APPROVAL_POLICY_BUNDLE,
           status,
         };
 

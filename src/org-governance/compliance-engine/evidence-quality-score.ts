@@ -83,8 +83,8 @@ export class EvidenceQualityScorer {
     // Authenticity: trusted sources score higher
     const authenticity = this.calculateAuthenticity(input.sourceSystem, input.collectedBy);
 
-    // Relevance: direct evidence of control
-    const relevance = input.relevanceScore ?? 0.8;
+    // Relevance: direct evidence of control (scale 0-1 to 0-100)
+    const relevance = (input.relevanceScore ?? 0.8) * 100;
 
     // Chain of custody: audit trail intact
     const chainOfCustody = this.calculateChainOfCustody(input.timestamp, input.collectedBy);

@@ -199,7 +199,7 @@ test("EvidenceQualityScorer: uses default relevance score when not provided", ()
     hasContent: true,
   });
 
-  assert.equal(result.dimensions.relevance, 0.8);
+  assert.equal(result.dimensions.relevance, 80);
 });
 
 test("EvidenceQualityScorer: uses provided relevance score", () => {
@@ -215,7 +215,7 @@ test("EvidenceQualityScorer: uses provided relevance score", () => {
     relevanceScore: 0.5,
   });
 
-  assert.equal(result.dimensions.relevance, 0.5);
+  assert.equal(result.dimensions.relevance, 50);
 });
 
 test("EvidenceQualityScorer: computes weighted overall score", () => {

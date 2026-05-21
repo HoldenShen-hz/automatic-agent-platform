@@ -484,7 +484,7 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
 
     if (this.config.requireApproval) {
       this.pendingRequests.set(delegationRequest.id, delegationRequest);
-      return { success: true, error: "Request pending approval", errorCode: "PENDING_APPROVAL" };
+      return { success: true, error: `Request pending approval:${delegationRequest.id}`, errorCode: "PENDING_APPROVAL" };
     }
 
     return this.createCapabilityGrant(delegationRequest);

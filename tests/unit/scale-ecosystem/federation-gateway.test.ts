@@ -128,6 +128,8 @@ test("federation-gateway: establishTrust creates trust relationship", async () =
   const gateway = new FederationGateway();
   await gateway.registerOrganization({ id: "org-1", name: "Org 1", domain: "org1.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-2", name: "Org 2", domain: "org2.com", tier: "enterprise" });
+  await gateway.updateOrganizationCapabilities("org-1", ["cap-1"]);
+  await gateway.updateOrganizationCapabilities("org-2", ["cap-1"]);
 
   const trust = await gateway.establishTrust({
     sourceOrgId: "org-1",
@@ -184,19 +186,22 @@ test("federation-gateway: getTrustsForOrg returns all trusts for org", async () 
   await gateway.registerOrganization({ id: "org-1", name: "Org 1", domain: "org1.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-2", name: "Org 2", domain: "org2.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-3", name: "Org 3", domain: "org3.com", tier: "standard" });
+  await gateway.updateOrganizationCapabilities("org-1", ["cap-1", "cap-2"]);
+  await gateway.updateOrganizationCapabilities("org-2", ["cap-1"]);
+  await gateway.updateOrganizationCapabilities("org-3", ["cap-1"]);
 
   await gateway.establishTrust({
     sourceOrgId: "org-1",
     targetOrgId: "org-2",
     level: TrustLevel.READ,
-    capabilities: [],
+    capabilities: ["cap-1"],
     grantedBy: "admin",
   });
   await gateway.establishTrust({
     sourceOrgId: "org-1",
     targetOrgId: "org-3",
-    level: TrustLevel.WRITE,
-    capabilities: [],
+    level: TrustLevel.AUDIT_ONLY,
+    capabilities: ["cap-1"],
     grantedBy: "admin",
   });
 
@@ -232,6 +237,8 @@ test("federation-gateway: requestDelegation returns pending when approval requir
   const gateway = new FederationGateway({ requireApproval: true });
   await gateway.registerOrganization({ id: "org-1", name: "Org 1", domain: "org1.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-2", name: "Org 2", domain: "org2.com", tier: "standard" });
+  await gateway.updateOrganizationCapabilities("org-1", ["cap-1"]);
+  await gateway.updateOrganizationCapabilities("org-2", ["cap-1"]);
 
   await gateway.establishTrust({
     sourceOrgId: "org-1",
@@ -258,6 +265,8 @@ test("federation-gateway: approveDelegation creates capability grant", async () 
   const gateway = new FederationGateway({ requireApproval: true });
   await gateway.registerOrganization({ id: "org-1", name: "Org 1", domain: "org1.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-2", name: "Org 2", domain: "org2.com", tier: "standard" });
+  await gateway.updateOrganizationCapabilities("org-1", ["cap-1"]);
+  await gateway.updateOrganizationCapabilities("org-2", ["cap-1"]);
 
   await gateway.establishTrust({
     sourceOrgId: "org-1",
@@ -279,7 +288,8 @@ test("federation-gateway: approveDelegation creates capability grant", async () 
   assert.equal(requestResult.success, true);
   const requestId = (requestResult as { error?: string }).error?.split(":")[1];
 
-  const approveResult = await gateway.approveDelegation(requestResult as unknown as string, "approver");
+  assert.ok(requestId, "requestId should be extracted");
+  const approveResult = await gateway.approveDelegation(requestId!, "approver");
   assert.equal(approveResult.success, true);
   assert.ok(approveResult.grant != null);
 });
@@ -288,6 +298,8 @@ test("federation-gateway: revokeCapabilityGrant updates grant status", async () 
   const gateway = new FederationGateway({ requireApproval: false });
   await gateway.registerOrganization({ id: "org-1", name: "Org 1", domain: "org1.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-2", name: "Org 2", domain: "org2.com", tier: "standard" });
+  await gateway.updateOrganizationCapabilities("org-1", ["cap-1"]);
+  await gateway.updateOrganizationCapabilities("org-2", ["cap-1"]);
 
   await gateway.establishTrust({
     sourceOrgId: "org-1",
@@ -318,6 +330,8 @@ test("federation-gateway: getCapabilityGrantsForOrg returns grants", async () =>
   const gateway = new FederationGateway({ requireApproval: false });
   await gateway.registerOrganization({ id: "org-1", name: "Org 1", domain: "org1.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-2", name: "Org 2", domain: "org2.com", tier: "standard" });
+  await gateway.updateOrganizationCapabilities("org-1", ["cap-1"]);
+  await gateway.updateOrganizationCapabilities("org-2", ["cap-1"]);
 
   await gateway.establishTrust({
     sourceOrgId: "org-1",
@@ -344,6 +358,8 @@ test("federation-gateway: checkCapabilityAccess returns boolean", async () => {
   const gateway = new FederationGateway({ requireApproval: false });
   await gateway.registerOrganization({ id: "org-1", name: "Org 1", domain: "org1.com", tier: "standard" });
   await gateway.registerOrganization({ id: "org-2", name: "Org 2", domain: "org2.com", tier: "standard" });
+  await gateway.updateOrganizationCapabilities("org-1", ["cap-1"]);
+  await gateway.updateOrganizationCapabilities("org-2", ["cap-1"]);
 
   await gateway.establishTrust({
     sourceOrgId: "org-1",
@@ -501,9 +517,10 @@ test("federation-gateway: buildFederationCatalog creates catalog entry for each 
 
   const catalog = buildFederationCatalog(gateway);
 
-  assert.equal(catalog.federationId, "test-fed");
   assert.equal(catalog.totalCount, 2);
   assert.ok(catalog.entries.length === 2);
+  assert.equal(catalog.entries[0]?.federationId, "test-fed");
+  assert.equal(catalog.entries[1]?.federationId, "test-fed");
 });
 
 test("federation-gateway: buildFederationCatalog filters by status", async () => {

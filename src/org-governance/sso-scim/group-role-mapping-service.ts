@@ -13,6 +13,7 @@ export interface GroupRoleMappingAuditEntry {
 
 export class GroupRoleMappingService {
   private readonly rules = new Map<string, readonly string[]>();
+  private readonly originalCases = new Map<string, { tenantId: string; groupName: string }>();
   private readonly auditLog: GroupRoleMappingAuditEntry[] = [];
 
   public register(rule: GroupRoleMappingRule): GroupRoleMappingRule {
@@ -21,6 +22,7 @@ export class GroupRoleMappingService {
       throw new Error(`group_role_mapping.duplicate_rule:${rule.tenantId}:${rule.groupName}`);
     }
     this.rules.set(key, [...new Set(rule.roleIds)]);
+    this.originalCases.set(key, { tenantId: rule.tenantId, groupName: rule.groupName });
     this.auditLog.push({
       action: "register",
       tenantId: rule.tenantId,
@@ -44,6 +46,7 @@ export class GroupRoleMappingService {
       return false;
     }
     this.rules.delete(key);
+    this.originalCases.delete(key);
     this.auditLog.push({
       action: "unregister",
       tenantId,
@@ -57,20 +60,21 @@ export class GroupRoleMappingService {
     return [...this.rules.entries()]
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([ruleKey, roleIds]) => {
+        const original = this.originalCases.get(ruleKey);
         const separatorIndex = ruleKey.indexOf(":");
         return {
-          tenantId: ruleKey.slice(0, separatorIndex),
-          groupName: ruleKey.slice(separatorIndex + 1),
+          tenantId: original?.tenantId ?? ruleKey.slice(0, separatorIndex),
+          groupName: original?.groupName ?? ruleKey.slice(separatorIndex + 1),
           roleIds,
         };
       });
   }
 
   public listAuditLog(): readonly GroupRoleMappingAuditEntry[] {
-    return [...this.auditLog];
+    return Object.freeze([...this.auditLog]);
   }
 
   private buildRuleKey(tenantId: string, groupName: string): string {
-    return `${tenantId}:${groupName.toLowerCase()}`;
+    return `${tenantId.toLowerCase()}:${groupName.toLowerCase()}`;
   }
 }

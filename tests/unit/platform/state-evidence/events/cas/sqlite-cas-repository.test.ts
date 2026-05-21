@@ -15,72 +15,23 @@ function createMockConnection(): {
   prepare(sql: string): {
     run(...params: unknown[]): { changes: number };
     all(...params: unknown[]): unknown[];
+    get(...params: unknown[]): unknown | undefined;
   };
 } {
-  const casStorage = new Map<string, { value: string; version: number; updatedAt: string }>();
+  // Single storage for all CAS operations (set, compareAndSwap, compareAndSet, get, has)
+  const storage = new Map<string, { value: string; version: number; updatedAt: string }>();
 
   return {
     exec(sql: string): void {
-      // Schema creation handled silently
+      // Schema creation and transaction commands handled silently
     },
     prepare(sql: string) {
+      const currentSql = sql;
       return {
         run(...params: unknown[]): { changes: number } {
-          if (sql.includes("INSERT") || sql.includes("ON CONFLICT")) {
-            const key = params[0] as string;
-            casStorage.set(key, {
-              value: params[1] as string,
-              version: params[2] as number,
-              updatedAt: params[3] as string,
-            });
-            return { changes: 1 };
-          }
-          if (sql.includes("UPDATE")) {
-            const key = params[2] as string;
-            const existing = casStorage.get(key);
-            if (existing) {
-              casStorage.set(key, {
-                value: params[0] as string,
-                version: existing.version + 1,
-                updatedAt: params[1] as string,
-              });
-              return { changes: 1 };
-            }
-            return { changes: 0 };
-          }
-          if (sql.includes("DELETE")) {
-            const key = params[0] as string;
-            const existed = casStorage.has(key);
-            casStorage.delete(key);
-            return { changes: existed ? 1 : 0 };
-          }
-          return { changes: 0 };
-        },
-        all(...params: unknown[]): unknown[] {
-          return [];
-        },
-      };
-    },
-  };
-}
-
-function createMockQueryConnection(): {
-  exec(sql: string): void;
-  prepare(sql: string): {
-    run(...params: unknown[]): { changes: number };
-    all(...params: unknown[]): { length: number };
-    get(): unknown | undefined;
-  };
-} & ReturnType<typeof createMockConnection> {
-  const base = createMockConnection();
-  const storage = new Map<string, { value: string; version: number; updatedAt: string }>();
-
-  const mockConn = {
-    ...base,
-    prepare(sql: string) {
-      return {
-        run(...params: unknown[]): { changes: number } {
-          if (sql.includes("INSERT") || sql.includes("ON CONFLICT")) {
+          // set() method: INSERT ... ON CONFLICT DO UPDATE SET ...
+          // Params: [key, value, version, updatedAt]
+          if (sql.includes("ON CONFLICT")) {
             const key = params[0] as string;
             storage.set(key, {
               value: params[1] as string,
@@ -89,7 +40,20 @@ function createMockQueryConnection(): {
             });
             return { changes: 1 };
           }
+          // compareAndSwap/compareAndSet plain INSERT (version hardcoded to 1)
+          // Params: [key, newValue, updatedAt]
+          if (sql.includes("INSERT")) {
+            const key = params[0] as string;
+            storage.set(key, {
+              value: params[1] as string,
+              version: 1,
+              updatedAt: params[2] as string,
+            });
+            return { changes: 1 };
+          }
           if (sql.includes("UPDATE")) {
+            // compareAndSwap/compareAndSet UPDATE: increments version
+            // Params: [newValue, updatedAt, key, expectedValue/expectedVersion]
             const key = params[2] as string;
             const existing = storage.get(key);
             if (existing) {
@@ -110,12 +74,17 @@ function createMockQueryConnection(): {
           }
           return { changes: 0 };
         },
-        all(..._params: unknown[]): { length: number } {
-          return { length: 0 };
+        all(..._params: unknown[]): unknown[] {
+          return [];
         },
-        get(sql?: string, ..._params: unknown[]): unknown | undefined {
-          if (!sql) return undefined;
-          const key = _params[0] as string;
+        get(...params: unknown[]): unknown | undefined {
+          const key = params[0] as string;
+          // For SELECT COUNT(*) queries, return { count: N }
+          if (currentSql && currentSql.includes("COUNT")) {
+            const hasKey = storage.has(key);
+            return { count: hasKey ? 1 : 0 };
+          }
+          // For SELECT ... queries, return the row
           const row = storage.get(key);
           if (!row) return undefined;
           return {
@@ -128,8 +97,6 @@ function createMockQueryConnection(): {
       };
     },
   };
-
-  return mockConn as typeof mockConn;
 }
 
 test("SqliteCasRepository.get returns undefined for non-existent key", () => {
@@ -384,6 +351,9 @@ test("SqliteCasRepository constructor calls ensureSchema", () => {
         },
         all(..._params: unknown[]): unknown[] {
           return [];
+        },
+        get(..._params: unknown[]): unknown | undefined {
+          return undefined;
         },
       };
     },
