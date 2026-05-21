@@ -14,7 +14,7 @@ import { z } from "zod";
 import { newId, nowIso } from "../../../contracts/types/ids.js";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
-import { buildJsonResponse, readLimit, requirePrincipal, validateTaskId } from "./utils.js";
+import { buildJsonResponse, readLimit, readQueryParam, requirePrincipal, validateTaskId } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import { AppError } from "../../../contracts/errors.js";
 
@@ -51,6 +51,14 @@ export interface ReplaySessionRouteDeps {
 // In-memory storage for replay sessions
 const replaySessionsStore = new Map<string, ReplaySession>();
 
+/**
+ * Clears the in-memory replay sessions store.
+ * Exported for testing purposes only.
+ */
+export function clearReplaySessionsStore(): void {
+  replaySessionsStore.clear();
+}
+
 const createReplaySessionSchema = z.object({
   taskId: z.string().trim().min(1).optional(),
   workflowId: z.string().trim().min(1).optional(),
@@ -62,9 +70,8 @@ const createReplaySessionSchema = z.object({
 
 function matchesReplaySessionRoute(segments: string[], expectedTailLength: number): boolean {
   return (
-    segments[0] === "api"
-    && segments[1] === "v1"
-    && segments[2] === "replay-sessions"
+    segments[0] === "v1"
+    && segments[1] === "replay-sessions"
     && segments.length === expectedTailLength + 1
   );
 }
@@ -78,7 +85,8 @@ export function createReplaySessionRoutes(deps: ReplaySessionRouteDeps): RouteDe
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = readLimit(ctx.request, 50);
-        const sessions = Array.from(replaySessionsStore.values()).slice(0, limit);
+        const offset = parseInt(readQueryParam(ctx.request, "offset") ?? "0", 10);
+        const sessions = Array.from(replaySessionsStore.values()).slice(offset, offset + limit);
         return buildJsonResponse(ctx.requestId, 200, {
           replaySessions: sessions.map((session) => ({
             replaySessionId: session.id,
@@ -91,6 +99,7 @@ export function createReplaySessionRoutes(deps: ReplaySessionRouteDeps): RouteDe
           })),
           total: replaySessionsStore.size,
           limit,
+          offset,
         });
       },
     },

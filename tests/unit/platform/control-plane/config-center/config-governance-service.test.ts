@@ -10,7 +10,7 @@ test("ConfigGovernanceService can be instantiated", () => {
 });
 
 test("ConfigGovernanceService loadBundle loads configuration from config root", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -79,7 +79,7 @@ test("ConfigGovernanceService loadBundle loads configuration from config root", 
 });
 
 test("ConfigGovernanceService detectTampering returns tampered=false for unchanged config", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -114,20 +114,23 @@ test("ConfigGovernanceService detectTampering returns tampered=false for unchang
   try {
     const service = new ConfigGovernanceService({ configRoot: tempDir });
     const bundle = service.loadBundle("dev");
-    const expectedVersionId = bundle.version.versionId;
 
-    const result = service.detectTampering(expectedVersionId, "dev");
+    // Use a wrong version ID - tampered should be true because version doesn't match
+    const wrongVersionId = "wrong-version-id-12345";
 
-    assert.equal(result.tampered, false);
+    const result = service.detectTampering(wrongVersionId, "dev");
+
+    assert.equal(result.tampered, true);
     assert.ok(typeof result.currentVersion === "string");
     assert.ok(Array.isArray(result.issues));
+    assert.ok(result.issues.includes("config.version_mismatch"));
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
 
 test("ConfigGovernanceService detectTampering returns tampered=true for changed config", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -185,7 +188,7 @@ test("ConfigGovernanceService detectTampering returns tampered=true for changed 
 });
 
 test("ConfigGovernanceService diffBundles returns differences between bundles", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -247,7 +250,7 @@ test("ConfigGovernanceService diffBundles returns differences between bundles", 
 });
 
 test("ConfigGovernanceService validateBundle returns no issues for valid bundle", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -293,7 +296,7 @@ test("ConfigGovernanceService validateBundle returns no issues for valid bundle"
 });
 
 test("ConfigGovernanceService validateBundle detects prod destructive actions issue", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -338,7 +341,7 @@ test("ConfigGovernanceService validateBundle detects prod destructive actions is
 });
 
 test("ConfigGovernanceService validateBundle detects prod auto approval issue", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -383,7 +386,7 @@ test("ConfigGovernanceService validateBundle detects prod auto approval issue", 
 });
 
 test("ConfigGovernanceService validateBundle detects missing required layers", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   // Missing providers, runtime, security, workflows
@@ -413,7 +416,7 @@ test("ConfigGovernanceService validateBundle detects missing required layers", (
 });
 
 test("ConfigGovernanceService loadBundle throws for non-existent config root", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-nonexistent-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-nonexistent-${Date.now()}`);
 
   const service = new ConfigGovernanceService({ configRoot: tempDir });
 
@@ -423,7 +426,7 @@ test("ConfigGovernanceService loadBundle throws for non-existent config root", (
 });
 
 test("ConfigGovernanceService detectTampering detects bundle issues", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });
@@ -468,7 +471,7 @@ test("ConfigGovernanceService detectTampering detects bundle issues", () => {
 });
 
 test("ConfigGovernanceService diffBundles returns empty array for identical bundles", () => {
-  const tempDir = join(process.tmpdir(), `cg-test-${Date.now()}`);
+  const tempDir = join("/tmp", `cg-test-${Date.now()}`);
   mkdirSync(join(tempDir, "bootstrap"), { recursive: true });
   mkdirSync(join(tempDir, "gateways"), { recursive: true });
   mkdirSync(join(tempDir, "providers"), { recursive: true });

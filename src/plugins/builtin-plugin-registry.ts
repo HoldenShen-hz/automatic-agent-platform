@@ -16,6 +16,7 @@ import { createGameDevRetrieverPlugin } from "./retrievers/game-dev-retriever.js
 import { createAssetProductionRetrieverPlugin } from "./retrievers/asset-production-retriever.js";
 import { createLivestreamRetrieverPlugin } from "./retrievers/livestream-retriever.js";
 import { createBasicEvaluatorPlugin, createBasicValidatorPlugin } from "./validators/basic-evaluator.js";
+import { AppError, ValidationError } from "../platform/contracts/errors.js";
 import { DataTaintPropagationService, type DataTaintLabel } from "../platform/five-plane-state-evidence/truth/data-taint-propagation.js";
 import { newId, nowIso } from "../platform/contracts/types/ids.js";
 import type { PluginLifecycleState } from "../domains/registry/plugin-spi.js";
@@ -822,7 +823,7 @@ export class PluginMarketplaceRegistry {
   async authenticate(_marketplaceUrl: string, credentials: { apiKey?: string }): Promise<string> {
     const apiKey = credentials.apiKey?.trim();
     if (!apiKey) {
-      throw new Error("Marketplace API key is required");
+      throw new ValidationError("plugin_marketplace.api_key_required", "Marketplace API key is required");
     }
     const sessionToken = `session_${newId("marketplace")}`;
     this.sessions.add(sessionToken);
@@ -843,7 +844,15 @@ export class PluginMarketplaceRegistry {
       throw new Error(`No loader found for source: ${source}`);
     }
     if (source.startsWith("marketplace:") && (!sessionToken || !this.isAuthenticated(sessionToken))) {
-      throw new Error("Authentication required to load marketplace plugin");
+      throw new AppError(
+        "plugin_marketplace.authentication_required",
+        "Authentication required to load marketplace plugin",
+        {
+          statusCode: 401,
+          category: "auth",
+          source: "gateway",
+        },
+      );
     }
     return loader.loadFromSource(source, sessionToken);
   }

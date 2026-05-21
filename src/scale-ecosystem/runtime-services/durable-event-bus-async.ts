@@ -21,6 +21,7 @@ import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evi
 import type { EventRecord, TraceContext } from "../../platform/contracts/types/domain.js";
 import type { PendingAckEvent } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { DurableEventBus, type EventHandler } from "../../platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { ValidationError } from "../../platform/contracts/errors.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
@@ -295,7 +296,10 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
         this.failureCount = 0;
         this.emit("circuit_breaker_close");
       } else {
-        throw new Error("Circuit breaker is open - event publishing temporarily disabled");
+        throw new ValidationError(
+          "durable_event_bus_async.circuit_breaker_open",
+          "Circuit breaker is open - event publishing temporarily disabled",
+        );
       }
     }
 

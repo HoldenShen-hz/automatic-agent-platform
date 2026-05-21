@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ValidationError } from "../../../platform/contracts/errors.js";
 import type { OrgNode, OrgChart } from "../org-node/index.js";
 
 export const OrgSyncRecordSchema = z.object({
@@ -28,7 +29,7 @@ export function buildOrgChart(
 ): OrgChart {
   const root = nodes.find((n) => n.parentOrgNodeId === null);
   if (!root) {
-    throw new Error("Cannot build OrgChart: no root node found");
+    throw new ValidationError("org_chart.root_node_missing", "Cannot build OrgChart: no root node found");
   }
   return {
     root,

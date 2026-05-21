@@ -44,18 +44,18 @@ function createTestWorkflow(
   now: string,
   status = "in_progress",
 ): void {
-  workflowRepo.upsertWorkflowState({
+  workflowRepo.insertWorkflowState({
     taskId,
-    status,
+    divisionId: "general_ops",
+    workflowId: taskId,
     currentStepIndex: 0,
-    totalSteps: 3,
-    contextJson: "{}",
-    stepsJson: "[]",
+    status,
+    outputsJson: "{}",
+    lastErrorCode: null,
+    retryCount: 0,
+    resumableFromStep: null,
     startedAt: now,
     updatedAt: now,
-    finishedAt: null,
-    errorMessage: null,
-    agentId: null,
   });
 }
 

@@ -308,7 +308,7 @@ export class RetryableApiClient {
 
         const reader = response.body?.getReader();
         if (!reader) {
-          throw new Error("SSE response body is not readable");
+          throw new ValidationError("api_client.sse_body_unreadable", "SSE response body is not readable");
         }
 
         const decoder = new TextDecoder();

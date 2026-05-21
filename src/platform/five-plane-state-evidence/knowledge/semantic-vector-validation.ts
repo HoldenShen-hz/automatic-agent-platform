@@ -218,6 +218,7 @@ export async function validateSemanticVectorReadiness(
   const probeEmbedding = buildSemanticEmbedding(probeText);
   let roundtripOk = false;
   let cleanupDeleted = 0;
+  let cleanupError: string | null = null;
 
   try {
     await store.upsertChunks([{
@@ -255,12 +256,16 @@ export async function validateSemanticVectorReadiness(
     cleanupDeleted = await options.database.asyncConnection.execute(
       `DELETE FROM ${schema}.${tableName} WHERE knowledge_ref = $1`,
       probeKnowledgeRef,
-    ).catch(() => 0);
+    ).catch((error) => {
+      cleanupError = error instanceof Error ? error.message : String(error);
+      return 0;
+    });
   }
 
   const roundtripCheck = checks.find((check) => check.name === "semantic_roundtrip");
   if (roundtripCheck) {
     roundtripCheck.details.cleanupDeleted = cleanupDeleted;
+    roundtripCheck.details.cleanupError = cleanupError;
   }
   return finalize();
 }

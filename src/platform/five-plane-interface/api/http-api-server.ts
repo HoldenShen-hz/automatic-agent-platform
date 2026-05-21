@@ -196,7 +196,12 @@ export class HttpApiServer {
         response.end(JSON.stringify({
           error: normalized.code,
           message: normalized.message,
-          requestId: readRequestId(normalizeHeaders(request.headers)),
+          requestId: readRequestId({
+            method: request.method,
+            url: request.url,
+            headers: normalizeHeaders(request.headers),
+            body: null,
+          }),
         }));
       });
     });

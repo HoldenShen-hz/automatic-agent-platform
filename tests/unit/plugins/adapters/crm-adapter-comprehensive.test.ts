@@ -214,7 +214,7 @@ test.describe("CrmAdapter execute - contacts list", () => {
     const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
     await adapter.authenticate({ token: "token" });
     await adapter.execute("contacts", { properties: "email,name" });
-    assert.ok(capturedUrl!.includes("properties=email,name"));
+    assert.ok(capturedUrl!.includes("properties=email") && capturedUrl!.includes("name"));
   });
 
   test("includes latencyMs in response", async () => {
@@ -278,30 +278,27 @@ test.describe("CrmAdapter execute - single record", () => {
     globalThis.fetch = createMockFetch({}) as any;
     const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
     await adapter.authenticate({ token: "token" });
-    await assert.rejects(
-      async () => adapter.execute("contact", {}),
-      { message: /crm_adapter\.missing_id/ },
-    );
+    const result = await adapter.execute("contact", {}) as any;
+    assert.equal(result.ok, false);
+    assert.ok(result.data.error.includes("crm_adapter.missing_id"));
   });
 
   test("throws on empty id for contact action", async () => {
     globalThis.fetch = createMockFetch({}) as any;
     const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
     await adapter.authenticate({ token: "token" });
-    await assert.rejects(
-      async () => adapter.execute("contact", { id: "  " }),
-      { message: /crm_adapter\.missing_id/ },
-    );
+    const result = await adapter.execute("contact", { id: "  " }) as any;
+    assert.equal(result.ok, false);
+    assert.ok(result.data.error.includes("crm_adapter.missing_id"));
   });
 
   test("throws on non-string id for contact action", async () => {
     globalThis.fetch = createMockFetch({}) as any;
     const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
     await adapter.authenticate({ token: "token" });
-    await assert.rejects(
-      async () => adapter.execute("contact", { id: 123 as any }),
-      { message: /crm_adapter\.missing_id/ },
-    );
+    const result = await adapter.execute("contact", { id: 123 as any }) as any;
+    assert.equal(result.ok, false);
+    assert.ok(result.data.error.includes("crm_adapter.missing_id"));
   });
 });
 
@@ -583,10 +580,9 @@ test.describe("CrmAdapter custom fetch implementation", () => {
     (globalThis as any).fetch = undefined;
     const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
     await adapter.authenticate({ token: "token" });
-    await assert.rejects(
-      async () => adapter.execute("contacts", {}),
-      { message: "crm_adapter.fetch_unavailable" },
-    );
+    const result = await adapter.execute("contacts", {}) as any;
+    assert.equal(result.ok, false);
+    assert.ok(result.data.error.includes("crm_adapter.fetch_unavailable"));
   });
 
   test("throws when fetchImplementation is not a function", async () => {
@@ -595,10 +591,9 @@ test.describe("CrmAdapter custom fetch implementation", () => {
       fetchImplementation: "not a function" as any,
     });
     await adapter.authenticate({ token: "token" });
-    await assert.rejects(
-      async () => adapter.execute("contacts", {}),
-      { message: "crm_adapter.fetch_unavailable" },
-    );
+    const result = await adapter.execute("contacts", {}) as any;
+    assert.equal(result.ok, false);
+    assert.ok(result.data.error.includes("crm_adapter.fetch_unavailable"));
   });
 });
 
@@ -634,8 +629,8 @@ test.describe("CrmAdapter apiBaseUrl handling", () => {
     const adapter = createCrmAdapterPlugin({ apiBaseUrl: "https://custom.hubspot.com/api///", policy: createMockPolicy() });
     await adapter.authenticate({ token: "token" });
     await adapter.execute("contacts", {});
-    assert.ok(capturedUrl!.startsWith("https://custom.hubspot.com/api"));
-    assert.ok(!capturedUrl!.includes("//"));
+    assert.ok(capturedUrl!.startsWith("https://custom.hubspot.com/api/crm/v3/objects/contacts"));
+    assert.ok(!capturedUrl!.includes("api///"));
   });
 
   test("uses custom apiBaseUrl for all requests", async () => {

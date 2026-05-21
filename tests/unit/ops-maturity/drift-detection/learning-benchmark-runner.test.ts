@@ -135,7 +135,7 @@ test("SimpleBenchmarkRunner resolveRisk returns medium for workflow_template kin
 
 test("SimpleBenchmarkRunner resolveRisk returns low for tool_routing_rule kind", () => {
   const runner = new SimpleBenchmarkRunner([]);
-  const proposal = createTestProposal({ kind: "tool_routing_rule", target: "type_validation" });
+  const proposal = createTestProposal({ kind: "tool_routing_rule", target: "routing_config" });
   const risk = runner.resolveRisk(proposal);
   assert.strictEqual(risk, "low");
 });
@@ -155,7 +155,7 @@ test("SimpleBenchmarkRunner evaluate evaluates with relevant cases and executor"
   const cases: BenchmarkCase[] = [
     { id: "case_1", taskType: "type_validation", input: { test: true } },
   ];
-  const runner = new SimpleBenchmarkRunner({ benchmarkCases: cases });
+  const runner = new SimpleBenchmarkRunner({ benchmarkCases: cases, baseline: { successRate: 0.9, avgCostUsd: 0.1, avgLatencyMs: 100 } });
   runner.setProposalExecutor(executor);
 
   const proposal = createTestProposal({ target: "type_validation" });
@@ -244,6 +244,7 @@ test("SimpleBenchmarkRunner runBenchmarks returns empty array when no relevant c
   };
   const cases: BenchmarkCase[] = [
     { id: "case_1", taskType: "workflow_task", input: {} },
+    { id: "case_2", taskType: "skill_task", input: {} },
   ];
   const runner = new SimpleBenchmarkRunner({ benchmarkCases: cases });
   runner.setProposalExecutor(executor);

@@ -14,7 +14,7 @@
 import { AnthropicChatService, type AnthropicTool, type AnthropicChatCompletionResult, type AnthropicChatCompletionRequest } from "./anthropic/anthropic-chat-service.js";
 import { OpenAIChatService, type OpenAIFunction, type OpenAIChatCompletionResult, type OpenAIChatCompletionRequest } from "./openai/openai-chat-service.js";
 import { MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult, type MiniMaxChatCompletionRequest } from "./minimax/minimax-chat-service.js";
-import { AppError } from "../../contracts/errors.js";
+import { AppError, ValidationError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
@@ -675,13 +675,13 @@ export class UnifiedChatProvider {
 
   private assertRequiredRequestFields(request: ChatCompletionRequest): void {
     if (typeof request.traceId !== "string" || request.traceId.trim().length === 0) {
-      throw new Error("ChatCompletionRequest requires traceId");
+      throw new ValidationError("chat_completion_request.trace_id_required", "ChatCompletionRequest requires traceId");
     }
     if (typeof request.tenantId !== "string" || request.tenantId.trim().length === 0) {
-      throw new Error("ChatCompletionRequest requires tenantId");
+      throw new ValidationError("chat_completion_request.tenant_id_required", "ChatCompletionRequest requires tenantId");
     }
     if (typeof request.costTag !== "string" || request.costTag.trim().length === 0) {
-      throw new Error("ChatCompletionRequest requires costTag");
+      throw new ValidationError("chat_completion_request.cost_tag_required", "ChatCompletionRequest requires costTag");
     }
   }
 

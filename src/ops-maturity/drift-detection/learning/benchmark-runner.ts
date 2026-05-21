@@ -153,11 +153,11 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
     if (kind === "prompt_patch" || kind === "threshold_tuning") {
       return "high";
     }
-    if (securityKeywords.some((kw) => target.includes(kw) || rationale.includes(kw))) {
-      return "high";
-    }
     if (kind === "workflow_template") {
       return "medium";
+    }
+    if (securityKeywords.some((kw) => target.includes(kw) || rationale.includes(kw))) {
+      return "high";
     }
     return "low";
   }

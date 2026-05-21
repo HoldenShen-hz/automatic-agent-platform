@@ -313,7 +313,10 @@ async function main(): Promise<void> {
   } catch (error) {
     if (!startupComplete) {
       for (const handler of startupCleanup.slice().reverse()) {
-        await handler().catch(() => undefined);
+        await handler().catch((cleanupError) => {
+          const message = cleanupError instanceof Error ? (cleanupError.stack ?? cleanupError.message) : String(cleanupError);
+          process.stderr.write(`startup_cleanup_failed: ${message}\n`);
+        });
       }
     }
     throw error;

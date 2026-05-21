@@ -5,6 +5,7 @@
 
 import { randomUUID } from "crypto";
 import { TrustLevel } from "./trust-level.js";
+import { AppError, ValidationError } from "../../platform/contracts/errors.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export { TrustLevel } from "./trust-level.js";
@@ -372,15 +373,21 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
     const sourceOrg = this.organizations.get(request.sourceOrgId);
     const targetOrg = this.organizations.get(request.targetOrgId);
     if (!sourceOrg || !targetOrg) {
-      throw new Error("Source or target organization not found");
+      throw new ValidationError("federation_gateway.organization_not_found", "Source or target organization not found");
     }
     if (!sourceOrg.enabled || !targetOrg.enabled) {
-      throw new Error("Cannot establish trust with disabled organization");
+      throw new ValidationError(
+        "federation_gateway.organization_disabled",
+        "Cannot establish trust with disabled organization",
+      );
     }
 
     // Validate trust level hierarchy
     if (!this.isValidTrustLevel(request.level, sourceOrg, request.capabilities)) {
-      throw new Error("Invalid trust level for organization capabilities");
+      throw new ValidationError(
+        "federation_gateway.invalid_trust_level",
+        "Invalid trust level for organization capabilities",
+      );
     }
 
     const trustRelationship: TrustRelationship = {
@@ -425,10 +432,15 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
   async revokeTrust(trustId: string, revokedBy: string): Promise<void> {
     const trust = this.trustRelationships.get(trustId);
     if (!trust) {
-      throw new Error(`Trust relationship not found: ${trustId}`);
+      throw new AppError("federation_gateway.trust_not_found", `Trust relationship not found: ${trustId}`, {
+        statusCode: 404,
+        category: "business-rule",
+        source: "policy",
+        details: { trustId },
+      });
     }
     if (trust.expiresAt && trust.expiresAt < new Date()) {
-      throw new Error("Trust relationship already expired");
+      throw new ValidationError("federation_gateway.trust_expired", "Trust relationship already expired");
     }
 
     // Set expiry to now to effectively revoke

@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createReplaySessionRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/replay-sessions-routes.js";
+import { createReplaySessionRoutes, clearReplaySessionsStore } from "../../../../../../src/platform/five-plane-interface/api/http-server/replay-sessions-routes.js";
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
+
+// Clear the store before each test to ensure isolation
+test.beforeEach(() => {
+  clearReplaySessionsStore();
+});
 
 function createMockAuthService(): ApiAuthService {
   return {
@@ -52,7 +57,7 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext, method = 
 
 test("createReplaySessionRoutes - GET /api/v1/replay-sessions returns empty list initially", async () => {
   const routes = createReplaySessionRoutes({ authService: createMockAuthServiceViewer() });
-  const ctx = createMockContext("/api/v1/replay-sessions", ["api", "v1", "replay-sessions"]);
+  const ctx = createMockContext("/api/v1/replay-sessions", ["v1", "replay-sessions"]);
   const result = await callRoute(routes, ctx);
 
   assert.ok(result != null);
@@ -65,7 +70,7 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions returns empty list
 
 test("createReplaySessionRoutes - POST /api/v1/replay-sessions creates a new replay session", async () => {
   const routes = createReplaySessionRoutes({ authService: createMockAuthService() });
-  const ctx = createMockContext("/api/v1/replay-sessions", ["api", "v1", "replay-sessions"], {}, JSON.stringify({
+  const ctx = createMockContext("/api/v1/replay-sessions", ["v1", "replay-sessions"], {}, JSON.stringify({
     title: "Test Replay Session",
     taskId: "task-123",
     workflowId: "wf-456",
@@ -89,7 +94,7 @@ test("createReplaySessionRoutes - POST /api/v1/replay-sessions creates a new rep
 
 test("createReplaySessionRoutes - POST /api/v1/replay-sessions uses defaults for optional fields", async () => {
   const routes = createReplaySessionRoutes({ authService: createMockAuthService() });
-  const ctx = createMockContext("/api/v1/replay-sessions", ["api", "v1", "replay-sessions"], {}, JSON.stringify({
+  const ctx = createMockContext("/api/v1/replay-sessions", ["v1", "replay-sessions"], {}, JSON.stringify({
     title: "Minimal Session",
   }));
 
@@ -110,7 +115,7 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions/:id returns 404 fo
   const routes = createReplaySessionRoutes({ authService: createMockAuthServiceViewer() });
   const ctx = createMockContext(
     "/api/v1/replay-sessions/replay_nonexistent",
-    ["api", "v1", "replay-sessions", "replay_nonexistent"]
+    ["v1", "replay-sessions", "replay_nonexistent"]
   );
 
   await assert.rejects(
@@ -124,7 +129,7 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions/:id returns create
   const routes = createReplaySessionRoutes({ authService });
 
   // Create a session first
-  const createCtx = createMockContext("/api/v1/replay-sessions", ["api", "v1", "replay-sessions"], {}, JSON.stringify({
+  const createCtx = createMockContext("/api/v1/replay-sessions", ["v1", "replay-sessions"], {}, JSON.stringify({
     title: "Get Test Session",
     taskId: "task-get-test",
   }));
@@ -134,7 +139,7 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions/:id returns create
   // Now fetch it
   const getCtx = createMockContext(
     `/api/v1/replay-sessions/${replaySessionId}`,
-    ["api", "v1", "replay-sessions", replaySessionId]
+    ["v1", "replay-sessions", replaySessionId]
   );
   const getResult = await callRoute(routes, getCtx);
 
@@ -152,7 +157,7 @@ test("createReplaySessionRoutes - DELETE /api/v1/replay-sessions/:id deletes ses
   const routes = createReplaySessionRoutes({ authService });
 
   // Create a session
-  const createCtx = createMockContext("/api/v1/replay-sessions", ["api", "v1", "replay-sessions"], {}, JSON.stringify({
+  const createCtx = createMockContext("/api/v1/replay-sessions", ["v1", "replay-sessions"], {}, JSON.stringify({
     title: "Delete Test Session",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
@@ -161,7 +166,7 @@ test("createReplaySessionRoutes - DELETE /api/v1/replay-sessions/:id deletes ses
   // Delete it
   const deleteCtx = createMockContext(
     `/api/v1/replay-sessions/${replaySessionId}`,
-    ["api", "v1", "replay-sessions", replaySessionId]
+    ["v1", "replay-sessions", replaySessionId]
   );
   const deleteResult = await callRoute(routes, deleteCtx, "DELETE");
 
@@ -177,7 +182,7 @@ test("createReplaySessionRoutes - DELETE /api/v1/replay-sessions/:id deletes ses
     async () => {
       const getCtx = createMockContext(
         `/api/v1/replay-sessions/${replaySessionId}`,
-        ["api", "v1", "replay-sessions", replaySessionId]
+        ["v1", "replay-sessions", replaySessionId]
       );
       return callRoute(routes, getCtx);
     },
@@ -190,14 +195,14 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions with pagination", 
 
   // Create multiple sessions
   for (let i = 0; i < 5; i++) {
-    const createCtx = createMockContext("/api/v1/replay-sessions", ["api", "v1", "replay-sessions"], {}, JSON.stringify({
+    const createCtx = createMockContext("/api/v1/replay-sessions", ["v1", "replay-sessions"], {}, JSON.stringify({
       title: `Session ${i}`,
     }));
     await callRoute(routes, createCtx, "POST");
   }
 
   // Get with limit
-  const ctx = createMockContext("/api/v1/replay-sessions?limit=3", ["api", "v1", "replay-sessions"]);
+  const ctx = createMockContext("/api/v1/replay-sessions?limit=3", ["v1", "replay-sessions"]);
   const result = await callRoute(routes, ctx);
 
   assert.ok(result != null);
@@ -210,12 +215,12 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions with pagination", 
 
 test("createReplaySessionRoutes - rejects empty title", async () => {
   const routes = createReplaySessionRoutes({ authService: createMockAuthService() });
-  const ctx = createMockContext("/api/v1/replay-sessions", ["api", "v1", "replay-sessions"], {}, JSON.stringify({
+  const ctx = createMockContext("/api/v1/replay-sessions", ["v1", "replay-sessions"], {}, JSON.stringify({
     title: "",
   }));
 
   await assert.rejects(
     async () => callRoute(routes, ctx, "POST"),
-    /title.*invalid/
+    /String must contain at least 1 character/
   );
 });

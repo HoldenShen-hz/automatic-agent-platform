@@ -8,6 +8,7 @@ import type { PluginDefinition } from "./plugin-definition.js";
 import type { PluginContextConfig } from "./plugin-context.js";
 import { PluginContext } from "./plugin-context.js";
 import type { DomainToolPlugin } from "../../domains/registry/plugin-spi.js";
+import { ValidationError } from "../../platform/contracts/errors.js";
 
 // Local type definitions to avoid cross-module import issues
 export interface MockLlmConfig {
@@ -225,7 +226,10 @@ export class PluginTestHarness {
       if (this.livePlugin?.execute) {
         return this.livePlugin.execute(input);
       }
-      throw new Error("Live mode requires a bound liveRunner or livePlugin runtime");
+      throw new ValidationError(
+        "plugin_test_harness.live_runtime_required",
+        "Live mode requires a bound liveRunner or livePlugin runtime",
+      );
     }
 
     await delay(this.mockLlm?.delayMs ?? 10);

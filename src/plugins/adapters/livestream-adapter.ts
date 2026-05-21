@@ -8,7 +8,7 @@
  */
 
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
-import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
+import { PolicyDeniedError, ValidationError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
 
 export interface LivestreamAdapterPluginOptions {
@@ -42,11 +42,14 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
       // OBS WebSocket token validation
       const token = credentials.obsToken as string | undefined;
       if (!token || typeof token !== "string" || token.trim().length === 0) {
-        throw new Error("OBS authentication token is required");
+        throw new ValidationError("livestream_adapter.obs_token_required", "OBS authentication token is required");
       }
       // Validate token format (OBS WebSocket tokens are typically 32+ char alphanumeric strings)
-      if (!/^[A-Za-z0-9+/=]{16,}$/.test(token.trim())) {
-        throw new Error("OBS authentication token format is invalid");
+      if (!/^[A-Za-z0-9+/=_-]{16,}$/.test(token.trim())) {
+        throw new ValidationError(
+          "livestream_adapter.obs_token_invalid",
+          "OBS authentication token format is invalid",
+        );
       }
       credentialFingerprint = `obs_${token.trim().slice(0, 8)}`;
     },

@@ -22,36 +22,45 @@ test("barrel module exports are accessible", async () => {
 test("barrel re-exports distributed-lock-types", async () => {
   const mod = await import("file://" + DISTRIBUTED_LOCK_SERVICE_PATH);
   assert.ok(mod !== undefined);
+  // distributed-lock-types exports LockDataSchema, transitionLock, etc.
+  assert.ok("LockDataSchema" in mod || "transitionLock" in mod, "should re-export from distributed-lock-types");
 });
 
 test("barrel re-exports locking-support", async () => {
   const mod = await import("file://" + DISTRIBUTED_LOCK_SERVICE_PATH);
   assert.ok(mod !== undefined);
+  // locking-support exports lockLogger, defaultPostgresFactory, inferPgSslFromDsn
+  assert.ok("lockLogger" in mod || "defaultPostgresFactory" in mod, "should re-export from locking-support");
 });
 
 test("barrel re-exports sqlite-lock-adapter", async () => {
   const mod = await import("file://" + DISTRIBUTED_LOCK_SERVICE_PATH);
   assert.ok(mod !== undefined);
+  assert.ok("SqliteLockAdapter" in mod, "should re-export SqliteLockAdapter");
 });
 
 test("barrel re-exports pg-advisory-lock-adapter", async () => {
   const mod = await import("file://" + DISTRIBUTED_LOCK_SERVICE_PATH);
   assert.ok(mod !== undefined);
+  assert.ok("PgAdvisoryLockAdapter" in mod, "should re-export PgAdvisoryLockAdapter");
 });
 
 test("barrel re-exports redis-lock-adapter", async () => {
   const mod = await import("file://" + DISTRIBUTED_LOCK_SERVICE_PATH);
   assert.ok(mod !== undefined);
+  assert.ok("RedisLockAdapter" in mod, "should re-export RedisLockAdapter");
 });
 
 test("barrel re-exports distributed-lock-factory", async () => {
   const mod = await import("file://" + DISTRIBUTED_LOCK_SERVICE_PATH);
   assert.ok(mod !== undefined);
+  assert.ok("createLockAdapter" in mod, "should re-export createLockAdapter");
 });
 
-test("module exports include backend kind type", async () => {
+test("module exports include createLockAdapter function", async () => {
   const mod = await import("file://" + DISTRIBUTED_LOCK_SERVICE_PATH);
   assert.ok(mod !== undefined);
+  assert.equal(typeof mod.createLockAdapter, "function", "should export createLockAdapter function");
 });
 
 test("multiple imports return same module reference", async () => {

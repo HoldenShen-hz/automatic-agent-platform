@@ -8,6 +8,7 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import type { DashboardDelta, DashboardChange } from "./dashboard-projection-service.js";
 
 export interface DashboardChannelSubscription {
@@ -59,6 +60,8 @@ const DEFAULT_CONFIG: WebSocketServerConfig = {
   connectionTimeoutMs: 60000,
   replayBufferSize: 100,
 };
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 interface NormalizedSubscriptions {
   readonly legacyDashboards: readonly string[];
@@ -559,7 +562,11 @@ export class DashboardWebSocketServer {
       return;
     }
     this.projectionPollingTimer = setTimeout(() => {
-      void this.runProjectionPoll();
+      void this.runProjectionPoll().catch((error: unknown) => {
+        logger.error("dashboard_websocket_server.projection_poll_failed", {
+          error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+        });
+      });
     }, delayMs);
     this.projectionPollingTimer.unref?.();
   }

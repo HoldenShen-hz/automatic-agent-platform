@@ -100,6 +100,7 @@ export const PERCENT_PATTERN = /\b\d+(?:\.\d+)?%\b/g;
 export const CURRENCY_PATTERN = /(?:¥|\$|￥)\s?\d+(?:\.\d+)?/g;
 export const ENV_PATTERN = /\b(prod|production|staging|stage|dev|test)\b|线上|生产环境|测试环境/gi;
 export const CHANNEL_PATTERN = /\b(slack|telegram|webhook|email|api)\b/gi;
+const regexCloneCache = new Map<string, RegExp>();
 
 function escapeRegexLiteral(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -125,6 +126,20 @@ function tryParseRegexLiteral(source: string): RegExp | null {
 function normalizePatternFlags(pattern: RegExp, requiredFlags: string): RegExp {
   const flagSet = new Set(`${pattern.flags}${requiredFlags}`.split(""));
   return new RegExp(pattern.source, [...flagSet].join(""));
+}
+
+function getCachedRegex(pattern: RegExp, requiredFlags = ""): RegExp {
+  const flagSet = new Set(`${pattern.flags}${requiredFlags}`.split(""));
+  const flags = [...flagSet].join("");
+  const key = `${pattern.source}/${flags}`;
+  const cached = regexCloneCache.get(key);
+  if (cached) {
+    cached.lastIndex = 0;
+    return cached;
+  }
+  const compiled = new RegExp(pattern.source, flags);
+  regexCloneCache.set(key, compiled);
+  return compiled;
 }
 
 function compilePatternSource(
@@ -319,7 +334,7 @@ export function serializeEntities(entities: readonly ExtractedEntity[]): readonl
 }
 
 export function collectRegexEntities(message: string, pattern: RegExp, entityType: string, normalizeValue?: (value: string) => unknown): ExtractedEntity[] {
-  const regex = new RegExp(pattern.source, pattern.flags);
+  const regex = getCachedRegex(pattern);
   const entities: ExtractedEntity[] = [];
   for (const match of message.matchAll(regex)) {
     const value = match[0];
@@ -430,8 +445,7 @@ export function detectPromptInjection(
   const seen = new Set<string>();
 
   for (const pattern of patterns) {
-    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
-    const regex = new RegExp(pattern.source, flags);
+    const regex = getCachedRegex(pattern, "g");
     for (const matched of message.matchAll(regex)) {
       const matchedText = matched[0];
       if (!matchedText || seen.has(`${pattern.source}:${matchedText}:${matched.index ?? -1}`)) {

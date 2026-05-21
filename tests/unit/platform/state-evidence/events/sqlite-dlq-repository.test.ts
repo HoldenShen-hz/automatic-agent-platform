@@ -79,12 +79,11 @@ function createMockConnection(): SqliteConnection {
         },
         get(...params: unknown[]): unknown {
           const tableName = sql.includes("dlq_record_details") ? "dlq_record_details" : "dlq_records";
-          if (!storage.has(tableName)) {
-            return undefined;
-          }
-          const table = storage.get(tableName)!;
           if (sql.includes("SELECT") && sql.includes("WHERE dead_letter_id = ?")) {
             const key = params[0] as string;
+            // Use detailsStorage for dlq_record_details, storage for dlq_records
+            const table = tableName === "dlq_record_details" ? detailsStorage : storage.get(tableName);
+            if (!table) return undefined;
             const row = table.get(key);
             if (!row) return undefined;
             // Return the row as-is since it already has camelCase keys

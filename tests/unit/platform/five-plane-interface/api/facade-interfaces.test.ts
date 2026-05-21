@@ -33,7 +33,7 @@ test("NoOpIncidentFacadeService.openIncident throws Error", () => {
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.openIncident({ tenantId: "tenant_123", severity: "high", title: "Test incident" }),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 
@@ -41,7 +41,7 @@ test("NoOpIncidentFacadeService.openIncident throws even with minimal input", ()
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.openIncident({ tenantId: null, severity: "low", title: "Minimal incident" }),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 
@@ -49,7 +49,7 @@ test("NoOpIncidentFacadeService.acknowledge throws Error with tenantId", () => {
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.acknowledge("tenant_123", "incident_abc", "owner_user"),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 
@@ -57,7 +57,7 @@ test("NoOpIncidentFacadeService.acknowledge throws even without tenantId", () =>
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.acknowledge(undefined, "incident_xyz", "owner_user"),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 
@@ -65,7 +65,7 @@ test("NoOpIncidentFacadeService.startMitigation throws Error with tenantId", () 
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.startMitigation("tenant_123", "incident_abc"),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 
@@ -73,7 +73,7 @@ test("NoOpIncidentFacadeService.startMitigation throws even without tenantId", (
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.startMitigation(undefined, "incident_xyz"),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 
@@ -81,7 +81,7 @@ test("NoOpIncidentFacadeService.resolve throws Error with tenantId", () => {
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.resolve("tenant_123", "incident_abc"),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 
@@ -89,7 +89,7 @@ test("NoOpIncidentFacadeService.resolve throws even without tenantId", () => {
   const service = createNoOpIncidentFacadeService();
   assert.throws(
     () => service.resolve(undefined, "incident_xyz"),
-    { message: "Incident service not configured" },
+    { message: "incident_facade.not_configured" },
   );
 });
 

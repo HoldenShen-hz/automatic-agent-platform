@@ -66,17 +66,21 @@ test("MissionFailureModeRegistry registers failure mode", () => {
     severity: "P1",
     missionProfile: "formal",
     stageId: "design",
+    name: "High Error Rate",
+    description: "Error rate exceeds threshold",
     triggerCondition: {
       type: "metric_threshold",
       metric: "error_rate",
       operator: ">=",
       value: 0.05,
     },
-    defaultAction: "alert",
+    defaultAction: "monitor",
     linkedGateIds: [],
     linkedRunbookIds: ["rb-001"],
     dedupeKeyTemplate: "{missionId}:{stageId}",
     minSampleSize: 10,
+    suppressionRequiresApproval: false,
+    falsePositiveReviewRequired: false,
   };
 
   const registered = registry.register(mode);
@@ -92,17 +96,21 @@ test("MissionFailureModeRegistry rejects P0 without gate or runbook", () => {
     severity: "P0",
     missionProfile: "*",
     stageId: "deploy",
+    name: "P0 Failure",
+    description: "P0 without gate or runbook should fail",
     triggerCondition: {
       type: "metric_threshold",
       metric: "error_rate",
       operator: ">=",
       value: 0.1,
     },
-    defaultAction: "halt",
+    defaultAction: "block",
     linkedGateIds: [], // Empty - should fail
     linkedRunbookIds: [], // Empty - should fail
     dedupeKeyTemplate: "{failureModeId}",
     minSampleSize: 1,
+    suppressionRequiresApproval: true,
+    falsePositiveReviewRequired: true,
   };
 
   assert.throws(() => registry.register(p0Mode), /P0 Mission failure modes require a gate or runbook/);
@@ -116,17 +124,21 @@ test("MissionFailureModeRegistry accepts P0 with gate", () => {
     severity: "P0",
     missionProfile: "*",
     stageId: "deploy",
+    name: "P0 With Gate",
+    description: "P0 with gate should succeed",
     triggerCondition: {
       type: "metric_threshold",
       metric: "error_rate",
       operator: ">=",
       value: 0.1,
     },
-    defaultAction: "halt",
+    defaultAction: "block",
     linkedGateIds: ["GATE-001"],
     linkedRunbookIds: [],
     dedupeKeyTemplate: "{failureModeId}",
     minSampleSize: 1,
+    suppressionRequiresApproval: true,
+    falsePositiveReviewRequired: true,
   };
 
   const registered = registry.register(p0Mode);
@@ -141,17 +153,21 @@ test("MissionFailureModeRegistry suppresses failure mode", () => {
     severity: "P1",
     missionProfile: "*",
     stageId: "design",
+    name: "Event Count Alert",
+    description: "Event count exceeds threshold",
     triggerCondition: {
       type: "event_count",
       eventName: "error",
       operator: ">=",
       value: 3,
     },
-    defaultAction: "alert",
+    defaultAction: "monitor",
     linkedGateIds: [],
     linkedRunbookIds: ["rb-001"],
     dedupeKeyTemplate: "{missionId}:{stageId}",
     minSampleSize: 5,
+    suppressionRequiresApproval: false,
+    falsePositiveReviewRequired: false,
   };
 
   registry.register(mode);
@@ -177,18 +193,21 @@ test("MissionFailureModeRegistry suppress requires approval for P0", () => {
     severity: "P0",
     missionProfile: "*",
     stageId: "deploy",
+    name: "P0 Suppress",
+    description: "P0 suppression requires approval",
     triggerCondition: {
       type: "metric_threshold",
       metric: "error_rate",
       operator: ">=",
       value: 0.1,
     },
-    defaultAction: "halt",
+    defaultAction: "block",
     linkedGateIds: ["GATE-001"],
     linkedRunbookIds: [],
     suppressionRequiresApproval: true,
     dedupeKeyTemplate: "{failureModeId}",
     minSampleSize: 1,
+    falsePositiveReviewRequired: true,
   };
 
   registry.register(p0Mode);
@@ -213,17 +232,21 @@ test("MissionFailureModeRegistry detect finds matching modes", () => {
     severity: "P1",
     missionProfile: "formal",
     stageId: "design",
+    name: "Slow Execution",
+    description: "Execution time exceeds threshold",
     triggerCondition: {
       type: "metric_threshold",
       metric: "execution_time_ms",
       operator: ">=",
       value: 500,
     },
-    defaultAction: "alert",
+    defaultAction: "monitor",
     linkedGateIds: [],
     linkedRunbookIds: ["rb-001"],
     dedupeKeyTemplate: "{missionId}:{stageId}",
     minSampleSize: 1,
+    suppressionRequiresApproval: false,
+    falsePositiveReviewRequired: false,
   };
 
   registry.register(mode);
@@ -251,17 +274,21 @@ test("MissionFailureModeRegistry detect filters by stage", () => {
     severity: "P1",
     missionProfile: "*",
     stageId: "design",
+    name: "Stage Filter Test",
+    description: "Testing stage filtering",
     triggerCondition: {
       type: "metric_threshold",
       metric: "execution_time_ms",
       operator: ">=",
       value: 0,
     },
-    defaultAction: "alert",
+    defaultAction: "monitor",
     linkedGateIds: [],
     linkedRunbookIds: [],
     dedupeKeyTemplate: "{failureModeId}",
     minSampleSize: 1,
+    suppressionRequiresApproval: false,
+    falsePositiveReviewRequired: false,
   };
 
   registry.register(mode);
@@ -288,17 +315,21 @@ test("MissionFailureModeRegistry detect respects minSampleSize", () => {
     severity: "P1",
     missionProfile: "*",
     stageId: "design",
+    name: "Sample Size Test",
+    description: "Testing minSampleSize enforcement",
     triggerCondition: {
       type: "metric_threshold",
       metric: "execution_time_ms",
       operator: ">=",
       value: 0,
     },
-    defaultAction: "alert",
+    defaultAction: "monitor",
     linkedGateIds: [],
     linkedRunbookIds: [],
     dedupeKeyTemplate: "{failureModeId}",
     minSampleSize: 10, // Requires 10 samples
+    suppressionRequiresApproval: false,
+    falsePositiveReviewRequired: false,
   };
 
   registry.register(mode);
@@ -328,7 +359,7 @@ test("WorkflowRecordingService registers policy", () => {
     policyId: "policy-001",
     allowedSurfaces: ["editor", "shell"],
     allowedDataClasses: ["internal", "restricted"],
-    captureMode: "record",
+    captureMode: "structured_trace",
     retentionMs: 30 * 24 * 60 * 60 * 1000, // 30 days
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
@@ -345,7 +376,7 @@ test("WorkflowRecordingService complete creates trace", () => {
     policyId: "policy-complete",
     allowedSurfaces: ["editor"],
     allowedDataClasses: ["internal"],
-    captureMode: "record",
+    captureMode: "structured_trace",
     retentionMs: 7 * 24 * 60 * 60 * 1000,
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
@@ -400,7 +431,7 @@ test("WorkflowRecordingService complete rejects disallowed surface", () => {
     policyId: "policy-surface-test",
     allowedSurfaces: ["editor"],
     allowedDataClasses: ["internal"],
-    captureMode: "record",
+    captureMode: "structured_trace",
     retentionMs: 7 * 24 * 60 * 60 * 1000,
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
@@ -426,7 +457,7 @@ test("WorkflowRecordingService get returns stored trace", () => {
     policyId: "policy-get-test",
     allowedSurfaces: ["editor"],
     allowedDataClasses: ["internal"],
-    captureMode: "record",
+    captureMode: "structured_trace",
     retentionMs: 7 * 24 * 60 * 60 * 1000,
     requireConsentForRestricted: false,
     requireRedactionForRestricted: false,
@@ -467,7 +498,7 @@ test("SkillCandidatePipeline creates candidate from valid trace", () => {
     tenantId: "tenant-001",
     surface: "editor",
     policyId: "policy-001",
-    captureMode: "record",
+    captureMode: "structured_trace",
     dataClass: "internal",
     consentRef: null,
     redactionReportRef: null,
@@ -503,7 +534,7 @@ test("SkillCandidatePipeline rejects trace without deletionProofRef for restrict
     tenantId: "tenant-001",
     surface: "editor",
     policyId: "policy-001",
-    captureMode: "record",
+    captureMode: "structured_trace",
     dataClass: "restricted",
     consentRef: null,
     redactionReportRef: null, // Missing!
@@ -539,7 +570,7 @@ test("SkillCandidatePipeline requestReview updates status", () => {
       tenantId: "tenant-001",
       surface: "editor",
       policyId: "policy-001",
-      captureMode: "record",
+      captureMode: "structured_trace",
       dataClass: "internal",
       consentRef: null,
       redactionReportRef: null,
@@ -572,7 +603,7 @@ test("SkillCandidatePipeline approve updates status and sets approvalRef", () =>
       tenantId: "tenant-001",
       surface: "editor",
       policyId: "policy-001",
-      captureMode: "record",
+      captureMode: "structured_trace",
       dataClass: "internal",
       consentRef: null,
       redactionReportRef: null,
@@ -606,7 +637,7 @@ test("SkillCandidatePipeline convertToSkillPack requires approved status", () =>
       tenantId: "tenant-001",
       surface: "editor",
       policyId: "policy-001",
-      captureMode: "record",
+      captureMode: "structured_trace",
       dataClass: "internal",
       consentRef: null,
       redactionReportRef: null,
@@ -652,7 +683,7 @@ test("SkillCandidatePipeline convertToSkillPack creates skill pack", () => {
       tenantId: "tenant-001",
       surface: "editor",
       policyId: "policy-001",
-      captureMode: "record",
+      captureMode: "structured_trace",
       dataClass: "internal",
       consentRef: null,
       redactionReportRef: null,
@@ -703,7 +734,7 @@ test("SkillCandidatePipeline listPacks returns all packs", () => {
         tenantId: "tenant-001",
         surface: "editor",
         policyId: "policy-001",
-        captureMode: "record",
+        captureMode: "structured_trace",
         dataClass: "internal",
         consentRef: null,
         redactionReportRef: null,

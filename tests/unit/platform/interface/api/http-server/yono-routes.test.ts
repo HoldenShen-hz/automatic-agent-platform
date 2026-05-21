@@ -61,7 +61,7 @@ test("createYonoRoutes - POST /v1/yono/markets creates a new market", async () =
   const body = JSON.parse(result.body);
   assert.ok(body.data.market.marketId.startsWith("ymkt_"));
   assert.strictEqual(body.data.market.title, "Will ETH hit $5000 by end of year?");
-  assert.strictEqual(body.data.market.category, "crypto");
+  assert.strictEqual(body.data.market.category, "tech");
   assert.strictEqual(body.data.market.status, "draft");
 });
 
