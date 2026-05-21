@@ -45,8 +45,9 @@ const CostAlertConfigSchema = z.object({
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/cost-alert/default.json");
 const costAlertConfigLogger = new StructuredLogger({ retentionLimit: 100 });
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 
-const cachedConfigs = new Map<string, CostAlertConfig>();
+const cachedConfigs = new Map<string, { value: CostAlertConfig; cachedAt: number }>();
 
 function buildDefaultCostAlertConfig(): CostAlertConfig {
   return {
@@ -123,7 +124,9 @@ export function loadCostAlertConfig(
 ): CostAlertConfig {
   const cacheKey = sandboxPolicy == null ? `path:${configPath}` : `sandbox:${configPath}`;
   const cachedConfig = cachedConfigs.get(cacheKey);
-  if (cachedConfig) return cachedConfig;
+  if (cachedConfig && Date.now() - cachedConfig.cachedAt <= CONFIG_CACHE_TTL_MS) {
+    return cachedConfig.value;
+  }
 
   // Validate path before reading to prevent path traversal attacks
   if (sandboxPolicy != null) {
@@ -138,7 +141,7 @@ export function loadCostAlertConfig(
     const effectivePath = check.normalizedPath;
     try {
       const loaded = parseCostAlertConfigFile(effectivePath);
-      cachedConfigs.set(`sandbox:${effectivePath}`, loaded);
+      cachedConfigs.set(`sandbox:${effectivePath}`, { value: loaded, cachedAt: Date.now() });
       return loaded;
     } catch (error) {
       if (isMissingFileError(error)) {
@@ -159,7 +162,7 @@ export function loadCostAlertConfig(
 
   try {
     const loaded = parseCostAlertConfigFile(configPath);
-    cachedConfigs.set(cacheKey, loaded);
+    cachedConfigs.set(cacheKey, { value: loaded, cachedAt: Date.now() });
     return loaded;
   } catch (error) {
     if (isMissingFileError(error)) {

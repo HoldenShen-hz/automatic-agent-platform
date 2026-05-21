@@ -116,6 +116,16 @@ export const GRAPHQL_ERROR_CODES = {
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
+class GraphQLAdapterError extends Error {
+  public constructor(
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "GraphQLAdapterError";
+  }
+}
+
 /**
  * GraphQL resolver function type
  */
@@ -375,12 +385,12 @@ export class GraphQLAdapterService {
     const field = this.findField(schema.schema, rootType, parsed.fieldName);
 
     if (!field) {
-      throw new Error(`Field '${parsed.fieldName}' not found on ${rootType}`);
+      throw new GraphQLAdapterError("graphql.field_not_found", `Field '${parsed.fieldName}' not found on ${rootType}`);
     }
 
     for (const arg of field.args ?? []) {
       if (arg.required && parsed.arguments[arg.name] === undefined) {
-        throw new Error(`Missing required argument '${arg.name}' for field '${field.name}'`);
+        throw new GraphQLAdapterError("graphql.missing_required_argument", `Missing required argument '${arg.name}' for field '${field.name}'`);
       }
     }
 
@@ -412,13 +422,13 @@ export class GraphQLAdapterService {
   private resolveRootType(schema: GraphQLSchemaDefinition, operationType: GraphQLOperationType): string {
     if (operationType === "mutation") {
       if (!schema.mutationType) {
-        throw new Error("Mutation type is not configured");
+        throw new GraphQLAdapterError("graphql.mutation_type_not_configured", "Mutation type is not configured");
       }
       return schema.mutationType;
     }
     if (operationType === "subscription") {
       if (!schema.subscriptionType) {
-        throw new Error("Subscription type is not configured");
+        throw new GraphQLAdapterError("graphql.subscription_type_not_configured", "Subscription type is not configured");
       }
       return schema.subscriptionType;
     }
@@ -434,13 +444,13 @@ export class GraphQLAdapterService {
     const bodyStart = query.indexOf("{");
     const bodyEnd = query.lastIndexOf("}");
     if (bodyStart < 0 || bodyEnd <= bodyStart) {
-      throw new Error("Query must include a selection set");
+      throw new GraphQLAdapterError("graphql.selection_set_required", "Query must include a selection set");
     }
 
     const body = query.slice(bodyStart + 1, bodyEnd).trim();
     const match = body.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(([^)]*)\))?/);
     if (!match) {
-      throw new Error("Unable to determine root field from query");
+      throw new GraphQLAdapterError("graphql.root_field_undetermined", "Unable to determine root field from query");
     }
 
     const [, fieldName, argList] = match;
@@ -518,7 +528,7 @@ export class GraphQLSchemaBuilder {
 
   public build(): GraphQLSchemaDefinition {
     if (!this.queryType) {
-      throw new Error("Query type is required");
+      throw new GraphQLAdapterError("graphql.query_type_required", "Query type is required");
     }
 
     return {

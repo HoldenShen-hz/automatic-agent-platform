@@ -118,5 +118,5 @@ export class InMemoryEvidenceStore implements EvidenceStore {
 }
 
 function cloneEvidenceRecord(record: EvidenceRecord): EvidenceRecord {
-  return JSON.parse(JSON.stringify(record)) as EvidenceRecord;
+  return structuredClone(record);
 }

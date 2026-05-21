@@ -4,6 +4,8 @@ export interface ProactiveEventInput {
   readonly payload?: Record<string, unknown>;
 }
 
+const EVENT_PATTERN_CACHE = new Map<string, RegExp>();
+
 export function shouldConsumeProactiveEvent(
   event: ProactiveEventInput,
   expectedSource: string,
@@ -20,12 +22,19 @@ export function shouldConsumeProactiveEvent(
 }
 
 function compileEventPattern(pattern: string): RegExp {
+  const cached = EVENT_PATTERN_CACHE.get(pattern);
+  if (cached != null) {
+    return cached;
+  }
+  let compiled: RegExp;
   if (pattern.startsWith("/") && pattern.endsWith("/") && pattern.length > 2) {
-    return new RegExp(pattern.slice(1, -1));
-  }
-  if (pattern.includes("*")) {
+    compiled = new RegExp(pattern.slice(1, -1));
+  } else if (pattern.includes("*")) {
     const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("\\*", ".*");
-    return new RegExp(escaped);
+    compiled = new RegExp(escaped);
+  } else {
+    compiled = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   }
-  return new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  EVENT_PATTERN_CACHE.set(pattern, compiled);
+  return compiled;
 }

@@ -42,14 +42,14 @@ test("takeFileSnapshot includes digest when requested", () => {
   unlinkSync(filePath);
 });
 
-test("takeFileSnapshot supports md5 algorithm", () => {
+test("takeFileSnapshot rejects md5 algorithm", () => {
   const filePath = join(TEST_DIR, "md5-test.txt");
   writeFileSync(filePath, "content for md5");
 
-  const snapshot = takeFileSnapshot(filePath, { includeDigest: true, digestAlgorithm: "md5" });
-
-  assert.ok(snapshot.digest);
-  assert.equal(snapshot.digest.length, 32); // MD5 hex is 32 chars
+  assert.throws(
+    () => takeFileSnapshot(filePath, { includeDigest: true, digestAlgorithm: "md5" as never }),
+    /file_freshness\.unsupported_digest_algorithm/,
+  );
 
   unlinkSync(filePath);
 });
@@ -64,13 +64,14 @@ test("computeFileDigest computes sha256 by default", () => {
   unlinkSync(filePath);
 });
 
-test("computeFileDigest computes md5 when specified", () => {
+test("computeFileDigest rejects md5 when specified", () => {
   const filePath = join(TEST_DIR, "md5-explicit-test.txt");
   writeFileSync(filePath, "test content");
 
-  const digest = computeFileDigest(filePath, "md5");
-
-  assert.equal(digest.length, 32);
+  assert.throws(
+    () => computeFileDigest(filePath, "md5" as never),
+    /file_freshness\.unsupported_digest_algorithm/,
+  );
   unlinkSync(filePath);
 });
 

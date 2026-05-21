@@ -127,6 +127,9 @@ export function computeFileDigest(
   filePath: string,
   algorithm: "sha256" = "sha256",
 ): string {
+  if (algorithm !== "sha256") {
+    throw new Error("file_freshness.unsupported_digest_algorithm");
+  }
   const content = readFileSync(filePath);
   const hash = createHash(algorithm);
   hash.update(content);

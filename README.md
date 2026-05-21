@@ -12,6 +12,8 @@ npm test
 
 `npm test` runs the repository baseline gate (`typecheck`, repo hygiene audits, `test:raw`, coverage gate, and stable validation). Use `npm run test:unit`, `npm run test:integration`, `npm run test:golden`, or `npm run test:raw` for narrower loops.
 
+`npm run aa:dev` is a development-only shortcut that requires dev dependencies such as `tsx`; production or container environments should use the built CLI (`aa ...` or `npm run api`) after `npm run build`.
+
 Common local commands:
 
 ```bash

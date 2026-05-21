@@ -186,8 +186,21 @@ export class HttpApiServer {
     this.corsConfig = normalizeCorsConfig(corsConfigInput);
     this.routeTable = this.buildRouteTable();
     this.server = createServer((request, response) => {
-      void this.handleRequest(request, response);
+      void this.handleRequest(request, response).catch((error: unknown) => {
+        const normalized = normalizeError(error);
+        if (response.headersSent) {
+          response.end();
+          return;
+        }
+        response.writeHead(normalized.statusCode, { "content-type": "application/json; charset=utf-8" });
+        response.end(JSON.stringify({
+          error: normalized.code,
+          message: normalized.message,
+          requestId: readRequestId(normalizeHeaders(request.headers)),
+        }));
+      });
     });
+    this.server.setTimeout(SERVER_REQUEST_TIMEOUT_MS);
     this.server.headersTimeout = SERVER_HEADERS_TIMEOUT_MS;
     this.server.keepAliveTimeout = SERVER_KEEP_ALIVE_TIMEOUT_MS;
     this.server.requestTimeout = SERVER_REQUEST_TIMEOUT_MS;

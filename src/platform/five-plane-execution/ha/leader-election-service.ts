@@ -707,7 +707,13 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
     const handle = setTimeout(() => {
       this.retryTimeoutHandles.delete(handle);
       if (this.state === "follower" && !this.disposed) {
-        void this.attemptElection();
+        void this.attemptElection().catch((error: unknown) => {
+          logger.log({
+            level: "error",
+            message: "leader_election.retry_attempt_failed",
+            data: { error: error instanceof Error ? error.message : String(error) },
+          });
+        });
       }
     }, this.config.leaseRenewalIntervalMs);
     handle.unref?.();

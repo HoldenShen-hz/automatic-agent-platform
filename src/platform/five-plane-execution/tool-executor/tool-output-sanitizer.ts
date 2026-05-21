@@ -52,6 +52,7 @@ const SECRET_PATTERN_DEFINITIONS = [
   /\b(?:postgres(?:ql)?|mysql|redis):\/\/[^/\s:@]+:[^/\s@]+@/gi, // DSN credentials
   /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, // Bearer tokens in Authorization headers
 ];
+const SECRET_PATTERNS = SECRET_PATTERN_DEFINITIONS.map((pattern) => new RegExp(pattern.source, pattern.flags));
 
 export type PromptInjectionRuleId =
   | "instruction_override"
@@ -352,18 +353,7 @@ function sanitizeTextValue(
 
   let redactionCount = 0;
   if (options.redactSecrets) {
-    for (const definition of SECRET_PATTERN_DEFINITIONS) {
-      let pattern: RegExp;
-      try {
-        pattern = new RegExp(definition.source, definition.flags);
-      } catch (error) {
-        toolOutputSanitizerLogger.warn("tool_output_sanitizer.invalid_secret_pattern", {
-          source: definition.source,
-          flags: definition.flags,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        continue;
-      }
+    for (const pattern of SECRET_PATTERNS) {
       sanitized = sanitized.replace(pattern, () => {
         redactionCount += 1;
         return "[REDACTED]";

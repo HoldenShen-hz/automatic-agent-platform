@@ -362,7 +362,7 @@ export async function executeStepLoop(
       Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
       const stepDataRecord = populateMissingRequiredWorkflowStepOutput(
         step,
-        stepData as unknown as Record<string, unknown>,
+        asRecord(stepData, step.stepId),
       );
 
       let validation: ReturnType<typeof validateWorkflowStepOutput>;
@@ -735,4 +735,11 @@ export async function executeStepLoop(
     skippedStepIds,
     failedStepIds,
   };
+}
+
+function asRecord(value: unknown, stepId: string): Record<string, unknown> {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError(`workflow.step_output_record_expected:${stepId}`);
+  }
+  return value as Record<string, unknown>;
 }

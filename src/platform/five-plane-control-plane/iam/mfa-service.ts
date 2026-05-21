@@ -195,6 +195,26 @@ function sanitizeCredential(credential: MfaCredential): MfaCredential {
   };
 }
 
+function maskMfaIdentifier(identifier: string): string {
+  const normalized = identifier.trim();
+  const atIndex = normalized.indexOf("@");
+  if (atIndex > 1) {
+    const local = normalized.slice(0, atIndex);
+    const domain = normalized.slice(atIndex + 1);
+    const visibleLocal = local.slice(0, Math.min(2, local.length));
+    return `${visibleLocal}${"*".repeat(Math.max(1, local.length - visibleLocal.length))}@${domain}`;
+  }
+  if (/^\+?[0-9\-()\s]{6,}$/.test(normalized)) {
+    const digits = normalized.replace(/\D/g, "");
+    const suffix = digits.slice(-4);
+    return `${"*".repeat(Math.max(0, digits.length - suffix.length))}${suffix}`;
+  }
+  if (normalized.length <= 4) {
+    return "*".repeat(normalized.length);
+  }
+  return `${normalized.slice(0, 2)}${"*".repeat(Math.max(1, normalized.length - 4))}${normalized.slice(-2)}`;
+}
+
 // ============================================================================
 // MFA Policy
 // ============================================================================
@@ -306,7 +326,7 @@ export function completeMfaEnrollment(input: {
   const credential: MfaCredential = {
     credentialId: generateChallengeId(),
     method: session.method,
-    identifier: session.principalId, // In production, store masked email/phone
+    identifier: maskMfaIdentifier(session.principalId),
     status: "active",
     createdAt: now,
     lastUsedAt: now,

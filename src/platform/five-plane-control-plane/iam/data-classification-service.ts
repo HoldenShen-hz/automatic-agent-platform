@@ -285,6 +285,7 @@ export interface DataClassificationServiceOptions {
  * 4. Apply restricted keyword overrides (highest severity wins)
  */
 export class DataClassificationService {
+  private static readonly MAX_REGEX_CACHE_ENTRIES = 256;
   private readonly strictMode: boolean;
   private readonly autoDetectPii: boolean;
   private readonly enableAuditTrail: boolean;
@@ -843,6 +844,12 @@ export class DataClassificationService {
       return cached;
     }
     const compiled = new RegExp(pattern, flags);
+    if (this.regexCache.size >= DataClassificationService.MAX_REGEX_CACHE_ENTRIES) {
+      const oldestKey = this.regexCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.regexCache.delete(oldestKey);
+      }
+    }
     this.regexCache.set(cacheKey, compiled);
     return compiled;
   }

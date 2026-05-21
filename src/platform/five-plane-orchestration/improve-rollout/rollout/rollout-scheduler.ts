@@ -122,10 +122,6 @@ export class RolloutScheduler {
   }
 
   public async advanceMany(inputs: readonly ScheduledRollout[]): Promise<RolloutSchedulerDecision[]> {
-    const decisions: RolloutSchedulerDecision[] = [];
-    for (const input of inputs) {
-      decisions.push(await this.advance(input));
-    }
-    return decisions;
+    return Promise.all(inputs.map(async (input) => this.advance(input)));
   }
 }

@@ -83,7 +83,7 @@ export function compactAgentHandoff(
   handoff: AgentHandoff,
   options: HandoffBudgetOptions = {},
 ): AgentHandoff {
-  const clone: AgentHandoff = JSON.parse(JSON.stringify(handoff)) as AgentHandoff;
+  const clone = structuredClone(handoff);
   clone.contextSummary ??= clone.state.latestSummary;
   const budget = resolveBudget(options);
   let size = estimatedTokens(clone);

@@ -23,10 +23,10 @@ receivers:
 
   - name: slack-warning
     slack_configs:
-      - url: ${SLACK_WEBHOOK_URL}
+      - url: __SLACK_WEBHOOK_URL__
         send_resolved: true
 
   - name: pagerduty-critical
     pagerduty_configs:
-      - service_key: ${PAGERDUTY_SERVICE_KEY}
+      - service_key: __PAGERDUTY_SERVICE_KEY__
         send_resolved: true

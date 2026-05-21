@@ -62,6 +62,7 @@ export class WebhookIngressService {
   private readonly envelopesByIdempotencyKey = new Map<string, WebhookDispatchEnvelope>();
   private readonly acceptedEnvelopes: WebhookDispatchEnvelope[] = [];
   private readonly failureCounts = new Map<string, number>();
+  private readonly signedRequestReplayCache = new Map<string, { signatureKey: string; idempotencyKey: string }>();
 
   public registerEndpoint(input: WebhookEndpointRegistration): WebhookEndpointRegistration {
     assertNonEmpty(input.endpointId, "webhook.invalid_endpoint_id");
@@ -108,11 +109,6 @@ export class WebhookIngressService {
       });
     }
 
-    const signatureVerified = verifySignature({
-      endpoint,
-      headers: input.headers,
-      body: input.body,
-    });
     const idempotencyKey =
       readHeader(input.headers, endpoint.idempotencyHeader ?? "idempotency-key")
       ?? readString(payload, "eventId")
@@ -123,6 +119,13 @@ export class WebhookIngressService {
         details: { endpointId: input.endpointId, eventType },
       });
     }
+    const signatureVerified = verifySignature({
+      endpoint,
+      headers: input.headers,
+      body: input.body,
+      idempotencyKey,
+      replayCache: this.signedRequestReplayCache,
+    });
 
     const scopedIdempotencyKey = `${endpoint.endpointId}:${idempotencyKey}`;
     const existing = this.envelopesByIdempotencyKey.get(scopedIdempotencyKey);
@@ -206,9 +209,17 @@ function verifySignature(input: {
   endpoint: WebhookEndpointRegistration;
   headers: Record<string, string | string[] | undefined>;
   body: string;
+  idempotencyKey: string;
+  replayCache: Map<string, { signatureKey: string; idempotencyKey: string }>;
 }): boolean {
   if (input.endpoint.algorithm === "none") {
     return false;
+  }
+  const signingSecret = input.endpoint.signingSecret?.trim();
+  if (signingSecret == null || signingSecret.length === 0) {
+    throw new ValidationError("webhook.signing_secret_required", "webhook.signing_secret_required: Signed webhook endpoints require a signing secret.", {
+      details: { endpointId: input.endpoint.endpointId },
+    });
   }
   const signature = readHeaderRaw(input.headers, input.endpoint.signatureHeader ?? "x-aa-signature");
   if (signature == null) {
@@ -222,7 +233,7 @@ function verifySignature(input: {
       details: { endpointId: input.endpoint.endpointId },
     });
   }
-  const expected = createHmac("sha256", input.endpoint.signingSecret ?? "")
+  const expected = createHmac("sha256", signingSecret)
     .update(input.body)
     .digest("hex");
   const normalizedSignature = trimmedSignature.startsWith("sha256=") ? trimmedSignature.slice("sha256=".length) : trimmedSignature;
@@ -233,6 +244,17 @@ function verifySignature(input: {
       details: { endpointId: input.endpoint.endpointId },
     });
   }
+  const replayCacheKey = `${input.endpoint.endpointId}:${normalizedSignature}`;
+  const cachedReplay = input.replayCache.get(replayCacheKey);
+  if (cachedReplay != null && cachedReplay.idempotencyKey !== input.idempotencyKey) {
+    throw new ValidationError("webhook.signature_replay_detected", "webhook.signature_replay_detected: Webhook signature replay was detected.", {
+      details: { endpointId: input.endpoint.endpointId },
+    });
+  }
+  input.replayCache.set(replayCacheKey, {
+    signatureKey: replayCacheKey,
+    idempotencyKey: input.idempotencyKey,
+  });
   return true;
 }
 

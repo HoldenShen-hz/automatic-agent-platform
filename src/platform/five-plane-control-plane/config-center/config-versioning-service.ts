@@ -795,7 +795,7 @@ export class ConfigVersioningService {
 }
 
 function cloneConfigContent(content: Record<string, unknown>): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(content)) as Record<string, unknown>;
+  return structuredClone(content) as Record<string, unknown>;
 }
 
 function readSchemaVersion(content: Record<string, unknown>): string | null {

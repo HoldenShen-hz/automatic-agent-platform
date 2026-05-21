@@ -8,7 +8,7 @@ groups:
           severity: critical
         annotations:
           summary: automatic-agent metrics endpoint is unreachable
-          description: Prometheus could not scrape {{ $labels.job }} on {{ $labels.instance }} for 2 minutes.
+          description: "Prometheus could not scrape {{ $labels.job }} on {{ $labels.instance }} for 2 minutes."
 
       - alert: AutomaticAgentNoTraffic
         expr: sum by (job) (rate(http_requests_total{job=~"automatic-agent-.*"}[10m])) == 0
@@ -17,7 +17,7 @@ groups:
           severity: warning
         annotations:
           summary: automatic-agent request traffic dropped to zero
-          description: {{ $labels.job }} has reported no HTTP request traffic for 15 minutes.
+          description: "{{ $labels.job }} has reported no HTTP request traffic for 15 minutes."
 
       - alert: AutomaticAgentHighErrorRate
         expr: (sum by (job) (rate(http_requests_total{job=~"automatic-agent-.*",status=~"5.."}[5m])) / sum by (job) (rate(http_requests_total{job=~"automatic-agent-.*"}[5m]))) > 0.01 and sum by (job) (rate(http_requests_total{job=~"automatic-agent-.*"}[5m])) > 0
@@ -26,7 +26,7 @@ groups:
           severity: critical
         annotations:
           summary: automatic-agent 5xx error rate exceeds 1% SLO
-          description: {{ $labels.job }} has exceeded a 1% HTTP 5xx ratio for 5 minutes.
+          description: "{{ $labels.job }} has exceeded a 1% HTTP 5xx ratio for 5 minutes."
 
       - alert: AutomaticAgentHighLatency
         expr: histogram_quantile(0.95, sum by (job, le) (rate(http_request_duration_ms_bucket{job=~"automatic-agent-.*"}[5m]))) > 1000
@@ -35,7 +35,7 @@ groups:
           severity: warning
         annotations:
           summary: automatic-agent p95 latency exceeds 1s SLO
-          description: {{ $labels.job }} p95 request latency has exceeded 1 second for 5 minutes.
+          description: "{{ $labels.job }} p95 request latency has exceeded 1 second for 5 minutes."
 
       - alert: AutomaticAgentCriticalLatency
         expr: histogram_quantile(0.95, sum by (job, le) (rate(http_request_duration_ms_bucket{job=~"automatic-agent-.*"}[5m]))) > 3000
@@ -44,7 +44,7 @@ groups:
           severity: critical
         annotations:
           summary: automatic-agent p95 latency exceeds 3s
-          description: {{ $labels.job }} p95 request latency has exceeded 3 seconds.
+          description: "{{ $labels.job }} p95 request latency has exceeded 3 seconds."
 
       - alert: AutomaticAgentQueueDepthHigh
         expr: sum by (job) (queued_tasks{job=~"automatic-agent-.*"}) > 100
@@ -53,7 +53,7 @@ groups:
           severity: warning
         annotations:
           summary: automatic-agent queue depth exceeds 100
-          description: {{ $labels.job }} queue depth has exceeded 100 entries for 10 minutes.
+          description: "{{ $labels.job }} queue depth has exceeded 100 entries for 10 minutes."
 
       - alert: AutomaticAgentQueueBacklog
         expr: sum by (job) (queued_tasks{job=~"automatic-agent-.*"}) > 500
@@ -62,7 +62,7 @@ groups:
           severity: critical
         annotations:
           summary: automatic-agent queue backlog critical
-          description: {{ $labels.job }} queue depth has exceeded 500 entries.
+          description: "{{ $labels.job }} queue depth has exceeded 500 entries."
 
       - alert: AutomaticAgentWorkerPoolExhaustion
         expr: (sum by (job) (active_executions{job=~"automatic-agent-.*"}) / sum by (job) (total_workers{job=~"automatic-agent-.*"})) > 0.9 and sum by (job) (total_workers{job=~"automatic-agent-.*"}) > 0
@@ -71,7 +71,7 @@ groups:
           severity: warning
         annotations:
           summary: automatic-agent worker pool above 90% utilization
-          description: {{ $labels.job }} worker pool utilization has exceeded 90% for 5 minutes.
+          description: "{{ $labels.job }} worker pool utilization has exceeded 90% for 5 minutes."
 
       - alert: AutomaticAgentWorkerPoolCritical
         expr: (sum by (job) (active_executions{job=~"automatic-agent-.*"}) / sum by (job) (total_workers{job=~"automatic-agent-.*"})) > 0.95 and sum by (job) (total_workers{job=~"automatic-agent-.*"}) > 0
@@ -80,7 +80,7 @@ groups:
           severity: critical
         annotations:
           summary: automatic-agent worker pool above 95% utilization
-          description: {{ $labels.job }} worker pool utilization has exceeded 95%.
+          description: "{{ $labels.job }} worker pool utilization has exceeded 95%."
 
       - alert: AutomaticAgentTaskTimeoutRate
         expr: (sum by (job) (rate(task_executions_total{job=~"automatic-agent-.*",status="timeout"}[10m])) / sum by (job) (rate(task_executions_total{job=~"automatic-agent-.*"}[10m]))) > 0.05 and sum by (job) (rate(task_executions_total{job=~"automatic-agent-.*"}[10m])) > 0
@@ -89,7 +89,7 @@ groups:
           severity: warning
         annotations:
           summary: automatic-agent task timeout rate exceeds 5%
-          description: {{ $labels.job }} task timeouts have exceeded 5% over 10 minutes.
+          description: "{{ $labels.job }} task timeouts have exceeded 5% over 10 minutes."
 
       - alert: AutomaticAgentOutboxGrowing
         expr: outbox_pending{job=~"automatic-agent-.*"} > 100

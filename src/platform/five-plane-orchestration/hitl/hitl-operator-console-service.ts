@@ -60,15 +60,14 @@ export class HitlOperatorConsoleService implements ApprovalNotificationPort {
 
   public async dispatch(packet: ApprovalPacket): Promise<NotificationDispatchResult> {
     const channels = resolveChannels(packet, this.routingRules);
-    const deliveryIds: string[] = [];
-    let delivered = false;
-    for (const channel of channels) {
-      const result = await this.notifier({ channel, packet });
-      delivered = delivered || result.delivered;
-      if (result.deliveryId != null) {
-        deliveryIds.push(result.deliveryId);
-      }
-    }
+    const results = await Promise.all(channels.map(async (channel) => ({
+      channel,
+      result: await this.notifier({ channel, packet }),
+    })));
+    const deliveryIds = results
+      .map(({ result }) => result.deliveryId)
+      .filter((deliveryId): deliveryId is string => deliveryId != null);
+    const delivered = results.some(({ result }) => result.delivered);
     const now = new Date().toISOString();
     this.queue.set(packet.approvalId, {
       queueItemId: `hitl_queue:${packet.approvalId}`,

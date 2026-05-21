@@ -193,6 +193,13 @@ export interface IncidentFacadeService {
   resolve(incidentId: string): IncidentCase;
 }
 
+class IncidentFacadeNotConfiguredError extends Error {
+  public constructor() {
+    super("incident_facade.not_configured");
+    this.name = "IncidentFacadeNotConfiguredError";
+  }
+}
+
 // ─── No-op implementations for defaults ─────────────────────────────────────
 
 /**
@@ -211,16 +218,16 @@ class NoOpIncidentFacadeService implements IncidentFacadeService {
     return null;
   }
   public openIncident(input: { severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[]; tenantId?: string | null }): IncidentCase {
-    throw new Error("Incident service not configured");
+    throw new IncidentFacadeNotConfiguredError();
   }
   public acknowledge(_incidentId: string, _owner: string): IncidentCase {
-    throw new Error("Incident service not configured");
+    throw new IncidentFacadeNotConfiguredError();
   }
   public startMitigation(_incidentId: string): IncidentCase {
-    throw new Error("Incident service not configured");
+    throw new IncidentFacadeNotConfiguredError();
   }
   public resolve(_incidentId: string): IncidentCase {
-    throw new Error("Incident service not configured");
+    throw new IncidentFacadeNotConfiguredError();
   }
 }
 

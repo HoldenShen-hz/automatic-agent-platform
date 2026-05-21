@@ -329,12 +329,12 @@ test("api auth service validates issuer, audience, nbf, and revoked jti when con
 test("api auth service accepts rotated verification secrets and rejects too-short secrets", () => {
   const issuer = new ApiAuthService({
     apiKeys: [{ apiKey: "issuer-key", actorId: "issuer-actor", roles: ["viewer"] }],
-    jwtSecret: "secret-a1",
+    jwtSecret: "secret-a1-long",
   });
   const verifier = new ApiAuthService({
     apiKeys: [],
-    jwtSecret: "secret-b1",
-    jwtVerificationSecrets: ["secret-a1"],
+    jwtSecret: "secret-b1-long",
+    jwtVerificationSecrets: ["secret-a1-long"],
   });
 
   const token = issuer.exchangeApiKey("issuer-key").accessToken;

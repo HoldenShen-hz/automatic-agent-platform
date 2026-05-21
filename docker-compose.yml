@@ -107,7 +107,7 @@ services:
     command:
       - /bin/sh
       - -ec
-      - envsubst < /etc/alertmanager/alertmanager.yml.tmpl > /tmp/alertmanager.yml && /bin/alertmanager --config.file=/tmp/alertmanager.yml
+      - sed -e "s|__SLACK_WEBHOOK_URL__|${SLACK_WEBHOOK_URL}|g" -e "s|__PAGERDUTY_SERVICE_KEY__|${PAGERDUTY_SERVICE_KEY}|g" /etc/alertmanager/alertmanager.yml.tmpl > /tmp/alertmanager.yml && /bin/alertmanager --config.file=/tmp/alertmanager.yml
     ports:
       - "9093:9093"
     volumes:

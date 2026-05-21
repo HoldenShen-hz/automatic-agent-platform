@@ -253,11 +253,12 @@ export class CoordinatorLoadBalancingService {
       };
     });
 
+    const recordByCoordinatorId = new Map(records.map((record) => [record.coordinatorId, record]));
     const eligible = evaluations
       .filter((item) => item.eligible)
       .map((item) => ({
         evaluation: item,
-        record: records.find((record) => record.coordinatorId === item.coordinatorId)!,
+        record: recordByCoordinatorId.get(item.coordinatorId)!,
       }));
 
     if (eligible.length === 0) {

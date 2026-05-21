@@ -11,6 +11,10 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  clearDefaultDivisionRegistryCacheForTests,
+  getDefaultDivisionRegistry,
+} from "../../../../../src/domains/governance/division-loader.js";
+import {
   runStableEvidenceCampaign,
   type StableEvidenceCampaignOptions,
   type StableEvidenceCampaignReport,
@@ -21,6 +25,11 @@ function createTempDir(): string {
   const dir = join("/tmp", `evidence-campaign-test-${Date.now()}`);
   return dir;
 }
+
+// Ensure division registry is initialized before tests to prevent
+// "division.registry_unavailable" errors from RoleToolExposureService
+clearDefaultDivisionRegistryCacheForTests();
+const _registry = getDefaultDivisionRegistry();
 
 test("runStableEvidenceCampaign executes with minimal options", async () => {
   const outputDir = createTempDir();

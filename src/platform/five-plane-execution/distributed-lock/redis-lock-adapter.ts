@@ -66,7 +66,24 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     this.connectTimeoutMs = config?.connectTimeoutMs ?? 500;
     const require = createRequire(import.meta.url);
     const RedisCtor = require("ioredis") as new (options: Record<string, unknown>) => RedisLockAdapter["redis"];
-    this.redis = new RedisCtor(buildRedisClientOptions(config ?? {}, {
+    const effectiveConfig = {
+      host: this.host,
+      port: this.port,
+      password: config?.password,
+      db: config?.db,
+      tls: config?.tls,
+      connectTimeout: config?.connectTimeout,
+      maxRetriesPerRequest: config?.maxRetriesPerRequest,
+      lazyConnect: config?.lazyConnect,
+      enableOfflineQueue: config?.enableOfflineQueue,
+      retryBaseDelayMs: config?.retryBaseDelayMs,
+      retryMaxDelayMs: config?.retryMaxDelayMs,
+      mode: config?.mode,
+      sentinelName: config?.sentinelName,
+      sentinels: config?.sentinels,
+      sentinelPassword: config?.sentinelPassword,
+    };
+    this.redis = new RedisCtor(buildRedisClientOptions(effectiveConfig, {
       connectTimeout: config?.connectTimeout ?? this.connectTimeoutMs,
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 1,
     }));

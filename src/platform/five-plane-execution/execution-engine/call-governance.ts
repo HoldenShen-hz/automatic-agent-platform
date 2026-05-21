@@ -305,6 +305,7 @@ export class CallCircuitBreaker {
  */
 export class CallHistoryRecorder {
   private static readonly MAX_HISTORY = 1000;
+  private static readonly MAX_KEYS = 500;
   private readonly historyByKey = new Map<string, CallResult<unknown>[]>();
 
   /**
@@ -315,6 +316,12 @@ export class CallHistoryRecorder {
     history.push(result);
     if (history.length > CallHistoryRecorder.MAX_HISTORY) {
       history.splice(0, history.length - CallHistoryRecorder.MAX_HISTORY);
+    }
+    if (!this.historyByKey.has(key) && this.historyByKey.size >= CallHistoryRecorder.MAX_KEYS) {
+      const oldestKey = this.historyByKey.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.historyByKey.delete(oldestKey);
+      }
     }
     this.historyByKey.set(key, history);
   }

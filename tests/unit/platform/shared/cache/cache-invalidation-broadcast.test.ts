@@ -70,8 +70,16 @@ function createBroadcastWithMockedRedis(
   config: ConstructorParameters<typeof CacheInvalidationBroadcast>[0] = {},
   onInvalidate: (msg: CacheInvalidationMessage) => Promise<void> = async () => {},
 ) {
+  // Pass a valid-looking Redis config so the constructor doesn't throw.
+  // The real Redis clients are created in the constructor BEFORE we can inject mocks,
+  // so we need a config that satisfies buildRedisClientOptions.
+  const validConfig = {
+    host: "localhost",
+    ...config,
+  };
+
   // Create broadcast instance
-  const broadcast = new CacheInvalidationBroadcast(config, onInvalidate);
+  const broadcast = new CacheInvalidationBroadcast(validConfig, onInvalidate);
 
   // Replace the pub/sub clients via any to inject mocks
   (broadcast as any).pub = mockPub;

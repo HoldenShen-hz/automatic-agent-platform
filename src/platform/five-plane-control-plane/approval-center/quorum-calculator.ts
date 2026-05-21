@@ -8,6 +8,7 @@
  * @see §21 HITL Architecture - Quorum-based approval
  */
 
+import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**
@@ -286,13 +287,13 @@ export function calculateWithVote(
  */
 export function validateVote(vote: QuorumVote): void {
   if (!vote.approverId || vote.approverId.trim().length === 0) {
-    throw new Error("Vote must have a valid approverId");
+    throw new ValidationError("approval.invalid_approver_id", "approval.invalid_approver_id");
   }
   if (!Object.values(VoteType).includes(vote.voteType)) {
-    throw new Error(`Invalid vote type: ${vote.voteType}`);
+    throw new ValidationError("approval.invalid_vote_type", `approval.invalid_vote_type:${vote.voteType}`);
   }
   if (!vote.votedAt) {
-    throw new Error("Vote must have a votedAt timestamp");
+    throw new ValidationError("approval.invalid_voted_at", "approval.invalid_voted_at");
   }
 }
 

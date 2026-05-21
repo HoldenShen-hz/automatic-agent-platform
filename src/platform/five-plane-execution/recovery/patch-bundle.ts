@@ -7,6 +7,8 @@
 
 export type PatchStatus = 'pending' | 'applied' | 'rejected' | 'rolled_back';
 
+const PATCH_PATTERN_REGEX_CACHE = new Map<string, RegExp>();
+
 export interface PatchBundle {
   /** Unique bundle identifier */
   bundleId: string;
@@ -131,12 +133,18 @@ export function validatePatchBundle(
 
 function matchesPattern(path: string, pattern: string): boolean {
   // Simple glob pattern matching
+  const cached = PATCH_PATTERN_REGEX_CACHE.get(pattern);
+  if (cached != null) {
+    return cached.test(path);
+  }
   const regex = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, '.*')
     .replace(/\*/g, '[^/]*')
     .replace(/\?/g, '.');
-  return new RegExp(`^${regex}$`).test(path);
+  const compiled = new RegExp(`^${regex}$`);
+  PATCH_PATTERN_REGEX_CACHE.set(pattern, compiled);
+  return compiled.test(path);
 }
 
 export interface PatchValidationResult {

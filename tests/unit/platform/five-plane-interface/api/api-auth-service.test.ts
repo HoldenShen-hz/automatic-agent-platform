@@ -266,8 +266,8 @@ describe("ApiAuthService", () => {
   describe("JWT verification edge cases", () => {
     it("should reject token with wrong signature", () => {
       // Create two services with different secrets
-      const svcA = createService([{ apiKey: "key-a", actorId: "user-a", roles: ["viewer"] }], { jwtSecret: "secret-a" });
-      const svcB = createService([{ apiKey: "key-b", actorId: "user-b", roles: ["viewer"] }], { jwtSecret: "secret-b" });
+      const svcA = createService([{ apiKey: "key-a", actorId: "user-a", roles: ["viewer"] }], { jwtSecret: "secret-a-long" });
+      const svcB = createService([{ apiKey: "key-b", actorId: "user-b", roles: ["viewer"] }], { jwtSecret: "secret-b-long" });
 
       // Get token from service A using its key
       const { accessToken } = svcA.exchangeApiKey("key-a");
@@ -416,10 +416,10 @@ describe("ApiAuthService", () => {
     });
 
     it("should accept verification with rotated JWT secret", () => {
-      const signingSvc = createService([{ apiKey: "key-a", actorId: "user-a", roles: ["viewer"] }], { jwtSecret: "secret-a1" });
+      const signingSvc = createService([{ apiKey: "key-a", actorId: "user-a", roles: ["viewer"] }], { jwtSecret: "secret-a1-long" });
       const verifyingSvc = createService([], {
-        jwtSecret: "secret-b1",
-        jwtVerificationSecrets: ["secret-a1"],
+        jwtSecret: "secret-b1-long",
+        jwtVerificationSecrets: ["secret-a1-long"],
       });
 
       const { accessToken } = signingSvc.exchangeApiKey("key-a");

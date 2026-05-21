@@ -11,8 +11,9 @@ import type { ExceptionRecoveryConfig } from "./exception-recovery-types.js";
 export type { ExceptionRecoveryConfig } from "./exception-recovery-types.js";
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/exception-recovery/default.json");
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 
-const cachedConfigs = new Map<string, ExceptionRecoveryConfig>();
+const cachedConfigs = new Map<string, { value: ExceptionRecoveryConfig; cachedAt: number }>();
 
 function cloneExceptionRecoveryConfig(parsed: ExceptionRecoveryConfig): ExceptionRecoveryConfig {
   return {
@@ -172,14 +173,14 @@ export function loadExceptionRecoveryConfig(
 
   const effectivePath = resolve(configPath);
   const cachedConfig = cachedConfigs.get(effectivePath);
-  if (cachedConfig) {
-    return cachedConfig;
+  if (cachedConfig && Date.now() - cachedConfig.cachedAt <= CONFIG_CACHE_TTL_MS) {
+    return cachedConfig.value;
   }
 
   const raw = readFileSync(effectivePath, "utf-8");
   const parsed = JSON.parse(raw);
   const config = cloneExceptionRecoveryConfig(parsed);
-  cachedConfigs.set(effectivePath, config);
+  cachedConfigs.set(effectivePath, { value: config, cachedAt: Date.now() });
   return config;
 }
 

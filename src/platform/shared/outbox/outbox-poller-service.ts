@@ -89,7 +89,11 @@ export class OutboxPollerService {
 
     this.stopped = false;
     this.intervalHandle = setInterval(() => {
-      void this.poll();
+      void this.poll().catch((error: unknown) => {
+        logger.error("outbox_poller.poll_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }, this.config.intervalMs);
 
     // Don't prevent process exit

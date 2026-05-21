@@ -52,6 +52,7 @@ export interface DomainRiskProfileServiceOptions {
 }
 
 export class DomainRiskProfileService {
+  private readonly patternCache = new Map<string, RegExp>();
   private readonly profiles = new Map<string, DomainRiskProfile>();
   private readonly maxProfiles: number;
 
@@ -197,7 +198,8 @@ export class DomainRiskProfileService {
     if (pattern === "*") {
       return true;
     }
-    const regex = new RegExp(`^${pattern.replace(/\*/g, ".*")}$`);
+    const regex = this.patternCache.get(pattern) ?? new RegExp(`^${pattern.replace(/\*/g, ".*")}$`);
+    this.patternCache.set(pattern, regex);
     return regex.test(action);
   }
 

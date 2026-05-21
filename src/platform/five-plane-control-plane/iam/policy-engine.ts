@@ -176,6 +176,7 @@ export class PolicyEngine {
    * (policy changed or TTL expired).
    */
   private getCachedDecision(request: PolicyDecisionRequest): PolicyDecisionResult | null {
+    this.pruneExpiredDecisionCache(Date.now());
     const cacheKey = this.buildCacheKey(request);
     const entry = this.decisionCache.get(cacheKey);
 
@@ -202,6 +203,7 @@ export class PolicyEngine {
    * R33-09: Caches a policy decision result with TTL and policy fingerprint.
    */
   private cacheDecision(request: PolicyDecisionRequest, result: PolicyDecisionResult): void {
+    this.pruneExpiredDecisionCache(Date.now());
     const cacheKey = this.buildCacheKey(request);
     const fingerprint = this.computeFingerprint(this.options.budgetPolicy);
 
@@ -222,6 +224,14 @@ export class PolicyEngine {
         break;
       }
       this.decisionCache.delete(oldestKey);
+    }
+  }
+
+  private pruneExpiredDecisionCache(now: number): void {
+    for (const [cacheKey, entry] of this.decisionCache.entries()) {
+      if (now - entry.cachedAt > entry.ttlMs) {
+        this.decisionCache.delete(cacheKey);
+      }
     }
   }
 
@@ -288,6 +298,7 @@ export class PolicyEngine {
    * @returns The policy decision result
    */
   public evaluate(input: PolicyDecisionRequest): PolicyDecisionResult {
+    this.pruneExpiredDecisionCache(Date.now());
     // R33-09: Check if policy has changed since last evaluation
     if (this.isPolicyStale()) {
       // Update fingerprint to acknowledge the change (auto-sync on evaluate)

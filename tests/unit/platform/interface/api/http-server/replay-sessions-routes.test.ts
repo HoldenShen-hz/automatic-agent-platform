@@ -58,8 +58,9 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions returns empty list
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.replaySessions, []);
-  assert.strictEqual(body.total, 0);
+  const data = body.data;
+  assert.deepStrictEqual(data.replaySessions, []);
+  assert.strictEqual(data.total, 0);
 });
 
 test("createReplaySessionRoutes - POST /api/v1/replay-sessions creates a new replay session", async () => {
@@ -78,11 +79,12 @@ test("createReplaySessionRoutes - POST /api/v1/replay-sessions creates a new rep
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
   const body = JSON.parse(result.body);
-  assert.ok(body.replaySessionId.startsWith("replay_"));
-  assert.strictEqual(body.title, "Test Replay Session");
-  assert.strictEqual(body.taskId, "task-123");
-  assert.strictEqual(body.workflowId, "wf-456");
-  assert.strictEqual(body.status, "created");
+  const data = body.data;
+  assert.ok(data.replaySessionId.startsWith("replay_"));
+  assert.strictEqual(data.title, "Test Replay Session");
+  assert.strictEqual(data.taskId, "task-123");
+  assert.strictEqual(data.workflowId, "wf-456");
+  assert.strictEqual(data.status, "created");
 });
 
 test("createReplaySessionRoutes - POST /api/v1/replay-sessions uses defaults for optional fields", async () => {
@@ -96,18 +98,18 @@ test("createReplaySessionRoutes - POST /api/v1/replay-sessions uses defaults for
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
   const body = JSON.parse(result.body);
-  assert.ok(body.replaySessionId.startsWith("replay_"));
-  assert.strictEqual(body.title, "Minimal Session");
-  assert.strictEqual(body.taskId, null);
-  assert.strictEqual(body.workflowId, null);
-  assert.strictEqual(body.status, "created");
+  const data = body.data;
+  assert.ok(data.replaySessionId.startsWith("replay_"));
+  assert.strictEqual(data.title, "Minimal Session");
+  assert.strictEqual(data.taskId, null);
+  assert.strictEqual(data.workflowId, null);
+  assert.strictEqual(data.status, "created");
 });
 
 test("createReplaySessionRoutes - GET /api/v1/replay-sessions/:id returns 404 for non-existent session", async () => {
   const routes = createReplaySessionRoutes({ authService: createMockAuthServiceViewer() });
   const ctx = createMockContext(
     "/api/v1/replay-sessions/replay_nonexistent",
-    ["api", "v1", "replay-sessions", "replay_nonexistent"],
     ["api", "v1", "replay-sessions", "replay_nonexistent"]
   );
 
@@ -127,12 +129,11 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions/:id returns create
     taskId: "task-get-test",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const replaySessionId = JSON.parse(createResult!.body).replaySessionId;
+  const replaySessionId = JSON.parse(createResult!.body).data.replaySessionId;
 
   // Now fetch it
   const getCtx = createMockContext(
     `/api/v1/replay-sessions/${replaySessionId}`,
-    ["api", "v1", "replay-sessions", replaySessionId],
     ["api", "v1", "replay-sessions", replaySessionId]
   );
   const getResult = await callRoute(routes, getCtx);
@@ -140,9 +141,10 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions/:id returns create
   assert.ok(getResult != null);
   assert.strictEqual(getResult.statusCode, 200);
   const body = JSON.parse(getResult.body);
-  assert.strictEqual(body.replaySessionId, replaySessionId);
-  assert.strictEqual(body.title, "Get Test Session");
-  assert.strictEqual(body.taskId, "task-get-test");
+  const data = body.data;
+  assert.strictEqual(data.replaySessionId, replaySessionId);
+  assert.strictEqual(data.title, "Get Test Session");
+  assert.strictEqual(data.taskId, "task-get-test");
 });
 
 test("createReplaySessionRoutes - DELETE /api/v1/replay-sessions/:id deletes session", async () => {
@@ -154,28 +156,27 @@ test("createReplaySessionRoutes - DELETE /api/v1/replay-sessions/:id deletes ses
     title: "Delete Test Session",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const replaySessionId = JSON.parse(createResult!.body).replaySessionId;
+  const replaySessionId = JSON.parse(createResult!.body).data.replaySessionId;
 
   // Delete it
   const deleteCtx = createMockContext(
     `/api/v1/replay-sessions/${replaySessionId}`,
-    ["api", "v1", "replay-sessions", replaySessionId],
     ["api", "v1", "replay-sessions", replaySessionId]
   );
   const deleteResult = await callRoute(routes, deleteCtx, "DELETE");
 
   assert.ok(deleteResult != null);
   assert.strictEqual(deleteResult.statusCode, 200);
-  const body = JSON.parse(deleteResult.body);
-  assert.strictEqual(body.replaySessionId, replaySessionId);
-  assert.strictEqual(body.status, "deleted");
+  const deleteBody = JSON.parse(deleteResult.body);
+  const deleteData = deleteBody.data;
+  assert.strictEqual(deleteData.replaySessionId, replaySessionId);
+  assert.strictEqual(deleteData.status, "deleted");
 
   // Verify it's gone
   await assert.rejects(
     async () => {
       const getCtx = createMockContext(
         `/api/v1/replay-sessions/${replaySessionId}`,
-        ["api", "v1", "replay-sessions", replaySessionId],
         ["api", "v1", "replay-sessions", replaySessionId]
       );
       return callRoute(routes, getCtx);
@@ -201,9 +202,10 @@ test("createReplaySessionRoutes - GET /api/v1/replay-sessions with pagination", 
 
   assert.ok(result != null);
   const body = JSON.parse(result.body);
-  assert.strictEqual(body.replaySessions.length, 3);
-  assert.strictEqual(body.total, 5);
-  assert.strictEqual(body.limit, 3);
+  const data = body.data;
+  assert.strictEqual(data.replaySessions.length, 3);
+  assert.strictEqual(data.total, 5);
+  assert.strictEqual(data.limit, 3);
 });
 
 test("createReplaySessionRoutes - rejects empty title", async () => {

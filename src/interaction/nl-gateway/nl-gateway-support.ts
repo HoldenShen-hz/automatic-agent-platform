@@ -180,7 +180,10 @@ export function hasGenericAmbiguityPattern(
   patterns: readonly RegExp[] = GENERIC_AMBIGUOUS_PATTERNS,
 ): boolean {
   const normalized = normalizeMessageForPatternMatch(message);
-  return patterns.some((pattern) => new RegExp(pattern.source, pattern.flags).test(normalized));
+  return patterns.some((pattern) => {
+    pattern.lastIndex = 0;
+    return pattern.test(normalized);
+  });
 }
 
 export function detectInputLocale(message: string): string | null {

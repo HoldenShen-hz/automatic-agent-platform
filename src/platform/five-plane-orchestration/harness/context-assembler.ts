@@ -38,6 +38,7 @@ interface ScoredEntry {
 
 const TRUST_THRESHOLD = 0.3;
 const MAX_CONTEXT_ENTRIES = 50;
+const REDACTION_REGEX_CACHE = new Map<string, RegExp>();
 
 export class ContextAssembler {
   /**
@@ -133,8 +134,7 @@ export class ContextAssembler {
     }
     let redacted = value;
     for (const pattern of redactionPolicy.redactPatterns) {
-      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(`(${escapedPattern})\\s*[:=]\\s*(\\S+)`, "gi");
+      const regex = getCachedRedactionRegex(pattern);
       redacted = redacted.replace(regex, `$1: ${redactionPolicy.replacementMask}`);
     }
     return redacted;
@@ -330,4 +330,15 @@ export class ContextAssembler {
       estimatedTokens,
     };
   }
+}
+
+function getCachedRedactionRegex(pattern: string): RegExp {
+  const cached = REDACTION_REGEX_CACHE.get(pattern);
+  if (cached != null) {
+    return cached;
+  }
+  const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const compiled = new RegExp(`(${escapedPattern})\\s*[:=]\\s*(\\S+)`, "gi");
+  REDACTION_REGEX_CACHE.set(pattern, compiled);
+  return compiled;
 }

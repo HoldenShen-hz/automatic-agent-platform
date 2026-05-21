@@ -3,7 +3,7 @@ version: 1
 name: General Operations
 description: General purpose fallback division for research, summaries, and operational requests.
 priority: 10
-default_workflow: minimal
+default_workflow: single_agent_minimal
 orchestration_workflow: phase1b_single_division_orchestration
 triggers:
   - summarize

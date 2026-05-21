@@ -50,7 +50,7 @@ test("createYonoRoutes - POST /v1/yono/markets creates a new market", async () =
   const ctx = createMockContext("/v1/yono/markets", ["v1", "yono", "markets"], {}, JSON.stringify({
     title: "Will ETH hit $5000 by end of year?",
     description: "Predict whether Ethereum will reach $5000 USD equivalent.",
-    category: "crypto",
+    category: "tech",
     tags: ["ethereum", "price-prediction"],
   }));
 
@@ -59,10 +59,10 @@ test("createYonoRoutes - POST /v1/yono/markets creates a new market", async () =
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
   const body = JSON.parse(result.body);
-  assert.ok(body.market.marketId.startsWith("ymkt_"));
-  assert.strictEqual(body.market.title, "Will ETH hit $5000 by end of year?");
-  assert.strictEqual(body.market.category, "crypto");
-  assert.strictEqual(body.market.status, "draft");
+  assert.ok(body.data.market.marketId.startsWith("ymkt_"));
+  assert.strictEqual(body.data.market.title, "Will ETH hit $5000 by end of year?");
+  assert.strictEqual(body.data.market.category, "crypto");
+  assert.strictEqual(body.data.market.status, "draft");
 });
 
 test("createYonoRoutes - GET /v1/yono/markets returns empty list initially", async () => {
@@ -75,7 +75,7 @@ test("createYonoRoutes - GET /v1/yono/markets returns empty list initially", asy
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.markets, []);
+  assert.deepStrictEqual(body.data.markets, []);
 });
 
 test("createYonoRoutes - GET /v1/yono/markets returns created market", async () => {
@@ -96,8 +96,8 @@ test("createYonoRoutes - GET /v1/yono/markets returns created market", async () 
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.strictEqual(body.markets.length, 1);
-  assert.strictEqual(body.markets[0].title, "Test Market");
+  assert.strictEqual(body.data.markets.length, 1);
+  assert.strictEqual(body.data.markets[0].title, "Test Market");
 });
 
 test("createYonoRoutes - GET /v1/yono/markets/:marketId returns market", async () => {
@@ -110,7 +110,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId returns market", async (
     description: "Testing getting a single market.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Get single market
   const getCtx = createMockContext(
@@ -123,7 +123,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId returns market", async (
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.strictEqual(body.market.marketId, marketId);
+  assert.strictEqual(body.data.market.marketId, marketId);
 });
 
 test("createYonoRoutes - GET /v1/yono/markets/:marketId/comments returns comments", async () => {
@@ -136,7 +136,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/comments returns comment
     description: "Testing comments endpoint.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Get comments (should be empty)
   const commentsCtx = createMockContext(
@@ -149,7 +149,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/comments returns comment
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.comments, []);
+  assert.deepStrictEqual(body.data.comments, []);
 });
 
 test("createYonoRoutes - POST /v1/yono/markets/:marketId/comments creates comment", async () => {
@@ -162,7 +162,7 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/comments creates commen
     description: "Testing comment creation.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Create a comment
   const commentCtx = createMockContext(
@@ -176,9 +176,9 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/comments creates commen
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
   const body = JSON.parse(result.body);
-  assert.ok(body.comment.commentId.startsWith("ycmt_"));
-  assert.strictEqual(body.comment.text, "This market looks promising!");
-  assert.ok(body.signal != null);
+  assert.ok(body.data.comment.commentId.startsWith("ycmt_"));
+  assert.strictEqual(body.data.comment.text, "This market looks promising!");
+  assert.ok(body.data.signal != null);
 });
 
 test("createYonoRoutes - GET /v1/yono/markets/:marketId/consensus returns consensus", async () => {
@@ -191,7 +191,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/consensus returns consen
     description: "Testing consensus endpoint.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Get consensus
   const consensusCtx = createMockContext(
@@ -204,7 +204,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/consensus returns consen
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.ok(typeof body.yonoConsensusProbability === "number");
+  assert.ok(typeof body.data.yonoConsensusProbability === "number");
 });
 
 test("createYonoRoutes - POST /v1/yono/markets/:marketId/forecasts submits forecast", async () => {
@@ -217,8 +217,8 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/forecasts submits forec
     description: "Testing forecast submission.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
-  const outcomeId = JSON.parse(createResult!.body).market.outcomes[0].outcomeId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
+  const outcomeId = JSON.parse(createResult!.body).data.market.outcomes[0].outcomeId;
 
   // Submit forecast
   const forecastCtx = createMockContext(
@@ -232,8 +232,8 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/forecasts submits forec
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
   const body = JSON.parse(result.body);
-  assert.ok(body.forecast.forecastId.startsWith("yfct_"));
-  assert.strictEqual(body.forecast.probability, 0.75);
+  assert.ok(body.data.forecast.forecastId.startsWith("yfct_"));
+  assert.strictEqual(body.data.forecast.probability, 0.75);
 });
 
 test("createYonoRoutes - GET /v1/yono/markets/:marketId/forecasts returns forecasts", async () => {
@@ -246,7 +246,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/forecasts returns foreca
     description: "Testing get forecasts.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Get forecasts
   const forecastsCtx = createMockContext(
@@ -259,7 +259,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/forecasts returns foreca
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.forecasts, []);
+  assert.deepStrictEqual(body.data.forecasts, []);
 });
 
 test("createYonoRoutes - POST /v1/yono/orders creates order", async () => {
@@ -272,8 +272,8 @@ test("createYonoRoutes - POST /v1/yono/orders creates order", async () => {
     description: "Testing order creation.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
-  const outcomeId = JSON.parse(createResult!.body).market.outcomes[0].outcomeId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
+  const outcomeId = JSON.parse(createResult!.body).data.market.outcomes[0].outcomeId;
 
   // Create order
   const orderCtx = createMockContext("/v1/yono/orders", ["v1", "yono", "orders"], {}, JSON.stringify({
@@ -287,8 +287,8 @@ test("createYonoRoutes - POST /v1/yono/orders creates order", async () => {
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
   const body = JSON.parse(result.body);
-  assert.ok(body.order.orderId.startsWith("yord_"));
-  assert.strictEqual(body.order.side, "buy");
+  assert.ok(body.data.order.orderId.startsWith("yord_"));
+  assert.strictEqual(body.data.order.side, "buy");
 });
 
 test("createYonoRoutes - GET /v1/yono/orders returns orders", async () => {
@@ -301,7 +301,7 @@ test("createYonoRoutes - GET /v1/yono/orders returns orders", async () => {
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.orders, []);
+  assert.deepStrictEqual(body.data.orders, []);
 });
 
 test("createYonoRoutes - GET /v1/yono/positions returns positions", async () => {
@@ -314,7 +314,7 @@ test("createYonoRoutes - GET /v1/yono/positions returns positions", async () => 
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.positions, []);
+  assert.deepStrictEqual(body.data.positions, []);
 });
 
 test("createYonoRoutes - GET /v1/yono/trades returns trades", async () => {
@@ -327,7 +327,7 @@ test("createYonoRoutes - GET /v1/yono/trades returns trades", async () => {
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.trades, []);
+  assert.deepStrictEqual(body.data.trades, []);
 });
 
 test("createYonoRoutes - POST /v1/yono/markets/:marketId/disputes submits dispute", async () => {
@@ -340,7 +340,7 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/disputes submits disput
     description: "Testing dispute submission.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Submit dispute
   const disputeCtx = createMockContext(
@@ -354,8 +354,8 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/disputes submits disput
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
   const body = JSON.parse(result.body);
-  assert.ok(body.dispute.disputeId.startsWith("ydsp_"));
-  assert.strictEqual(body.dispute.reason, "wrong_evidence");
+  assert.ok(body.data.dispute.disputeId.startsWith("ydsp_"));
+  assert.strictEqual(body.data.dispute.reason, "wrong_evidence");
 });
 
 test("createYonoRoutes - GET /v1/yono/markets/:marketId/disputes returns disputes", async () => {
@@ -368,7 +368,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/disputes returns dispute
     description: "Testing get disputes.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Get disputes
   const disputesCtx = createMockContext(
@@ -381,7 +381,7 @@ test("createYonoRoutes - GET /v1/yono/markets/:marketId/disputes returns dispute
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.deepStrictEqual(body.disputes, []);
+  assert.deepStrictEqual(body.data.disputes, []);
 });
 
 test("createYonoRoutes - POST /v1/yono/markets/:marketId/review triggers review agent", async () => {
@@ -395,7 +395,7 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/review triggers review 
     category: "tech",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Trigger review action
   const reviewCtx = createMockContext(
@@ -408,8 +408,8 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/review triggers review 
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.ok(body.review != null);
-  assert.ok(["approve", "needs_revision", "manual_review"].includes(body.review.decision));
+  assert.ok(body.data.review != null);
+  assert.ok(["approve", "needs_revision", "manual_review"].includes(body.data.review.decision));
 });
 
 test("createYonoRoutes - POST /v1/yono/markets/:marketId/open transitions market to open", async () => {
@@ -422,7 +422,7 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/open transitions market
     description: "Testing market transitions.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Open market
   const openCtx = createMockContext(
@@ -435,7 +435,7 @@ test("createYonoRoutes - POST /v1/yono/markets/:marketId/open transitions market
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
   const body = JSON.parse(result.body);
-  assert.strictEqual(body.market.status, "open");
+  assert.strictEqual(body.data.market.status, "open");
 });
 
 test("createYonoRoutes - market action returns null for unknown action", async () => {
@@ -448,7 +448,7 @@ test("createYonoRoutes - market action returns null for unknown action", async (
     description: "Testing unknown action handling.",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const marketId = JSON.parse(createResult!.body).market.marketId;
+  const marketId = JSON.parse(createResult!.body).data.market.marketId;
 
   // Try unknown action
   const unknownCtx = createMockContext(

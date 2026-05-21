@@ -11,6 +11,7 @@ import test from "node:test";
 import { executeOapeflirRuntimePlan } from "../../../../../src/platform/five-plane-execution/oapeflir/runtime-plan-executor.js";
 import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
 import type { PlanGraphBundle, PlanNode } from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import { GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH } from "../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 // Helper to create minimal plan graph bundle for testing
 function createTestPlanGraphBundle(
@@ -251,8 +252,8 @@ test("executeOapeflirRuntimePlan preserves node timeout values", async () => {
 
     assert.ok(shortStep);
     assert.ok(longStep);
-    assert.equal(shortStep.timeout, 5_000);
-    assert.equal(longStep.timeout, 300_000);
+    assert.equal(shortStep.timeoutMs, 5_000);
+    assert.equal(longStep.timeoutMs, 300_000);
   } finally {
     cleanup();
   }
@@ -370,7 +371,10 @@ test("executeOapeflirRuntimePlan with output schema refs", async () => {
 
     const step = result.plannedWorkflow.workflow.steps[0];
     assert.ok(step);
-    assert.deepEqual(step.outputs, ["schema:custom:output:ref"]);
+    // outputSchemaRef from PlanGraphNode is preserved as outputKey (via outputs array) in MinimalWorkflowStep
+    assert.equal(step.outputKey, "schema:custom:output:ref");
+    // outputSchemaPath falls back to default for legacy PlanStep (outputSchemaRef not transferred)
+    assert.equal(step.outputSchemaPath, GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH);
   } finally {
     cleanup();
   }

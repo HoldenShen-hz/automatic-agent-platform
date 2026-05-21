@@ -4,6 +4,7 @@ import {
   type RecoveryReport,
   type RecoveryWorker,
 } from "../../contracts/types/recovery-cadence.js";
+import { RuntimeError, ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { RuntimeRecoveryReplayService } from "../recovery/runtime-recovery-replay-service-root.js";
 import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "../recovery/replay-boundary-guard.js";
@@ -123,10 +124,10 @@ export class ReplayWorker implements RecoveryWorker {
 
   private assertReplayPolicySafe(policy: ReplaySandboxPolicy): void {
     if (policy.allowRealSideEffects) {
-      throw new Error("ReplayWorker refuses replay policies that allow real side effects");
+      throw new RuntimeError("replay.policy_allows_real_side_effects", "ReplayWorker refuses replay policies that allow real side effects");
     }
     if (policy.mode === "isolated_sandbox" && (policy.sandboxId == null || policy.sandboxId.trim().length === 0)) {
-      throw new Error("ReplayWorker requires sandboxId for isolated_sandbox replay");
+      throw new ValidationError("replay.sandbox_id_required", "replay.sandbox_id_required");
     }
   }
 }

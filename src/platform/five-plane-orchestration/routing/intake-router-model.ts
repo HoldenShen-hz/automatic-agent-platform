@@ -119,6 +119,8 @@ const FOLLOW_UP_RULES = [
   "延续",
 ] as const;
 
+const ASCII_RULE_REGEX_CACHE = new Map<string, RegExp>();
+
 /**
  * The result of routing an intake request, containing the selected workflow
  * and division along with metadata about how the decision was made.
@@ -654,8 +656,13 @@ function matchesRule(
   if (/[^\x00-\x7F]/.test(rule)) {
     return normalizedInput.includes(rule);
   }
-  const escapedRule = escapeRegExp(rule);
-  return new RegExp(`(^|[^a-z0-9])${escapedRule}($|[^a-z0-9])`).test(normalizedInput);
+  const cached = ASCII_RULE_REGEX_CACHE.get(rule);
+  if (cached != null) {
+    return cached.test(normalizedInput);
+  }
+  const compiled = new RegExp(`(^|[^a-z0-9])${escapeRegExp(rule)}($|[^a-z0-9])`);
+  ASCII_RULE_REGEX_CACHE.set(rule, compiled);
+  return compiled.test(normalizedInput);
 }
 
 function escapeRegExp(value: string): string {

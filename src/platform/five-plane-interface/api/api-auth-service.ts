@@ -117,18 +117,30 @@ function base64UrlDecode(value: string): string {
 }
 
 const ALLOWED_JWT_ALGORITHMS = new Set(["HS256"]);
-const MINIMUM_JWT_SECRET_LENGTH = 8;
-const WEAK_JWT_SECRETS = new Set(["secret", "password", "changeme", "default", "jwtsecret"]);
+const MINIMUM_JWT_SECRET_LENGTH = 10;
+const WEAK_JWT_SECRET_PATTERNS = [
+  /^secret$/i,
+  /^password$/i,
+  /^changeme$/i,
+  /^default$/i,
+  /^jwtsecret$/i,
+  /^admin$/i,
+  /^test(?:ing)?$/i,
+  /^qwerty(?:123)?$/i,
+  /^(?:1234|12345|123456|12345678|123456789|1234567890)$/,
+  /^(.)\1{7,}$/,
+] as const;
 
 function hashSecretToken(value: string): Buffer {
   return createHash("sha256").update(value, "utf8").digest();
 }
 
 function assertJwtSecretStrength(secret: string): void {
-  if (secret.length < MINIMUM_JWT_SECRET_LENGTH) {
-    throw new ApiAuthError(500, "api.jwt_secret_too_short", "JWT secret must be at least 8 characters.");
+  const normalized = secret.trim();
+  if (normalized.length < MINIMUM_JWT_SECRET_LENGTH) {
+    throw new ApiAuthError(500, "api.jwt_secret_too_short", "JWT secret must be at least 10 characters.");
   }
-  if (WEAK_JWT_SECRETS.has(secret.trim().toLowerCase())) {
+  if (WEAK_JWT_SECRET_PATTERNS.some((pattern) => pattern.test(normalized))) {
     throw new ApiAuthError(500, "api.jwt_secret_weak", "JWT secret must not use a known weak default.");
   }
 }

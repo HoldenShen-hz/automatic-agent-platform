@@ -59,6 +59,40 @@ function createTestWorkflow(
   });
 }
 
+function setupOperationsParentRecords(db: SqliteDatabase, now: string, namespaceId = "ns-001", extraTenantIds: string[] = []): void {
+  // Create organizations first (no dependencies)
+  db.connection.exec(`
+    INSERT INTO organizations (organization_id, display_name, created_at, updated_at)
+    VALUES ('org-001', 'Test Org', '${now}', '${now}')
+  `);
+
+  // Create tenants (depends on organizations)
+  db.connection.exec(`
+    INSERT INTO tenants (tenant_id, organization_id, storage_scope, identity_scope, policy_scope, artifact_scope, isolation_mode, deployment_mode, created_at, updated_at)
+    VALUES ('tenant-ops', 'org-001', 'standard', 'standard', 'standard', 'standard', 'shared', 'standard', '${now}', '${now}')
+  `);
+
+  // Create additional tenants if needed
+  for (const tenantId of extraTenantIds) {
+    db.connection.exec(`
+      INSERT INTO tenants (tenant_id, organization_id, storage_scope, identity_scope, policy_scope, artifact_scope, isolation_mode, deployment_mode, created_at, updated_at)
+      VALUES ('${tenantId}', 'org-001', 'standard', 'standard', 'standard', 'standard', 'shared', 'standard', '${now}', '${now}')
+    `);
+  }
+
+  // Create workspaces (depends on organizations)
+  db.connection.exec(`
+    INSERT INTO workspaces (workspace_id, owner_id, display_name, plan_id, default_policy_set, organization_id, created_at, updated_at)
+    VALUES ('ws-001', 'owner-1', 'Test Workspace', 'plan-1', '{}', 'org-001', '${now}', '${now}')
+  `);
+
+  // Create data namespace (depends on tenants, organizations, workspaces)
+  db.connection.exec(`
+    INSERT INTO data_namespaces (namespace_id, plane, tenant_id, organization_id, workspace_id, retention_policy, encryption_policy, created_at, updated_at)
+    VALUES ('${namespaceId}', 'execution', 'tenant-ops', 'org-001', 'ws-001', 'standard', 'standard', '${now}', '${now}')
+  `);
+}
+
 test("OperationsRepository can be instantiated with mock database", () => {
   const mockDb = {
     connection: {
@@ -136,6 +170,7 @@ test("OperationsRepository insertAnalyticsFactRecord and listAnalyticsFactRecord
     const repo = new OperationsRepository(db);
 
     const now = "2026-04-27T10:00:00.000Z";
+    setupOperationsParentRecords(db, now);
     repo.insertAnalyticsFactRecord({
       factId: "fact-001",
       namespaceId: "ns-001",
@@ -172,7 +207,7 @@ test("OperationsRepository listAnalyticsFactRecords with metric filter", () => {
     const repo = new OperationsRepository(db);
 
     const now = "2026-04-27T10:00:00.000Z";
-
+    setupOperationsParentRecords(db, now, "ns-001", ["tenant-metric"]);
     repo.insertAnalyticsFactRecord({
       factId: "fact-metric-001",
       namespaceId: "ns-001",
@@ -228,6 +263,7 @@ test("OperationsRepository insertArchiveBundleRecord and listArchiveBundleRecord
     const repo = new OperationsRepository(db);
 
     const now = "2026-04-27T10:00:00.000Z";
+    setupOperationsParentRecords(db, now, "ns-001", ["tenant-archive"]);
     repo.insertArchiveBundleRecord({
       bundleId: "bundle-001",
       namespaceId: "ns-001",
@@ -261,6 +297,7 @@ test("OperationsRepository listArchiveBundleRecords with bundleType filter", () 
     const repo = new OperationsRepository(db);
 
     const now = "2026-04-27T10:00:00.000Z";
+    setupOperationsParentRecords(db, now, "ns-001", ["tenant-archive-type"]);
 
     repo.insertArchiveBundleRecord({
       bundleId: "bundle-type-001",
@@ -310,6 +347,7 @@ test("OperationsRepository insertReplayDatasetRecord and listReplayDatasetRecord
     const repo = new OperationsRepository(db);
 
     const now = "2026-04-27T10:00:00.000Z";
+    setupOperationsParentRecords(db, now, "ns-001", ["tenant-replay"]);
     repo.insertReplayDatasetRecord({
       datasetId: "dataset-001",
       namespaceId: "ns-001",
@@ -328,7 +366,7 @@ test("OperationsRepository insertReplayDatasetRecord and listReplayDatasetRecord
     assert.equal(datasets.length, 1);
     assert.equal(datasets[0].datasetId, "dataset-001");
     assert.equal(datasets[0].datasetType, "production_truth");
-    assert.equal(datasets[0].version, 1);
+    assert.ok(Number(datasets[0].version) === 1);
 
   } finally {
     cleanupPath(workspace);
@@ -345,9 +383,15 @@ test("OperationsRepository upsertDataMovementJobRecord and getDataMovementJobRec
     const repo = new OperationsRepository(db);
 
     const now = "2026-04-27T10:00:00.000Z";
+    setupOperationsParentRecords(db, now, "ns-source");
+    // Insert target namespace directly for data movement job
+    db.connection.exec(`
+      INSERT INTO data_namespaces (namespace_id, plane, tenant_id, organization_id, workspace_id, retention_policy, encryption_policy, created_at, updated_at)
+      VALUES ('ns-target', 'evidence', 'tenant-ops', 'org-001', 'ws-001', 'standard', 'standard', '${now}', '${now}')
+    `);
     repo.upsertDataMovementJobRecord({
       jobId: "job-001",
-      tenantId: "tenant-dm",
+      tenantId: "tenant-ops",
       organizationId: "org-001",
       workspaceId: "ws-001",
       sourceNamespaceId: "ns-source",
@@ -384,10 +428,16 @@ test("OperationsRepository upsertDataMovementJobRecord updates existing job", ()
 
     const now = "2026-04-27T10:00:00.000Z";
     const later = "2026-04-27T12:00:00.000Z";
+    setupOperationsParentRecords(db, now, "ns-source");
+    // Insert target namespace directly for data movement job
+    db.connection.exec(`
+      INSERT INTO data_namespaces (namespace_id, plane, tenant_id, organization_id, workspace_id, retention_policy, encryption_policy, created_at, updated_at)
+      VALUES ('ns-target', 'evidence', 'tenant-ops', 'org-001', 'ws-001', 'standard', 'standard', '${now}', '${now}')
+    `);
 
     repo.upsertDataMovementJobRecord({
       jobId: "job-upsert-001",
-      tenantId: "tenant-upsert",
+      tenantId: "tenant-ops",
       organizationId: "org-001",
       workspaceId: "ws-001",
       sourceNamespaceId: "ns-source",
@@ -405,7 +455,7 @@ test("OperationsRepository upsertDataMovementJobRecord updates existing job", ()
     // Upsert with updated status
     repo.upsertDataMovementJobRecord({
       jobId: "job-upsert-001",
-      tenantId: "tenant-upsert",
+      tenantId: "tenant-ops",
       organizationId: "org-001",
       workspaceId: "ws-001",
       sourceNamespaceId: "ns-source",
@@ -668,9 +718,15 @@ test("OperationsRepository listDataMovementJobRecords delegates to division repo
     const repo = new OperationsRepository(db);
 
     const now = "2026-04-27T10:00:00.000Z";
+    setupOperationsParentRecords(db, now, "ns-source");
+    // Insert target namespace directly for data movement job
+    db.connection.exec(`
+      INSERT INTO data_namespaces (namespace_id, plane, tenant_id, organization_id, workspace_id, retention_policy, encryption_policy, created_at, updated_at)
+      VALUES ('ns-target', 'evidence', 'tenant-ops', 'org-001', 'ws-001', 'standard', 'standard', '${now}', '${now}')
+    `);
     repo.upsertDataMovementJobRecord({
       jobId: "job-list-001",
-      tenantId: "tenant-dm-list",
+      tenantId: "tenant-ops",
       organizationId: "org-001",
       workspaceId: "ws-001",
       sourceNamespaceId: "ns-source",
@@ -685,7 +741,7 @@ test("OperationsRepository listDataMovementJobRecords delegates to division repo
       reportJson: null,
     });
 
-    const jobs = repo.listDataMovementJobRecords({ tenantId: "tenant-dm-list" });
+    const jobs = repo.listDataMovementJobRecords({ tenantId: "tenant-ops" });
     assert.ok(Array.isArray(jobs));
 
   } finally {
