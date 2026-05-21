@@ -65,3 +65,5 @@ session-replay
 # Local secrets and generated snapshots
 .env
 snapshot.json
+coverage-results/
+full-coverage/
