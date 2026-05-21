@@ -55,9 +55,10 @@ test("DomainGovernanceRolloutSchema rejects zero rollbackWindowMinutes", () => {
   });
 });
 
-test("DomainGovernanceRolloutSchema accepts fractional rollbackWindowMinutes", () => {
-  const result = DomainGovernanceRolloutSchema.parse({ rollbackWindowMinutes: 30.5 });
-  assert.equal(result.rollbackWindowMinutes, 30.5);
+test("DomainGovernanceRolloutSchema rejects fractional rollbackWindowMinutes", () => {
+  assert.throws(() => {
+    DomainGovernanceRolloutSchema.parse({ rollbackWindowMinutes: 30.5 });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { z } from "zod";
 export const DomainEvaluatorSchema = z.object({
   evaluatorId: z.string().min(1),
   metric: z.string().min(1),
-  threshold: z.number().nonnegative(),
+  threshold: z.number().nonnegative().max(1),
   blocking: z.boolean().default(true),
 });
 

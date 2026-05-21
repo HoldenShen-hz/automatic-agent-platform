@@ -324,7 +324,7 @@ test("validateProposal fails with bash but no restriction", () => {
     tools: ["bash"],
     scope: {
       responsibilities: ["run bash commands"],
-      boundaries: ["bash allowed without limit"],
+      boundaries: ["bash allowed"],
     },
     inputSchema: { required: ["command"] },
     outputSchema: { required: ["result"] },

@@ -9,8 +9,8 @@ export const DomainGovernanceRolloutSchema = z.object({
 });
 
 export const DomainGovernancePolicySchema = z.object({
-  policyId: z.string().min(1),
-  domainId: z.string().min(1),
+  policyId: z.string().trim().min(1),
+  domainId: z.string().trim().min(1),
   ownerRoles: z.array(DomainGovernanceRoleSchema).min(1),
   operatorRoles: z.array(DomainGovernanceRoleSchema).min(1),
   approvalRoles: z.array(DomainGovernanceRoleSchema).min(1),

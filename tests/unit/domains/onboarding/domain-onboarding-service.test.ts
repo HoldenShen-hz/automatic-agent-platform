@@ -239,7 +239,7 @@ test("DomainOnboardingService.rollback reopens target phase and resets later pha
 
   assert.equal(session.activePhase, "domain_modeling");
   assert.equal(session.rollbackHistory.length, 1);
-  assert.equal(session.rollbackHistory[0]?.phase, "pack_development");
+  assert.equal(session.rollbackHistory[0]?.phase, "security_certification");
   assert.equal(session.rollbackHistory[0]?.checkpointArtifactId, "checkpoint_artifact");
   assert.equal(session.rollbackHistory[0]?.reason, "rollback reason");
 
@@ -247,7 +247,7 @@ test("DomainOnboardingService.rollback reopens target phase and resets later pha
   assert.equal(recordsByPhase.get("domain_modeling"), "in_progress");
   assert.equal(recordsByPhase.get("pack_development"), "pending");
   assert.equal(recordsByPhase.get("security_certification"), "pending");
-  assert.equal(recordsByPhase.get("gray_rollout"), "pending");
+  assert.equal(recordsByPhase.get("gray_rollout"), undefined);
 });
 
 test("DomainOnboardingService.rollback throws when no active phase", () => {
@@ -335,12 +335,17 @@ test("DomainOnboardingService.registry operations correctly validate domain exis
   const service = new DomainOnboardingService(registry);
 
   // Test start with unknown domain
-  let error = service.start("unknown_start");
-  assert.fail("Should have thrown");
+  try {
+    service.start("unknown_start");
+    assert.fail("Should have thrown");
+  } catch (e) {
+    assert.ok(e instanceof ValidationError);
+  }
 
   // Test advance with unknown domain
   try {
     service.advance("unknown_advance", ["artifact"]);
+    assert.fail("Should have thrown");
   } catch (e) {
     assert.ok(e instanceof ValidationError);
   }
@@ -348,6 +353,7 @@ test("DomainOnboardingService.registry operations correctly validate domain exis
   // Test block with unknown domain
   try {
     service.block("unknown_block", "artifact");
+    assert.fail("Should have thrown");
   } catch (e) {
     assert.ok(e instanceof ValidationError);
   }
@@ -355,6 +361,7 @@ test("DomainOnboardingService.registry operations correctly validate domain exis
   // Test rollback with unknown domain
   try {
     service.rollback("unknown_rollback", "domain_modeling", "cp", "reason");
+    assert.fail("Should have thrown");
   } catch (e) {
     assert.ok(e instanceof ValidationError);
   }

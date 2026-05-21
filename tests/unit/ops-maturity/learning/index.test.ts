@@ -243,13 +243,11 @@ describe("Learning Module Edge Cases", () => {
   it("should gracefully handle corrupted evidence data", async () => {
     const corruptedStore = {
       store: mock.fn(() => Promise.resolve({ stored: true })),
-      retrieve: mock.fn(() => {
-        throw new Error("Corrupted data");
-      }),
+      retrieve: mock.fn(() => Promise.reject(new Error("Corrupted data"))),
       clear: mock.fn(),
     };
-    // Should handle retrieval error gracefully
-    await assert.rejects(corruptedStore.retrieve("corrupted-id"), {
+    // Should handle retrieval error gracefully - wrap in arrow function for assert.rejects
+    await assert.rejects(() => corruptedStore.retrieve("corrupted-id"), {
       message: "Corrupted data",
     });
   });

@@ -230,8 +230,8 @@ describe("Improvement Module - PromotionGate", () => {
       score: 0.95,
       metadata: {},
     });
-    // Age beyond maxAgeMs
-    const decision = gate.evaluate("old-candidate", { minScore: 0.8, maxAgeMs: 0 });
+    // Use negative maxAgeMs to reliably detect any age > 0
+    const decision = gate.evaluate("old-candidate", { minScore: 0.8, maxAgeMs: -1 });
     assert.strictEqual(decision.approved, false);
     assert.ok(decision.reasonCodes.includes("candidate_too_old"));
   });

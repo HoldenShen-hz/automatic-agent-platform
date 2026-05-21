@@ -113,7 +113,8 @@ export class DomainOnboardingService {
 
   public rollback(domainId: string, toPhase: DomainOnboardingPhase, checkpointArtifactId: string, reason: string): DomainOnboardingSession {
     const records = [...this.requireSession(domainId)];
-    const current = records.find((item) => item.status === "in_progress");
+    const current = records.find((item) => item.status === "in_progress")
+      ?? records.find((item) => item.status === "blocked");
     if (current == null) {
       throw this.validationError("domain_onboarding.no_active_phase", "No active onboarding phase exists.");
     }

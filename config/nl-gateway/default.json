@@ -11,13 +11,13 @@
     }
   },
   "disambiguation": {
-    "threshold": 0.82,
+    "threshold": 0.8,
     "lowConfidenceThreshold": 0.5,
     "maxClarificationQuestions": 3,
     "enableProactiveClarification": true
   },
   "intent": {
-    "minConfidenceForAutoConfirm": 0.82,
+    "minConfidenceForAutoConfirm": 0.85,
     "fallbackIntent": "task_query"
   },
   "entityExtraction": {
