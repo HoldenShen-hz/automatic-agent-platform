@@ -11,7 +11,7 @@ import {
   buildInteractionRemediationEvidence,
   inspectNlPrompt,
   type ClarificationState,
-} from "../../src/interaction/architecture-remediation.js";
+} from "../../../src/interaction/architecture-remediation.js";
 
 test("createClarificationState returns 'clarifying' when missing slots exist", () => {
   const state = createClarificationState(["date", "environment"]);

@@ -10,7 +10,7 @@ import {
   type DashboardHealthStatus,
   type DashboardProviderHealth,
   type DashboardQueueBacklog,
-} from "../../src/interaction/dashboard/contracts/dashboard-port.js";
+} from "../../../src/interaction/dashboard/contracts/dashboard-port.js";
 
 test("toSystemSituationPort returns same health status", () => {
   const system: SystemSituationPort = {

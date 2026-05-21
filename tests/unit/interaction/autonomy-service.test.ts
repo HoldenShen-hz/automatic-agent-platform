@@ -8,7 +8,7 @@ import {
   AutonomyService,
   type AutonomyLevelRequest,
   type EscalationRequest,
-} from "../../src/interaction/autonomy/autonomy-service.js";
+} from "../../../src/interaction/autonomy/autonomy-service.js";
 
 test("AutonomyService.determineLevel returns 'manual' for riskScore >= 80", () => {
   const service = new AutonomyService();

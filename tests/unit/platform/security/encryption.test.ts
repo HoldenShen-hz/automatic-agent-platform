@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { encryptField, decryptField, loadFieldEncryptionKeyFromEnv } from "../../../../src/platform/compliance/encryption/index.js";
+import { encryptField, decryptField, loadFieldEncryptionKeyFromEnv } from "../../../../src/platform/five-plane-control-plane/iam/field-encryption.js";
 
 const TEST_KEY = "this-is-a-very-long-test-encryption-key-32bytes!";
 
