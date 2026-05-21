@@ -319,6 +319,7 @@ test("WorkerRepository insertExecutionTicket does not throw", () => {
   const mockConn = {
     prepare: () => ({
       run: () => ({ changes: 1 }),
+      get: () => undefined,
     }),
   } as any;
 
@@ -718,15 +719,22 @@ test("WorkerRepository integration - full worker lifecycle", () => {
     // Insert worker snapshot
     repo.upsertWorkerSnapshot({
       workerId: "integration-worker-001",
-      registeredAt: now,
       lastHeartbeatAt: now,
       status: "active",
-      pool: "default",
-      priority: 0,
-      labelsJson: null,
-      currentTaskId: null,
-      currentExecutionId: null,
       version: 1,
+      capabilitiesJson: "[]",
+      runningExecutionsJson: "[]",
+      maxConcurrency: 1,
+      queueAffinity: null,
+      runtimeInstanceId: null,
+      restartedFromRuntimeInstanceId: null,
+      restartGeneration: 0,
+      cpuPct: null,
+      memoryMb: null,
+      toolBacklogCount: 0,
+      currentStepId: null,
+      lastProgressAt: null,
+      updatedAt: now,
     });
 
     // Verify worker snapshot was inserted
@@ -735,16 +743,27 @@ test("WorkerRepository integration - full worker lifecycle", () => {
     assert.equal(workerSnapshot.workerId, "integration-worker-001");
     assert.equal(workerSnapshot.status, "active");
 
+    // Insert task first (needed for FK constraint on execution_tickets)
+    db.connection.exec(`
+      INSERT INTO tasks (id, created_at, updated_at)
+      VALUES ('integration-task-001', '${now}', '${now}')
+    `);
+
     // Insert execution ticket
     repo.insertExecutionTicket({
-      ticketId: "integration-ticket-001",
+      id: "integration-ticket-001",
       executionId: "integration-exec-001",
       taskId: "integration-task-001",
-      queueName: "default",
+      tenantId: "default",
       priority: 0,
+      queueName: "default",
+      requiredCapabilitiesJson: "[]",
+      attempt: 1,
       status: "pending",
       createdAt: now,
+      updatedAt: now,
       assignedWorkerId: null,
+      leaseId: null,
       claimedAt: null,
       consumedAt: null,
       invalidatedAt: null,

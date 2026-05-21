@@ -135,6 +135,8 @@ test("ScheduledTaskState pending status", () => {
     taskId: "sts_pending",
     status: "pending",
     scheduledAt: "2026-05-01T10:00:00.000Z",
+    dispatchedAt: null,
+    startedAt: null,
   };
 
   assert.equal(state.status, "pending");
@@ -224,7 +226,7 @@ test("ScheduledTaskState lifecycle timing", () => {
 
   assert.ok(dispatchDelay < 1000); // Dispatch within 1 second
   assert.ok(startupTime < 1000); // Startup within 1 second
-  assert.equal(executionTime, 270000); // 4.5 minutes
+  assert.equal(executionTime, 329000); // 5 minutes 29 seconds
 });
 
 // ============================================================
@@ -409,12 +411,12 @@ test("Task schedule resequencing after cancellation", () => {
 
 test("Task schedule overlap detection", () => {
   const tasks: ScheduledTaskRequest[] = [
-    { taskId: "t1", taskType: "a", scheduledAt: "2026-05-01T10:00:00.000Z", payload: {}, priority: 1, maxRetries: 0, timeoutMs: 300000 },
-    { taskId: "t2", taskType: "b", scheduledAt: "2026-05-01T10:15:00.000Z", payload: {}, priority: 1, maxRetries: 0, timeoutMs: 300000 },
+    { taskId: "t1", taskType: "a", scheduledAt: "2026-05-01T10:00:00.000Z", payload: {}, priority: 1, maxRetries: 0, timeoutMs: 900000 },
+    { taskId: "t2", taskType: "b", scheduledAt: "2026-05-01T10:14:00.000Z", payload: {}, priority: 1, maxRetries: 0, timeoutMs: 300000 },
     { taskId: "t3", taskType: "c", scheduledAt: "2026-05-01T10:20:00.000Z", payload: {}, priority: 1, maxRetries: 0, timeoutMs: 300000 },
   ];
 
-  // Check if t2 starts before t1 completes (t1 runs for 300000ms = 5 min)
+  // Check if t2 starts before t1 completes (t1 runs for 900000ms = 15 min)
   const t1Start = new Date(tasks[0]!.scheduledAt).getTime();
   const t1End = t1Start + tasks[0]!.timeoutMs;
   const t2Start = new Date(tasks[1]!.scheduledAt).getTime();

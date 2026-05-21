@@ -174,7 +174,7 @@ test("ReplayWorker.runRecoveryCycle requires sandboxId for isolated_sandbox mode
         cadence: { intervalMs: 300_000 },
         replayPolicy: { mode: "isolated_sandbox", sandboxId: "", allowRealSideEffects: false },
       }),
-    /sandboxId/i,
+    /replay\.sandbox_id_required/i,
   );
 });
 
@@ -200,7 +200,7 @@ test("ReplayWorker rejects isolated_sandbox without sandboxId", () => {
         cadence: { intervalMs: 300_000 },
         replayPolicy: { mode: "isolated_sandbox", allowRealSideEffects: false },
       }),
-    /sandboxId/,
+    /replay\.sandbox_id_required/,
   );
 });
 

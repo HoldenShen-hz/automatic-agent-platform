@@ -211,7 +211,7 @@ test("ReplayWorker requires sandboxId for isolated sandbox replay", async () => 
           allowRealSideEffects: false,
         },
       }),
-    /requires sandboxId/,
+    /replay\.sandbox_id_required/,
   );
 });
 
