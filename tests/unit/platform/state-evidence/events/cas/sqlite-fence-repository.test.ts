@@ -15,6 +15,7 @@ function createMockConnection(): {
   prepare(sql: string): {
     run(...params: unknown[]): { changes: number };
     all(...params: unknown[]): unknown[];
+    get(...params: unknown[]): unknown | undefined;
   };
 } {
   const fenceStorage = new Map<string, unknown[]>();
@@ -31,7 +32,16 @@ function createMockConnection(): {
         run(...params: unknown[]): { changes: number } {
           if (sql.includes("INSERT") || sql.includes("ON CONFLICT")) {
             const key = params[0] as string;
-            fenceStorage.set(key, params as unknown[]);
+            const row: Record<string, unknown> = {
+              fence_key: params[0],
+              execution_id: params[1],
+              owner_node_id: params[2],
+              mode: params[3],
+              fence_token: params[4],
+              acquired_at: params[5],
+              expires_at: params[6],
+            };
+            fenceStorage.set(key, row);
             return { changes: 1 };
           }
           if (sql.includes("DELETE")) {
@@ -49,10 +59,8 @@ function createMockConnection(): {
           if (sql.includes("WHERE execution_id")) {
             const results: unknown[] = [];
             fenceStorage.forEach((row) => {
-              if ((row[1] as string) === executionId) {
-                results.push(Object.fromEntries(
-                  Object.entries(row as Record<string, unknown>).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), v])
-                ));
+              if ((row as Record<string, unknown>).execution_id === executionId) {
+                results.push(row);
               }
             });
             return results;
@@ -60,30 +68,25 @@ function createMockConnection(): {
           if (sql.includes("WHERE owner_node_id")) {
             const results: unknown[] = [];
             fenceStorage.forEach((row) => {
-              if ((row[2] as string) === nodeId) {
-                results.push(Object.fromEntries(
-                  Object.entries(row as Record<string, unknown>).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), v])
-                ));
+              if ((row as Record<string, unknown>).owner_node_id === nodeId) {
+                results.push(row);
               }
             });
             return results;
           }
-          if (sql.includes("WHERE fence_key")) {
-            const key = params[0] as string;
-            const row = fenceStorage.get(key);
-            if (!row) return [];
-            return [Object.fromEntries(
-              Object.entries(row as Record<string, unknown>).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), v])
-            )];
-          }
           // getAll
           const results: unknown[] = [];
           fenceStorage.forEach((row) => {
-            results.push(Object.fromEntries(
-              Object.entries(row as Record<string, unknown>).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), v])
-            ));
+            results.push(row);
           });
           return results;
+        },
+        get(...params: unknown[]): unknown | undefined {
+          if (sql.includes("WHERE fence_key")) {
+            const key = params[0] as string;
+            return fenceStorage.get(key);
+          }
+          return undefined;
         },
       };
     },

@@ -3,7 +3,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it } from "node:test";
 
 import {
   BoundedDispatchQueueEventFactory,
@@ -24,7 +24,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
   const factory = new BoundedDispatchQueueEventFactory();
 
   describe("create with input object signature", () => {
-    test("creates accepted event when queue has capacity", () => {
+    it("creates accepted event when queue has capacity", () => {
       const snapshot = makeSnapshot({ queueDepthBefore: 5, maxQueueDepth: 100 });
       const event = factory.create({
         queueName: "test_queue",
@@ -50,7 +50,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
       assert.equal(event.executionId, "exec_1");
     });
 
-    test("creates rejected event when queue is at max depth", () => {
+    it("creates rejected event when queue is at max depth", () => {
       const snapshot = makeSnapshot({ queueDepthBefore: 100, maxQueueDepth: 100 });
       const event = factory.create({
         queueName: "test_queue",
@@ -66,7 +66,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
       assert.equal(event.reasonCode, "queue.max_depth_exceeded");
     });
 
-    test("omits optional fields when not provided", () => {
+    it("omits optional fields when not provided", () => {
       const snapshot = makeSnapshot();
       const event = factory.create({
         queueName: "test_queue",
@@ -84,7 +84,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
   });
 
   describe("create with positional signature (snapshot overload)", () => {
-    test("creates accepted event with positional args", () => {
+    it("creates accepted event with positional args", () => {
       const snapshot = makeSnapshot({ queueDepthBefore: 10, maxQueueDepth: 50 });
       const event = factory.create(snapshot, "node_1", "tenant_a", "trace_1");
 
@@ -96,7 +96,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
       assert.equal(event.queueDepthBefore, 10);
     });
 
-    test("applies harnessRunId and executionId via optional positional args", () => {
+    it("applies harnessRunId and executionId via optional positional args", () => {
       const snapshot = makeSnapshot();
       const event = factory.create(snapshot, "node_1", "tenant_a", "trace_1", "harness_1", "exec_1");
 
@@ -104,7 +104,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
       assert.equal(event.executionId, "exec_1");
     });
 
-    test("creates rejected event when snapshot depth equals max", () => {
+    it("creates rejected event when snapshot depth equals max", () => {
       const snapshot = makeSnapshot({ queueDepthBefore: 100, maxQueueDepth: 100 });
       const event = factory.create(snapshot, "node_1", "tenant_a", "trace_1");
 
@@ -114,7 +114,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
   });
 
   describe("event properties", () => {
-    test("duplicates orderingPolicyVersion to ordering_policy_version", () => {
+    it("duplicates orderingPolicyVersion to ordering_policy_version", () => {
       const snapshot = makeSnapshot();
       const event = factory.create({
         queueName: "test_queue",
@@ -130,7 +130,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
       assert.equal(event.ordering_policy_version, "2.0");
     });
 
-    test("duplicates queueClass to queue_class", () => {
+    it("duplicates queueClass to queue_class", () => {
       const snapshot = makeSnapshot();
       const event = factory.create({
         queueName: "test_queue",
@@ -146,7 +146,7 @@ describe("BoundedDispatchQueueEventFactory", () => {
       assert.equal(event.queue_class, "express");
     });
 
-    test("includes dlqName from snapshot", () => {
+    it("includes dlqName from snapshot", () => {
       const snapshot = makeSnapshot({ dlqName: "my_dlq" });
       const event = factory.create({
         queueName: "test_queue",
@@ -163,21 +163,21 @@ describe("BoundedDispatchQueueEventFactory", () => {
   });
 
   describe("snapshot normalization", () => {
-    test("uses default orderingPolicyVersion when using positional signature", () => {
+    it("uses default orderingPolicyVersion when using positional signature", () => {
       const snapshot = makeSnapshot();
       const event = factory.create(snapshot, "node_1", "tenant_a", "trace_1");
 
       assert.equal(event.orderingPolicyVersion, "1.0");
     });
 
-    test("uses queueName as default queueClass in positional signature", () => {
+    it("uses queueName as default queueClass in positional signature", () => {
       const snapshot = makeSnapshot({ queueName: "my_special_queue" });
       const event = factory.create(snapshot, "node_1", "tenant_a", "trace_1");
 
       assert.equal(event.queueClass, "my_special_queue");
     });
 
-    test("handles snapshot as first argument in input signature", () => {
+    it("handles snapshot as first argument in input signature", () => {
       const snapshot = makeSnapshot({ queueName: "direct_snapshot_queue" });
       const event = factory.create({
         queueName: "test_queue",

@@ -10,8 +10,8 @@ import type {
   UnifiedAssessment,
 } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 import type { ExecuteBridge, ExecutionContext, ExecutionResult, StepResult } from "../../../../../src/platform/five-plane-orchestration/oapeflir/execute-bridge.js";
-import type { PlanGraphBundle } from "../../../../../src/contracts/executable-contracts/index.js";
-import { createPlanGraphBundle } from "../../../../../src/contracts/executable-contracts/index.js";
+import type { PlanGraphBundle } from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import { createPlanGraphBundle } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import type { ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 import type { PostExecutionQualityGateDecision } from "../../../../../src/prompt-engine/eval/post-execution-quality-gate.js";
 import type { ReplanningDecision } from "../../../../../src/platform/five-plane-orchestration/planner/replanning-service.js";
@@ -19,9 +19,9 @@ import type { FeedbackBatch } from "../../../../../src/scale-ecosystem/feedback-
 import type { EvaluationReport } from "../../../../../src/prompt-engine/eval/execution-outcome-evaluator.js";
 import type { OapeflirLoopResult } from "../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-core.js";
 import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
-import { ObservationAggregator } from "../../../../../src/shared/observability/observation-aggregator.js";
+import { ObservationAggregator } from "../../../../../src/platform/shared/observability/observation-aggregator.js";
 import { PlanBuilder } from "../../../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
-import { StructuredLogger } from "../../../../../src/shared/observability/structured-logger.js";
+import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
 
 // Concrete implementation of OapeflirLoopSupport for testing
 class TestableOapeflirLoopSupport extends OapeflirLoopSupport {

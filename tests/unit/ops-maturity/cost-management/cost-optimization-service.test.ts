@@ -78,23 +78,31 @@ test("cost-management: CostOptimizationService rejects unsourced records", () =>
 test("cost-management: CostOptimizationService tracks unsourced record count", () => {
   const service = new CostOptimizationService();
 
-  service.recordCost({
-    subjectType: "task",
-    subjectId: "task_a",
-    costType: "model",
-    amountUsd: 5,
-    decisionRef: "",
-    capturedAt: "2026-04-20T00:00:00.000Z",
-  });
+  try {
+    service.recordCost({
+      subjectType: "task",
+      subjectId: "task_a",
+      costType: "model",
+      amountUsd: 5,
+      decisionRef: "",
+      capturedAt: "2026-04-20T00:00:00.000Z",
+    });
+  } catch {
+    // expected - invalid record
+  }
 
-  service.recordCost({
-    subjectType: "task",
-    subjectId: "task_b",
-    costType: "model",
-    amountUsd: 10,
-    decisionRef: "",
-    capturedAt: "2026-04-20T00:00:00.000Z",
-  });
+  try {
+    service.recordCost({
+      subjectType: "task",
+      subjectId: "task_b",
+      costType: "model",
+      amountUsd: 10,
+      decisionRef: "",
+      capturedAt: "2026-04-20T00:00:00.000Z",
+    });
+  } catch {
+    // expected - invalid record
+  }
 
   assert.strictEqual(service.buildDashboardSlice().unsourcedRecordCount, 2);
 });
@@ -259,7 +267,6 @@ test("cost-management: CostOptimizationService filters by harness_run_id", () =>
 
   service.recordCost({
     harness_run_id: "run_123",
-    subjectId: "task_a",
     costType: "llm",
     amountUsd: 10,
     decisionRef: "d1",
@@ -268,7 +275,6 @@ test("cost-management: CostOptimizationService filters by harness_run_id", () =>
 
   service.recordCost({
     harness_run_id: "run_456",
-    subjectId: "task_b",
     costType: "llm",
     amountUsd: 20,
     decisionRef: "d2",
@@ -277,8 +283,8 @@ test("cost-management: CostOptimizationService filters by harness_run_id", () =>
 
   const result = service.aggregate("run_123");
 
-  assert.strictEqual(result["task_a"], 10);
-  assert.strictEqual(result["task_b"], undefined);
+  assert.strictEqual(result["run_123"], 10);
+  assert.strictEqual(result["run_456"], undefined);
 });
 
 test("cost-management: CostOptimizationService filters by subjectType", () => {

@@ -84,9 +84,17 @@ function createMockConnection(): {
     },
     async execute(sql: string, ...params: unknown[]): Promise<number> {
       const key = params[0] as string;
-      const fence = params[1] as FenceInfo;
 
       if (sql.includes("INSERT") || sql.includes("ON CONFLICT")) {
+        // params: [key, executionId, ownerNodeId, mode, fenceToken, acquiredAt, expiresAt]
+        const fence: FenceInfo = {
+          executionId: params[1] as string,
+          ownerNodeId: params[2] as string,
+          mode: params[3] as FenceInfo["mode"],
+          fenceToken: params[4] as string,
+          acquiredAt: new Date(params[5] as string),
+          expiresAt: params[6] != null ? new Date(params[6] as string) : null,
+        };
         const existing = allRecords.findIndex((r) => r.key === key);
         if (existing >= 0) {
           allRecords[existing] = { key, fence };

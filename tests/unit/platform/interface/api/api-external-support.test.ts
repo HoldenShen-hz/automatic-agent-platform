@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { nowIso } from "../../../../../src/platform/five-plane-interface/api/api-external-support.js";
+import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("api-external-support exports nowIso", () => {
   assert.ok(nowIso !== undefined);
