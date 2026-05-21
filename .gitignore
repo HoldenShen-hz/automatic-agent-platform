@@ -67,3 +67,8 @@ session-replay
 snapshot.json
 coverage-results/
 full-coverage/
+
+# Test SQLite databases
+*.db-shm
+*.db-wal
+tests/**/*.db
