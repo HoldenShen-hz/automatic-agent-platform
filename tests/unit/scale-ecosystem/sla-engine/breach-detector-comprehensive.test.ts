@@ -144,12 +144,13 @@ test("analyzeSlaBreach calculates burnRate correctly for degraded system", () =>
 });
 
 test("analyzeSlaBreach calculates timeToExhaustMs when budget depleting", () => {
-  const observation = createObservation({ successRate: 0.95, requestCount: 1000, windowMs: 60000 });
+  const observation = createObservation({ successRate: 0.995, requestCount: 10000, windowMs: 60000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 });
 
   const result = analyzeSlaBreach(observation, commitment);
 
-  // timeToExhaustMs should be a positive number when budget is depleting
+  // Budget is depleting but not exhausted (errorBudgetRemaining > 0)
+  // timeToExhaustMs should be a positive number
   assert.ok(result.budget.timeToExhaustMs !== null);
   assert.ok(result.budget.timeToExhaustMs > 0);
 });
@@ -217,7 +218,7 @@ test("analyzeSlaBreach calculates queueWaitBurnRate as 0 when maxQueueWaitMs is 
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("analyzeSlaBreach generates warning alert when burnRate >= warningBurnRateThreshold", () => {
-  const observation = createObservation({ successRate: 0.95, requestCount: 1000 });
+  const observation = createObservation({ successRate: 0.985, requestCount: 1000 });
   const commitment = createCommitment({
     errorBudgetPercent: 0.01,
     warningBurnRateThreshold: 1,
@@ -226,7 +227,7 @@ test("analyzeSlaBreach generates warning alert when burnRate >= warningBurnRateT
 
   const result = analyzeSlaBreach(observation, commitment);
 
-  // burnRate = 5 >= warningThreshold of 1, but < criticalThreshold of 2
+  // burnRate = 1.5 >= warningThreshold of 1, but < criticalThreshold of 2
   assert.ok(result.alerts.includes("sla.error_budget_burn_warning"), "Expected warning alert");
   assert.ok(!result.alerts.includes("sla.error_budget_burn_critical"), "Should not have critical alert");
 });
@@ -522,13 +523,13 @@ test("SlaBudgetAnalysis contains all required fields", () => {
 
 test("analyzeSlaBreach handles very high burn rate", () => {
   const observation = createObservation({ successRate: 0.0, requestCount: 1000 }); // 100% error
-  const commitment = createCommitment({ errorBudgetPercent: 0.01 });
+  const commitment = createCommitment({ errorBudgetPercent: 0 }); // 0% allowed = Infinity burn rate
 
   const result = analyzeSlaBreach(observation, commitment);
 
-  // burnRate should be very high (Infinity or > 100)
-  assert.ok(result.budget.burnRate === Number.POSITIVE_INFINITY || result.budget.burnRate > 100,
-    `Expected very high burn rate, got ${result.budget.burnRate}`);
+  // burnRate should be Infinity when errorBudgetPercent is 0 and there are errors
+  assert.ok(result.budget.burnRate === Number.POSITIVE_INFINITY,
+    `Expected Infinity, got ${result.budget.burnRate}`);
 });
 
 test("analyzeSlaBreach handles negative success rate (invalid)", () => {

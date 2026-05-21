@@ -9,9 +9,9 @@ import {
   resetGlobalRateLimiter,
   type RateLimitConfig,
   type RateLimitDecision,
-} from "../../../../../../src/platform/five-plane-interface/api/middleware/rate-limit.js";
-import { RedisRateLimiter } from "../../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
-import { DistributedRateLimiter } from "../../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+} from "../../../../../src/platform/five-plane-interface/api/middleware/rate-limit.js";
+import { RedisRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 describe("RateLimiter - Comprehensive", () => {
   describe("token bucket algorithm", () => {
@@ -38,12 +38,15 @@ describe("RateLimiter - Comprehensive", () => {
     });
 
     it("should handle multiple keys independently", () => {
-      const limiter = new RateLimiter({ maxRequests: 2, windowMs: 60_000 });
+      const limiter = new RateLimiter({ maxRequests: 3, windowMs: 60_000 });
+      // Exhaust key1
+      limiter.check("key1");
       limiter.check("key1");
       limiter.check("key1");
       strictEqual(limiter.check("key1").allowed, false);
       // key2 should still have full quota
       strictEqual(limiter.check("key2").allowed, true);
+      // key2 first call consumes 1, so remaining = maxRequests - 2 = 1
       strictEqual(limiter.check("key2").remaining, 1);
     });
   });
@@ -67,6 +70,8 @@ describe("RateLimiter - Comprehensive", () => {
   describe("edge cases", () => {
     it("should handle zero maxRequests", () => {
       const limiter = new RateLimiter({ maxRequests: 0, windowMs: 60_000 });
+      // With maxRequests=0, first call creates bucket with tokens=-1
+      // and immediately decrements to -2, so remaining=-2 which is <=0, rejected
       const result = limiter.check("key");
       strictEqual(result.allowed, false);
       strictEqual(result.remaining, 0);

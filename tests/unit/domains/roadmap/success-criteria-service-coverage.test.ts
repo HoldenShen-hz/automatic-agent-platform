@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from "node:test";
-import { SuccessCriteriaService } from "../../../../../src/domains/roadmap/success-criteria-service.js";
+import { SuccessCriteriaService } from "../../../../src/domains/roadmap/success-criteria-service.js";
 import type {
   SuccessCriterionDefinition,
   PhaseGateDefinition,
   SuccessCriterionMeasurement,
-} from "../../../../../src/domains/roadmap/types.js";
+} from "../../../../src/domains/roadmap/types.js";
 
 describe("SuccessCriteriaService", () => {
   let service: SuccessCriteriaService;

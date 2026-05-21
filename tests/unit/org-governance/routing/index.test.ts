@@ -245,6 +245,8 @@ test("OrgRoutingService.routeRequest denies when budget exceeded", () => {
 
 test("OrgRoutingService.crossesTenantBoundary returns false for same tenant", () => {
   const service = new OrgRoutingService([companyNode, divisionNode]);
+  // company and division are in the same tenant since neither has a legalEntityBoundary
+  // So crossing from company to division is NOT crossing tenant boundary
   const result = service.crossesTenantBoundary("company", "division");
 
   assert.equal(result, false);

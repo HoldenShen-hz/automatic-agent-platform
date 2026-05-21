@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "node:test";
-import { RoadmapService } from "../../../../../src/domains/roadmap/roadmap-service.js";
-import type { AddRoadmapItemRequest } from "../../../../../src/domains/roadmap/types.js";
+import { RoadmapService } from "../../../../src/domains/roadmap/roadmap-service.js";
+import type { AddRoadmapItemRequest } from "../../../../src/domains/roadmap/types.js";
 
 describe("RoadmapService", () => {
   let service: RoadmapService;

@@ -233,6 +233,7 @@ function writeClosureReports(reportValue) {
   mkdirSync(reportsRoot, { recursive: true });
   const issueCount = (prefix) =>
     reportValue.issues.filter((issue) => issue.startsWith(prefix)).length;
+  writeReport("validation-bundle.json", reportValue);
   writeReport("contract-report.json", {
     status: reportValue.status,
     registryVersion: reportValue.registryVersion,

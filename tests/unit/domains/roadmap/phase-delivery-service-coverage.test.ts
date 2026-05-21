@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "node:test";
-import { PhaseDeliveryService } from "../../../../../src/domains/roadmap/phase-delivery-service.js";
+import { PhaseDeliveryService } from "../../../../src/domains/roadmap/phase-delivery-service.js";
 
 describe("PhaseDeliveryService", () => {
   let service: PhaseDeliveryService;
