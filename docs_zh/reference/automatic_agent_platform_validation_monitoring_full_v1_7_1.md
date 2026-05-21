@@ -1,7 +1,7 @@
 # Automatic Agent Platform — 验证与实时监控完整方案
 
-> **版本**：v1.7.3 — Repo Closure Patch / v2.0 Baseline Candidate
-> **状态**：`repo_validation_baseline_implemented`
+> **版本**：v1.7.4 — Machine Artifact Closure / v2.0 Baseline Candidate
+> **状态**：`repo_validation_tasks_implemented`
 > **适用系统**：Automatic Agent Platform  
 > **首个验证业务**：LLM Research Intelligence Mission  
 > **核心目标**：证明平台在 Research Intelligence 场景下具备可执行、可观测、可审计、可回放、可阻断、可签字、可复盘的准生产能力。  
@@ -25,6 +25,7 @@
 | **v1.7.1** | **Freeze Patch：合并 Evidence Bundle Gate 子项，补齐 hitl-e2e CI Job，明确 eventName segment regex，明确 aa.\* span name 不进入 Metric Registry Closure**            |
 | **v1.7.2** | **Review Patch：区分目标态与当前仓内可执行基线；修正 Mission 归属规则、CI Job Registry、机器 Registry 工件和指标口径的过度完成表述**                                 |
 | **v1.7.3** | **Repo Closure Patch：落地平台 validation machine registry、CI job scripts、registry artifact exporter、monitoring metric map 与 exporter/alert/dashboard 守护测试** |
+| **v1.7.4** | **Machine Artifact Closure：导出 schemas、event payload schema refs、generated registry types、closure reports，并将 Evidence Bundle 闭环校验扩展到机器工件完整性**  |
 
 ## Review Patch 结论
 
@@ -38,14 +39,14 @@
 
 ### 本轮 review 发现与修订
 
-| 问题                                                         | 根因                                                                                          | 修订结论                                                                                                                                          | 仓内依据                                                                                                                        |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| 文档顶部直接标记 `freeze_ready_candidate`                    | 目标 Gate/Registry 表格完整，但机器 registry 工件和一批 CI job 命令尚未在仓内形成一一对应实现 | 仓内基线已落地，状态改为 `repo_validation_baseline_implemented`；真实 freeze 仍只在第 51 章环境条件满足后成立                                     | `package.json`、`config/validation/platform-validation-registry.json`、`scripts/validation/platform-validation-closure.mjs`     |
-| CI Job Registry 写入大量当前不存在的 `npm run ...` 命令      | 把期望的 job 名直接写成了现有脚本                                                             | 第 33 章已补真实 package scripts 和 machine registry；`tests/unit/scripts/platform-validation-closure.test.ts` 会阻止 job/script mapping 再次失配 | `package.json`、`config/validation/platform-validation-registry.json`                                                           |
-| 无归属 Task 自动落 `default_system_mission`                  | 口径落后于 MissionResolver 当前实现                                                           | 低/中风险无 Mission 可创建 ad hoc Mission；高风险和副作用任务无 Mission 必须 fail-closed                                                          | `src/platform/five-plane-interface/api/http-server/task-routes.ts`、Mission E2E                                                 |
-| `aa.*` Metric Registry 被写成当前 exporter 唯一指标真相      | 目标观测语义与 Prometheus exporter / alert rules 当前暴露名混写                               | 第 48 章声明 `aa.*` 是目标 validation registry；当前运行时监控基线以 exporter、Prometheus rules、Grafana dashboard 为准                           | `src/platform/shared/observability/prometheus-metrics-exporter.ts`、`deploy/prometheus/rules/automatic-agent.yml`               |
-| Prometheus 名称和单位映射未成为显式 freeze 条件              | exporter、dashboard、alert rules 各自演进，文档只登记目标指标                                 | 已新增 metric map 和 closure test；HTTP latency、queue、worker、DLQ、outbox、OAPEFLIR latency 告警均绑定当前 exporter 暴露名，不再引用陈旧指标    | `config/validation/platform-monitoring-metric-map.json`、`automatic-agent.yml`、`prometheus-alerts.test.ts`                     |
-| 机器 Event/Gate/Metric/Runbook Registry 工件被写成已存在前提 | 设计表和附录先于机器工件落地                                                                  | 已新增 machine registry、closure 和 artifact exporter；TypeScript event registry 仍是事件事实源，导出快照由 `npm run validation:artifacts` 生成   | `src/platform/five-plane-state-evidence/events/event-registry.ts`、`scripts/validation/export-platform-validation-artifacts.ts` |
+| 问题                                                         | 根因                                                                                          | 修订结论                                                                                                                                                                       | 仓内依据                                                                                                                        |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| 文档顶部直接标记 `freeze_ready_candidate`                    | 目标 Gate/Registry 表格完整，但机器 registry 工件和一批 CI job 命令尚未在仓内形成一一对应实现 | 仓内任务已落地，状态改为 `repo_validation_tasks_implemented`；真实 freeze 仍只在第 51 章环境条件满足后成立                                                                     | `package.json`、`config/validation/platform-validation-registry.json`、`scripts/validation/platform-validation-closure.mjs`     |
+| CI Job Registry 写入大量当前不存在的 `npm run ...` 命令      | 把期望的 job 名直接写成了现有脚本                                                             | 第 33 章已补真实 package scripts 和 machine registry；`tests/unit/scripts/platform-validation-closure.test.ts` 会阻止 job/script mapping 再次失配                              | `package.json`、`config/validation/platform-validation-registry.json`                                                           |
+| 无归属 Task 自动落 `default_system_mission`                  | 口径落后于 MissionResolver 当前实现                                                           | 低/中风险无 Mission 可创建 ad hoc Mission；高风险和副作用任务无 Mission 必须 fail-closed                                                                                       | `src/platform/five-plane-interface/api/http-server/task-routes.ts`、Mission E2E                                                 |
+| `aa.*` Metric Registry 被写成当前 exporter 唯一指标真相      | 目标观测语义与 Prometheus exporter / alert rules 当前暴露名混写                               | 第 48 章声明 `aa.*` 是目标 validation registry；当前运行时监控基线以 exporter、Prometheus rules、Grafana dashboard 为准                                                        | `src/platform/shared/observability/prometheus-metrics-exporter.ts`、`deploy/prometheus/rules/automatic-agent.yml`               |
+| Prometheus 名称和单位映射未成为显式 freeze 条件              | exporter、dashboard、alert rules 各自演进，文档只登记目标指标                                 | 已新增 metric map 和 closure test；HTTP latency、queue、worker、DLQ、outbox、OAPEFLIR latency 告警均绑定当前 exporter 暴露名，不再引用陈旧指标                                 | `config/validation/platform-monitoring-metric-map.json`、`automatic-agent.yml`、`prometheus-alerts.test.ts`                     |
+| 机器 Event/Gate/Metric/Runbook Registry 工件被写成已存在前提 | 设计表和附录先于机器工件落地                                                                  | 已新增 machine registry、closure 和 artifact exporter；TypeScript event registry 仍是事件事实源，导出快照、schemas、generated registry types 与 closure reports 均由导出链生成 | `src/platform/five-plane-state-evidence/events/event-registry.ts`、`scripts/validation/export-platform-validation-artifacts.ts` |
 
 > 本文仍保留完整目标设计；review patch 的目的不是删掉目标，而是防止“文档闭环”被误读为“代码、CI、环境和签字均已闭环”。
 
@@ -2663,7 +2664,7 @@ scripts/run-layered-tests.mjs
 
 ## E.2 可导出的机器工件
 
-`npm run validation:artifacts` 当前可导出 Event/Gate/Metric/CI/Runbook snapshots 到 `artifacts/validation/platform/contracts/`；`npm run validation:bundle` 会先导出 registry 快照，再执行 evidence bundle 定向验证。下列剩余 schema/generated/report 产物仍按各自 owning subsystem 生成和归档：
+`npm run validation:artifacts` 当前会导出 Event/Gate/Metric/CI/Runbook snapshots 到 `artifacts/validation/platform/contracts/`，同步导出本节列出的 `schemas/` 与 `generated/` 工件；`npm run validation:bundle` 会在 registry 快照之后校验这些工件，再执行 evidence bundle 定向验证。`platform-validation-closure` 同时生成 `reports/` 下的 closure reports：
 
 ```text
 contracts/

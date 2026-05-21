@@ -74,7 +74,7 @@ test("BulkheadIsolator tracks active calls", async () => {
   await Promise.all([p1, p2]);
 });
 
-test("BulkheadIsolator rejects when at capacity", async () => {
+test("BulkheadIsolator rejects when at capacity with queueSize 0", async () => {
   const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 1, queueSize: 0 });
 
   const firstCallStarted = createDeferred<void>();
@@ -88,7 +88,6 @@ test("BulkheadIsolator rejects when at capacity", async () => {
 
   await firstCallStarted.promise;
 
-  // Second call should be rejected because queueSize is 0
   await assert.rejects(
     async () => isolator.execute(async () => "should fail"),
     BulkheadRejectionError,
@@ -242,4 +241,71 @@ test("BulkheadTimeoutError has correct properties", () => {
 
 test("globalBulkheadRegistry is available", () => {
   assert.ok(globalBulkheadRegistry instanceof BulkheadRegistry);
+});
+
+test("BulkheadIsolator passes signal to function", async () => {
+  const isolator = new BulkheadIsolator("test-plane");
+  const result = await isolator.execute(async (signal) => {
+    assert.ok(signal instanceof AbortSignal);
+    return "with-signal";
+  });
+  assert.equal(result, "with-signal");
+});
+
+test("BulkheadIsolator updateConfig changes configuration", async () => {
+  const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 1, queueSize: 1 });
+
+  const metrics1 = isolator.getMetrics();
+  assert.equal(metrics1.activeCalls, 0);
+
+  isolator.updateConfig({ maxConcurrentCalls: 5 });
+  const metrics2 = isolator.getMetrics();
+  assert.equal(metrics2.activeCalls, 0);
+});
+
+test("BulkheadIsolator processes queue when capacity frees up", async () => {
+  const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 1, queueSize: 2 });
+
+  const releaseFirst = createDeferred<void>();
+
+  const p1 = isolator.execute(async () => {
+    await releaseFirst.promise;
+    return "first";
+  });
+
+  await new Promise((r) => setTimeout(r, 10));
+
+  const p2 = isolator.execute(async () => "second");
+  const p3 = isolator.execute(async () => "third");
+
+  releaseFirst.resolve();
+
+  const results = await Promise.all([p1, p2, p3]);
+  assert.deepEqual(results, ["first", "second", "third"]);
+});
+
+test("BulkheadIsolator averageWaitTimeMs tracks wait time", async () => {
+  const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 1, queueSize: 2 });
+
+  const releaseFirst = createDeferred<void>();
+
+  const p1 = isolator.execute(async () => {
+    await releaseFirst.promise;
+    return "first";
+  });
+
+  await new Promise((r) => setTimeout(r, 10));
+
+  const startWait = Date.now();
+  const p2 = isolator.execute(async () => {
+    const waitTime = Date.now() - startWait;
+    return `waited-${waitTime}`;
+  });
+
+  releaseFirst.resolve();
+
+  await p2;
+
+  const metrics = isolator.getMetrics();
+  assert.ok(metrics.averageWaitTimeMs >= 0);
 });

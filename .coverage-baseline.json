@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-21T06:42:19.253Z",
+  "generatedAt": "2026-05-21T09:13:23.564Z",
   "minimums": {
     "lines": 77.6,
     "statements": 77.6,
-    "functions": 79.9,
-    "branches": 79.6
+    "functions": 80,
+    "branches": 79.5
   },
   "global": {
     "lines": 77.6,
     "statements": 77.6,
-    "functions": 79.9,
-    "branches": 79.6
+    "functions": 80,
+    "branches": 79.5
   },
   "directories": {
     "src/interaction/dashboard/contracts": {
@@ -527,15 +527,6 @@
         "branches": 45.8
       }
     },
-    "src/platform/five-plane-execution/queue": {
-      "fileCount": 9,
-      "metrics": {
-        "lines": 53.1,
-        "statements": 53.1,
-        "functions": 34.2,
-        "branches": 75
-      }
-    },
     "src/interaction/autonomy/level-manager": {
       "fileCount": 1,
       "metrics": {
@@ -543,6 +534,15 @@
         "statements": 53.3,
         "functions": 50,
         "branches": 100
+      }
+    },
+    "src/platform/five-plane-execution/queue": {
+      "fileCount": 9,
+      "metrics": {
+        "lines": 53.4,
+        "statements": 53.4,
+        "functions": 34.2,
+        "branches": 75
       }
     },
     "src/platform/five-plane-execution/queue-metrics": {
@@ -1193,6 +1193,15 @@
         "branches": 63.6
       }
     },
+    "src/platform/five-plane-control-plane/mission": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 81.2,
+        "statements": 81.2,
+        "functions": 92.1,
+        "branches": 65.4
+      }
+    },
     "src/platform/five-plane-interface/scheduler": {
       "fileCount": 4,
       "metrics": {
@@ -1328,15 +1337,6 @@
         "branches": 80.3
       }
     },
-    "src/platform/shared/observability": {
-      "fileCount": 34,
-      "metrics": {
-        "lines": 83.6,
-        "statements": 83.6,
-        "functions": 77.5,
-        "branches": 71.8
-      }
-    },
     "src/org-governance/approval-routing/escalation": {
       "fileCount": 1,
       "metrics": {
@@ -1355,15 +1355,6 @@
         "branches": 74.7
       }
     },
-    "src/platform/five-plane-control-plane/mission": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 83.7,
-        "statements": 83.7,
-        "functions": 85.7,
-        "branches": 76.3
-      }
-    },
     "src/platform/shared": {
       "fileCount": 6,
       "metrics": {
@@ -1371,6 +1362,15 @@
         "statements": 83.9,
         "functions": 83.3,
         "branches": 93.3
+      }
+    },
+    "src/platform/shared/observability": {
+      "fileCount": 34,
+      "metrics": {
+        "lines": 83.9,
+        "statements": 83.9,
+        "functions": 77.6,
+        "branches": 71.7
       }
     },
     "src/scale-ecosystem/multi-region": {
@@ -1445,6 +1445,15 @@
         "branches": 85.2
       }
     },
+    "src/platform/prompt-engine/registry": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 86.4,
+        "statements": 86.4,
+        "functions": 91.7,
+        "branches": 81.5
+      }
+    },
     "src/ops-maturity/capacity-planner": {
       "fileCount": 3,
       "metrics": {
@@ -1452,15 +1461,6 @@
         "statements": 86.5,
         "functions": 91.7,
         "branches": 76.5
-      }
-    },
-    "src/platform/prompt-engine/registry": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 86.5,
-        "statements": 86.5,
-        "functions": 91.7,
-        "branches": 81.8
       }
     },
     "src/ops-maturity/explainability/simplified-explainer": {
@@ -1490,15 +1490,6 @@
         "branches": 92.6
       }
     },
-    "src/platform/five-plane-state-evidence/knowledge/indexing": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 86.9,
-        "statements": 86.9,
-        "functions": 96.3,
-        "branches": 95.9
-      }
-    },
     "src/platform/five-plane-execution/execution-engine": {
       "fileCount": 36,
       "metrics": {
@@ -1524,6 +1515,15 @@
         "statements": 88.3,
         "functions": 94.7,
         "branches": 77.8
+      }
+    },
+    "src/platform/five-plane-state-evidence/knowledge/indexing": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 88.4,
+        "statements": 88.4,
+        "functions": 96.3,
+        "branches": 95.9
       }
     },
     "src/platform/five-plane-state-evidence/memory": {
@@ -1616,6 +1616,15 @@
         "branches": 83.7
       }
     },
+    "src/platform/stability": {
+      "fileCount": 43,
+      "metrics": {
+        "lines": 89.7,
+        "statements": 89.7,
+        "functions": 90.4,
+        "branches": 79.9
+      }
+    },
     "src/platform/five-plane-state-evidence/knowledge/archive": {
       "fileCount": 2,
       "metrics": {
@@ -1623,15 +1632,6 @@
         "statements": 89.8,
         "functions": 100,
         "branches": 80.3
-      }
-    },
-    "src/platform/stability": {
-      "fileCount": 43,
-      "metrics": {
-        "lines": 89.8,
-        "statements": 89.8,
-        "functions": 90.4,
-        "branches": 80
       }
     },
     "src/scale-ecosystem/marketplace/catalog": {
@@ -1814,15 +1814,6 @@
         "branches": 85.2
       }
     },
-    "src/platform/five-plane-control-plane/iam": {
-      "fileCount": 27,
-      "metrics": {
-        "lines": 92.3,
-        "statements": 92.3,
-        "functions": 98.6,
-        "branches": 85.6
-      }
-    },
     "src/ops-maturity/explainability": {
       "fileCount": 2,
       "metrics": {
@@ -1830,6 +1821,15 @@
         "statements": 92.4,
         "functions": 76.9,
         "branches": 80
+      }
+    },
+    "src/platform/five-plane-control-plane/iam": {
+      "fileCount": 27,
+      "metrics": {
+        "lines": 92.4,
+        "statements": 92.4,
+        "functions": 98.7,
+        "branches": 85.7
       }
     },
     "src/ops-maturity/platform-ops-agent/incident-diagnoser": {
@@ -2000,7 +2000,7 @@
         "lines": 95,
         "statements": 95,
         "functions": 97.4,
-        "branches": 89.7
+        "branches": 89.6
       }
     },
     "src/platform/compliance/crypto-shredding": {
@@ -2345,15 +2345,6 @@
         "branches": 93.3
       }
     },
-    "src/domains/roadmap": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 98.2,
-        "statements": 98.2,
-        "functions": 100,
-        "branches": 95.7
-      }
-    },
     "src/platform/five-plane-control-plane/approval-center/approval-policy-engine": {
       "fileCount": 4,
       "metrics": {
@@ -2433,6 +2424,15 @@
         "statements": 98.7,
         "functions": 100,
         "branches": 97.1
+      }
+    },
+    "src/domains/roadmap": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 98.7,
+        "statements": 98.7,
+        "functions": 100,
+        "branches": 95.9
       }
     },
     "src/sdk/workbench": {
@@ -2516,15 +2516,6 @@
         "branches": 91.7
       }
     },
-    "src/platform/contracts/mission": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 99.4,
-        "statements": 99.4,
-        "functions": 87.5,
-        "branches": 63.6
-      }
-    },
     "src/scale-ecosystem": {
       "fileCount": 5,
       "metrics": {
@@ -2541,6 +2532,15 @@
         "statements": 99.4,
         "functions": 100,
         "branches": 84
+      }
+    },
+    "src/platform/contracts/mission": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 99.5,
+        "statements": 99.5,
+        "functions": 90,
+        "branches": 68.3
       }
     },
     "src/platform/contracts/result-envelope": {

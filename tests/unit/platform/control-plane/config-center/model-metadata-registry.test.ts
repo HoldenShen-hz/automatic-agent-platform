@@ -1,100 +1,134 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { join } from "node:path";
+import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { loadModelMetadataRegistry } from "../../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
+import { createWorkspacePolicy, createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
-import type {
-  ModelProviderMetadata,
-  ModelProfileMetadata,
-  ModelMetadataRegistry,
-} from "../../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
-
-test("ModelProviderMetadata type accepts valid status values", () => {
-  const provider: ModelProviderMetadata = {
-    status: "active",
-    authMethods: ["api_key"],
-  };
-  assert.equal(provider.status, "active");
-});
-
-test("ModelProviderMetadata type accepts degraded status", () => {
-  const provider: ModelProviderMetadata = {
-    status: "degraded",
-    authMethods: ["oauth"],
-  };
-  assert.equal(provider.status, "degraded");
-});
-
-test("ModelProviderMetadata type accepts disabled status", () => {
-  const provider: ModelProviderMetadata = {
-    status: "disabled",
-    authMethods: [],
-  };
-  assert.equal(provider.status, "disabled");
-});
-
-test("ModelProviderMetadata type accepts deprecated status", () => {
-  const provider: ModelProviderMetadata = {
-    status: "deprecated",
-    authMethods: ["api_key"],
-  };
-  assert.equal(provider.status, "deprecated");
-});
-
-test("ModelProfileMetadata type accepts valid tier values", () => {
-  const tiers: Array<ModelProfileMetadata["tier"]> = ["reasoning", "coding", "balanced", "fast"];
-  assert.equal(tiers.length, 4);
-});
-
-test("ModelProfileMetadata type accepts valid metadataSource values", () => {
-  const sources: Array<ModelProfileMetadata["metadataSource"]> = [
-    "bundled_snapshot",
-    "local_override",
-    "remote_refresh",
-  ];
-  assert.equal(sources.length, 3);
-});
-
-test("ModelProfileMetadata structure is correct", () => {
-  const profile: ModelProfileMetadata = {
-    provider: "anthropic",
-    modelId: "claude-3-5-sonnet",
-    tier: "balanced",
-    capabilities: ["text", "code"],
-    contextWindowTokens: 200000,
-    maxOutputTokens: 8192,
-    pricing: {
-      inputPer1kUsd: 0.003,
-      outputPer1kUsd: 0.015,
-    },
-    metadataSource: "bundled_snapshot",
-  };
-
-  assert.equal(profile.provider, "anthropic");
-  assert.equal(profile.tier, "balanced");
-  assert.equal(profile.contextWindowTokens, 200000);
-  assert.equal(profile.pricing.inputPer1kUsd, 0.003);
-});
-
-test("ModelMetadataRegistry structure is correct", () => {
-  const registry: ModelMetadataRegistry = {
-    version: "1.0.0",
+test("loadModelMetadataRegistry returns registry when config root has no override", () => {
+  const workspace = join("/tmp", `test-model-registry-${Date.now()}`);
+  mkdirSync(join(workspace, "providers"), { recursive: true });
+  writeFileSync(join(workspace, "providers", "models.bundled.json"), JSON.stringify({
+    version: "test-v1",
     providers: {
-      anthropic: { status: "active", authMethods: ["api_key"] },
+      testprovider: {
+        status: "active",
+        authMethods: ["api_key"],
+      },
     },
     profiles: {
-      "claude-3-5-sonnet": {
-        provider: "anthropic",
-        modelId: "claude-3-5-sonnet",
+      "test-profile": {
+        provider: "testprovider",
+        modelId: "test-model",
         tier: "balanced",
-        capabilities: ["text", "code"],
-        contextWindowTokens: 200000,
-        maxOutputTokens: 8192,
-        pricing: { inputPer1kUsd: 0.003, outputPer1kUsd: 0.015 },
+        capabilities: ["chat"],
+        contextWindowTokens: 100000,
+        maxOutputTokens: 4096,
+        pricing: { inputPer1kUsd: 0.1, outputPer1kUsd: 0.2 },
         metadataSource: "bundled_snapshot",
       },
     },
-  };
+  }));
 
-  assert.equal(registry.version, "1.0.0");
-  assert.ok(registry.providers["anthropic"]);
-  assert.ok(registry.profiles["claude-3-5-sonnet"]);
+  try {
+    const policy = createWorkspacePolicy(workspace, workspace);
+    const registry = loadModelMetadataRegistry(workspace, policy);
+    assert.ok(registry != null);
+    assert.ok(typeof registry.version === "string");
+    assert.ok(registry.providers != null);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("loadModelMetadataRegistry merges override with bundled", () => {
+  const workspace = join("/tmp", `test-model-registry-override-${Date.now()}`);
+  mkdirSync(join(workspace, "providers"), { recursive: true });
+
+  // Write bundled file
+  writeFileSync(join(workspace, "providers", "models.bundled.json"), JSON.stringify({
+    version: "bundled-v1",
+    providers: {
+      bundled_provider: {
+        status: "active",
+        authMethods: ["api_key"],
+      },
+    },
+    profiles: {
+      "bundled-profile": {
+        provider: "bundled_provider",
+        modelId: "bundled-model",
+        tier: "balanced",
+        capabilities: ["chat"],
+        contextWindowTokens: 100000,
+        maxOutputTokens: 4096,
+        pricing: { inputPer1kUsd: 0.1, outputPer1kUsd: 0.2 },
+        metadataSource: "bundled_snapshot",
+      },
+    },
+  }));
+
+  // Write override file
+  writeFileSync(join(workspace, "providers", "models.json"), JSON.stringify({
+    version: "override-v1",
+    providers: {
+      override_provider: {
+        status: "active",
+        authMethods: ["oauth"],
+      },
+    },
+    profiles: {
+      "override-profile": {
+        provider: "override_provider",
+        modelId: "override-model",
+        tier: "fast",
+        capabilities: ["chat", "completion"],
+        contextWindowTokens: 200000,
+        maxOutputTokens: 8192,
+        pricing: { inputPer1kUsd: 0.05, outputPer1kUsd: 0.1 },
+        metadataSource: "local_override",
+      },
+    },
+  }));
+
+  try {
+    const policy = createWorkspaceWritePolicy(workspace);
+    const registry = loadModelMetadataRegistry(workspace, policy);
+    assert.ok(registry != null);
+    assert.equal(registry.version, "override-v1");
+    // Should have both bundled and override entries
+    assert.ok(registry.providers["bundled_provider"] != null);
+    assert.ok(registry.providers["override_provider"] != null);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("ModelProviderMetadata has expected shape", () => {
+  const provider = {
+    status: "active" as const,
+    authMethods: ["api_key", "oauth"],
+    region: "us-east-1",
+    latencyP99Ms: 100,
+  };
+  assert.equal(provider.status, "active");
+  assert.ok(Array.isArray(provider.authMethods));
+});
+
+test("ModelProfileMetadata has expected shape", () => {
+  const profile = {
+    provider: "test-provider",
+    modelId: "test-model",
+    tier: "balanced" as const,
+    capabilities: ["chat", "completion"],
+    contextWindowTokens: 100000,
+    maxOutputTokens: 4096,
+    pricing: {
+      inputPer1kUsd: 0.1,
+      outputPer1kUsd: 0.2,
+    },
+    metadataSource: "bundled_snapshot" as const,
+  };
+  assert.equal(profile.tier, "balanced");
+  assert.ok(profile.contextWindowTokens > 0);
 });

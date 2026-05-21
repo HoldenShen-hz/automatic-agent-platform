@@ -12,6 +12,10 @@ const metricMapPath = join(
   "config/validation/platform-monitoring-metric-map.json",
 );
 const artifactRoot = join(root, "artifacts/validation/platform");
+const contractsRoot = join(artifactRoot, "contracts");
+const schemasRoot = join(artifactRoot, "schemas");
+const generatedRoot = join(artifactRoot, "generated");
+const reportsRoot = join(artifactRoot, "reports");
 const mode = process.argv[2] ?? "registry";
 const packageJson = readJson(join(root, "package.json"));
 const registry = readJson(registryPath);
@@ -23,6 +27,9 @@ if (mode === "registry" || mode === "docs-registry" || mode === "bundle") {
 }
 if (mode === "monitoring" || mode === "registry" || mode === "bundle") {
   validateMonitoring();
+}
+if (mode === "bundle" || mode === "artifacts") {
+  validateGeneratedArtifacts();
 }
 if (mode === "gpu-capacity") {
   validateGpuCapacitySeam();
@@ -46,6 +53,7 @@ const report = {
 mkdirSync(artifactRoot, { recursive: true });
 const artifactPath = join(artifactRoot, artifactName(mode));
 writeFileSync(artifactPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+writeClosureReports(report);
 
 if (issues.length > 0) {
   console.error(`${mode} platform validation failed: ${issues.join("; ")}`);
@@ -142,6 +150,58 @@ function validateGpuCapacitySeam() {
   }
 }
 
+function validateGeneratedArtifacts() {
+  for (const path of [
+    "contracts/event-registry.canonical.json",
+    "contracts/gate-registry.canonical.json",
+    "contracts/metric-registry.canonical.json",
+    "contracts/runbook-registry.canonical.yaml",
+    "contracts/ci-job-registry.canonical.json",
+    "contracts/lifecycle-matrix.canonical.json",
+    "schemas/validation-evidence-bundle.schema.json",
+    "schemas/plugin-manifest.schema.json",
+    "schemas/tool-definition.schema.json",
+    "schemas/data-governance.schema.json",
+    "generated/typed-event-payloads.generated.ts",
+    "generated/gate-registry.generated.ts",
+    "generated/metric-registry.generated.ts",
+  ]) {
+    requireFile(
+      `artifacts/validation/platform/${path}`,
+      `artifact.${path}.missing`,
+    );
+  }
+
+  const eventRegistryArtifact = readJson(
+    join(contractsRoot, "event-registry.canonical.json"),
+  );
+  for (const event of eventRegistryArtifact.events ?? []) {
+    const eventSchemaPath = join(
+      schemasRoot,
+      "event-payload-schemas",
+      `${schemaFileName(event.type)}.schema.json`,
+    );
+    if (!existsSync(eventSchemaPath)) {
+      issues.push(`artifact.event_payload_schema_missing:${event.type}`);
+      continue;
+    }
+    const eventSchema = readJson(eventSchemaPath);
+    if (eventSchema.$id !== event.payloadSchemaRef) {
+      issues.push(`artifact.event_payload_schema_ref_mismatch:${event.type}`);
+    }
+  }
+
+  const metricRegistryArtifact = readJson(
+    join(contractsRoot, "metric-registry.canonical.json"),
+  );
+  if (
+    !Array.isArray(metricRegistryArtifact.targetMetrics) ||
+    metricRegistryArtifact.targetMetrics.length === 0
+  ) {
+    issues.push("artifact.metric_registry_target_metrics_missing");
+  }
+}
+
 function requireFile(relativePath, code) {
   if (!existsSync(join(root, relativePath))) {
     issues.push(code);
@@ -163,7 +223,53 @@ function artifactName(value) {
       "docs-registry": "docs-registry-report.json",
       monitoring: "observability-report.json",
       bundle: "validation-bundle.json",
+      artifacts: "artifact-export-report.json",
       "gpu-capacity": "gpu-capacity-report.json",
     }[value] ?? `${value}-report.json`
   );
+}
+
+function writeClosureReports(reportValue) {
+  mkdirSync(reportsRoot, { recursive: true });
+  const issueCount = (prefix) =>
+    reportValue.issues.filter((issue) => issue.startsWith(prefix)).length;
+  writeReport("contract-report.json", {
+    status: reportValue.status,
+    registryVersion: reportValue.registryVersion,
+    eventRegistrySnapshot: "contracts/event-registry.canonical.json",
+    generatedPayloadTypes: "generated/typed-event-payloads.generated.ts",
+  });
+  writeReport("metric-registry-closure-report.json", {
+    status: issueCount("monitoring.") === 0 ? "passed" : "failed",
+    registryVersion: reportValue.registryVersion,
+    runtimeMetricMappingCount: reportValue.checkedCounts.monitoringMetrics,
+    targetMetricRegistry: "contracts/metric-registry.canonical.json",
+  });
+  writeReport("gate-registry-closure-report.json", {
+    status: issueCount("gate.") === 0 ? "passed" : "failed",
+    registryVersion: reportValue.registryVersion,
+    gateCount: reportValue.checkedCounts.gates,
+    gateRegistrySnapshot: "contracts/gate-registry.canonical.json",
+  });
+  writeReport("event-schema-coverage-report.json", {
+    status:
+      issueCount("artifact.event_payload_schema") === 0 ? "passed" : "failed",
+    registryVersion: reportValue.registryVersion,
+    eventRegistrySnapshot: "contracts/event-registry.canonical.json",
+    payloadSchemaDirectory: "schemas/event-payload-schemas",
+  });
+  writeReport("runbook-registry-closure-report.json", {
+    status: issueCount("runbook.") === 0 ? "passed" : "failed",
+    registryVersion: reportValue.registryVersion,
+    runbookCount: reportValue.checkedCounts.runbooks,
+    runbookRegistrySnapshot: "contracts/runbook-registry.canonical.yaml",
+  });
+}
+
+function writeReport(name, value) {
+  writeFileSync(join(reportsRoot, name), `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function schemaFileName(eventType) {
+  return eventType.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

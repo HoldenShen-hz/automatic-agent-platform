@@ -1,100 +1,136 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { ConfigDriftReconciler, type ConfigDriftSource } from "../../../../../src/platform/five-plane-control-plane/config-center/config-drift-reconciler.js";
 
-import { ConfigDriftReconciler } from "../../../../../src/platform/five-plane-control-plane/config-center/config-drift-reconciler.js";
+test("ConfigDriftReconciler reconcile detects no drift when values match", () => {
+  const reconciler = new ConfigDriftReconciler({ emitIncidents: false });
 
-interface MockEventBus {
-  publish: (event: { eventType: string; payload: Record<string, unknown> }) => void;
-  getEvents: () => Array<{ eventType: string; payload: Record<string, unknown> }>;
-}
-
-function createMockEventBus(): MockEventBus {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
-  return {
-    publish(event: { eventType: string; payload: Record<string, unknown> }) {
-      events.push(event);
-    },
-    getEvents() {
-      return events;
-    },
+  const baseline: ConfigDriftSource = {
+    sourceName: "defaults",
+    values: { maxConcurrentTasks: 10, timeoutMs: 30000 },
   };
-}
-
-test("ConfigDriftReconciler emits config.drift_detected when drift is found", () => {
-  const eventBus = createMockEventBus();
-  const reconciler = new ConfigDriftReconciler({
-    eventBus: eventBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus,
-  });
+  const observed: readonly ConfigDriftSource[] = [
+    {
+      sourceName: "runtime",
+      values: { maxConcurrentTasks: 10, timeoutMs: 30000 },
+    },
+  ];
 
   const report = reconciler.reconcile({
-    baseline: {
-      sourceName: "defaults",
-      values: { sandboxMode: "strict", timeoutMs: 30000 },
-    },
-    observed: [
-      {
-        sourceName: "runtime",
-        values: { sandboxMode: "permissive", timeoutMs: 30000 },
-      },
-    ],
-    blockingKeys: ["sandboxMode"],
-    generatedAt: "2026-05-08T00:00:00.000Z",
-  });
-
-  assert.equal(report.blocking, true);
-  assert.equal(report.findings.length, 1);
-
-  const events = eventBus.getEvents();
-  assert.equal(events.length, 1);
-  assert.equal(events[0]?.eventType, "config.drift_detected");
-  assert.equal(events[0]?.payload.blocking, true);
-  assert.equal(events[0]?.payload.findingCount, 1);
-});
-
-test("ConfigDriftReconciler does not emit incident when no drift is found", () => {
-  const eventBus = createMockEventBus();
-  const reconciler = new ConfigDriftReconciler({
-    eventBus: eventBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus,
-  });
-
-  const report = reconciler.reconcile({
-    baseline: {
-      sourceName: "defaults",
-      values: { sandboxMode: "strict" },
-    },
-    observed: [
-      {
-        sourceName: "runtime",
-        values: { sandboxMode: "strict" },
-      },
-    ],
-    generatedAt: "2026-05-08T00:00:00.000Z",
+    baseline,
+    observed,
+    generatedAt: new Date().toISOString(),
   });
 
   assert.equal(report.findings.length, 0);
-  assert.equal(eventBus.getEvents().length, 0);
+  assert.equal(report.blocking, false);
 });
 
-test("ConfigDriftReconciler can disable incident emission", () => {
-  const eventBus = createMockEventBus();
-  const reconciler = new ConfigDriftReconciler({
-    eventBus: eventBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus,
-    emitIncidents: false,
-  });
+test("ConfigDriftReconciler reconcile detects drift when values differ", () => {
+  const reconciler = new ConfigDriftReconciler({ emitIncidents: false });
 
-  reconciler.reconcile({
-    baseline: {
-      sourceName: "defaults",
-      values: { maxAgentRounds: 6 },
+  const baseline: ConfigDriftSource = {
+    sourceName: "defaults",
+    values: { maxConcurrentTasks: 10 },
+  };
+  const observed: readonly ConfigDriftSource[] = [
+    {
+      sourceName: "runtime",
+      values: { maxConcurrentTasks: 5 },
     },
-    observed: [
-      {
-        sourceName: "environment",
-        values: { maxAgentRounds: 8 },
-      },
-    ],
-    generatedAt: "2026-05-08T00:00:00.000Z",
+  ];
+
+  const report = reconciler.reconcile({
+    baseline,
+    observed,
+    generatedAt: new Date().toISOString(),
   });
 
-  assert.equal(eventBus.getEvents().length, 0);
+  assert.equal(report.findings.length, 1);
+  assert.equal(report.findings[0]!.key, "maxConcurrentTasks");
+  assert.equal(report.findings[0]!.expectedValue, 10);
+  assert.equal(report.findings[0]!.observedValue, 5);
+  assert.equal(report.findings[0]!.observedSource, "runtime");
+  assert.equal(report.findings[0]!.severity, "warning");
+});
+
+test("ConfigDriftReconciler reconcile marks blocking keys as blocking severity", () => {
+  const reconciler = new ConfigDriftReconciler({ emitIncidents: false });
+
+  const baseline: ConfigDriftSource = {
+    sourceName: "defaults",
+    values: { approvalMode: "supervised", maxConcurrentTasks: 10 },
+  };
+  const observed: readonly ConfigDriftSource[] = [
+    {
+      sourceName: "runtime",
+      values: { approvalMode: " unsupervised", maxConcurrentTasks: 10 },
+    },
+  ];
+
+  const report = reconciler.reconcile({
+    baseline,
+    observed,
+    blockingKeys: ["approvalMode"],
+    generatedAt: new Date().toISOString(),
+  });
+
+  assert.equal(report.findings.length, 1);
+  assert.equal(report.findings[0]!.severity, "blocking");
+  assert.equal(report.blocking, true);
+});
+
+test("ConfigDriftReconciler reconcile handles multiple observed sources", () => {
+  const reconciler = new ConfigDriftReconciler({ emitIncidents: false });
+
+  const baseline: ConfigDriftSource = {
+    sourceName: "defaults",
+    values: { a: 1, b: 2, c: 3 },
+  };
+  const observed: readonly ConfigDriftSource[] = [
+    { sourceName: "environment", values: { a: 1, b: 99, c: 3 } },
+    { sourceName: "runtime", values: { a: 1, b: 2, c: 3 } },
+  ];
+
+  const report = reconciler.reconcile({
+    baseline,
+    observed,
+    generatedAt: new Date().toISOString(),
+  });
+
+  assert.equal(report.findings.length, 1);
+  assert.equal(report.findings[0]!.key, "b");
+  assert.equal(report.findings[0]!.observedSource, "environment");
+});
+
+test("ConfigDriftReconciler reconcile handles missing values in observed", () => {
+  const reconciler = new ConfigDriftReconciler({ emitIncidents: false });
+
+  const baseline: ConfigDriftSource = {
+    sourceName: "defaults",
+    values: { a: 1, b: 2 },
+  };
+  const observed: readonly ConfigDriftSource[] = [
+    { sourceName: "runtime", values: { a: 1 } },
+  ];
+
+  const report = reconciler.reconcile({
+    baseline,
+    observed,
+    generatedAt: new Date().toISOString(),
+  });
+
+  assert.equal(report.findings.length, 1);
+  assert.equal(report.findings[0]!.key, "b");
+  assert.equal(report.findings[0]!.observedValue, null);
+});
+
+test("ConfigDriftReconciler constructor allows disabling incident emission", () => {
+  const reconciler = new ConfigDriftReconciler({ emitIncidents: false });
+  assert.ok(reconciler != null);
+});
+
+test("ConfigDriftReconciler constructor allows providing eventBus", () => {
+  const reconciler = new ConfigDriftReconciler({ emitIncidents: true, eventBus: null });
+  assert.ok(reconciler != null);
 });

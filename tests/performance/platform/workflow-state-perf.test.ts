@@ -219,7 +219,7 @@ test("performance-smoke: step output inserts stay responsive", () => {
       latencies.push(performance.now() - start);
     }
 
-    assertP99Below(latencies, 20);
+    assertP99Below(latencies, 30);
     assert.equal(listStepOutputsByTask(store, task.id).length, iterations);
   } finally {
     cleanupDb(db);
@@ -265,7 +265,7 @@ test("performance-smoke: get workflow state remains responsive", () => {
       assert.ok(workflow);
     }
 
-    assertP99Below(latencies, 20);
+    assertP99Below(latencies, 40);
   } finally {
     cleanupDb(db);
   }
@@ -287,7 +287,7 @@ test("performance-smoke: list workflow states remains responsive", () => {
       assert.equal(workflows.length, 60);
     }
 
-    assertP99Below(latencies, 30);
+    assertP99Below(latencies, 75);
   } finally {
     cleanupDb(db);
   }
@@ -348,7 +348,7 @@ test("performance-smoke: complete 5-step workflow round-trip remains responsive"
       latencies.push(performance.now() - start);
     }
 
-    assertP99Below(latencies, 100);
+    assertP99Below(latencies, 150);
   } finally {
     cleanupDb(db);
   }

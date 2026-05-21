@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const registry = JSON.parse(
@@ -104,4 +104,64 @@ test("platform validation registry closure script passes for machine registry an
 
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(result.stdout, /registry platform validation passed/);
+});
+
+test("platform validation artifact exporter materializes schemas generated types and closure reports", () => {
+  const exportResult = spawnSync(
+    "node",
+    [
+      "--import",
+      "tsx",
+      "scripts/validation/export-platform-validation-artifacts.ts",
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    },
+  );
+  assert.equal(
+    exportResult.status,
+    0,
+    `${exportResult.stdout}\n${exportResult.stderr}`,
+  );
+
+  const closureResult = spawnSync(
+    "node",
+    ["scripts/validation/platform-validation-closure.mjs", "artifacts"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    },
+  );
+  assert.equal(
+    closureResult.status,
+    0,
+    `${closureResult.stdout}\n${closureResult.stderr}`,
+  );
+
+  for (const artifact of [
+    "artifacts/validation/platform/schemas/validation-evidence-bundle.schema.json",
+    "artifacts/validation/platform/schemas/plugin-manifest.schema.json",
+    "artifacts/validation/platform/schemas/tool-definition.schema.json",
+    "artifacts/validation/platform/schemas/data-governance.schema.json",
+    "artifacts/validation/platform/generated/typed-event-payloads.generated.ts",
+    "artifacts/validation/platform/generated/gate-registry.generated.ts",
+    "artifacts/validation/platform/generated/metric-registry.generated.ts",
+    "artifacts/validation/platform/reports/metric-registry-closure-report.json",
+    "artifacts/validation/platform/reports/event-schema-coverage-report.json",
+  ]) {
+    assert.equal(existsSync(artifact), true, `${artifact} should exist`);
+  }
+
+  const metricRegistry = JSON.parse(
+    readFileSync(
+      "artifacts/validation/platform/contracts/metric-registry.canonical.json",
+      "utf8",
+    ),
+  ) as { targetMetrics: Array<{ metric: string }> };
+  assert.ok(
+    metricRegistry.targetMetrics.some(
+      (metric) => metric.metric === "aa.truth.atomicity.violation.count",
+    ),
+  );
 });

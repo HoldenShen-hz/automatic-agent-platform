@@ -1,256 +1,257 @@
-/**
- * Unit tests for ConfigLifecycleManager
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ConfigLifecycleManager } from "../../../../../src/platform/five-plane-control-plane/config-center/config-lifecycle-types.js";
+import {
+  ConfigLifecycleManager,
+  type ConfigLifecycleState,
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-lifecycle-types.js";
 
-test("ConfigLifecycleManager.createAdmissionLocked creates locked record", () => {
+test("ConfigLifecycleManager createAdmissionLocked creates locked config record", () => {
   const manager = new ConfigLifecycleManager();
+  const record = manager.createAdmissionLocked(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+    "requires approval",
+  );
 
-  const record = manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Requires review");
-
-  assert.strictEqual(record.state, "admission_locked");
-  assert.strictEqual(record.configPath, "runtime.config");
-  assert.strictEqual(record.layer, "platform");
-  assert.ok(record.metadata && "lockedAt" in record.metadata);
+  assert.equal(record.state, "admission_locked");
+  assert.equal(record.configPath, "test.config");
+  assert.equal(record.layer, "platform");
+  assert.ok(record.metadata != null);
 });
 
-test("ConfigLifecycleManager.createAdmissionLocked blocks config usage", () => {
+test("ConfigLifecycleManager approveAdmission transitions to checkpoint_revalidated", () => {
   const manager = new ConfigLifecycleManager();
+  manager.createAdmissionLocked("test.config", "platform", null, null, null);
 
-  manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Requires review");
+  const approved = manager.approveAdmission(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+    ["condition1"],
+  );
 
-  const result = manager.canUseConfig("runtime.config", "platform", null);
-
-  assert.ok(!result.allowed);
-  assert.ok(result.reason?.includes("admission-locked"));
+  assert.ok(approved != null);
+  assert.equal(approved!.state, "checkpoint_revalidated");
+  assert.ok(approved!.transitionHistory.length > 0);
 });
 
-test("ConfigLifecycleManager.approveAdmission transitions to checkpoint_revalidated", () => {
+test("ConfigLifecycleManager approveAdmission returns null for non-existent record", () => {
   const manager = new ConfigLifecycleManager();
-
-  manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Requires review");
-  const approved = manager.approveAdmission("runtime.config", "platform", null, "admin-1", ["condition1"]);
-
-  assert.ok(approved);
-  assert.strictEqual(approved!.state, "checkpoint_revalidated");
-  assert.ok(approved!.metadata && "checkpointId" in approved!.metadata);
+  const result = manager.approveAdmission(
+    "nonexistent.config",
+    "platform",
+    null,
+    "admin",
+    null,
+  );
+  assert.equal(result, null);
 });
 
-test("ConfigLifecycleManager.approveAdmission unblocks config usage", () => {
+test("ConfigLifecycleManager approveAdmission returns null for wrong state", () => {
   const manager = new ConfigLifecycleManager();
+  // Create a hot_reloadable config instead
+  manager.enableHotReload("test.config", "platform", null);
 
-  manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Requires review");
-  manager.approveAdmission("runtime.config", "platform", null, "admin-1", null);
-
-  const result = manager.canUseConfig("runtime.config", "platform", null);
-
-  assert.ok(result.allowed);
-  assert.strictEqual(result.reason, null);
+  const result = manager.approveAdmission(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+    null,
+  );
+  assert.equal(result, null);
 });
 
-test("ConfigLifecycleManager.approveAdmission returns null if not in admission_locked state", () => {
+test("ConfigLifecycleManager enableHotReload creates hot_reloadable config", () => {
   const manager = new ConfigLifecycleManager();
+  const record = manager.enableHotReload(
+    "test.config",
+    "platform",
+    null,
+    "graceful",
+  );
 
-  // Create directly as checkpoint_revalidated
-  manager.enableHotReload("runtime.config", "platform", null, "graceful");
-  const result = manager.approveAdmission("runtime.config", "platform", null, "admin-1", null);
-
-  assert.strictEqual(result, null);
+  assert.ok(record != null);
+  assert.equal(record.state, "hot_reloadable");
+  const metadata = record.metadata;
+  assert.ok(metadata != null);
 });
 
-test("ConfigLifecycleManager.enableHotReload creates hot_reloadable record", () => {
+test("ConfigLifecycleManager enableHotReload can transition existing record", () => {
   const manager = new ConfigLifecycleManager();
+  manager.createAdmissionLocked("test.config", "platform", null, null, null);
 
-  const record = manager.enableHotReload("runtime.config", "platform", null, "immediate");
-
-  assert.ok(record);
-  assert.strictEqual(record.state, "hot_reloadable");
-  assert.ok(record.metadata && "reloadEnabled" in record.metadata);
-  const metadata = record.metadata as { reloadStrategy: string };
-  assert.strictEqual(metadata.reloadStrategy, "immediate");
+  const record = manager.enableHotReload("test.config", "platform", null);
+  assert.equal(record!.state, "hot_reloadable");
 });
 
-test("ConfigLifecycleManager.enableHotReload transitions existing record", () => {
+test("ConfigLifecycleManager activateEmergencyOverride creates emergency override config", () => {
   const manager = new ConfigLifecycleManager();
+  const record = manager.activateEmergencyOverride(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+    { original: "content" },
+    "urgent fix needed",
+  );
 
-  manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Requires review");
-  const record = manager.enableHotReload("runtime.config", "platform", null, "graceful");
-
-  assert.strictEqual(record.state, "hot_reloadable");
+  assert.equal(record.state, "emergency_override");
   assert.ok(record.transitionHistory.length > 0);
 });
 
-test("ConfigLifecycleManager.enableHotReload allows config usage", () => {
+test("ConfigLifecycleManager deactivateEmergencyOverride returns to previous state", () => {
   const manager = new ConfigLifecycleManager();
-
-  manager.enableHotReload("runtime.config", "platform", null, "graceful");
-
-  const result = manager.canUseConfig("runtime.config", "platform", null);
-
-  assert.ok(result.allowed);
-});
-
-test("ConfigLifecycleManager.activateEmergencyOverride creates emergency record", () => {
-  const manager = new ConfigLifecycleManager();
-
-  const record = manager.activateEmergencyOverride(
-    "runtime.config",
+  manager.activateEmergencyOverride(
+    "test.config",
     "platform",
     null,
-    "admin-1",
-    { timeout: 5000 },
-    "Critical fix needed",
+    "admin",
+    { original: "content" },
+    "fix",
   );
 
-  assert.strictEqual(record.state, "emergency_override");
-  assert.ok(record.metadata && "activatedAt" in record.metadata);
-  const metadata = record.metadata as { reason: string | null };
-  assert.strictEqual(metadata.reason, "Critical fix needed");
-});
-
-test("ConfigLifecycleManager.activateEmergencyOverride stores original content", () => {
-  const manager = new ConfigLifecycleManager();
-  const originalContent = { timeout: 5000, maxRetries: 3 };
-
-  const record = manager.activateEmergencyOverride(
-    "runtime.config",
+  const record = manager.deactivateEmergencyOverride(
+    "test.config",
     "platform",
     null,
-    "admin-1",
-    originalContent,
-    "Emergency",
+    "admin",
   );
 
-  const metadata = record.metadata as { originalContent: Record<string, unknown> | null };
-  assert.deepStrictEqual(metadata.originalContent, originalContent);
-});
-
-test("ConfigLifecycleManager.activateEmergencyOverride allows config usage", () => {
-  const manager = new ConfigLifecycleManager();
-
-  manager.activateEmergencyOverride("runtime.config", "platform", null, "admin-1", null, "Emergency");
-
-  const result = manager.canUseConfig("runtime.config", "platform", null);
-
-  assert.ok(result.allowed);
-  assert.ok(result.reason?.includes("Emergency override"));
-});
-
-test("ConfigLifecycleManager.activateEmergencyOverride with expiration blocks after expiry", () => {
-  const manager = new ConfigLifecycleManager();
-
-  const pastTime = new Date(Date.now() - 1000).toISOString();
-  manager.activateEmergencyOverride("runtime.config", "platform", null, "admin-1", null, "Emergency", pastTime);
-
-  const result = manager.canUseConfig("runtime.config", "platform", null);
-
-  assert.ok(!result.allowed);
-  assert.ok(result.reason?.includes("expired"));
-});
-
-test("ConfigLifecycleManager.deactivateEmergencyOverride returns to previous state", () => {
-  const manager = new ConfigLifecycleManager();
-
-  manager.activateEmergencyOverride("runtime.config", "platform", null, "admin-1", { timeout: 5000 }, "Emergency");
-  const deactivated = manager.deactivateEmergencyOverride("runtime.config", "platform", null, "admin-1");
-
-  assert.ok(deactivated);
+  assert.ok(record != null);
   // Should transition back to checkpoint_revalidated since originalContent existed
-  assert.strictEqual(deactivated!.state, "checkpoint_revalidated");
+  assert.equal(record!.state, "checkpoint_revalidated");
 });
 
-test("ConfigLifecycleManager.deactivateEmergencyOverride records transition history", () => {
+test("ConfigLifecycleManager deactivateEmergencyOverride returns null for non-emergency", () => {
   const manager = new ConfigLifecycleManager();
-
-  manager.activateEmergencyOverride("runtime.config", "platform", null, "admin-1", { timeout: 5000 }, "Emergency");
-  const deactivated = manager.deactivateEmergencyOverride("runtime.config", "platform", null, "admin-1");
-
-  assert.ok(deactivated!.transitionHistory.length >= 2); // activation + deactivation
+  const result = manager.deactivateEmergencyOverride(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+  );
+  assert.equal(result, null);
 });
 
-test("ConfigLifecycleManager.deactivateEmergencyOverride returns null if not in emergency state", () => {
+test("ConfigLifecycleManager getLifecycleRecord returns record for existing config", () => {
   const manager = new ConfigLifecycleManager();
+  manager.createAdmissionLocked("test.config", "platform", null, null, null);
 
-  manager.enableHotReload("runtime.config", "platform", null, "graceful");
-  const result = manager.deactivateEmergencyOverride("runtime.config", "platform", null, "admin-1");
-
-  assert.strictEqual(result, null);
+  const record = manager.getLifecycleRecord("test.config", "platform", null);
+  assert.ok(record != null);
+  assert.equal(record!.state, "admission_locked");
 });
 
-test("ConfigLifecycleManager.getLifecycleRecord returns record for existing config", () => {
+test("ConfigLifecycleManager getLifecycleRecord returns null for non-existent config", () => {
   const manager = new ConfigLifecycleManager();
-
-  manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Requires review");
-  const record = manager.getLifecycleRecord("runtime.config", "platform", null);
-
-  assert.ok(record);
-  assert.strictEqual(record!.state, "admission_locked");
+  const record = manager.getLifecycleRecord("nonexistent.config", "platform", null);
+  assert.equal(record, null);
 });
 
-test("ConfigLifecycleManager.getLifecycleRecord returns null for non-existent config", () => {
+test("ConfigLifecycleManager canUseConfig returns allowed for checkpoint_revalidated", () => {
   const manager = new ConfigLifecycleManager();
+  manager.createAdmissionLocked("test.config", "platform", null, null, null);
+  manager.approveAdmission("test.config", "platform", null, "admin", null);
 
-  const record = manager.getLifecycleRecord("non.existent", "platform", null);
-
-  assert.strictEqual(record, null);
+  const result = manager.canUseConfig("test.config", "platform", null);
+  assert.equal(result.allowed, true);
+  assert.equal(result.reason, null);
 });
 
-test("ConfigLifecycleManager.canUseConfig allows configs without any record", () => {
+test("ConfigLifecycleManager canUseConfig returns not allowed for admission_locked", () => {
   const manager = new ConfigLifecycleManager();
+  manager.createAdmissionLocked("test.config", "platform", null, null, null);
 
-  const result = manager.canUseConfig("unmanaged.config", "platform", null);
-
-  assert.ok(result.allowed);
-  assert.strictEqual(result.reason, null);
+  const result = manager.canUseConfig("test.config", "platform", null);
+  assert.equal(result.allowed, false);
+  assert.ok(result.reason != null);
 });
 
-test("ConfigLifecycleManager handles different layers separately", () => {
+test("ConfigLifecycleManager canUseConfig returns allowed for hot_reloadable", () => {
   const manager = new ConfigLifecycleManager();
+  manager.enableHotReload("test.config", "platform", null);
 
-  manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Platform lock");
-  manager.createAdmissionLocked("runtime.config", "tenant", "tenant-1", "user-1", "Tenant lock");
-
-  const platformResult = manager.canUseConfig("runtime.config", "platform", null);
-  const tenantResult = manager.canUseConfig("runtime.config", "tenant", "tenant-1");
-
-  assert.ok(!platformResult.allowed);
-  assert.ok(!tenantResult.allowed);
+  const result = manager.canUseConfig("test.config", "platform", null);
+  assert.equal(result.allowed, true);
 });
 
-test("ConfigLifecycleManager handles sourceId correctly", () => {
+test("ConfigLifecycleManager canUseConfig returns allowed for emergency_override", () => {
   const manager = new ConfigLifecycleManager();
+  manager.activateEmergencyOverride(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+    null,
+    "emergency",
+  );
 
-  manager.createAdmissionLocked("runtime.config", "tenant", "tenant-1", "user-1", "Lock 1");
-  manager.createAdmissionLocked("runtime.config", "tenant", "tenant-2", "user-1", "Lock 2");
-
-  const record1 = manager.getLifecycleRecord("runtime.config", "tenant", "tenant-1");
-  const record2 = manager.getLifecycleRecord("runtime.config", "tenant", "tenant-2");
-
-  assert.ok(record1);
-  assert.ok(record2);
-  assert.strictEqual((record1!.metadata as { reason: string | null }).reason, "Lock 1");
-  assert.strictEqual((record2!.metadata as { reason: string | null }).reason, "Lock 2");
+  const result = manager.canUseConfig("test.config", "platform", null);
+  assert.equal(result.allowed, true);
 });
 
-test("ConfigLifecycleManager.enableHotReload defaults to graceful strategy", () => {
+test("ConfigLifecycleManager canUseConfig returns not allowed for expired emergency_override", () => {
   const manager = new ConfigLifecycleManager();
+  const past = new Date(Date.now() - 3600000).toISOString();
+  manager.activateEmergencyOverride(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+    null,
+    "emergency",
+    past,
+  );
 
-  const record = manager.enableHotReload("runtime.config", "platform", null);
-
-  const metadata = record!.metadata as { reloadStrategy: string };
-  assert.strictEqual(metadata.reloadStrategy, "graceful");
+  const result = manager.canUseConfig("test.config", "platform", null);
+  assert.equal(result.allowed, false);
+  assert.ok(result.reason != null);
 });
 
-test("ConfigLifecycleManager.approveAdmission includes conditions in metadata", () => {
+test("ConfigLifecycleManager canUseConfig returns allowed for config with no record", () => {
+  const manager = new ConfigLifecycleManager();
+  const result = manager.canUseConfig("untracked.config", "platform", null);
+  assert.equal(result.allowed, true);
+});
+
+test("ConfigLifecycleManager approveAdmission stores approval record", () => {
+  const manager = new ConfigLifecycleManager();
+  manager.createAdmissionLocked("test.config", "platform", null, null, null);
+
+  const approved = manager.approveAdmission(
+    "test.config",
+    "platform",
+    null,
+    "admin",
+    ["condition1", "condition2"],
+  );
+
+  const metadata = approved!.metadata;
+  assert.ok(metadata != null);
+});
+
+test("ConfigLifecycleManager handles sourceId in key construction", () => {
+  const manager = new ConfigLifecycleManager();
+  manager.createAdmissionLocked("test.config", "platform", "source-123", null, null);
+
+  const record = manager.getLifecycleRecord("test.config", "platform", "source-123");
+  assert.ok(record != null);
+  assert.equal(record!.sourceId, "source-123");
+});
+
+test("ConfigLifecycleManager enableHotReload accepts different strategies", () => {
   const manager = new ConfigLifecycleManager();
 
-  manager.createAdmissionLocked("runtime.config", "platform", null, "user-1", "Requires review");
-  const record = manager.approveAdmission("runtime.config", "platform", null, "admin-1", ["check1", "check2"]);
+  const immediate = manager.enableHotReload("test1.config", "platform", null, "immediate");
+  assert.equal(immediate!.state, "hot_reloadable");
 
-  const metadata = record!.metadata as { validationDetails: string | null };
-  assert.ok(metadata.validationDetails?.includes("check1"));
-  assert.ok(metadata.validationDetails?.includes("check2"));
+  const graceful = manager.enableHotReload("test2.config", "platform", null, "graceful");
+  assert.equal(graceful!.state, "hot_reloadable");
+
+  const scheduled = manager.enableHotReload("test3.config", "platform", null, "scheduled");
+  assert.equal(scheduled!.state, "hot_reloadable");
 });

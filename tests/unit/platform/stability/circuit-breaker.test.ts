@@ -2,331 +2,258 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  CallCircuitBreaker,
-  CallRateLimiter,
-  CallHistoryRecorder,
-  CallGovernance,
-  createRetryPolicy,
-  createBreakerPolicy,
-  createLimiterPolicy,
-  type LimiterConfig,
-  type BreakerConfig,
-  type RetryConfig,
-  type CircuitState,
-  type CallResult,
-  type PolicyStats,
-} from "../../../../src/platform/five-plane-execution/execution-engine/call-governance.js";
+  CircuitBreaker,
+  CircuitState,
+  CircuitBreakerOpenError,
+  CircuitBreakerTimeoutError,
+  CircuitBreakerResetError,
+  type CircuitBreakerOptions,
+  type CircuitBreakerStats,
+} from "../../../../src/platform/stability/circuit-breaker.js";
 
-test("CallCircuitBreaker exports are available", () => {
-  assert.equal(typeof CallCircuitBreaker, "function");
+test("CircuitBreaker exports are available", () => {
+  assert.equal(typeof CircuitBreaker, "function");
+  assert.equal(typeof CircuitState, "object");
+  assert.equal(typeof CircuitBreakerOpenError, "function");
+  assert.equal(typeof CircuitBreakerTimeoutError, "function");
+  assert.equal(typeof CircuitBreakerResetError, "function");
 });
 
-test("CallRateLimiter exports are available", () => {
-  assert.equal(typeof CallRateLimiter, "function");
+test("CircuitBreaker starts in CLOSED state", () => {
+  const breaker = new CircuitBreaker();
+  assert.equal(breaker.getState(), CircuitState.CLOSED);
 });
 
-test("CallHistoryRecorder exports are available", () => {
-  assert.equal(typeof CallHistoryRecorder, "function");
+test("CircuitBreaker executes successfully and returns result", async () => {
+  const breaker = new CircuitBreaker();
+  const result = await breaker.execute(async () => "success");
+  assert.equal(result, "success");
 });
 
-test("CallGovernance exports are available", () => {
-  assert.equal(typeof CallGovernance, "function");
+test("CircuitBreaker executes with signal", async () => {
+  const breaker = new CircuitBreaker();
+  const result = await breaker.execute(async (signal) => {
+    assert.ok(signal instanceof AbortSignal);
+    return "with-signal";
+  });
+  assert.equal(result, "with-signal");
 });
 
-test("CallCircuitBreaker starts in closed state", () => {
-  const breaker = new CallCircuitBreaker({ failureThreshold: 5, successThreshold: 2, resetTimeoutMs: 30000 });
-  const result = breaker.check("test-key");
-  assert.equal(result.state, "closed");
-  assert.equal(result.allowed, true);
+test("CircuitBreaker records failures and transitions to OPEN", async () => {
+  const breaker = new CircuitBreaker({ failureThreshold: 2 });
+
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
+
+  assert.equal(breaker.getState(), CircuitState.OPEN);
 });
 
-test("CallCircuitBreaker records failures and opens circuit", () => {
-  const breaker = new CallCircuitBreaker({ failureThreshold: 2, successThreshold: 1, resetTimeoutMs: 30000 });
+test("CircuitBreaker OPEN state rejects calls immediately", async () => {
+  const breaker = new CircuitBreaker({ failureThreshold: 1 });
 
-  breaker.recordFailure("test-key");
-  let result = breaker.check("test-key");
-  assert.equal(result.state, "closed");
-  assert.equal(result.allowed, true);
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
 
-  breaker.recordFailure("test-key");
-  result = breaker.check("test-key");
-  assert.equal(result.state, "open");
-  assert.equal(result.allowed, false);
+  await assert.rejects(
+    async () => breaker.execute(async () => "should be blocked"),
+    CircuitBreakerOpenError,
+  );
 });
 
-test("CallCircuitBreaker allows calls after reset timeout", async () => {
-  const breaker = new CallCircuitBreaker({
+test("CircuitBreaker transitions to HALF_OPEN after resetTimeout", async () => {
+  const breaker = new CircuitBreaker({
     failureThreshold: 1,
-    successThreshold: 1,
-    resetTimeoutMs: 50,
+    resetTimeout: 50,
   });
 
-  breaker.recordFailure("test-key");
-  let result = breaker.check("test-key");
-  assert.equal(result.state, "open");
-  assert.equal(result.allowed, false);
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
+
+  assert.equal(breaker.getState(), CircuitState.OPEN);
 
   await new Promise((r) => setTimeout(r, 60));
-  result = breaker.check("test-key");
-  assert.equal(result.state, "half_open");
-  assert.equal(result.allowed, true);
+
+  const result = await breaker.execute(async () => "half-open-test");
+  assert.equal(result, "half-open-test");
 });
 
-test("CallCircuitBreaker half_open to closed on success", async () => {
-  const breaker = new CallCircuitBreaker({
+test("CircuitBreaker HALF_OPEN to CLOSED on success threshold", async () => {
+  const breaker = new CircuitBreaker({
     failureThreshold: 1,
     successThreshold: 2,
-    resetTimeoutMs: 50,
+    resetTimeout: 50,
   });
 
-  breaker.recordFailure("test-key");
-  breaker.check("test-key");
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
 
   await new Promise((r) => setTimeout(r, 60));
 
-  breaker.check("test-key");
-  breaker.recordSuccess("test-key");
-  breaker.recordSuccess("test-key");
+  await breaker.execute(async () => "success1");
+  await breaker.execute(async () => "success2");
 
-  const snapshot = breaker.getSnapshot("test-key");
-  assert.equal(snapshot?.state, "closed");
+  assert.equal(breaker.getState(), CircuitState.CLOSED);
 });
 
-test("CallCircuitBreaker records success in closed state", () => {
-  const breaker = new CallCircuitBreaker({
-    failureThreshold: 5,
-    successThreshold: 2,
-    resetTimeoutMs: 30000,
-  });
-
-  breaker.recordFailure("test-key");
-  breaker.recordFailure("test-key");
-
-  breaker.recordSuccess("test-key");
-
-  const snapshot = breaker.getSnapshot("test-key");
-  assert.ok(snapshot?.failures < 2);
-});
-
-test("CallCircuitBreaker getSnapshot returns null for unknown key", () => {
-  const breaker = new CallCircuitBreaker(null);
-  const snapshot = breaker.getSnapshot("unknown-key");
-  assert.equal(snapshot, null);
-});
-
-test("CallCircuitBreaker reset clears entry", () => {
-  const breaker = new CallCircuitBreaker({
+test("CircuitBreaker HALF_OPEN to OPEN on failure", async () => {
+  const breaker = new CircuitBreaker({
     failureThreshold: 1,
-    successThreshold: 1,
-    resetTimeoutMs: 30000,
+    successThreshold: 5,
+    resetTimeout: 50,
   });
 
-  breaker.recordFailure("test-key");
-  assert.ok(breaker.getSnapshot("test-key") !== null);
+  // Open the circuit
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("initial fail"); }),
+    Error,
+  );
 
-  breaker.reset("test-key");
-  assert.equal(breaker.getSnapshot("test-key"), null);
+  // Wait for reset timeout and trigger half-open
+  await new Promise((r) => setTimeout(r, 60));
+
+  // Execute a failing call in half-open state - should transition back to OPEN
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("half-open fail"); }),
+    Error,
+  );
+
+  assert.equal(breaker.getState(), CircuitState.OPEN);
 });
 
-test("CallRateLimiter allows calls within limit", () => {
-  const limiter = new CallRateLimiter({ maxCalls: 3, windowMs: 1000 });
+test("CircuitBreaker timeout throws CircuitBreakerTimeoutError", async () => {
+  const breaker = new CircuitBreaker({ timeout: 50 });
 
-  let result = limiter.checkAndConsume("key1");
-  assert.equal(result.allowed, true);
-
-  result = limiter.checkAndConsume("key1");
-  assert.equal(result.allowed, true);
-
-  result = limiter.checkAndConsume("key1");
-  assert.equal(result.allowed, true);
+  await assert.rejects(
+    async () => breaker.execute(async () => {
+      await new Promise((r) => setTimeout(r, 100));
+      return "too slow";
+    }),
+    CircuitBreakerTimeoutError,
+  );
 });
 
-test("CallRateLimiter rejects calls over limit", () => {
-  const limiter = new CallRateLimiter({ maxCalls: 2, windowMs: 1000 });
+test("CircuitBreaker getStats returns correct structure", async () => {
+  const breaker = new CircuitBreaker({ failureThreshold: 3 });
 
-  limiter.checkAndConsume("key1");
-  limiter.checkAndConsume("key1");
-  const result = limiter.checkAndConsume("key1");
+  const statsBefore = breaker.getStats();
+  assert.equal(typeof statsBefore.state, "string");
+  assert.equal(typeof statsBefore.failures, "number");
+  assert.equal(typeof statsBefore.successes, "number");
+  assert.ok(statsBefore.lastSuccess === null);
 
-  assert.equal(result.allowed, false);
-  assert.ok(result.retryAfterMs !== undefined);
-  assert.ok(result.retryAfterMs > 0);
+  await breaker.execute(async () => "success");
+  const statsAfter = breaker.getStats();
+  assert.equal(statsAfter.state, CircuitState.CLOSED);
+  assert.ok(statsAfter.lastSuccess !== null);
 });
 
-test("CallRateLimiter allows different keys independently", () => {
-  const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 1000 });
+test("CircuitBreaker reset clears all state", async () => {
+  const breaker = new CircuitBreaker({ failureThreshold: 1, resetTimeout: 50 });
 
-  const result1 = limiter.checkAndConsume("key1");
-  const result2 = limiter.checkAndConsume("key2");
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
+  assert.equal(breaker.getState(), CircuitState.OPEN);
 
-  assert.equal(result1.allowed, true);
-  assert.equal(result2.allowed, true);
+  breaker.reset();
+
+  assert.equal(breaker.getState(), CircuitState.CLOSED);
+  const stats = breaker.getStats();
+  assert.equal(stats.failures, 0);
+  assert.equal(stats.successes, 0);
 });
 
-test("CallRateLimiter reset clears entry", () => {
-  const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 1000 });
+test("CircuitBreaker onStateChange callback is called", async () => {
+  const stateChanges: Array<[CircuitState, CircuitState]> = [];
 
-  limiter.checkAndConsume("key1");
-  limiter.reset("key1");
-  const result = limiter.checkAndConsume("key1");
-
-  assert.equal(result.allowed, true);
-});
-
-test("CallRateLimiter with null config allows all", () => {
-  const limiter = new CallRateLimiter(null);
-  const result = limiter.checkAndConsume("any-key");
-  assert.equal(result.allowed, true);
-});
-
-test("CallRateLimiter evictExpired removes old entries", () => {
-  const limiter = new CallRateLimiter({ maxCalls: 5, windowMs: 100 });
-
-  // old-key at time 0, new-key at time 50
-  limiter.checkAndConsume("old-key", 0);
-  limiter.checkAndConsume("new-key", 50);
-
-  // Evict at time 300 - entries with windowStart < 300 - 200 = 100 should be removed
-  limiter.evictExpired(300);
-
-  // old-key (windowStart=0 < 100) should be evicted
-  // new-key (windowStart=50 < 100) should also be evicted since 50 < 100
-
-  // After eviction, both should be treated as new entries
-  assert.equal(limiter.checkAndConsume("old-key", 300).allowed, true);
-  assert.equal(limiter.checkAndConsume("new-key", 300).allowed, true);
-});
-
-test("CallHistoryRecorder records and computes stats", () => {
-  const recorder = new CallHistoryRecorder();
-
-  recorder.record("key1", { success: true, data: "value" });
-  recorder.record("key1", { success: true, data: "value" });
-  recorder.record("key1", { success: false, error: { code: "test", message: "err", retryable: false } });
-
-  const stats = recorder.getStats("key1", null);
-  assert.equal(stats.totalCalls, 3);
-  assert.equal(stats.successfulCalls, 2);
-  assert.equal(stats.failedCalls, 1);
-});
-
-test("CallHistoryRecorder tracks rejected calls", () => {
-  const recorder = new CallHistoryRecorder();
-
-  recorder.record("key1", { success: false, error: { code: "governance.limiter_rejected", message: "limit", retryable: true } });
-  recorder.record("key1", { success: false, error: { code: "governance.circuit_open", message: "open", retryable: true } });
-  recorder.record("key1", { success: true, data: "value" });
-
-  const stats = recorder.getStats("key1", null);
-  assert.equal(stats.rejectedCalls, 2);
-  assert.equal(stats.successfulCalls, 1);
-});
-
-test("CallHistoryRecorder reset clears history", () => {
-  const recorder = new CallHistoryRecorder();
-
-  recorder.record("key1", { success: true, data: "value" });
-  recorder.reset("key1");
-
-  const stats = recorder.getStats("key1", null);
-  assert.equal(stats.totalCalls, 0);
-});
-
-test("createRetryPolicy returns correct defaults", () => {
-  const policy = createRetryPolicy({});
-  assert.equal(policy.maxAttempts, 3);
-  assert.equal(policy.baseDelayMs, 100);
-  assert.equal(policy.maxDelayMs, 5000);
-  assert.equal(policy.backoffMultiplier, 2);
-  assert.ok(policy.jitterFactor !== undefined);
-});
-
-test("createRetryPolicy accepts custom values", () => {
-  const policy = createRetryPolicy({ maxAttempts: 5, baseDelayMs: 200 });
-  assert.equal(policy.maxAttempts, 5);
-  assert.equal(policy.baseDelayMs, 200);
-});
-
-test("createBreakerPolicy returns correct defaults", () => {
-  const policy = createBreakerPolicy({});
-  assert.equal(policy.failureThreshold, 5);
-  assert.equal(policy.successThreshold, 2);
-  assert.equal(policy.resetTimeoutMs, 30000);
-});
-
-test("createLimiterPolicy returns correct structure", () => {
-  const policy = createLimiterPolicy({ maxCalls: 10, windowMs: 1000 });
-  assert.equal(policy.maxCalls, 10);
-  assert.equal(policy.windowMs, 1000);
-});
-
-test("CallGovernance executes successfully with no policy", async () => {
-  const governance = new CallGovernance({});
-  const result = await governance.execute("key1", async () => "success");
-  assert.equal(result.success, true);
-  assert.equal(result.data, "success");
-});
-
-test("CallGovernance applies rate limiting", async () => {
-  const governance = new CallGovernance({
-    limiter: { maxCalls: 1, windowMs: 5000 },
+  const breaker = new CircuitBreaker({
+    failureThreshold: 1,
+    resetTimeout: 50,
+    onStateChange: (prev, next) => {
+      stateChanges.push([prev, next]);
+    },
   });
 
-  const result1 = await governance.execute("key1", async () => "first");
-  assert.equal(result1.success, true);
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
 
-  const result2 = await governance.execute("key1", async () => "second");
-  assert.equal(result2.success, false);
-  assert.equal(result2.error?.code, "governance.limiter_rejected");
+  assert.ok(stateChanges.some(([prev, next]) =>
+    prev === CircuitState.CLOSED && next === CircuitState.OPEN,
+  ));
 });
 
-test("CallGovernance applies circuit breaker", async () => {
-  const governance = new CallGovernance({
-    breaker: { failureThreshold: 1, successThreshold: 1, resetTimeoutMs: 5000 },
+test("CircuitBreaker with custom options", () => {
+  const breaker = new CircuitBreaker({
+    failureThreshold: 10,
+    successThreshold: 3,
+    timeout: 5000,
+    resetTimeout: 10000,
   });
 
-  await governance.execute("key1", async () => {
-    throw new Error("fail");
-  });
-
-  const result = await governance.execute("key1", async () => "should be blocked");
-  assert.equal(result.success, false);
-  assert.equal(result.error?.code, "governance.circuit_open");
+  const stats = breaker.getStats();
+  assert.equal(stats.state, CircuitState.CLOSED);
+  assert.equal(stats.failures, 0);
 });
 
-test("CallGovernance tracks stats", async () => {
-  const governance = new CallGovernance({});
-
-  await governance.execute("key1", async () => "success");
-  await governance.execute("key1", async () => {
-    throw new Error("fail");
-  });
-
-  const stats = governance.getStats("key1");
-  assert.equal(stats.totalCalls, 2);
-  assert.ok(stats.successfulCalls >= 0);
+test("CircuitBreakerOpenError has correct name", () => {
+  const error = new CircuitBreakerOpenError("Circuit is open");
+  assert.equal(error.name, "CircuitBreakerOpenError");
 });
 
-test("CallGovernance reset clears all state", async () => {
-  const governance = new CallGovernance({
-    limiter: { maxCalls: 1, windowMs: 5000 },
-  });
-
-  await governance.execute("key1", async () => "success");
-  governance.reset("key1");
-
-  const result = await governance.execute("key1", async () => "success");
-  assert.equal(result.success, true);
+test("CircuitBreakerTimeoutError has correct name", () => {
+  const error = new CircuitBreakerTimeoutError("Operation timed out");
+  assert.equal(error.name, "CircuitBreakerTimeoutError");
 });
 
-test("CallGovernance updatePolicy changes config", async () => {
-  const governance = new CallGovernance({
-    limiter: { maxCalls: 5, windowMs: 5000 },
-  });
+test("CircuitBreakerResetError has correct name", () => {
+  const error = new CircuitBreakerResetError("Circuit reset");
+  assert.equal(error.name, "CircuitBreakerResetError");
+});
 
-  governance.updatePolicy({ limiter: { maxCalls: 1, windowMs: 5000 } });
+test("CircuitState enum has all expected values", () => {
+  assert.equal(CircuitState.CLOSED, "CLOSED");
+  assert.equal(CircuitState.OPEN, "OPEN");
+  assert.equal(CircuitState.HALF_OPEN, "HALF_OPEN");
+});
 
-  await governance.execute("key1", async () => "success");
-  const result = await governance.execute("key1", async () => "blocked");
-  assert.equal(result.success, false);
+test("CircuitBreaker executes multiple calls in CLOSED state", async () => {
+  const breaker = new CircuitBreaker({ failureThreshold: 5 });
+
+  const results = await Promise.all([
+    breaker.execute(async () => "a"),
+    breaker.execute(async () => "b"),
+    breaker.execute(async () => "c"),
+  ]);
+
+  assert.deepEqual(results, ["a", "b", "c"]);
+});
+
+test("CircuitBreaker lastFailure and lastSuccess are tracked", async () => {
+  const breaker = new CircuitBreaker({ failureThreshold: 3 });
+
+  await breaker.execute(async () => "success");
+  const stats1 = breaker.getStats();
+  assert.ok(stats1.lastSuccess !== null);
+
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("fail"); }),
+    Error,
+  );
+  const stats2 = breaker.getStats();
+  assert.ok(stats2.lastFailure !== null);
 });
