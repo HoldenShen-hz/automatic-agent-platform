@@ -24,22 +24,22 @@ test("createNoOpIncidentFacadeService getIncident returns null", () => {
 
 test("createNoOpIncidentFacadeService openIncident throws error", () => {
   const svc = createNoOpIncidentFacadeService();
-  assert.throws(() => svc.openIncident({ severity: "high", title: "Test" }), /not configured/);
+  assert.throws(() => svc.openIncident({ severity: "high", title: "Test" }), /not_configured/);
 });
 
 test("createNoOpIncidentFacadeService acknowledge throws error", () => {
   const svc = createNoOpIncidentFacadeService();
-  assert.throws(() => svc.acknowledge("incident-1", "operator-1"), /not configured/);
+  assert.throws(() => svc.acknowledge("incident-1", "operator-1"), /not_configured/);
 });
 
 test("createNoOpIncidentFacadeService startMitigation throws error", () => {
   const svc = createNoOpIncidentFacadeService();
-  assert.throws(() => svc.startMitigation("incident-1"), /not configured/);
+  assert.throws(() => svc.startMitigation("incident-1"), /not_configured/);
 });
 
 test("createNoOpIncidentFacadeService resolve throws error", () => {
   const svc = createNoOpIncidentFacadeService();
-  assert.throws(() => svc.resolve("incident-1"), /not configured/);
+  assert.throws(() => svc.resolve("incident-1"), /not_configured/);
 });
 
 test("IncidentCase type allows creating incident case object", () => {

@@ -29,7 +29,7 @@ function cleanupDb(dbPath: string): void {
   }
 }
 
-test.skip("runMultiStepOrchestration basic execution", async () => {
+test("runMultiStepOrchestration basic execution", async () => {
   const dbPath = createTempDbPath("test-basic.db");
 
   cleanupDb(dbPath);
@@ -54,7 +54,7 @@ test.skip("runMultiStepOrchestration basic execution", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration with oapeflir plan request", async () => {
+test("runMultiStepOrchestration with oapeflir plan request", async () => {
   const dbPath = createTempDbPath("test-oapeflir.db");
 
   cleanupDb(dbPath);
@@ -99,7 +99,7 @@ test.skip("runMultiStepOrchestration with oapeflir plan request", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration creates task snapshot", async () => {
+test("runMultiStepOrchestration creates task snapshot", async () => {
   const dbPath = createTempDbPath("test-snapshot.db");
 
   cleanupDb(dbPath);
@@ -122,7 +122,7 @@ test.skip("runMultiStepOrchestration creates task snapshot", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration workflow planning", async () => {
+test("runMultiStepOrchestration workflow planning", async () => {
   const dbPath = createTempDbPath("test-planning.db");
 
   cleanupDb(dbPath);
@@ -146,7 +146,7 @@ test.skip("runMultiStepOrchestration workflow planning", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration routing", async () => {
+test("runMultiStepOrchestration routing", async () => {
   const dbPath = createTempDbPath("test-routing.db");
 
   cleanupDb(dbPath);
@@ -170,7 +170,7 @@ test.skip("runMultiStepOrchestration routing", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration streamFrames is array", async () => {
+test("runMultiStepOrchestration streamFrames is array", async () => {
   const dbPath = createTempDbPath("test-frames.db");
 
   cleanupDb(dbPath);
@@ -191,7 +191,7 @@ test.skip("runMultiStepOrchestration streamFrames is array", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration with admission backpressure snapshot", async () => {
+test("runMultiStepOrchestration with admission backpressure snapshot", async () => {
   const dbPath = createTempDbPath("test-backpressure.db");
 
   cleanupDb(dbPath);
@@ -224,7 +224,7 @@ test.skip("runMultiStepOrchestration with admission backpressure snapshot", asyn
   }
 });
 
-test.skip("runMultiStepOrchestration task status transitions to terminal state", async () => {
+test("runMultiStepOrchestration task status transitions to terminal state", async () => {
   const dbPath = createTempDbPath("test-transitions.db");
 
   cleanupDb(dbPath);
@@ -250,7 +250,7 @@ test.skip("runMultiStepOrchestration task status transitions to terminal state",
   }
 });
 
-test.skip("runMultiStepOrchestration compaction result property", async () => {
+test("runMultiStepOrchestration compaction result property", async () => {
   const dbPath = createTempDbPath("test-compaction.db");
 
   cleanupDb(dbPath);

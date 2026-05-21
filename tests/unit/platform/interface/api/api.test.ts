@@ -319,22 +319,22 @@ test("api barrel facade interfaces createNoOpIncidentFacadeService", () => {
 
   assert.throws(
     () => service.openIncident({ severity: "high", title: "Test incident" }),
-    /not configured/,
+    /not_configured/,
   );
 
   assert.throws(
     () => service.acknowledge("any_id", "any_owner"),
-    /not configured/,
+    /not_configured/,
   );
 
   assert.throws(
     () => service.startMitigation("any_id"),
-    /not configured/,
+    /not_configured/,
   );
 
   assert.throws(
     () => service.resolve("any_id"),
-    /not configured/,
+    /not_configured/,
   );
 });
 

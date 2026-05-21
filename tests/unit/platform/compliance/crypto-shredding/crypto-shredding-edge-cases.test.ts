@@ -146,7 +146,7 @@ describe("CryptoShreddingService PII field registration", () => {
 
   beforeEach(() => {
     const auditTrail = new InMemoryShredAuditTrail();
-    service = new CryptoShreddingService({ auditTrail });
+    service = new CryptoShreddingService({ auditTrail, dekManager: new DekManager() });
   });
 
   describe("registerPiiField", () => {
@@ -208,8 +208,8 @@ describe("CryptoShreddingService encryptRecordForSubject edge cases", () => {
 
   beforeEach(() => {
     const auditTrail = new InMemoryShredAuditTrail();
-    service = new CryptoShreddingService({ auditTrail });
-    manager = service["dekManager"] as DekManager;
+    manager = new DekManager();
+    service = new CryptoShreddingService({ auditTrail, dekManager: manager });
   });
 
   it("should handle nested field paths with dot notation", async () => {
@@ -288,8 +288,8 @@ describe("CryptoShreddingService decryptField edge cases", () => {
 
   beforeEach(() => {
     const auditTrail = new InMemoryShredAuditTrail();
-    service = new CryptoShreddingService({ auditTrail });
-    manager = service["dekManager"] as DekManager;
+    manager = new DekManager();
+    service = new CryptoShreddingService({ auditTrail, dekManager: manager });
   });
 
   it("should throw for non-string encrypted value", async () => {

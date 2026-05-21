@@ -184,7 +184,7 @@ test("determineFinalStatus returns pending when neither met", () => {
 test("validateVote throws for invalid vote", () => {
   const invalidVote = { approverId: "", voteType: VoteType.APPROVE, votedAt: "2026-04-21T00:00:00.000Z" } as QuorumVote;
 
-  assert.throws(() => validateVote(invalidVote), /valid approverId/);
+  assert.throws(() => validateVote(invalidVote), /approval\.invalid_approver_id/);
 });
 
 test("hasApproverVoted returns true when approver has voted", () => {

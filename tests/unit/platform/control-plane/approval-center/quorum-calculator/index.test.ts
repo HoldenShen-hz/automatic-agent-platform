@@ -219,22 +219,22 @@ test("calculateWithVote combines merge and status calculation", () => {
 
 test("validateVote throws on empty approverId", () => {
   const vote: QuorumVote = { approverId: "", voteType: VoteType.APPROVE, votedAt: "2026-04-26T00:00:00.000Z" };
-  assert.throws(() => validateVote(vote), /valid approverId/);
+  assert.throws(() => validateVote(vote), /approval\.invalid_approver_id/);
 });
 
 test("validateVote throws on whitespace approverId", () => {
   const vote: QuorumVote = { approverId: "   ", voteType: VoteType.APPROVE, votedAt: "2026-04-26T00:00:00.000Z" };
-  assert.throws(() => validateVote(vote), /valid approverId/);
+  assert.throws(() => validateVote(vote), /approval\.invalid_approver_id/);
 });
 
 test("validateVote throws on invalid vote type", () => {
   const vote = { approverId: "user1", voteType: "invalid" as unknown as VoteType, votedAt: "2026-04-26T00:00:00.000Z" };
-  assert.throws(() => validateVote(vote), /Invalid vote type/);
+  assert.throws(() => validateVote(vote), /approval\.invalid_vote_type/);
 });
 
 test("validateVote throws on missing votedAt", () => {
   const vote = { approverId: "user1", voteType: VoteType.APPROVE } as QuorumVote;
-  assert.throws(() => validateVote(vote), /votedAt timestamp/);
+  assert.throws(() => validateVote(vote), /approval\.invalid_voted_at/);
 });
 
 test("validateVote does not throw for valid vote", () => {

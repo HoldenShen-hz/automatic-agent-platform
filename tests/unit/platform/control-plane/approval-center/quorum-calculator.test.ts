@@ -384,7 +384,7 @@ test("validateVote throws for empty approverId", () => {
 
   assert.throws(
     () => validateVote(vote),
-    /Vote must have a valid approverId/,
+    /approval\.invalid_approver_id/,
   );
 });
 
@@ -393,7 +393,7 @@ test("validateVote throws for whitespace-only approverId", () => {
 
   assert.throws(
     () => validateVote(vote),
-    /Vote must have a valid approverId/,
+    /approval\.invalid_approver_id/,
   );
 });
 
@@ -406,7 +406,7 @@ test("validateVote throws for invalid vote type", () => {
 
   assert.throws(
     () => validateVote(vote as QuorumVote),
-    /Invalid vote type/,
+    /approval\.invalid_vote_type/,
   );
 });
 
@@ -419,7 +419,7 @@ test("validateVote throws for missing votedAt", () => {
 
   assert.throws(
     () => validateVote(vote),
-    /Vote must have a votedAt timestamp/,
+    /approval\.invalid_voted_at/,
   );
 });
 

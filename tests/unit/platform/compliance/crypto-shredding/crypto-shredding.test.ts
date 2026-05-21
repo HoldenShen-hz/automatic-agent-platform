@@ -229,16 +229,16 @@ describe("DekManager", () => {
 describe("CryptoShreddingService", () => {
   let service: CryptoShreddingService;
   let auditTrail: InMemoryShredAuditTrail;
+  let manager: DekManager;
 
   beforeEach(() => {
     auditTrail = new InMemoryShredAuditTrail();
-    service = new CryptoShreddingService({ auditTrail });
+    manager = new DekManager();
+    service = new CryptoShreddingService({ auditTrail, dekManager: manager });
   });
 
   describe("shred", () => {
     it("should perform crypto-shredding and return result", async () => {
-      // Create a DEK first
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
 
       const result = await service.shred("user-123", "admin-001");
@@ -258,7 +258,6 @@ describe("CryptoShreddingService", () => {
     });
 
     it("should record audit trail", async () => {
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
 
       const shredResult = await service.shred("user-123", "admin-001");
@@ -271,7 +270,6 @@ describe("CryptoShreddingService", () => {
     });
 
     it("should destroy all DEKs for a subject", async () => {
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
       await manager.rotate("user-123");
 
@@ -296,7 +294,6 @@ describe("CryptoShreddingService", () => {
 
   describe("rotateSubjectKey", () => {
     it("should rotate the DEK and return both IDs", async () => {
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
 
       const result = await service.rotateSubjectKey("user-123");
@@ -309,7 +306,6 @@ describe("CryptoShreddingService", () => {
 
   describe("getSubjectDekInfo", () => {
     it("should return DEK information for a subject", async () => {
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
       await manager.rotate("user-123");
 
@@ -334,7 +330,6 @@ describe("CryptoShreddingService", () => {
     });
 
     it("should encrypt specified PII fields", async () => {
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
 
       const record = {
@@ -352,7 +347,6 @@ describe("CryptoShreddingService", () => {
     });
 
     it("should preserve non-string fields", async () => {
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
 
       const record = {
@@ -372,7 +366,6 @@ describe("CryptoShreddingService", () => {
 
   describe("decryptField", () => {
     it("should decrypt an encrypted field", async () => {
-      const manager = service["dekManager"] as DekManager;
       await manager.createForSubject("user-123");
 
       const record = {

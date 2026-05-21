@@ -162,6 +162,7 @@ test("CryptoShreddingService.registerPiiField adds PII field", async () => {
 
 test("CryptoShreddingService.registerPiiField updates existing field", async () => {
   const service = new CryptoShreddingService({
+    dekManager: new DekManager(),
     piiFields: [{ fieldPath: "email", classification: "internal" }],
   });
   

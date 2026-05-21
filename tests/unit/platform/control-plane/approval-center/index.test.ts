@@ -163,8 +163,8 @@ test("determineFinalStatus returns correct status", () => {
 });
 
 test("validateVote throws for invalid vote", () => {
-  assert.throws(() => validateVote({ approverId: "", voteType: VoteType.APPROVE, votedAt: "2026-04-14T00:00:00.000Z" as any }), /valid approverId/);
-  assert.throws(() => validateVote({ approverId: "user_1", voteType: "invalid" as any, votedAt: "2026-04-14T00:00:00.000Z" as any }), /Invalid vote type/);
+  assert.throws(() => validateVote({ approverId: "", voteType: VoteType.APPROVE, votedAt: "2026-04-14T00:00:00.000Z" as any }), /approval\.invalid_approver_id/);
+  assert.throws(() => validateVote({ approverId: "user_1", voteType: "invalid" as any, votedAt: "2026-04-14T00:00:00.000Z" as any }), /approval\.invalid_vote_type/);
 });
 
 test("hasApproverVoted returns correct value", () => {

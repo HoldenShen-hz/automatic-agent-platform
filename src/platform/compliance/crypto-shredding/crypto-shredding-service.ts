@@ -119,14 +119,20 @@ export class CryptoShreddingService {
   private readonly auditTrail: ShredAuditTrail;
   private readonly piiFields: PiiFieldSpec[];
 
-  constructor(options: {
-    dekManager?: DekManager;
+  constructor(options?: {
     auditTrail?: ShredAuditTrail;
     piiFields?: PiiFieldSpec[];
   }) {
-    this.dekManager = options.dekManager ?? new DekManager();
-    this.auditTrail = options.auditTrail ?? new InMemoryShredAuditTrail();
-    this.piiFields = options.piiFields ?? [];
+    if (!options?.dekManager) {
+      throw new AppError(
+        "crypto_shredding.missing_dek_manager",
+        "DekManager is required. Please provide a DekManager instance.",
+        { statusCode: 500, category: "internal", source: "internal" },
+      );
+    }
+    this.dekManager = options.dekManager;
+    this.auditTrail = options?.auditTrail ?? new InMemoryShredAuditTrail();
+    this.piiFields = options?.piiFields ?? [];
   }
 
   /**

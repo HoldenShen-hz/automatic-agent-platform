@@ -36,7 +36,8 @@ test("InMemoryShredAuditTrail.getRecord returns null for unknown shredId", async
 });
 
 test("CryptoShreddingService.shred destroys subject DEK and returns ShredResult", async (t) => {
-  const service = new CryptoShreddingService();
+  const manager = new DekManager();
+  const service = new CryptoShreddingService({ dekManager: manager });
   const result = await service.shred("subject-1", "admin");
 
   assert.ok(result.shredId.length > 0);
@@ -47,9 +48,9 @@ test("CryptoShreddingService.shred destroys subject DEK and returns ShredResult"
 });
 
 test("CryptoShreddingService.shred creates audit record", async (t) => {
-  const service = new CryptoShreddingService();
   const manager = new DekManager();
   await manager.createForSubject("subject-2");
+  const service = new CryptoShreddingService({ dekManager: manager });
   const result = await service.shred("subject-2", "admin");
 
   assert.equal(result.status, "completed");
@@ -63,21 +64,27 @@ test("CryptoShreddingService.shred creates audit record", async (t) => {
 });
 
 test("CryptoShreddingService.shred throws on empty subjectId", async (t) => {
-  const service = new CryptoShreddingService();
-  await assert.rejects(() => service.shred("", "admin"), /missing_subject/);
-  await assert.rejects(() => service.shred("   ", "admin"), /missing_subject/);
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
+  await assert.rejects(
+    async () => service.shred("", "admin"),
+    (err: unknown) => (err as { code: string }).code === "shred.missing_subject",
+  );
+  await assert.rejects(
+    async () => service.shred("   ", "admin"),
+    (err: unknown) => (err as { code: string }).code === "shred.missing_subject",
+  );
 });
 
 test("CryptoShreddingService.getShredRecord returns null for unknown shred", async (t) => {
-  const service = new CryptoShreddingService();
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
   const record = await service.getShredRecord("unknown");
   assert.equal(record, null);
 });
 
 test("CryptoShreddingService.getSubjectDekInfo returns DEK info", async (t) => {
-  const service = new CryptoShreddingService();
   const manager = new DekManager();
   await manager.createForSubject("subject-3");
+  const service = new CryptoShreddingService({ dekManager: manager });
 
   const info = await service.getSubjectDekInfo("subject-3");
   assert.ok(info.activeDek);
@@ -85,17 +92,17 @@ test("CryptoShreddingService.getSubjectDekInfo returns DEK info", async (t) => {
 });
 
 test("CryptoShreddingService.getSubjectDekInfo returns null for unknown subject", async (t) => {
-  const service = new CryptoShreddingService();
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
   const info = await service.getSubjectDekInfo("unknown");
   assert.equal(info.activeDek, null);
   assert.equal(info.allDekCount, 0);
 });
 
 test("CryptoShreddingService.encryptRecordForSubject encrypts configured PII fields", async (t) => {
-  const service = new CryptoShreddingService();
-  service.registerPiiField({ fieldPath: "name", classification: "internal" });
   const manager = new DekManager();
   await manager.createForSubject("subject-4");
+  const service = new CryptoShreddingService({ dekManager: manager });
+  service.registerPiiField({ fieldPath: "name", classification: "internal" });
 
   const record = { name: "Alice", email: "alice@example.com" };
   const result = await service.encryptRecordForSubject("subject-4", record);
@@ -107,19 +114,19 @@ test("CryptoShreddingService.encryptRecordForSubject encrypts configured PII fie
 });
 
 test("CryptoShreddingService.encryptRecordForSubject throws when no PII fields configured", async (t) => {
-  const service = new CryptoShreddingService();
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
   await assert.rejects(
-    () => service.encryptRecordForSubject("subject-5", { name: "Bob" }),
-    /no_pii_fields_configured/,
+    async () => service.encryptRecordForSubject("subject-5", { name: "Bob" }),
+    (err: unknown) => (err as { code: string }).code === "encrypt.no_pii_fields_configured",
   );
 });
 
 test("CryptoShreddingService.encryptRecordForSubject skips non-string values", async (t) => {
-  const service = new CryptoShreddingService();
-  service.registerPiiField({ fieldPath: "name", classification: "internal" });
-  service.registerPiiField({ fieldPath: "age", classification: "internal" });
   const manager = new DekManager();
   await manager.createForSubject("subject-6");
+  const service = new CryptoShreddingService({ dekManager: manager });
+  service.registerPiiField({ fieldPath: "name", classification: "internal" });
+  service.registerPiiField({ fieldPath: "age", classification: "internal" });
 
   const record = { name: "Carol", age: 30 };
   const result = await service.encryptRecordForSubject("subject-6", record);
@@ -129,10 +136,10 @@ test("CryptoShreddingService.encryptRecordForSubject skips non-string values", a
 });
 
 test("CryptoShreddingService.encryptRecordForSubject handles nested fields", async (t) => {
-  const service = new CryptoShreddingService();
-  service.registerPiiField({ fieldPath: "user.name", classification: "internal" });
   const manager = new DekManager();
   await manager.createForSubject("subject-7");
+  const service = new CryptoShreddingService({ dekManager: manager });
+  service.registerPiiField({ fieldPath: "user.name", classification: "internal" });
 
   const record = { user: { name: "Dave", email: "dave@example.com" } };
   const result = await service.encryptRecordForSubject("subject-7", record);
@@ -143,10 +150,10 @@ test("CryptoShreddingService.encryptRecordForSubject handles nested fields", asy
 });
 
 test("CryptoShreddingService.encryptRecordForSubject handles array fields", async (t) => {
-  const service = new CryptoShreddingService();
-  service.registerPiiField({ fieldPath: "items[0]", classification: "internal" });
   const manager = new DekManager();
   await manager.createForSubject("subject-8");
+  const service = new CryptoShreddingService({ dekManager: manager });
+  service.registerPiiField({ fieldPath: "items[0]", classification: "internal" });
 
   const record = { items: ["alpha", "beta"] };
   const result = await service.encryptRecordForSubject("subject-8", record);
@@ -157,10 +164,10 @@ test("CryptoShreddingService.encryptRecordForSubject handles array fields", asyn
 });
 
 test("CryptoShreddingService.decryptField decrypts encrypted field", async (t) => {
-  const service = new CryptoShreddingService();
-  service.registerPiiField({ fieldPath: "name", classification: "internal" });
   const manager = new DekManager();
   await manager.createForSubject("subject-9");
+  const service = new CryptoShreddingService({ dekManager: manager });
+  service.registerPiiField({ fieldPath: "name", classification: "internal" });
 
   const record = { name: "Eve" };
   const encrypted = await service.encryptRecordForSubject("subject-9", record);
@@ -171,17 +178,17 @@ test("CryptoShreddingService.decryptField decrypts encrypted field", async (t) =
 });
 
 test("CryptoShreddingService.decryptField throws on non-string value", async (t) => {
-  const service = new CryptoShreddingService();
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
   await assert.rejects(
-    () => service.decryptField("dek-id", "age", { age: 25 }),
-    /invalid_value/,
+    async () => service.decryptField("dek-id", "age", { age: 25 }),
+    (err: unknown) => (err as { code: string }).code === "decrypt.invalid_value",
   );
 });
 
 test("CryptoShreddingService.rotateSubjectKey rotates DEK and returns IDs", async (t) => {
-  const service = new CryptoShreddingService();
   const manager = new DekManager();
   const first = await manager.createForSubject("subject-10");
+  const service = new CryptoShreddingService({ dekManager: manager });
 
   const result = await service.rotateSubjectKey("subject-10");
 
@@ -191,7 +198,7 @@ test("CryptoShreddingService.rotateSubjectKey rotates DEK and returns IDs", asyn
 });
 
 test("CryptoShreddingService.rotateSubjectKey handles first-time creation", async (t) => {
-  const service = new CryptoShreddingService();
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
   const result = await service.rotateSubjectKey("new-subject");
 
   assert.equal(result.previousDekId, null);
@@ -199,7 +206,7 @@ test("CryptoShreddingService.rotateSubjectKey handles first-time creation", asyn
 });
 
 test("CryptoShreddingService.registerPiiField registers and updates field specs", async (t) => {
-  const service = new CryptoShreddingService();
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
   service.registerPiiField({ fieldPath: "name", classification: "internal" });
   service.registerPiiField({ fieldPath: "name", classification: "confidential" });
   service.registerPiiField({ fieldPath: "email", classification: "restricted" });
@@ -211,7 +218,7 @@ test("CryptoShreddingService.registerPiiField registers and updates field specs"
 });
 
 test("CryptoShreddingService.getPiiFields returns registered fields", async (t) => {
-  const service = new CryptoShreddingService();
+  const service = new CryptoShreddingService({ dekManager: new DekManager() });
   service.registerPiiField({ fieldPath: "name", classification: "internal" });
 
   const fields = service.getPiiFields();
