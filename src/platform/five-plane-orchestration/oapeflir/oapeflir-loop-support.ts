@@ -493,7 +493,7 @@ export abstract class OapeflirLoopSupport {
       ...observationTask,
       blockers: observationTask.blockers ?? [],
       relevantMemory: observationTask.relevantMemory ?? [],
-      fileRefs: observationTask.fileRefs ?? input.fileRefs ?? [],
+      fileRefs: (observationTask.fileRefs?.length ?? 0) > 0 ? observationTask.fileRefs : (input.fileRefs ?? []),
       metrics: observationTask.metrics ?? {},
     };
   }

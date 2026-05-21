@@ -226,8 +226,9 @@ export class QueueMetricsService {
     };
 
     // Calculate average and p95 wait times per queue
-    // Iterate over all queues that have wait times recorded
-    for (const queueName of this.waitTimeByQueue.keys()) {
+    // Iterate over all queues that have wait times OR depth recorded
+    const allQueueNames = new Set([...this.waitTimeByQueue.keys(), ...this.depthByQueue.keys()]);
+    for (const queueName of allQueueNames) {
       const times = this.waitTimeByQueue.get(queueName) ?? [];
       if (times.length > 0) {
         const sum = times.reduce((s, t) => s + t, 0);
