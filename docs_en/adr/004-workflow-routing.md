@@ -17,7 +17,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ---
 
-- Status: Accepted
+- Status: Partially Superseded by v4.3 Routing + HarnessRuntime Baseline
 - Decision Date: 2026-04-02
 
 ## Background

@@ -1,7 +1,7 @@
 # Automatic Agent Platform — 验证与实时监控完整方案
 
-> **版本**：v1.7.2 — Review Patch / v2.0 Baseline Candidate  
-> **状态**：`reviewed_reference_candidate`  
+> **版本**：v1.7.3 — Repo Closure Patch / v2.0 Baseline Candidate
+> **状态**：`repo_validation_baseline_implemented`
 > **适用系统**：Automatic Agent Platform  
 > **首个验证业务**：LLM Research Intelligence Mission  
 > **核心目标**：证明平台在 Research Intelligence 场景下具备可执行、可观测、可审计、可回放、可阻断、可签字、可复盘的准生产能力。  
@@ -12,18 +12,19 @@
 
 ## Changelog
 
-| 版本       | 变化                                                                                                                                                                |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| v1.0       | 建立 Research Intelligence Mission 验证方案主框架                                                                                                                   |
-| v1.1       | 补充 Skills / Plugins / Tool Registry / Connector Runtime                                                                                                           |
-| v1.2       | 增加 RTM、Evidence Bundle、CI/CD、OTel、数据治理、质量评分、压测、状态矩阵、DR、Incident、RACI                                                                      |
-| v1.3       | 增加 OAPEFLIR 阶段矩阵、Mission/Task/Session 创建策略、Security/IAM、Operator Cockpit、Metric Definition、Example Validation Run                                    |
-| v1.4       | 增加 RSM/CAS/Lease/Fencing、SideEffect、Config、Model Gateway、Persistence、SLO、Tenant Scheduling、Event/Gate/Metric Registry、Freeze Checklist                    |
-| v1.5       | 修复事件命名、插件签名规则、RTM Gate/Metric 对齐；补 Dispatch、Test Quality、Autonomy、Rollout、Docs Drift                                                          |
-| v1.6       | 补齐 Gate/Metric/Event/CI/Runbook 五类 Registry 闭环；增加 Artifact 生命周期、L40S 条件验证、Cost attribution 扩展                                                  |
-| **v1.7**   | **补齐数据治理 Gate/Metric/CI/Runbook，Evidence Bundle 防篡改，Event Payload Schema Registry，Runbook 机器元数据，Mission-specific SLO，UI 权限链路，全部指标闭环** |
-| **v1.7.1** | **Freeze Patch：合并 Evidence Bundle Gate 子项，补齐 hitl-e2e CI Job，明确 eventName segment regex，明确 aa.\* span name 不进入 Metric Registry Closure**           |
-| **v1.7.2** | **Review Patch：区分目标态与当前仓内可执行基线；修正 Mission 归属规则、CI Job Registry、机器 Registry 工件和指标口径的过度完成表述**                                |
+| 版本       | 变化                                                                                                                                                                 |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.0       | 建立 Research Intelligence Mission 验证方案主框架                                                                                                                    |
+| v1.1       | 补充 Skills / Plugins / Tool Registry / Connector Runtime                                                                                                            |
+| v1.2       | 增加 RTM、Evidence Bundle、CI/CD、OTel、数据治理、质量评分、压测、状态矩阵、DR、Incident、RACI                                                                       |
+| v1.3       | 增加 OAPEFLIR 阶段矩阵、Mission/Task/Session 创建策略、Security/IAM、Operator Cockpit、Metric Definition、Example Validation Run                                     |
+| v1.4       | 增加 RSM/CAS/Lease/Fencing、SideEffect、Config、Model Gateway、Persistence、SLO、Tenant Scheduling、Event/Gate/Metric Registry、Freeze Checklist                     |
+| v1.5       | 修复事件命名、插件签名规则、RTM Gate/Metric 对齐；补 Dispatch、Test Quality、Autonomy、Rollout、Docs Drift                                                           |
+| v1.6       | 补齐 Gate/Metric/Event/CI/Runbook 五类 Registry 闭环；增加 Artifact 生命周期、L40S 条件验证、Cost attribution 扩展                                                   |
+| **v1.7**   | **补齐数据治理 Gate/Metric/CI/Runbook，Evidence Bundle 防篡改，Event Payload Schema Registry，Runbook 机器元数据，Mission-specific SLO，UI 权限链路，全部指标闭环**  |
+| **v1.7.1** | **Freeze Patch：合并 Evidence Bundle Gate 子项，补齐 hitl-e2e CI Job，明确 eventName segment regex，明确 aa.\* span name 不进入 Metric Registry Closure**            |
+| **v1.7.2** | **Review Patch：区分目标态与当前仓内可执行基线；修正 Mission 归属规则、CI Job Registry、机器 Registry 工件和指标口径的过度完成表述**                                 |
+| **v1.7.3** | **Repo Closure Patch：落地平台 validation machine registry、CI job scripts、registry artifact exporter、monitoring metric map 与 exporter/alert/dashboard 守护测试** |
 
 ## Review Patch 结论
 
@@ -37,14 +38,14 @@
 
 ### 本轮 review 发现与修订
 
-| 问题                                                         | 根因                                                                                          | 修订结论                                                                                                                | 仓内依据                                                                                                          |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 文档顶部直接标记 `freeze_ready_candidate`                    | 目标 Gate/Registry 表格完整，但机器 registry 工件和一批 CI job 命令尚未在仓内形成一一对应实现 | 状态改为 `reviewed_reference_candidate`；freeze 只在第 51 章条件满足后成立                                              | `package.json`、`config/validation/`、`deploy/`                                                                   |
-| CI Job Registry 写入大量当前不存在的 `npm run ...` 命令      | 把期望的 job 名直接写成了现有脚本                                                             | 第 33 章拆成“当前仓内执行基线”和“目标 job registry”                                                                     | `package.json` 已有 `test:*`、`coverage:*`、`registry:closure`，但无 `test:e2e:hitl` 等脚本                       |
-| 无归属 Task 自动落 `default_system_mission`                  | 口径落后于 MissionResolver 当前实现                                                           | 低/中风险无 Mission 可创建 ad hoc Mission；高风险和副作用任务无 Mission 必须 fail-closed                                | `src/platform/five-plane-interface/api/http-server/task-routes.ts`、Mission E2E                                   |
-| `aa.*` Metric Registry 被写成当前 exporter 唯一指标真相      | 目标观测语义与 Prometheus exporter / alert rules 当前暴露名混写                               | 第 48 章声明 `aa.*` 是目标 validation registry；当前运行时监控基线以 exporter、Prometheus rules、Grafana dashboard 为准 | `src/platform/shared/observability/prometheus-metrics-exporter.ts`、`deploy/prometheus/rules/automatic-agent.yml` |
-| Prometheus 名称和单位映射未成为显式 freeze 条件              | exporter、dashboard、alert rules 各自演进，文档只登记目标指标                                 | 第 48、51 章补充 exporter/alert mapping 复核要求；例如 HTTP latency 的 `_ms` / `_seconds` 暴露面不得静默漂移            | `prometheus-metrics-exporter.ts`、`automatic-agent.yml`、`automatic-agent.json`                                   |
-| 机器 Event/Gate/Metric/Runbook Registry 工件被写成已存在前提 | 设计表和附录先于机器工件落地                                                                  | 第 46、49、57 章改为“freeze 前目标工件”；当前 event truth 显式指向 TypeScript registry                                  | `src/platform/five-plane-state-evidence/events/event-registry.ts`                                                 |
+| 问题                                                         | 根因                                                                                          | 修订结论                                                                                                                                          | 仓内依据                                                                                                                        |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 文档顶部直接标记 `freeze_ready_candidate`                    | 目标 Gate/Registry 表格完整，但机器 registry 工件和一批 CI job 命令尚未在仓内形成一一对应实现 | 仓内基线已落地，状态改为 `repo_validation_baseline_implemented`；真实 freeze 仍只在第 51 章环境条件满足后成立                                     | `package.json`、`config/validation/platform-validation-registry.json`、`scripts/validation/platform-validation-closure.mjs`     |
+| CI Job Registry 写入大量当前不存在的 `npm run ...` 命令      | 把期望的 job 名直接写成了现有脚本                                                             | 第 33 章已补真实 package scripts 和 machine registry；`tests/unit/scripts/platform-validation-closure.test.ts` 会阻止 job/script mapping 再次失配 | `package.json`、`config/validation/platform-validation-registry.json`                                                           |
+| 无归属 Task 自动落 `default_system_mission`                  | 口径落后于 MissionResolver 当前实现                                                           | 低/中风险无 Mission 可创建 ad hoc Mission；高风险和副作用任务无 Mission 必须 fail-closed                                                          | `src/platform/five-plane-interface/api/http-server/task-routes.ts`、Mission E2E                                                 |
+| `aa.*` Metric Registry 被写成当前 exporter 唯一指标真相      | 目标观测语义与 Prometheus exporter / alert rules 当前暴露名混写                               | 第 48 章声明 `aa.*` 是目标 validation registry；当前运行时监控基线以 exporter、Prometheus rules、Grafana dashboard 为准                           | `src/platform/shared/observability/prometheus-metrics-exporter.ts`、`deploy/prometheus/rules/automatic-agent.yml`               |
+| Prometheus 名称和单位映射未成为显式 freeze 条件              | exporter、dashboard、alert rules 各自演进，文档只登记目标指标                                 | 已新增 metric map 和 closure test；HTTP latency、queue、worker、DLQ、outbox、OAPEFLIR latency 告警均绑定当前 exporter 暴露名，不再引用陈旧指标    | `config/validation/platform-monitoring-metric-map.json`、`automatic-agent.yml`、`prometheus-alerts.test.ts`                     |
+| 机器 Event/Gate/Metric/Runbook Registry 工件被写成已存在前提 | 设计表和附录先于机器工件落地                                                                  | 已新增 machine registry、closure 和 artifact exporter；TypeScript event registry 仍是事件事实源，导出快照由 `npm run validation:artifacts` 生成   | `src/platform/five-plane-state-evidence/events/event-registry.ts`、`scripts/validation/export-platform-validation-artifacts.ts` |
 
 > 本文仍保留完整目标设计；review patch 的目的不是删掉目标，而是防止“文档闭环”被误读为“代码、CI、环境和签字均已闭环”。
 
@@ -1047,9 +1048,9 @@ docs / artifact / gpu / ui / slo / evidence_bundle
 
 > `deploy/prometheus/`、`deploy/grafana/` 和 `deploy/runbooks/` 已提供运行时观测基线；配置文件正确性由现有 deploy golden tests 守护。真实 scrape、通知外送和值班演练仍属于环境验收。
 
-## 33.3 目标 CI Job Registry
+## 33.3 Machine-readable CI Job Registry
 
-下表描述 freeze/sign-off 前应形成的 job 粒度和产物。`Command` 列若尚未在 `package.json` 或 CI workflow 中存在，视为 **目标映射**，落地时可以复用第 33.2 节现有入口或新增专用命令，但必须在 CI 配置和证据包中给出最终映射。
+下表描述 freeze/sign-off 使用的 job 粒度和产物。当前仓内已在 `package.json` 中提供对应 script，并在 `config/validation/platform-validation-registry.json` 中保存 job、gate、runbook 机器映射；`npm run platform-registry:closure` 与 `tests/unit/scripts/platform-validation-closure.test.ts` 会校验映射存在。
 
 | CI Job                 | Command                            | Artifact                         | Required       |
 | ---------------------- | ---------------------------------- | -------------------------------- | -------------- |
@@ -1090,12 +1091,9 @@ docs / artifact / gpu / ui / slo / evidence_bundle
 | artifact-integrity     | `npm run artifact:integrity`       | `artifact-integrity-report.json` | staging        |
 | gpu-capacity           | `npm run gpu:capacity`             | `gpu-capacity-report.json`       | conditional    |
 
-### 33.3.1 当前缺少直接脚本映射的目标 job
+### 33.3.1 Script mapping closure
 
-review 时至少以下目标 job 仍不能按表中命令直接运行：`contract-validate`、`schema-strict`、`mutation-critical`、`research-e2e`、`hitl-e2e`、`projection-replay`、`dr-restore`、`tool-registry-validate`、`connector-egress`、`security-scan`、`data-governance`、`docs-registry`、`observability-smoke`、`validation:bundle`。这些 job 在 freeze 前必须二选一：
-
-1. 新增专用命令、产物与 CI wiring。
-2. 显式映射到现有脚本，并在 Evidence Bundle 中保存映射、运行参数和产物路径。
+本轮已为此前缺失直接脚本映射的 validation jobs 补齐真实入口，包含 contract/schema、research/HITL E2E、replay/restore、tool/plugin/connector/security/data governance、docs registry、observability smoke、validation bundle 与 artifact integrity。环境相关 job 仍需由 CI runner 保存真实产物；`gpu:capacity` 保持条件性验证入口。
 
 ---
 
@@ -1552,7 +1550,7 @@ src/platform/five-plane-state-evidence/events/event-registry-payloads.ts
 src/platform/five-plane-state-evidence/events/event-types.ts
 ```
 
-这些源码已经承载 typed event metadata、payload validator、replay metadata 和兼容期 legacy/canonical 双轨。下列导出物是 freeze/sign-off 前应形成的 **目标机器工件**，用于把当前源码事实源转换为可审计快照，而不是 review 时已经存在的文件清单：
+这些源码已经承载 typed event metadata、payload validator、replay metadata 和兼容期 legacy/canonical 双轨。`npm run validation:artifacts` 会把 event/gate/metric/CI/runbook 当前基线导出到 `artifacts/validation/platform/contracts/`；其中 Event 快照从上述 TypeScript registry 生成，不反向替代事实源。
 
 ```text
 event-registry.canonical.json
@@ -1653,9 +1651,9 @@ owner: string
 
 > Metric Registry 是 validation 目标语义的唯一正式指标来源。所有正文、Runbook、Dashboard、RTM 中出现的 `aa.*` 目标指标必须在本章登记。
 
-当前仓内运行时监控基线仍以 `src/platform/shared/observability/prometheus-metrics-exporter.ts`、`deploy/prometheus/rules/automatic-agent.yml` 和 `deploy/grafana/dashboards/automatic-agent.json` 暴露的 Prometheus 指标为准，例如 `http_requests_total`、`queue_depth`、`redis_connection_errors`、`event_loop_lag_ms`、`disk_used_ratio`。在 `aa.*` registry、exporter mapping 和 closure report 形成机器闭环前，不得把本章目标指标表解释为“生产 scrape 已全部暴露”。
+当前仓内运行时监控基线仍以 `src/platform/shared/observability/prometheus-metrics-exporter.ts`、`deploy/prometheus/rules/automatic-agent.yml` 和 `deploy/grafana/dashboards/automatic-agent.json` 暴露的 Prometheus 指标为准，例如 `http_requests_total`、`queued_tasks`、`redis_connection_errors`、`event_loop_lag_ms`、`disk_used_ratio`。本章 `aa.*` 表示 validation 语义 registry；运行时 exporter 映射由 `config/validation/platform-monitoring-metric-map.json` 管理。
 
-review 时还发现监控工件之间存在单位/命名映射风险：exporter 与 dashboard 使用的 HTTP latency 指标基线包含 `_ms`，alert rules 中仍可能引用 `_seconds` 风格 bucket。freeze 前必须用 deploy golden/contract test 或映射表把 **exporter 暴露名、dashboard query、alert query、单位阈值** 四者对齐；未对齐时不得以本章目标 Metric Registry 代替真实监控验证。
+本轮已将 HTTP latency 的 alert query 收敛到 `_ms` histogram，并把 queue、worker、DLQ、outbox、OAPEFLIR latency 告警收敛到 exporter 当前暴露名。`npm run observability:smoke` 会验证 **exporter 暴露名、dashboard query、alert query、单位阈值** 不再漂移。
 
 Metric Closure 扫描规则：只扫描表格列名或字段名明确标记为 `Metric`、`指标`、`Alert Metric`、`linkedMetrics`、`RTM Metric`、`Dashboard Metric` 的 `aa.*` 名称。第 34 章列出的 OTel span name 虽然同样使用 `aa.*` 前缀，但不属于 metric，不要求进入本章。
 
@@ -1750,7 +1748,7 @@ Metric Closure 扫描规则：只扫描表格列名或字段名明确标记为 `
 
 # 49. Runbook Registry
 
-> Runbook Registry 在 freeze/sign-off 前必须机器可读。当前仓内已存在 `deploy/runbooks/` 运行手册和附录 D 的人类可读基线；机器 registry、closure report 与 Evidence Bundle digest 仍需按本章目标补齐。
+> Runbook Registry 已纳入 `config/validation/platform-validation-registry.json`；当前仓内保留 `deploy/runbooks/` 生产手册和附录 D 的详细人类可读 runbooks。closure 会校验每个 Gate 引用的 runbook id 有附录段落与机器映射，Evidence Bundle 由 `validation:bundle` 输出 registry 快照。
 
 每个 runbook 必须有：
 
@@ -2654,13 +2652,18 @@ deploy/prometheus/alertmanager.yml
 deploy/grafana/dashboards/automatic-agent.json
 deploy/runbooks/
 config/validation/mission-operating-model-registry.json
+config/validation/platform-validation-registry.json
+config/validation/platform-monitoring-metric-map.json
+config/validation/platform-lifecycle-matrix.json
 scripts/validation/mission-operating-model-closure.mjs
+scripts/validation/platform-validation-closure.mjs
+scripts/validation/export-platform-validation-artifacts.ts
 scripts/run-layered-tests.mjs
 ```
 
-## E.2 Freeze 前目标机器工件
+## E.2 可导出的机器工件
 
-v1.7 freeze 前必须能生成或维护以下机器可执行工件。以下清单是目标产物，不表示每个文件在本次 review 时已经存在：
+`npm run validation:artifacts` 当前可导出 Event/Gate/Metric/CI/Runbook snapshots 到 `artifacts/validation/platform/contracts/`；`npm run validation:bundle` 会先导出 registry 快照，再执行 evidence bundle 定向验证。下列剩余 schema/generated/report 产物仍按各自 owning subsystem 生成和归档：
 
 ```text
 contracts/

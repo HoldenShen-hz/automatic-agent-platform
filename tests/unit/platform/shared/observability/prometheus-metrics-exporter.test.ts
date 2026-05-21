@@ -30,9 +30,21 @@ test("PrometheusMetricsExporterOptions interface is correct", () => {
 
 test("PrometheusMetricsExporter exports histogram and runtime gauges", () => {
   runtimeMetricsRegistry.reset();
-  runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "redis-rate-limiter" }, 2);
-  runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "sync" }, 1);
-  runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel: "pagerduty" }, 3);
+  runtimeMetricsRegistry.incrementCounter(
+    "redis_connection_errors",
+    { component: "redis-rate-limiter" },
+    2,
+  );
+  runtimeMetricsRegistry.incrementCounter(
+    "queue_enqueue_failures_total",
+    { backend: "redis", mode: "sync" },
+    1,
+  );
+  runtimeMetricsRegistry.incrementCounter(
+    "alert_delivery_failures_total",
+    { channel: "pagerduty" },
+    3,
+  );
   const exporter = new PrometheusMetricsExporter(
     {
       connection: {
@@ -69,16 +81,34 @@ test("PrometheusMetricsExporter exports histogram and runtime gauges", () => {
   runtimeMetricsRegistry.recordKnowledgeQuery("domain", 17, "ok");
 
   const output = exporter.export();
-  assert.match(output, /http_request_duration_ms_bucket\{le="50",method="GET",path="\/health",status="200"\} 1/);
+  assert.match(
+    output,
+    /http_request_duration_ms_bucket\{le="50",method="GET",path="\/health",status="200"\} 1/,
+  );
   assert.match(output, /active_executions 2/);
   assert.match(output, /queued_tasks 7/);
   assert.match(output, /outbox_pending 4/);
-  assert.match(output, /redis_connection_errors\{component="redis-rate-limiter"\} 2/);
-  assert.match(output, /queue_enqueue_failures_total\{backend="redis",mode="sync"\} 1/);
-  assert.match(output, /alert_delivery_failures_total\{channel="pagerduty"\} 3/);
+  assert.match(
+    output,
+    /redis_connection_errors\{component="redis-rate-limiter"\} 2/,
+  );
+  assert.match(
+    output,
+    /queue_enqueue_failures_total\{backend="redis",mode="sync"\} 1/,
+  );
+  assert.match(
+    output,
+    /alert_delivery_failures_total\{channel="pagerduty"\} 3/,
+  );
   assert.match(output, /disk_total_bytes \d+/);
   assert.match(output, /disk_free_bytes \d+/);
   assert.match(output, /disk_used_ratio \d+(\.\d+)?/);
-  assert.match(output, /oapeflir_stage_outcome_total\{result="completed",stage="execute"\} 1/);
-  assert.match(output, /knowledge_query_total\{operation="domain",result="ok"\} 1/);
+  assert.match(
+    output,
+    /oapeflir_stage_outcome_total\{result="completed",stage="execute"\} 1/,
+  );
+  assert.match(
+    output,
+    /knowledge_query_total\{operation="domain",result="ok"\} 1/,
+  );
 });

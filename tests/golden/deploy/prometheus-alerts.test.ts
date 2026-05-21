@@ -15,7 +15,9 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
     "deploy/prometheus/rules/automatic-agent.yml",
     "utf8",
   );
-  const config = parseYaml(content) as { groups?: Array<{ name?: string; rules?: Array<{ alert?: string }> }> };
+  const config = parseYaml(content) as {
+    groups?: Array<{ name?: string; rules?: Array<{ alert?: string }> }>;
+  };
 
   const alertNames: string[] = [];
   if (config.groups) {
@@ -42,10 +44,7 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
   ];
 
   for (const name of required) {
-    assert.ok(
-      alertNames.includes(name),
-      `Missing required alert: ${name}`,
-    );
+    assert.ok(alertNames.includes(name), `Missing required alert: ${name}`);
   }
 });
 
@@ -56,7 +55,10 @@ test("[SYS-OBS-5.2] prometheus rules file exists and is valid yaml", () => {
   );
   const config = parseYaml(content);
   assert.ok(config !== null, "Prometheus rules file must be valid YAML");
-  assert.ok(Array.isArray(config.groups), "Prometheus rules must have groups array");
+  assert.ok(
+    Array.isArray(config.groups),
+    "Prometheus rules must have groups array",
+  );
 });
 
 test("[SYS-OBS-5.2] prometheus rules have at least 3 alerting rules", () => {
@@ -64,7 +66,9 @@ test("[SYS-OBS-5.2] prometheus rules have at least 3 alerting rules", () => {
     "deploy/prometheus/rules/automatic-agent.yml",
     "utf8",
   );
-  const config = parseYaml(content) as { groups?: Array<{ name?: string; rules?: Array<{ alert?: string }> }> };
+  const config = parseYaml(content) as {
+    groups?: Array<{ name?: string; rules?: Array<{ alert?: string }> }>;
+  };
 
   let alertCount = 0;
   if (config.groups) {
@@ -79,7 +83,10 @@ test("[SYS-OBS-5.2] prometheus rules have at least 3 alerting rules", () => {
     }
   }
 
-  assert.ok(alertCount >= 3, `Expected at least 3 alert rules, found ${alertCount}`);
+  assert.ok(
+    alertCount >= 3,
+    `Expected at least 3 alert rules, found ${alertCount}`,
+  );
 });
 
 test("[SYS-OBS-5.2] prometheus alert queries use exporter metric units and current backlog names", () => {

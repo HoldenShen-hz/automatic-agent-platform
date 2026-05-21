@@ -1,6 +1,6 @@
 # ADR-001 Three-Layer Separation of Powers Architecture
 
-- Status: Accepted
+- Status: Partially Superseded by v4.3 Five-Plane Baseline
 - Decision Date: 2026-04-02
 
 ## Background

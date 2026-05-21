@@ -1,0 +1,119 @@
+{
+  "version": "2026-05-21",
+  "objects": {
+    "Mission": [
+      {
+        "from": "draft",
+        "to": "active",
+        "allowed": true,
+        "guard": "owner + budget + policy"
+      },
+      {
+        "from": "active",
+        "to": "paused",
+        "allowed": true,
+        "guard": "operator permission"
+      },
+      {
+        "from": "paused",
+        "to": "active",
+        "allowed": true,
+        "guard": "resume approval"
+      },
+      {
+        "from": "active",
+        "to": "completed",
+        "allowed": true,
+        "guard": "all required tasks terminal"
+      },
+      {
+        "from": "active",
+        "to": "failed",
+        "allowed": true,
+        "guard": "failure evidence"
+      },
+      {
+        "from": "completed",
+        "to": "active",
+        "allowed": false,
+        "guard": "terminal immutable"
+      }
+    ],
+    "NodeRun": [
+      {
+        "from": "queued",
+        "to": "running",
+        "allowed": true,
+        "guard": "worker claim + lease"
+      },
+      {
+        "from": "running",
+        "to": "completed",
+        "allowed": true,
+        "guard": "lease + fencing + receipt"
+      },
+      {
+        "from": "running",
+        "to": "failed",
+        "allowed": true,
+        "guard": "error + evidence"
+      },
+      {
+        "from": "running",
+        "to": "retrying",
+        "allowed": true,
+        "guard": "retry budget"
+      },
+      {
+        "from": "completed",
+        "to": "running",
+        "allowed": false,
+        "guard": "terminal immutable"
+      },
+      {
+        "from": "failed",
+        "to": "completed",
+        "allowed": false,
+        "guard": "terminal immutable"
+      }
+    ],
+    "ArtifactRef": [
+      {
+        "from": "created",
+        "to": "verified",
+        "allowed": true,
+        "guard": "content hash"
+      },
+      {
+        "from": "verified",
+        "to": "published",
+        "allowed": true,
+        "guard": "access policy + audit"
+      },
+      {
+        "from": "published",
+        "to": "deprecated",
+        "allowed": true,
+        "guard": "replacement/ref"
+      },
+      {
+        "from": "deprecated",
+        "to": "archived",
+        "allowed": true,
+        "guard": "retention policy"
+      },
+      {
+        "from": "published",
+        "to": "recalled",
+        "allowed": true,
+        "guard": "security/compliance incident"
+      },
+      {
+        "from": "archived",
+        "to": "published",
+        "allowed": false,
+        "guard": "immutable archive"
+      }
+    ]
+  }
+}

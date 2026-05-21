@@ -3,56 +3,507 @@
   "sources": {
     "eventRegistry": "src/platform/five-plane-state-evidence/events/event-registry.ts",
     "metricMap": "config/validation/platform-monitoring-metric-map.json",
+    "lifecycleMatrix": "config/validation/platform-lifecycle-matrix.json",
     "runbook": "deploy/runbooks/production-alert-runbook.md"
   },
   "ciJobs": [
-    { "jobId": "contract-validate", "script": "contract:validate", "artifact": "contract-report.json" },
-    { "jobId": "schema-strict", "script": "schema:strict", "artifact": "schema-report.json" },
-    { "jobId": "mutation-critical", "script": "test:mutation:critical", "artifact": "mutation-report.json" },
-    { "jobId": "research-e2e", "script": "test:e2e:research", "artifact": "research-e2e-report.json" },
-    { "jobId": "hitl-e2e", "script": "test:e2e:hitl", "artifact": "hitl-e2e-report.json" },
-    { "jobId": "projection-replay", "script": "test:replay", "artifact": "projection-diff.json" },
-    { "jobId": "dr-restore", "script": "test:dr:restore", "artifact": "restore-report.json" },
-    { "jobId": "tool-registry-validate", "script": "tool-registry:validate", "artifact": "tool-registry-audit.json" },
-    { "jobId": "plugin-validate", "script": "plugin:validate", "artifact": "plugin-validation.json" },
-    { "jobId": "connector-egress", "script": "connector:egress:test", "artifact": "connector-egress.json" },
-    { "jobId": "security-scan", "script": "security:scan", "artifact": "security-report.json" },
-    { "jobId": "security-tenant", "script": "security:tenant", "artifact": "tenant-isolation.json" },
-    { "jobId": "data-governance", "script": "data-governance:validate", "artifact": "data-governance-report.json" },
-    { "jobId": "budget-invariant", "script": "budget:invariant", "artifact": "budget-report.json" },
-    { "jobId": "rsm-contract", "script": "rsm:contract", "artifact": "rsm-report.json" },
-    { "jobId": "cas-concurrency", "script": "cas:concurrency", "artifact": "cas-report.json" },
-    { "jobId": "lease-fencing", "script": "lease:fencing", "artifact": "lease-fencing-report.json" },
-    { "jobId": "sideeffect-e2e", "script": "sideeffect:e2e", "artifact": "sideeffect-report.json" },
-    { "jobId": "config-validate", "script": "config:validate", "artifact": "config-report.json" },
-    { "jobId": "config-drift", "script": "config:drift", "artifact": "config-drift-report.json" },
-    { "jobId": "model-provider", "script": "model:provider:test", "artifact": "model-provider-report.json" },
-    { "jobId": "repo-parity", "script": "repo:parity", "artifact": "repo-parity-report.json" },
-    { "jobId": "dispatch-validate", "script": "dispatch:validate", "artifact": "dispatch-report.json" },
-    { "jobId": "test-quality", "script": "test:quality", "artifact": "test-quality-report.json" },
-    { "jobId": "test-reality", "script": "test:reality", "artifact": "test-reality-report.json" },
-    { "jobId": "autonomy-validate", "script": "autonomy:validate", "artifact": "autonomy-report.json" },
-    { "jobId": "rollout-validate", "script": "rollout:validate", "artifact": "rollout-report.json" },
-    { "jobId": "docs-canonical", "script": "docs:canonical", "artifact": "docs-canonical-report.json" },
-    { "jobId": "contract-drift", "script": "contract:drift", "artifact": "contract-drift-report.json" },
-    { "jobId": "docs-registry", "script": "docs:registry", "artifact": "docs-registry-report.json" },
-    { "jobId": "observability-smoke", "script": "observability:smoke", "artifact": "observability-report.json" },
-    { "jobId": "evidence-bundle", "script": "validation:bundle", "artifact": "validation-bundle.json" },
-    { "jobId": "artifact-integrity", "script": "artifact:integrity", "artifact": "artifact-integrity-report.json" },
-    { "jobId": "gpu-capacity", "script": "gpu:capacity", "artifact": "gpu-capacity-report.json", "conditional": true }
+    {
+      "jobId": "contract-validate",
+      "script": "contract:validate",
+      "artifact": "contract-report.json"
+    },
+    {
+      "jobId": "schema-strict",
+      "script": "schema:strict",
+      "artifact": "schema-report.json"
+    },
+    {
+      "jobId": "mutation-critical",
+      "script": "test:mutation:critical",
+      "artifact": "mutation-report.json"
+    },
+    {
+      "jobId": "research-e2e",
+      "script": "test:e2e:research",
+      "artifact": "research-e2e-report.json"
+    },
+    {
+      "jobId": "hitl-e2e",
+      "script": "test:e2e:hitl",
+      "artifact": "hitl-e2e-report.json"
+    },
+    {
+      "jobId": "projection-replay",
+      "script": "test:replay",
+      "artifact": "projection-diff.json"
+    },
+    {
+      "jobId": "dr-restore",
+      "script": "test:dr:restore",
+      "artifact": "restore-report.json"
+    },
+    {
+      "jobId": "tool-registry-validate",
+      "script": "tool-registry:validate",
+      "artifact": "tool-registry-audit.json"
+    },
+    {
+      "jobId": "plugin-validate",
+      "script": "plugin:validate",
+      "artifact": "plugin-validation.json"
+    },
+    {
+      "jobId": "connector-egress",
+      "script": "connector:egress:test",
+      "artifact": "connector-egress.json"
+    },
+    {
+      "jobId": "security-scan",
+      "script": "security:scan",
+      "artifact": "security-report.json"
+    },
+    {
+      "jobId": "security-tenant",
+      "script": "security:tenant",
+      "artifact": "tenant-isolation.json"
+    },
+    {
+      "jobId": "data-governance",
+      "script": "data-governance:validate",
+      "artifact": "data-governance-report.json"
+    },
+    {
+      "jobId": "budget-invariant",
+      "script": "budget:invariant",
+      "artifact": "budget-report.json"
+    },
+    {
+      "jobId": "rsm-contract",
+      "script": "rsm:contract",
+      "artifact": "rsm-report.json"
+    },
+    {
+      "jobId": "cas-concurrency",
+      "script": "cas:concurrency",
+      "artifact": "cas-report.json"
+    },
+    {
+      "jobId": "lease-fencing",
+      "script": "lease:fencing",
+      "artifact": "lease-fencing-report.json"
+    },
+    {
+      "jobId": "sideeffect-e2e",
+      "script": "sideeffect:e2e",
+      "artifact": "sideeffect-report.json"
+    },
+    {
+      "jobId": "config-validate",
+      "script": "config:validate",
+      "artifact": "config-report.json"
+    },
+    {
+      "jobId": "config-drift",
+      "script": "config:drift",
+      "artifact": "config-drift-report.json"
+    },
+    {
+      "jobId": "model-provider",
+      "script": "model:provider:test",
+      "artifact": "model-provider-report.json"
+    },
+    {
+      "jobId": "repo-parity",
+      "script": "repo:parity",
+      "artifact": "repo-parity-report.json"
+    },
+    {
+      "jobId": "dispatch-validate",
+      "script": "dispatch:validate",
+      "artifact": "dispatch-report.json"
+    },
+    {
+      "jobId": "test-quality",
+      "script": "test:quality",
+      "artifact": "test-quality-report.json"
+    },
+    {
+      "jobId": "test-reality",
+      "script": "test:reality",
+      "artifact": "test-reality-report.json"
+    },
+    {
+      "jobId": "autonomy-validate",
+      "script": "autonomy:validate",
+      "artifact": "autonomy-report.json"
+    },
+    {
+      "jobId": "rollout-validate",
+      "script": "rollout:validate",
+      "artifact": "rollout-report.json"
+    },
+    {
+      "jobId": "docs-canonical",
+      "script": "docs:canonical",
+      "artifact": "docs-canonical-report.json"
+    },
+    {
+      "jobId": "contract-drift",
+      "script": "contract:drift",
+      "artifact": "contract-drift-report.json"
+    },
+    {
+      "jobId": "docs-registry",
+      "script": "docs:registry",
+      "artifact": "docs-registry-report.json"
+    },
+    {
+      "jobId": "observability-smoke",
+      "script": "observability:smoke",
+      "artifact": "observability-report.json"
+    },
+    {
+      "jobId": "evidence-bundle",
+      "script": "validation:bundle",
+      "artifact": "validation-bundle.json"
+    },
+    {
+      "jobId": "artifact-integrity",
+      "script": "artifact:integrity",
+      "artifact": "artifact-integrity-report.json"
+    },
+    {
+      "jobId": "gpu-capacity",
+      "script": "gpu:capacity",
+      "artifact": "gpu-capacity-report.json",
+      "conditional": true
+    }
   ],
   "gates": [
-    { "gateId": "GATE-STATE-001", "ciJob": "projection-replay", "runbookId": "runtime-state" },
-    { "gateId": "GATE-HITL-001", "ciJob": "hitl-e2e", "runbookId": "hitl" },
-    { "gateId": "GATE-OBS-001", "ciJob": "observability-smoke", "runbookId": "observability" },
-    { "gateId": "GATE-DR-001", "ciJob": "dr-restore", "runbookId": "restore" },
-    { "gateId": "GATE-EVIDENCE-BUNDLE-001", "ciJob": "evidence-bundle", "runbookId": "evidence" }
+    {
+      "gateId": "GATE-PRIORITY-001",
+      "ciJob": "evidence-bundle",
+      "runbookId": "D.1"
+    },
+    {
+      "gateId": "GATE-STATE-001",
+      "ciJob": "projection-replay",
+      "runbookId": "D.1"
+    },
+    { "gateId": "GATE-RSM-001", "ciJob": "rsm-contract", "runbookId": "D.6" },
+    {
+      "gateId": "GATE-CAS-001",
+      "ciJob": "cas-concurrency",
+      "runbookId": "D.7"
+    },
+    {
+      "gateId": "GATE-LEASE-001",
+      "ciJob": "lease-fencing",
+      "runbookId": "D.8"
+    },
+    {
+      "gateId": "GATE-FENCING-001",
+      "ciJob": "lease-fencing",
+      "runbookId": "D.9"
+    },
+    {
+      "gateId": "GATE-TERMINAL-001",
+      "ciJob": "rsm-contract",
+      "runbookId": "D.10"
+    },
+    {
+      "gateId": "GATE-BUDGET-001",
+      "ciJob": "budget-invariant",
+      "runbookId": "D.2"
+    },
+    {
+      "gateId": "GATE-EVIDENCE-001",
+      "ciJob": "research-e2e",
+      "runbookId": "D.11"
+    },
+    {
+      "gateId": "GATE-EVIDENCE-BUNDLE-001",
+      "ciJob": "evidence-bundle",
+      "runbookId": "D.12"
+    },
+    {
+      "gateId": "GATE-TOOL-001",
+      "ciJob": "tool-registry-validate",
+      "runbookId": "D.13"
+    },
+    {
+      "gateId": "GATE-PLUGIN-001",
+      "ciJob": "plugin-validate",
+      "runbookId": "D.5"
+    },
+    {
+      "gateId": "GATE-CONNECTOR-001",
+      "ciJob": "connector-egress",
+      "runbookId": "D.14"
+    },
+    { "gateId": "GATE-HITL-001", "ciJob": "hitl-e2e", "runbookId": "D.4" },
+    {
+      "gateId": "GATE-OAPEFLIR-001",
+      "ciJob": "research-e2e",
+      "runbookId": "D.15"
+    },
+    {
+      "gateId": "GATE-OAPEFLIR-002",
+      "ciJob": "research-e2e",
+      "runbookId": "D.16"
+    },
+    {
+      "gateId": "GATE-OAPEFLIR-003",
+      "ciJob": "research-e2e",
+      "runbookId": "D.17"
+    },
+    {
+      "gateId": "GATE-TENANT-001",
+      "ciJob": "security-tenant",
+      "runbookId": "D.18"
+    },
+    {
+      "gateId": "GATE-SECURITY-001",
+      "ciJob": "security-scan",
+      "runbookId": "D.19"
+    },
+    {
+      "gateId": "GATE-DATA-001",
+      "ciJob": "data-governance",
+      "runbookId": "D.26"
+    },
+    {
+      "gateId": "GATE-SIDEEFFECT-001",
+      "ciJob": "sideeffect-e2e",
+      "runbookId": "D.20"
+    },
+    {
+      "gateId": "GATE-CONFIG-001",
+      "ciJob": "config-validate",
+      "runbookId": "D.22"
+    },
+    {
+      "gateId": "GATE-CONFIG-002",
+      "ciJob": "config-drift",
+      "runbookId": "D.22"
+    },
+    {
+      "gateId": "GATE-CONFIG-003",
+      "ciJob": "config-drift",
+      "runbookId": "D.22"
+    },
+    {
+      "gateId": "GATE-CONFIG-004",
+      "ciJob": "config-validate",
+      "runbookId": "D.22"
+    },
+    {
+      "gateId": "GATE-CONFIG-005",
+      "ciJob": "config-validate",
+      "runbookId": "D.22"
+    },
+    {
+      "gateId": "GATE-MODEL-001",
+      "ciJob": "model-provider",
+      "runbookId": "D.23"
+    },
+    { "gateId": "GATE-STORE-001", "ciJob": "repo-parity", "runbookId": "D.24" },
+    {
+      "gateId": "GATE-DISPATCH-001",
+      "ciJob": "dispatch-validate",
+      "runbookId": "D.21"
+    },
+    {
+      "gateId": "GATE-RUNTIME-001",
+      "ciJob": "dispatch-validate",
+      "runbookId": "D.3"
+    },
+    { "gateId": "GATE-TEST-001", "ciJob": "test-quality", "runbookId": "D.27" },
+    { "gateId": "GATE-TEST-002", "ciJob": "test-reality", "runbookId": "D.27" },
+    {
+      "gateId": "GATE-TEST-003",
+      "ciJob": "mutation-critical",
+      "runbookId": "D.27"
+    },
+    {
+      "gateId": "GATE-AUTONOMY-001",
+      "ciJob": "autonomy-validate",
+      "runbookId": "D.28"
+    },
+    {
+      "gateId": "GATE-ROLLOUT-001",
+      "ciJob": "rollout-validate",
+      "runbookId": "D.29"
+    },
+    {
+      "gateId": "GATE-DOCS-001",
+      "ciJob": "docs-canonical",
+      "runbookId": "D.30"
+    },
+    {
+      "gateId": "GATE-DOCS-002",
+      "ciJob": "contract-drift",
+      "runbookId": "D.30"
+    },
+    {
+      "gateId": "GATE-DOCS-003",
+      "ciJob": "docs-registry",
+      "runbookId": "D.30"
+    },
+    {
+      "gateId": "GATE-OBS-001",
+      "ciJob": "observability-smoke",
+      "runbookId": "D.25"
+    },
+    { "gateId": "GATE-DR-001", "ciJob": "dr-restore", "runbookId": "D.31" },
+    {
+      "gateId": "GATE-ARTIFACT-001",
+      "ciJob": "artifact-integrity",
+      "runbookId": "D.32"
+    },
+    { "gateId": "GATE-GPU-001", "ciJob": "gpu-capacity", "runbookId": "D.33" },
+    {
+      "gateId": "GATE-MARKETPLACE-OFF-001",
+      "ciJob": "config-validate",
+      "runbookId": "D.34"
+    }
   ],
   "runbooks": [
-    { "runbookId": "runtime-state", "path": "deploy/runbooks/production-alert-runbook.md" },
-    { "runbookId": "hitl", "path": "deploy/runbooks/production-alert-runbook.md" },
-    { "runbookId": "observability", "path": "deploy/runbooks/production-alert-runbook.md" },
-    { "runbookId": "restore", "path": "deploy/runbooks/production-alert-runbook.md" },
-    { "runbookId": "evidence", "path": "deploy/runbooks/production-alert-runbook.md" }
+    {
+      "runbookId": "D.1",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.2",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.3",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.4",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.5",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.6",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.7",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.8",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.9",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.10",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.11",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.12",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.13",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.14",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.15",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.16",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.17",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.18",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.19",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.20",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.21",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.22",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.23",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.24",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.25",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.26",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.27",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.28",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.29",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.30",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.31",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.32",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.33",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    },
+    {
+      "runbookId": "D.34",
+      "path": "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md"
+    }
   ]
 }
