@@ -3,27 +3,13 @@
  * Source: src/platform/five-plane-control-plane/approval-center/approval-policy-engine/version-manager.ts
  */
 
-import { describe, it, beforeEach, mock } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert";
 
+import { PolicyVersionManager, createDefaultVersionManager } from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/index.js";
+import { DEFAULT_APPROVAL_POLICY_BUNDLE } from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
+
 describe("PolicyVersionManager", () => {
-  let PolicyVersionManager: any;
-  let createDefaultVersionManager: any;
-  let DEFAULT_APPROVAL_POLICY_BUNDLE: any;
-
-  beforeEach(() => {
-    delete require.cache[require.resolve("./approval-policy-engine/version-manager.js")];
-    delete require.cache[require.resolve("./approval-policy-engine/version-manager.ts")];
-    delete require.cache[require.resolve("./approval-policy-engine/types.js")];
-    delete require.cache[require.resolve("./approval-policy-engine/types.ts")];
-
-    const typesModule = require("./approval-policy-engine/types.js");
-    DEFAULT_APPROVAL_POLICY_BUNDLE = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
-
-    const module = require("./approval-policy-engine/version-manager.js");
-    PolicyVersionManager = module.PolicyVersionManager;
-    createDefaultVersionManager = module.createDefaultVersionManager;
-  });
 
   describe("constructor", () => {
     it("should create manager with initial bundle as active", () => {

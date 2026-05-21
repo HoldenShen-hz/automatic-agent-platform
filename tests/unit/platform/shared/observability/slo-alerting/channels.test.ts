@@ -26,7 +26,7 @@ import type {
   PagerDutyAlertChannelOptions,
   OpsGenieAlertChannelOptions,
   AlertEvent,
-} from "../../../../../../src/platform/shared/observability/slo-alerting/channels.js";
+} from "../../../../../../src/platform/shared/observability/slo-alerting-channels.js";
 import {
   PAGERDUTY_DEFAULT_ENDPOINT,
   LogAlertChannel,
@@ -35,7 +35,7 @@ import {
   PagerDutyAlertChannel,
   OpsGenieAlertChannel,
   EmailAlertChannel,
-} from "../../../../../../src/platform/shared/observability/slo-alerting/channels.js";
+} from "../../../../../../src/platform/shared/observability/slo-alerting-channels.js";
 
 // ── Type Alias Tests ──────────────────────────────────────────────────
 

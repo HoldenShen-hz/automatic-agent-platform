@@ -7,8 +7,9 @@ import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
+import { MultiPartyApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/multi-party-approval-service.js";
+
 describe("MultiPartyApprovalService", () => {
-  let MultiPartyApprovalService: any;
 
   const mockRepository = {
     insertApproval: mock.fn(),
@@ -30,16 +31,11 @@ describe("MultiPartyApprovalService", () => {
   };
 
   beforeEach(() => {
-    delete require.cache[require.resolve("./multi-party-approval-service.js")];
-    delete require.cache[require.resolve("./multi-party-approval-service.ts")];
     mockRepository.insertApproval.mock.reset();
     mockRepository.insertEvent.mock.reset();
     mockRepository.getApproval.mock.reset();
     mockRepository.updateApprovalDecisionCas.mock.reset();
     mockRepository.updateApprovalRequest.mock.reset();
-
-    const module = require("./multi-party-approval-service.js");
-    MultiPartyApprovalService = module.MultiPartyApprovalService;
   });
 
   describe("createMultiPartyRequest", () => {

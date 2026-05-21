@@ -28,7 +28,7 @@ export class EmergencyHotfixEvidenceGate {
     }
     return {
       allowed: reasonCodes.length === 0,
-      reasonCodes,
+      reasonCodes: Object.freeze([...reasonCodes]),
     };
   }
 }

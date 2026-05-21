@@ -3,27 +3,18 @@
  * Source: src/platform/five-plane-control-plane/approval-center/approval-policy-engine/rule-engine.ts
  */
 
-import { describe, it, beforeEach, mock } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert";
 
+import {
+  ApprovalPolicyEngine,
+  createDefaultPolicyEngine,
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/rule-engine.js";
+import {
+  DEFAULT_APPROVAL_POLICY_BUNDLE,
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
+
 describe("ApprovalPolicyEngine", () => {
-  let ApprovalPolicyEngine: any;
-  let createDefaultPolicyEngine: any;
-  let DEFAULT_APPROVAL_POLICY_BUNDLE: any;
-
-  beforeEach(() => {
-    delete require.cache[require.resolve("./approval-policy-engine/rule-engine.js")];
-    delete require.cache[require.resolve("./approval-policy-engine/rule-engine.ts")];
-    delete require.cache[require.resolve("./approval-policy-engine/types.js")];
-    delete require.cache[require.resolve("./approval-policy-engine/types.ts")];
-
-    const typesModule = require("./approval-policy-engine/types.js");
-    DEFAULT_APPROVAL_POLICY_BUNDLE = typesModule.DEFAULT_APPROVAL_POLICY_BUNDLE;
-
-    const engineModule = require("./approval-policy-engine/rule-engine.js");
-    ApprovalPolicyEngine = engineModule.ApprovalPolicyEngine;
-    createDefaultPolicyEngine = engineModule.createDefaultPolicyEngine;
-  });
 
   describe("evaluate", () => {
     it("should return default result when bundle is disabled", () => {

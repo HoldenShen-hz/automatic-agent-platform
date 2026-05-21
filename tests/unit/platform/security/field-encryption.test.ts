@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FieldEncryptionService, type FieldProtectionRule } from "../../../../src/platform/five-plane-control-plane/iam/field-encryption.js";
+import { FieldEncryptionService, type FieldProtectionRule } from "../../../../src/platform/compliance/encryption/index.js";
 
 const KEY_REF = "test-key-ref-12345";
 

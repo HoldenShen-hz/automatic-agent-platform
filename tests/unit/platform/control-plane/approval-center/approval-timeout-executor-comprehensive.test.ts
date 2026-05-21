@@ -7,9 +7,10 @@ import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
+import { ApprovalTimeoutExecutor } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-timeout-executor.js";
+import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+
 describe("ApprovalTimeoutExecutor", () => {
-  let ApprovalTimeoutExecutor: any;
-  let ApprovalService: any;
 
   const mockApprovalService = {
     applyDecision: mock.fn(() => ({ decisionType: "expired" })),
@@ -27,15 +28,9 @@ describe("ApprovalTimeoutExecutor", () => {
   };
 
   beforeEach(() => {
-    delete require.cache[require.resolve("./approval-timeout-executor.js")];
-    delete require.cache[require.resolve("./approval-timeout-executor.ts")];
-    delete require.cache[require.resolve("./approval-service.js")];
     mockApprovalService.applyDecision.mock.reset();
     mockApprovalRepo.listApprovalsByStatus.mock.reset();
     mockApprovalRepo.getApproval.mock.reset();
-
-    ApprovalService = require("./approval-service.js").ApprovalService;
-    ApprovalTimeoutExecutor = require("./approval-timeout-executor.js").ApprovalTimeoutExecutor;
   });
 
   describe("constructor", () => {

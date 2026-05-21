@@ -3,28 +3,13 @@
  * Source: src/platform/five-plane-control-plane/approval-center/escalation-manager.ts
  */
 
-import { describe, it, beforeEach, mock } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
+import { EscalationManager, NotificationChannelType, NotificationPriority, EscalationReason, DelegationStatus } from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
+
 describe("EscalationManager", () => {
-  let EscalationManager: any;
-  let NotificationChannelType: any;
-  let NotificationPriority: any;
-  let EscalationReason: any;
-  let DelegationStatus: any;
-
-  beforeEach(() => {
-    delete require.cache[require.resolve("./escalation-manager.js")];
-    delete require.cache[require.resolve("./escalation-manager.ts")];
-
-    const module = require("./escalation-manager.js");
-    EscalationManager = module.EscalationManager;
-    NotificationChannelType = module.NotificationChannelType;
-    NotificationPriority = module.NotificationPriority;
-    EscalationReason = module.EscalationReason;
-    DelegationStatus = module.DelegationStatus;
-  });
 
   describe("canEscalate", () => {
     it("should return true when current level is below max depth", () => {

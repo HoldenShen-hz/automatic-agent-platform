@@ -14,7 +14,7 @@ test("index exports ServiceRegistry", () => {
   assert.ok(typeof ServiceRegistry === "function");
 });
 
-test("ServiceRegistry from index is the same as direct import", () => {
+test("ServiceRegistry from index is the same as direct import", async () => {
   const { ServiceRegistry: DirectServiceRegistry } = await import("../../../../../src/platform/shared/lifecycle/service-registry.js");
 
   assert.strictEqual(ServiceRegistry, DirectServiceRegistry);

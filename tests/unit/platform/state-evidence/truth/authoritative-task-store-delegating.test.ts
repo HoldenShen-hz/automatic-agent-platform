@@ -9,7 +9,7 @@ describe("AuthoritativeTaskStoreDelegatingBase inheritance chain", () => {
   // AuthoritativeTaskStoreDelegatingLifecycle -> AuthoritativeTaskStoreDelegatingEngagement ->
   // AuthoritativeTaskStoreDelegatingGovernance -> AuthoritativeTaskStoreDelegatingRuntime
 
-  it("should have AuthoritativeTaskStoreDelegatingBase extending AuthoritativeTaskStoreLegacyCompat", () => {
+  it("should have AuthoritativeTaskStoreDelegatingBase extending AuthoritativeTaskStoreLegacyCompat", async () => {
     // Import the class to verify it exists and can be extended
     const { AuthoritativeTaskStoreDelegatingBase } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-delegating-base.js"
@@ -19,7 +19,7 @@ describe("AuthoritativeTaskStoreDelegatingBase inheritance chain", () => {
     assert.strictEqual(typeof AuthoritativeTaskStoreDelegatingBase, "function");
   });
 
-  it("should have AuthoritativeTaskStoreDelegatingLifecycle extending AuthoritativeTaskStoreDelegatingBase", () => {
+  it("should have AuthoritativeTaskStoreDelegatingLifecycle extending AuthoritativeTaskStoreDelegatingBase", async () => {
     const { AuthoritativeTaskStoreDelegatingLifecycle } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-delegating-lifecycle.js"
     );
@@ -28,7 +28,7 @@ describe("AuthoritativeTaskStoreDelegatingBase inheritance chain", () => {
     assert.strictEqual(typeof AuthoritativeTaskStoreDelegatingLifecycle, "function");
   });
 
-  it("should have AuthoritativeTaskStoreDelegatingEngagement extending AuthoritativeTaskStoreDelegatingLifecycle", () => {
+  it("should have AuthoritativeTaskStoreDelegatingEngagement extending AuthoritativeTaskStoreDelegatingLifecycle", async () => {
     const { AuthoritativeTaskStoreDelegatingEngagement } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-delegating-engagement.js"
     );
@@ -37,7 +37,7 @@ describe("AuthoritativeTaskStoreDelegatingBase inheritance chain", () => {
     assert.strictEqual(typeof AuthoritativeTaskStoreDelegatingEngagement, "function");
   });
 
-  it("should have AuthoritativeTaskStoreDelegatingGovernance extending AuthoritativeTaskStoreDelegatingEngagement", () => {
+  it("should have AuthoritativeTaskStoreDelegatingGovernance extending AuthoritativeTaskStoreDelegatingEngagement", async () => {
     const { AuthoritativeTaskStoreDelegatingGovernance } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-delegating-governance.js"
     );
@@ -46,7 +46,7 @@ describe("AuthoritativeTaskStoreDelegatingBase inheritance chain", () => {
     assert.strictEqual(typeof AuthoritativeTaskStoreDelegatingGovernance, "function");
   });
 
-  it("should have AuthoritativeTaskStoreDelegatingRuntime extending AuthoritativeTaskStoreDelegatingGovernance", () => {
+  it("should have AuthoritativeTaskStoreDelegatingRuntime extending AuthoritativeTaskStoreDelegatingGovernance", async () => {
     const { AuthoritativeTaskStoreDelegatingRuntime } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-delegating-runtime.js"
     );

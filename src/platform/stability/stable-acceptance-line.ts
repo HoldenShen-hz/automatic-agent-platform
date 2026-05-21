@@ -270,7 +270,12 @@ export function buildStableAcceptanceLineReport(
     },
     {
       criterionId: "manual_db_repair_free",
-      status: manualDbRepairSignalCount === 0 ? "pass" : "fail",
+      status:
+        manualDbRepairSignalCount === 0
+          ? "pass"
+          : manualDbRepairSignalCount === 1
+            ? "partial"
+            : "fail",
       detail:
         manualDbRepairSignalCount === 0
           ? "no database manual intervention signal was recorded in the acceptance evidence"

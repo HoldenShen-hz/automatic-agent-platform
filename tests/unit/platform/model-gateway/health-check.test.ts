@@ -471,7 +471,7 @@ test("DegradationController maintains consecutive healthy count", () => {
   assert.equal(result.action, "maintain");
 });
 
-test("CircuitBreakerOpenError has correct properties", () => {
+test("CircuitBreakerOpenError has correct properties", async () => {
   const cb = new CircuitBreaker({ name: "test-circuit" });
   cb.onFailure();
   cb.onFailure();

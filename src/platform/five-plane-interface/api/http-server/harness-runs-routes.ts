@@ -21,7 +21,7 @@ import {
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { HarnessRun as CanonicalHarnessRun, HarnessRunStatus } from "../../../contracts/executable-contracts/index.js";
 
-class HarnessRunsApiError extends Error {
+export class HarnessRunsApiError extends Error {
   public constructor(
     public readonly statusCode: number,
     code: string,

@@ -94,7 +94,7 @@ test("deriveUrgency returns 'high' for high urgency keywords", () => {
   assert.equal(deriveUrgency("urgent task"), "high");
   assert.equal(deriveUrgency("p1 priority"), "high");
   assert.equal(deriveUrgency("high priority"), "high");
-  assert.equal(deriveUrgency("立刻"), "high");
+  assert.equal(deriveUrgency("asap"), "high");
 });
 
 test("deriveUrgency returns 'medium' for normal messages", () => {

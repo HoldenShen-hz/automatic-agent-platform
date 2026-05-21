@@ -13,7 +13,7 @@ function getLogger(): StructuredLogger {
   return logger;
 }
 
-function recordAlertDeliveryFailure(channel: AlertChannelKind, alertId: string, error: unknown): void {
+export function recordAlertDeliveryFailure(channel: AlertChannelKind, alertId: string, error: unknown): void {
   runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel }, 1);
   getLogger().error("alert.delivery_failed", {
     alertId,

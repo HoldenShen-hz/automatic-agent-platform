@@ -36,10 +36,10 @@ describe("validateSyncQueueChain", () => {
   test("returns valid result for properly chained envelopes", () => {
     const items: EdgeSyncEnvelope[] = [
       {
-        envelopeId: "env-1",
-        priority: 1,
-        sequence_no: 1,
-        createdAt: "2026-04-20T00:00:00.000Z",
+        envelopeId: "env-3",
+        priority: 3,
+        sequence_no: 3,
+        createdAt: "2026-04-20T00:02:00.000Z",
         prev_hash: undefined,
       },
       {
@@ -47,13 +47,13 @@ describe("validateSyncQueueChain", () => {
         priority: 2,
         sequence_no: 2,
         createdAt: "2026-04-20T00:01:00.000Z",
-        prev_hash: "env-1:1:2026-04-20T00:00:00.000Z",
+        prev_hash: "env-3:3:2026-04-20T00:02:00.000Z",
       },
       {
-        envelopeId: "env-3",
-        priority: 3,
-        sequence_no: 3,
-        createdAt: "2026-04-20T00:02:00.000Z",
+        envelopeId: "env-1",
+        priority: 1,
+        sequence_no: 1,
+        createdAt: "2026-04-20T00:00:00.000Z",
         prev_hash: "env-2:2:2026-04-20T00:01:00.000Z",
       },
     ];
@@ -151,13 +151,13 @@ describe("validateSyncQueueChain", () => {
     const items: EdgeSyncEnvelope[] = [
       {
         envelopeId: "env-root",
-        priority: 1,
+        priority: 2,
         prev_hash: undefined,
         side_effect_dependency_refs: [],
       },
       {
         envelopeId: "env-child",
-        priority: 2,
+        priority: 1,
         prev_hash: "env-root::",
         side_effect_dependency_refs: ["env-root"],
       },
@@ -172,16 +172,16 @@ describe("validateSyncQueueChain", () => {
   test("handles items without sequence_no", () => {
     const items: EdgeSyncEnvelope[] = [
       {
-        envelopeId: "env-1",
-        priority: 1,
-        createdAt: "2026-04-20T00:00:00.000Z",
-        prev_hash: undefined,
-      },
-      {
         envelopeId: "env-2",
-        priority: 2,
+        priority: 1,
         createdAt: "2026-04-20T00:01:00.000Z",
         prev_hash: "env-1::2026-04-20T00:00:00.000Z",
+      },
+      {
+        envelopeId: "env-1",
+        priority: 2,
+        createdAt: "2026-04-20T00:00:00.000Z",
+        prev_hash: undefined,
       },
     ];
 
@@ -193,28 +193,28 @@ describe("validateSyncQueueChain", () => {
   test("returns correct topological order for complex DAG", () => {
     const items: EdgeSyncEnvelope[] = [
       {
-        envelopeId: "env-a",
+        envelopeId: "env-d",
         priority: 1,
-        prev_hash: undefined,
-        side_effect_dependency_refs: [],
-      },
-      {
-        envelopeId: "env-b",
-        priority: 2,
-        prev_hash: "env-a::",
-        side_effect_dependency_refs: ["env-a"],
+        prev_hash: "env-c::",
+        side_effect_dependency_refs: ["env-b", "env-c"],
       },
       {
         envelopeId: "env-c",
+        priority: 2,
+        prev_hash: "env-b::",
+        side_effect_dependency_refs: ["env-a"],
+      },
+      {
+        envelopeId: "env-b",
         priority: 3,
         prev_hash: "env-a::",
         side_effect_dependency_refs: ["env-a"],
       },
       {
-        envelopeId: "env-d",
+        envelopeId: "env-a",
         priority: 4,
-        prev_hash: "env-b::",
-        side_effect_dependency_refs: ["env-b", "env-c"],
+        prev_hash: undefined,
+        side_effect_dependency_refs: [],
       },
     ];
 
@@ -229,8 +229,8 @@ describe("validateSyncQueueChain", () => {
 
   test("handles items without side_effect_dependency_refs", () => {
     const items: EdgeSyncEnvelope[] = [
-      { envelopeId: "env-1", priority: 1 },
-      { envelopeId: "env-2", priority: 2, prev_hash: "env-1::" },
+      { envelopeId: "env-2", priority: 1, prev_hash: "env-1::" },
+      { envelopeId: "env-1", priority: 2 },
     ];
 
     const result = validateSyncQueueChain(items);

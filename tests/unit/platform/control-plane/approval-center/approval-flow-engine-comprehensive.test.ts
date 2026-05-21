@@ -7,12 +7,12 @@ import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
+import { EscalationManager } from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
+import { FlowStatus, FlowType } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-types.js";
+import { VoteType } from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
+import { ApprovalFlowEngine } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
+
 describe("ApprovalFlowEngine", () => {
-  let ApprovalFlowEngine: any;
-  let EscalationManager: any;
-  let FlowStatus: any;
-  let FlowType: any;
-  let VoteType: any;
 
   const createMockEscalationManager = () => ({
     canEscalate: mock.fn(() => true),
@@ -31,27 +31,6 @@ describe("ApprovalFlowEngine", () => {
     resetDelegationTtl: mock.fn((d) => d),
     escalate: mock.fn(() => ({ success: true, newLevel: { level: 1 } })),
     notifyChannels: mock.fn(),
-  });
-
-  beforeEach(() => {
-    // Clear module cache to get fresh instances
-    delete require.cache[require.resolve("./approval-flow-engine.js")];
-    delete require.cache[require.resolve("./approval-flow-engine.ts")];
-    delete require.cache[require.resolve("./escalation-manager.js")];
-    delete require.cache[require.resolve("./approval-flow-types.js")];
-    delete require.cache[require.resolve("./quorum-calculator.js")];
-
-    const escalationModule = require("./escalation-manager.js");
-    EscalationManager = escalationModule.EscalationManager;
-
-    const flowTypes = require("./approval-flow-types.js");
-    FlowStatus = flowTypes.FlowStatus;
-    FlowType = flowTypes.FlowType;
-
-    const quorumCalc = require("./quorum-calculator.js");
-    VoteType = quorumCalc.VoteType;
-
-    ApprovalFlowEngine = require("./approval-flow-engine.js").ApprovalFlowEngine;
   });
 
   describe("createFlow", () => {

@@ -6,6 +6,8 @@
 import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
 
+import { ApprovalService, validateApprovalDecision } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+
 // Mock dependencies before imports
 const mockRepository = {
   insertApproval: mock.fn(),
@@ -35,8 +37,6 @@ const mockDirectiveSink = {
 describe("ApprovalService", () => {
   describe("validateApprovalDecision", () => {
     it("should accept valid option_selected decision", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.doesNotThrow(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -49,8 +49,6 @@ describe("ApprovalService", () => {
     });
 
     it("should accept valid confirmed decision", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.doesNotThrow(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -63,8 +61,6 @@ describe("ApprovalService", () => {
     });
 
     it("should accept valid text_input decision", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.doesNotThrow(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -77,8 +73,6 @@ describe("ApprovalService", () => {
     });
 
     it("should accept valid rejected decision", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.doesNotThrow(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -90,8 +84,6 @@ describe("ApprovalService", () => {
     });
 
     it("should accept valid expired decision", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.doesNotThrow(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -103,8 +95,6 @@ describe("ApprovalService", () => {
     });
 
     it("should reject option_selected without selectedOptionId", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.throws(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -116,8 +106,6 @@ describe("ApprovalService", () => {
     });
 
     it("should reject confirmed without confirmed=true", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.throws(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -129,8 +117,6 @@ describe("ApprovalService", () => {
     });
 
     it("should reject text_input without inputText", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.throws(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -142,8 +128,6 @@ describe("ApprovalService", () => {
     });
 
     it("should reject terminal decisions with extra payload", () => {
-      const { validateApprovalDecision } = require("./approval-service.js");
-
       assert.throws(() => {
         validateApprovalDecision({
           approvalId: "approval-123",
@@ -158,7 +142,6 @@ describe("ApprovalService", () => {
 
   describe("ApprovalService.createRequest", () => {
     it("should create a new approval request with generated ID", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       const input = {
@@ -180,7 +163,6 @@ describe("ApprovalService", () => {
     });
 
     it("should set timeoutAutoAction based on timeoutPolicy", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       const input = {
@@ -198,7 +180,6 @@ describe("ApprovalService", () => {
     });
 
     it("should read approverGroups from context when not provided", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       const input = {
@@ -216,7 +197,6 @@ describe("ApprovalService", () => {
     });
 
     it("should include escalation chain from context", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       const input = {
@@ -254,7 +234,6 @@ describe("ApprovalService", () => {
     });
 
     it("should apply approved decision and emit directive", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       mockRepository.getApproval.mock.mockImplementation(() => ({
@@ -287,7 +266,6 @@ describe("ApprovalService", () => {
     });
 
     it("should apply rejected decision for cascade scenario", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       mockRepository.getApproval.mock.mockImplementation(() => ({
@@ -336,7 +314,6 @@ describe("ApprovalService", () => {
     });
 
     it("should throw when approval not found", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       mockRepository.getApproval.mock.mockImplementation(() => null);
@@ -355,7 +332,6 @@ describe("ApprovalService", () => {
     });
 
     it("should be idempotent when approval already resolved", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       mockRepository.getApproval.mock.mockImplementation(() => ({
@@ -389,7 +365,6 @@ describe("ApprovalService", () => {
 
   describe("ApprovalService.resolve", () => {
     it("should resolve with approve decision", () => {
-      const { ApprovalService } = require("./approval-service.js");
       const service = new ApprovalService(mockDb as any, mockStore as any, mockRepository as any, mockDirectiveSink as any);
 
       mockRepository.getApproval.mock.mockImplementation(() => ({
