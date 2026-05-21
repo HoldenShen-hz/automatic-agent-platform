@@ -6,19 +6,19 @@ import test from "node:test";
  * This file re-exports distributed lock services from five-plane-execution.
  * Coverage: 0% (all statements/skipped)
  */
-test("distributed-lock-service re-exports DistributedLockTypes", async () => {
+test("distributed-lock-service re-exports lock types via LockDataSchema", async () => {
   const mod = await import("../../../src/core/runtime/distributed-lock-service.js");
-  assert.ok("DistributedLockTypes" in mod || mod.DistributedLockTypes != null, "should export DistributedLockTypes namespace");
+  assert.ok("LockDataSchema" in mod, "should export LockDataSchema");
 });
 
-test("distributed-lock-service re-exports DistributedLockService", async () => {
+test("distributed-lock-service re-exports transitionLock", async () => {
   const mod = await import("../../../src/core/runtime/distributed-lock-service.js");
-  assert.ok("DistributedLockService" in mod || mod.default != null, "should export DistributedLockService");
+  assert.ok("transitionLock" in mod, "should export transitionLock");
 });
 
-test("distributed-lock-service re-exports LockingSupport", async () => {
+test("distributed-lock-service re-exports locking support via lockLogger", async () => {
   const mod = await import("../../../src/core/runtime/distributed-lock-service.js");
-  assert.ok("LockingSupport" in mod || "lockingSupport" in mod, "should export LockingSupport");
+  assert.ok("lockLogger" in mod, "should export lockLogger");
 });
 
 test("distributed-lock-service re-exports SqliteLockAdapter", async () => {
@@ -36,9 +36,9 @@ test("distributed-lock-service re-exports RedisLockAdapter", async () => {
   assert.ok("RedisLockAdapter" in mod || "redisLockAdapter" in mod, "should export RedisLockAdapter");
 });
 
-test("distributed-lock-service re-exports DistributedLockFactory", async () => {
+test("distributed-lock-service re-exports createLockAdapter factory", async () => {
   const mod = await import("../../../src/core/runtime/distributed-lock-service.js");
-  assert.ok("DistributedLockFactory" in mod || "distributedLockFactory" in mod, "should export DistributedLockFactory");
+  assert.ok("createLockAdapter" in mod, "should export createLockAdapter");
 });
 
 test("distributed-lock-service exports are functions or objects", async () => {

@@ -5,7 +5,7 @@
 
 import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
-import { nowIso } from "../../../../src/contracts/types/ids.js";
+import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 describe("ApprovalFlowEngine", () => {
   let ApprovalFlowEngine: any;

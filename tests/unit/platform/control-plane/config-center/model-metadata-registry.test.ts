@@ -3,7 +3,7 @@ import test from "node:test";
 import { join } from "node:path";
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { loadModelMetadataRegistry } from "../../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
-import { createWorkspacePolicy, createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("loadModelMetadataRegistry returns registry when config root has no override", () => {
   const workspace = join("/tmp", `test-model-registry-${Date.now()}`);
@@ -31,7 +31,7 @@ test("loadModelMetadataRegistry returns registry when config root has no overrid
   }));
 
   try {
-    const policy = createWorkspacePolicy(workspace, workspace);
+    const policy = createWorkspaceWritePolicy(workspace);
     const registry = loadModelMetadataRegistry(workspace, policy);
     assert.ok(registry != null);
     assert.ok(typeof registry.version === "string");

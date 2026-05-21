@@ -112,7 +112,10 @@ test("index exports PluginTestHarness", () => {
 });
 
 test("index exports signing verification functions", () => {
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const { publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+  });
   registerPluginSigningVerificationKey({
     keyId: "index-key",
     publicKeyPem: publicKey,

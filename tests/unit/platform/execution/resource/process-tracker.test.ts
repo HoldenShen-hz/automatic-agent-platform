@@ -172,7 +172,7 @@ test("resetProcessTracker clears singleton", () => {
 });
 
 test("ProcessTracker exported types remain usable", () => {
-  const owners: ProcessOwner[] = ["bash-tool", "mcp-transport", "lsp-client", "redis-cli", "pg-cli", "docker", "exec-file", "unknown"];
+  const owners: ProcessOwner[] = ["bash-tool", "mcp-transport", "lsp-client", "redis-cli", "pg-cli", "docker", "exec-file", "plugin-runtime", "unknown"];
   const states: TrackedProcessState[] = ["running", "terminating", "killed", "exited"];
   const tracked: TrackedProcess = {
     pid: 1,
@@ -186,7 +186,7 @@ test("ProcessTracker exported types remain usable", () => {
     lastSignal: undefined,
   };
 
-  assert.equal(owners.length, 8);
+  assert.equal(owners.length, 9);
   assert.equal(states.length, 4);
   assert.equal(tracked.command, "node");
 });

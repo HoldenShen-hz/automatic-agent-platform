@@ -13,9 +13,9 @@ import {
   isTerminalScimAction,
   ScimUserSchema,
   ScimGroupSchema,
-} from "../../../../src/org-governance/sso-scim/scim-sync/index.js";
+} from "../../../../../src/org-governance/sso-scim/scim-sync/index.js";
 
-import type { ScimUser, ScimGroup, ScimProvisioningEvent } from "../../../../src/org-governance/sso-scim/scim-sync/index.js";
+import type { ScimUser, ScimGroup, ScimProvisioningEvent } from "../../../../../src/org-governance/sso-scim/scim-sync/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ScimProvisioningEventSchema Full Coverage Tests

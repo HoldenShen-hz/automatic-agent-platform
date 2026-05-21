@@ -120,14 +120,15 @@ test("estimateActualLlmCallCost calculates from usage", () => {
 
 test("estimateCostFromUsage adds prompt and completion tokens", () => {
   const cost = estimateCostFromUsage(100, 50, "MiniMax-M2.7");
-  // 150 tokens total at $0.001 per token
-  assert.equal(cost, 0.15);
+  // 150 tokens total at $0.001 per 1000 tokens = 0.00015
+  assert.equal(cost, 0.00015);
 });
 
 test("estimateCostFromUsage handles negative tokens as zero", () => {
   const cost = estimateCostFromUsage(-100, 50, "MiniMax-M2.7");
   // Negative prompt tokens treated as 0, so 0 + 50 = 50 tokens
-  assert.equal(cost, 0.05);
+  // 50 tokens at $0.001 per 1000 tokens = 0.00005
+  assert.equal(cost, 0.00005);
 });
 
 test("toGovernanceError creates ProviderError with correct properties", () => {

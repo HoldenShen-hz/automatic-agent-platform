@@ -106,5 +106,6 @@ export function toWorkflowResumeWindow(
     nextAction: expired ? "expire" : due ? "resume" : "wait",
     timeoutPolicy: record.timeoutPolicy,
     resumableFromStep: record.resumableFromStep,
+    channel: nowOrChannel,
   };
 }

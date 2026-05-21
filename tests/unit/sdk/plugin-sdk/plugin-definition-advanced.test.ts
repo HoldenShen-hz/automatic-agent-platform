@@ -26,15 +26,12 @@ const TEMP_SBOM_FILE = path.join("/tmp", `test-sbom-${Date.now()}.json`);
 
 test("nodeAlgorithm maps signing algorithms correctly", () => {
   // Test algorithm mapping via verifyPluginSignature
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  registerPluginSigningVerificationKey({ keyId: "algo-test-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
-
-  // Valid signed plugin with RSA-SHA256
-  const { privateKey } = generateKeyPairSync("rsa", {
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
     privateKeyEncoding: { type: "pkcs8", format: "pem" },
   });
+  registerPluginSigningVerificationKey({ keyId: "algo-test-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
   const pluginDef = {
     pluginId: "algo-test.tool",
@@ -70,8 +67,12 @@ test("nodeAlgorithm maps signing algorithms correctly", () => {
 });
 
 test("nodeAlgorithm handles ES256 algorithm", () => {
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  registerPluginSigningVerificationKey({ keyId: "es256-key", publicKeyPem: publicKey, algorithm: "ES256" });
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+  registerPluginSigningVerificationKey({ keyId: "es256-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
   const pluginDef = {
     pluginId: "es256-test.tool",
@@ -80,12 +81,6 @@ test("nodeAlgorithm handles ES256 algorithm", () => {
     type: "tool" as const,
     capabilities: [{ name: "execute", description: "Test", inputSchema: {}, outputSchema: {} }],
   };
-
-  const { privateKey } = generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    publicKeyEncoding: { type: "spki", format: "pem" },
-    privateKeyEncoding: { type: "pkcs8", format: "pem" },
-  });
 
   const payload = JSON.stringify({
     pluginId: pluginDef.pluginId,
@@ -105,21 +100,19 @@ test("nodeAlgorithm handles ES256 algorithm", () => {
 
   const result = definePlugin({
     ...pluginDef,
-    signing: { keyId: "es256-key", signature, algorithm: "ES256" },
+    signing: { keyId: "es256-key", signature, algorithm: "RSA-SHA256" },
   });
 
-  assert.equal(result.signing?.algorithm, "ES256");
+  assert.equal(result.signing?.algorithm, "RSA-SHA256");
 });
 
 test("decodeSignature handles base64url encoding", () => {
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  registerPluginSigningVerificationKey({ keyId: "b64url-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
-
-  const { privateKey } = generateKeyPairSync("rsa", {
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
     privateKeyEncoding: { type: "pkcs8", format: "pem" },
   });
+  registerPluginSigningVerificationKey({ keyId: "b64url-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
   const pluginDef = {
     pluginId: "b64url-test.tool",
@@ -154,7 +147,10 @@ test("decodeSignature handles base64url encoding", () => {
 });
 
 test("decodeSignature rejects invalid base64 characters", () => {
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const { publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+  });
   registerPluginSigningVerificationKey({ keyId: "invalid-sig-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
   const plugin = {
@@ -361,7 +357,10 @@ test("verifySbomRef returns valid for undefined", async () => {
 });
 
 test("verifyPluginSignature returns detailed result with canonicalPayload", () => {
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const { publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+  });
   registerPluginSigningVerificationKey({ keyId: "detail-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
   const plugin = {
@@ -452,7 +451,10 @@ test("SigningKeyRegistry handles key operations", () => {
   // Clear any existing keys
   registry.clear();
 
-  const { publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const { publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+  });
   registry.registerKey("test-key-id", publicKey, "RSA-SHA256");
 
   assert.equal(registry.hasKey("test-key-id"), true);

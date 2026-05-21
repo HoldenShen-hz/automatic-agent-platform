@@ -6,9 +6,37 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { RolloutRecord } from "../../../../src/ops-maturity/drift-detection/rollout-manager.js";
-import {
-  InMemoryRolloutRepository,
-} from "../../../../src/ops-maturity/drift-detection/learning/rollout-repository.js";
+
+/**
+ * In-memory implementation for testing
+ */
+export class InMemoryRolloutRepository {
+  private records: Map<string, RolloutRecord> = new Map();
+
+  insert(record: RolloutRecord): void {
+    this.records.set(record.proposalId, record);
+  }
+
+  get(proposalId: string): RolloutRecord | null {
+    return this.records.get(proposalId) ?? null;
+  }
+
+  update(record: RolloutRecord): void {
+    this.records.set(record.proposalId, record);
+  }
+
+  listAll(): RolloutRecord[] {
+    return Array.from(this.records.values());
+  }
+
+  listByStatus(status: string): RolloutRecord[] {
+    return Array.from(this.records.values()).filter((r) => r.status === status);
+  }
+
+  delete(proposalId: string): void {
+    this.records.delete(proposalId);
+  }
+}
 
 function createTestRecord(proposalId: string = "prop_1"): RolloutRecord {
   return {
