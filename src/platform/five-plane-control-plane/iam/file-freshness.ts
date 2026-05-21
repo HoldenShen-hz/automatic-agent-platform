@@ -71,7 +71,7 @@ export interface FreshnessConfig {
   requireDigest?: boolean;
 
   /** Algorithm for digest computation */
-  digestAlgorithm?: "sha256" | "md5";
+  digestAlgorithm?: "sha256";
 }
 
 /**
@@ -100,7 +100,7 @@ export interface FreshnessResult {
  * @param options.digestAlgorithm - Algorithm for digest (default sha256)
  * @returns FileSnapshot capturing current state
  */
-export function takeFileSnapshot(filePath: string, options: { includeDigest?: boolean; digestAlgorithm?: "sha256" | "md5" } = {}): FileSnapshot {
+export function takeFileSnapshot(filePath: string, options: { includeDigest?: boolean; digestAlgorithm?: "sha256" } = {}): FileSnapshot {
   const stat = statSync(filePath);
   const snapshot: FileSnapshot = {
     path: filePath,
@@ -125,7 +125,7 @@ export function takeFileSnapshot(filePath: string, options: { includeDigest?: bo
  */
 export function computeFileDigest(
   filePath: string,
-  algorithm: "sha256" | "md5" = "sha256",
+  algorithm: "sha256" = "sha256",
 ): string {
   const content = readFileSync(filePath);
   const hash = createHash(algorithm);
@@ -259,7 +259,7 @@ export class FileFreshnessGuard {
    * @param options - Snapshot options (digest calculation)
    * @returns The captured snapshot
    */
-  snapshot(filePath: string, options?: { includeDigest?: boolean; digestAlgorithm?: "sha256" | "md5" }): FileSnapshot {
+  snapshot(filePath: string, options?: { includeDigest?: boolean; digestAlgorithm?: "sha256" }): FileSnapshot {
     const snapshot = takeFileSnapshot(filePath, options);
     this.snapshots.set(filePath, snapshot);
     return snapshot;

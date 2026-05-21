@@ -6,15 +6,19 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
+}
 
-  backend "s3" {
-    bucket         = "automatic-agent-terraform-state"
-    key            = "infra/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-locks"
-    encrypt        = true
-  }
+terraform {
+  backend "s3" {}
 }
 
 provider "aws" {
@@ -24,7 +28,6 @@ provider "aws" {
 variable "aws_region" {
   description = "AWS region"
   type        = string
-  default     = "us-east-1"
 }
 
 variable "project_name" {
@@ -41,13 +44,11 @@ variable "environment" {
 variable "vpc_cidr" {
   description = "VPC CIDR block"
   type        = string
-  default     = "10.0.0.0/16"
 }
 
 variable "availability_zones" {
   description = "Availability zones for the VPC"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
 
 variable "db_instance_class" {
@@ -92,6 +93,42 @@ variable "eks_max_nodes" {
   default     = 3
 }
 
+variable "eks_endpoint_public_access" {
+  description = "Whether to expose the EKS API endpoint publicly"
+  type        = bool
+  default     = false
+}
+
+variable "eks_public_access_cidrs" {
+  description = "Allowed CIDR blocks when public EKS API access is enabled"
+  type        = list(string)
+  default     = []
+}
+
+variable "cluster_kms_key_arn" {
+  description = "Optional KMS key ARN for EKS secret envelope encryption"
+  type        = string
+  default     = null
+}
+
+variable "node_volume_kms_key_arn" {
+  description = "Optional KMS key ARN for EKS node volume encryption"
+  type        = string
+  default     = null
+}
+
+variable "rds_kms_key_id" {
+  description = "Optional KMS key ARN for RDS encryption"
+  type        = string
+  default     = null
+}
+
+variable "redis_auth_token" {
+  description = "Redis auth token supplied via secure tfvars or CI secret injection"
+  type        = string
+  sensitive   = true
+}
+
 locals {
   common_tags = {
     Project     = var.project_name
@@ -99,8 +136,6 @@ locals {
     ManagedBy   = "terraform"
   }
 }
-
-# ── VPC ─────────────────────────────────────────────────────────────────────────
 
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -129,10 +164,11 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_subnet" "public" {
-  count             = length(var.availability_zones)
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, length(var.availability_zones) + count.index)
-  availability_zone = var.availability_zones[count.index]
+  count                   = length(var.availability_zones)
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, length(var.availability_zones) + count.index)
+  availability_zone       = var.availability_zones[count.index]
+  map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
     Name = "${var.project_name}-${var.environment}-public-${var.availability_zones[count.index]}"
@@ -192,126 +228,58 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# ── EKS ─────────────────────────────────────────────────────────────────────────
-
 module "eks" {
   source = "./modules/eks"
 
-  cluster_name    = "${var.project_name}-${var.environment}"
-  cluster_version = "1.29"
-  vpc_id          = aws_vpc.main.id
-  private_subnet_ids = aws_subnet.private[*].id
-
-  min_nodes       = var.eks_min_nodes
-  max_nodes       = var.eks_max_nodes
-  desired_nodes   = var.eks_desired_nodes
-  instance_types  = var.eks_node_instance_types
-
-  project_name  = var.project_name
-  environment   = var.environment
+  cluster_name             = "${var.project_name}-${var.environment}"
+  cluster_version          = "1.29"
+  vpc_id                   = aws_vpc.main.id
+  private_subnet_ids       = aws_subnet.private[*].id
+  min_nodes                = var.eks_min_nodes
+  max_nodes                = var.eks_max_nodes
+  desired_nodes            = var.eks_desired_nodes
+  instance_types           = var.eks_node_instance_types
+  endpoint_public_access   = var.eks_endpoint_public_access
+  public_access_cidrs      = var.eks_public_access_cidrs
+  cluster_kms_key_arn      = var.cluster_kms_key_arn
+  node_volume_kms_key_arn  = var.node_volume_kms_key_arn
+  project_name             = var.project_name
+  environment              = var.environment
 }
-
-# ── RDS ─────────────────────────────────────────────────────────────────────────
 
 module "rds" {
   source = "./modules/rds"
 
-  project_name        = var.project_name
+  project_name       = var.project_name
   environment        = var.environment
-  db_instance_class   = var.db_instance_class
-  db_storage_gb       = var.db_storage_gb
-  db_max_storage_gb   = var.db_storage_gb * 5
-  db_subnet_group     = aws_db_subnet_group.main.name
-  db_security_group_id = aws_security_group.rds.id
-  vpc_id              = aws_vpc.main.id
-  vpc_cidr            = var.vpc_cidr
+  db_instance_class  = var.db_instance_class
+  db_storage_gb      = var.db_storage_gb
+  db_max_storage_gb  = var.db_storage_gb * 5
+  private_subnet_ids = aws_subnet.private[*].id
+  vpc_id             = aws_vpc.main.id
+  vpc_cidr           = var.vpc_cidr
+  kms_key_id         = var.rds_kms_key_id
 }
-
-resource "aws_db_subnet_group" "main" {
-  name       = "${var.project_name}-${var.environment}"
-  subnet_ids = aws_subnet.private[*].id
-
-  tags = local.common_tags
-}
-
-resource "aws_security_group" "rds" {
-  name        = "${var.project_name}-${var.environment}-rds"
-  description = "Security group for RDS"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol     = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-    description  = "PostgreSQL from VPC"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol     = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = local.common_tags
-}
-
-# ── ElastiCache ─────────────────────────────────────────────────────────────────
 
 module "elasticache" {
   source = "./modules/elasticache"
 
-  project_name    = var.project_name
-  environment    = var.environment
-  node_type      = var.redis_node_type
+  project_name       = var.project_name
+  environment        = var.environment
+  node_type          = var.redis_node_type
   num_cache_clusters = var.environment == "prod" ? 3 : 1
-  subnet_group   = aws_elasticache_subnet_group.main.name
-  security_group_id = aws_security_group.redis.id
-  vpc_id         = aws_vpc.main.id
-  vpc_cidr       = var.vpc_cidr
+  private_subnet_ids = aws_subnet.private[*].id
+  vpc_id             = aws_vpc.main.id
+  vpc_cidr           = var.vpc_cidr
+  auth_token         = var.redis_auth_token
 }
-
-resource "aws_elasticache_subnet_group" "main" {
-  name       = "${var.project_name}-${var.environment}"
-  subnet_ids = aws_subnet.private[*].id
-
-  tags = local.common_tags
-}
-
-resource "aws_security_group" "redis" {
-  name        = "${var.project_name}-${var.environment}-redis"
-  description = "Security group for ElastiCache Redis"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 6379
-    to_port     = 6379
-    protocol     = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-    description  = "Redis from VPC"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol     = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = local.common_tags
-}
-
-# ── ECR ─────────────────────────────────────────────────────────────────────────
 
 module "ecr" {
   source = "./modules/ecr"
 
-  project_name  = var.project_name
-  environment   = var.environment
+  project_name = var.project_name
+  environment  = var.environment
 }
-
-# ── Outputs ────────────────────────────────────────────────────────────────────
 
 output "vpc_id" {
   description = "VPC ID"

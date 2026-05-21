@@ -2,12 +2,32 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
 rule_files:
   - /etc/prometheus/rules/*.yml
 
 scrape_configs:
-  - job_name: automatic-agent
+  - job_name: automatic-agent-compose
     metrics_path: /metrics
     static_configs:
       - targets:
           - api-server:3000
+        labels:
+          topology: compose
+
+  - job_name: automatic-agent-kubernetes
+    metrics_path: /metrics
+    kubernetes_sd_configs:
+      - role: endpoints
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_name]
+        regex: automatic-agent
+        action: keep
+      - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_component]
+        regex: metrics
+        action: keep

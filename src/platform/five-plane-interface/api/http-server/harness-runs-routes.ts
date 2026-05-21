@@ -195,8 +195,15 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
           throw new HarnessRunsApiError(400, "api.invalid_json", "Request body must be valid JSON.");
         }
 
-        const tenantId = (body.tenantId as string) || "tenant:local";
-        const domainId = (body.domainId as string) || "default";
+        const tenantId = typeof body.tenantId === "string" && body.tenantId.trim().length > 0
+          ? body.tenantId.trim()
+          : "tenant:local";
+        const domainId = typeof body.domainId === "string" && body.domainId.trim().length > 0
+          ? body.domainId.trim()
+          : null;
+        if (domainId == null) {
+          throw new HarnessRunsApiError(400, "api.domain_id_required", "domainId must be provided.");
+        }
         const harnessRunId = newId("hrun");
         const now = nowIso();
         const riskLevel = (body.riskLevel as string) || "medium";

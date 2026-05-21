@@ -2,11 +2,11 @@
   "name": "test-pack",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "./package.json",
   "scripts": {
     "build": "tsc",
     "test": "node --test tests/",
-    "domain:lint": "agent-platform domain validate --domain-id=test-domain --lint-only",
-    "domain:validate": "agent-platform domain validate --domain-id=test-domain"
+    "domain:lint": "automatic-agent pack-validate --domain-id=test-domain --lint-only",
+    "domain:validate": "automatic-agent pack-validate --domain-id=test-domain"
   }
 }

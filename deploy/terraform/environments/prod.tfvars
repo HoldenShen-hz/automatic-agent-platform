@@ -1,5 +1,8 @@
 environment          = "prod"
-db_instance_class   = "db.t3.large"
+aws_region          = "us-east-1"
+vpc_cidr            = "10.30.0.0/16"
+availability_zones  = ["us-east-1a", "us-east-1b", "us-east-1c"]
+db_instance_class   = "db.m6i.large"
 db_storage_gb       = 50
 redis_node_type     = "cache.t3.medium"
 eks_desired_nodes   = 3

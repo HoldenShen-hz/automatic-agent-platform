@@ -21,14 +21,9 @@ variable "num_cache_clusters" {
   default     = 1
 }
 
-variable "subnet_group" {
-  description = "ElastiCache subnet group name"
-  type        = string
-}
-
-variable "security_group_id" {
-  description = "Security group ID for ElastiCache"
-  type        = string
+variable "private_subnet_ids" {
+  description = "Private subnet IDs used by the ElastiCache subnet group"
+  type        = list(string)
 }
 
 variable "vpc_id" {
@@ -41,6 +36,12 @@ variable "vpc_cidr" {
   type        = string
 }
 
+variable "auth_token" {
+  description = "Redis auth token"
+  type        = string
+  sensitive   = true
+}
+
 locals {
   tags = {
     Project     = var.project_name
@@ -50,7 +51,7 @@ locals {
 
 resource "aws_elasticache_subnet_group" "main" {
   name       = "${var.project_name}-${var.environment}"
-  subnet_ids = var.subnet_group
+  subnet_ids = var.private_subnet_ids
 
   tags = local.tags
 }
@@ -63,16 +64,17 @@ resource "aws_security_group" "redis" {
   ingress {
     from_port   = 6379
     to_port     = 6379
-    protocol     = "tcp"
+    protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
-    description  = "Redis from VPC"
+    description = "Redis from VPC"
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol     = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+    description = "Restricted control-plane egress"
   }
 
   tags = local.tags
@@ -83,20 +85,21 @@ resource "aws_elasticache_replication_group" "main" {
   description          = "Redis for ${var.project_name} ${var.environment}"
 
   engine               = "redis"
-  engine_version       = "7.1"
+  engine_version       = "7.0"
   node_type            = var.node_type
   num_cache_clusters   = var.environment == "prod" ? 3 : var.num_cache_clusters
 
-  port                 = 6379
-  subnet_group_name    = aws_elasticache_subnet_group.main.name
-  security_group_ids   = [aws_security_group.redis.id]
+  port               = 6379
+  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  security_group_ids = [aws_security_group.redis.id]
 
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
+  auth_token                 = var.auth_token
+  auth_token_update_strategy = "ROTATE"
 
   automatic_failover_enabled = var.environment == "prod"
-
-  parameter_group_name = "default.redis7"
+  parameter_group_name       = "default.redis7"
 
   tags = local.tags
 }

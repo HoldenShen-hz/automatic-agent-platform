@@ -43,6 +43,30 @@ variable "instance_types" {
   default     = ["t3.medium"]
 }
 
+variable "endpoint_public_access" {
+  description = "Whether to expose the cluster endpoint publicly"
+  type        = bool
+  default     = false
+}
+
+variable "public_access_cidrs" {
+  description = "Allowed public CIDRs when public endpoint access is enabled"
+  type        = list(string)
+  default     = []
+}
+
+variable "cluster_kms_key_arn" {
+  description = "Optional KMS key ARN used for cluster secret envelope encryption"
+  type        = string
+  default     = null
+}
+
+variable "node_volume_kms_key_arn" {
+  description = "Optional KMS key ARN used for node volume encryption"
+  type        = string
+  default     = null
+}
+
 variable "project_name" {
   description = "Project name for resource tagging"
   type        = string
@@ -71,12 +95,43 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = var.private_subnet_ids
     endpoint_private_access = true
-    endpoint_public_access  = true
+    endpoint_public_access  = var.endpoint_public_access
+    public_access_cidrs     = var.public_access_cidrs
+  }
+
+  enabled_cluster_log_types = [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler",
+  ]
+
+  dynamic "encryption_config" {
+    for_each = var.cluster_kms_key_arn == null ? [] : [var.cluster_kms_key_arn]
+    content {
+      provider {
+        key_arn = encryption_config.value
+      }
+      resources = ["secrets"]
+    }
   }
 
   depends_on = [
     aws_iam_role_policy_attachment.cluster_policy,
   ]
+
+  tags = local.tags
+}
+
+data "tls_certificate" "cluster_oidc" {
+  url = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "cluster" {
+  url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.cluster_oidc.certificates[0].sha1_fingerprint]
 
   tags = local.tags
 }
@@ -131,6 +186,37 @@ resource "aws_iam_role_policy_attachment" "nodes_container_registry_policy" {
   role       = aws_iam_role.nodes.name
 }
 
+resource "aws_launch_template" "nodes" {
+  name_prefix            = "${var.cluster_name}-nodes-"
+  update_default_version = true
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      delete_on_termination = true
+      encrypted             = true
+      kms_key_id            = var.node_volume_kms_key_arn
+      volume_size           = 50
+      volume_type           = "gp3"
+    }
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_put_response_hop_limit = 2
+    http_tokens                 = "required"
+  }
+
+  monitoring {
+    enabled = true
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags          = local.tags
+  }
+}
+
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.cluster_name}-nodes"
@@ -138,12 +224,17 @@ resource "aws_eks_node_group" "main" {
   subnet_ids      = var.private_subnet_ids
 
   scaling_config {
-    min_size       = var.min_nodes
-    max_size       = var.max_nodes
-    desired_size   = var.desired_nodes
+    min_size     = var.min_nodes
+    max_size     = var.max_nodes
+    desired_size = var.desired_nodes
   }
 
   instance_types = var.instance_types
+
+  launch_template {
+    id      = aws_launch_template.nodes.id
+    version = "$Latest"
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.nodes_policy,
@@ -172,4 +263,9 @@ output "cluster_arn" {
 output "node_role_arn" {
   description = "Node IAM role ARN"
   value       = aws_iam_role.nodes.arn
+}
+
+output "oidc_provider_arn" {
+  description = "OIDC provider ARN for IRSA"
+  value       = aws_iam_openid_connect_provider.cluster.arn
 }

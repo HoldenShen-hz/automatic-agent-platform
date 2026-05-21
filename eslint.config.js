@@ -6,10 +6,22 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.ts", "scripts/**/*.mjs"],
+    files: [
+      "src/**/*.ts",
+      "scripts/**/*.mjs",
+      "tests/**/*.ts",
+      "helpers/**/*.ts",
+      "helpers/**/*.js",
+      "packs/**/*.ts",
+      "packs/**/*.js",
+      "deploy/**/*.mjs",
+    ],
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-floating-promises": "warn",
+      "@typescript-eslint/no-misused-promises": "warn",
+      "@typescript-eslint/require-await": "warn",
     },
   },
   {
@@ -20,5 +32,5 @@ export default [
       "@typescript-eslint/no-unsafe-member-access": "warn",
     },
   },
-  { ignores: ["dist/", "node_modules/"] },
+  { ignores: ["dist/", "node_modules/", "ui/**"] },
 ];

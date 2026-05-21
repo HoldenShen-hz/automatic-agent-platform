@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Local production-like compose profile.
 # Resource and security limits are intentionally explicit so local smoke
 # runs cannot hide unbounded CPU, memory, pid, or writable-root behavior.
@@ -8,6 +6,7 @@ version: "3.9"
 
 services:
   api-server:
+    image: ${AA_IMAGE_REF:-automatic-agent-platform:local}
     build:
       context: .
       target: runtime
@@ -37,10 +36,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    cpus: "1.0"
-    mem_limit: 512m
-    mem_reservation: 256m
-    pids_limit: 256
     stop_grace_period: 30s
     security_opt:
       - no-new-privileges:true
@@ -109,10 +104,14 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
+    command:
+      - /bin/sh
+      - -ec
+      - envsubst < /etc/alertmanager/alertmanager.yml.tmpl > /tmp/alertmanager.yml && /bin/alertmanager --config.file=/tmp/alertmanager.yml
     ports:
       - "9093:9093"
     volumes:
-      - ./deploy/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./deploy/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml.tmpl:ro
     depends_on:
       api-server:
         condition: service_healthy

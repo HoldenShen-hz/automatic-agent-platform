@@ -462,7 +462,7 @@ export class OidcOAuthService {
       // A mismatched `kid` must fail closed instead of silently downgrading.
       const key = header.kid
         ? keys.find((k) => k.kid === header.kid)
-        : keys[0];
+        : (keys.length === 1 ? keys[0] : null);
 
       if (!key) {
         return false;

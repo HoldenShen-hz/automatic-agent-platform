@@ -90,6 +90,13 @@ test("buildRedisClientOptions returns standalone options for default config", ()
   assert.ok(typeof options.retryStrategy === "function");
 });
 
+test("buildRedisClientOptions rejects standalone mode without explicit host", () => {
+  assert.throws(
+    () => buildRedisClientOptions({ port: 6379 }),
+    /redis\.host_required/,
+  );
+});
+
 test("buildRedisClientOptions returns sentinel options for sentinel config", () => {
   const config: RedisConnectionConfig = {
     mode: "sentinel",

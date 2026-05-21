@@ -12,6 +12,8 @@
  * - Provides recommendations for safe rollout
  */
 
+import { randomUUID } from "node:crypto";
+
 import { diffObjects, type ConfigDiffEntry } from "./config-governance-support.js";
 
 /**
@@ -203,7 +205,7 @@ export class ConfigImpactAnalyzer {
     oldContent: Record<string, unknown>,
     newContent: Record<string, unknown>,
   ): ConfigImpactAnalysis {
-    const analysisId = `impact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const analysisId = `impact-${randomUUID()}`;
     const changes = diffObjects(oldContent, newContent);
 
     // Analyze each change for impact

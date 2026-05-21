@@ -47,6 +47,9 @@ test("buildRedisClientOptions rejects sentinel mode without a master name", () =
         sentinels: [{ host: "sentinel-1", port: 26379 }],
     }), /redis\.sentinel_name_required/);
 });
+test("buildRedisClientOptions rejects standalone mode without explicit host", () => {
+    assert.throws(() => buildRedisClientOptions({ port: 6379 }), /redis\.host_required/);
+});
 test("readRedisConnectionConfigFromEnv parses sentinel deployment settings", () => {
     const config = readRedisConnectionConfigFromEnv("AA_REDIS", {
         AA_REDIS_MODE: "sentinel",

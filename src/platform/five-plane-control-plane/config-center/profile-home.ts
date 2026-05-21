@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { isAbsolute, join, resolve } from "node:path";
 
 import { ValidationError } from "../../contracts/errors.js";
@@ -26,8 +27,13 @@ const PROFILE_ID_PATTERN = /^[a-zA-Z0-9._-]{1,64}$/;
  * Normalizes and validates a profile ID string.
  * @throws ValidationError if profile ID contains invalid characters or is too long
  */
-function normalizeProfileId(profileId: string | undefined): string {
-  const candidate = profileId?.trim() || "default";
+function buildManagedDefaultProfileId(cwd: string): string {
+  const digest = createHash("sha256").update(resolve(cwd)).digest("hex").slice(0, 12);
+  return `managed-${digest}`;
+}
+
+function normalizeProfileId(profileId: string | undefined, cwd: string): string {
+  const candidate = profileId?.trim() || buildManagedDefaultProfileId(cwd);
   if (!PROFILE_ID_PATTERN.test(candidate)) {
     throw new ValidationError("profile_home.invalid_profile_id", "profile_home.invalid_profile_id");
   }
@@ -51,7 +57,7 @@ function resolveHomeRoot(env: NodeJS.ProcessEnv, cwd: string): {
   }
 
   return {
-    profileHome: resolve(cwd, ".aa-profile-homes", normalizeProfileId(env.AA_PROFILE_ID)),
+    profileHome: resolve(cwd, ".aa-profile-homes", normalizeProfileId(env.AA_PROFILE_ID, cwd)),
     source: "default_managed_home",
   };
 }
@@ -68,7 +74,7 @@ export function resolveAgentProfileHome(
   env: NodeJS.ProcessEnv = process.env,
   cwd: string = process.cwd(),
 ): AgentProfileHomeLayout {
-  const profileId = normalizeProfileId(env.AA_PROFILE_ID);
+  const profileId = normalizeProfileId(env.AA_PROFILE_ID, cwd);
   const home = resolveHomeRoot(env, cwd);
   const profileHome =
     home.source === "explicit_home"

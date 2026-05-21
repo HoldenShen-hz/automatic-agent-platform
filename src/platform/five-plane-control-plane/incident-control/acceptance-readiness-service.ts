@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { ValidationError } from "../../contracts/errors.js";
 import { ArtifactStore, type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { createWorkspaceWritePolicy } from "../iam/sandbox-policy.js";
 import { inspectStorageBackendConfig, type StorageBackendRuntimeProfile, type StorageDriver } from "../../five-plane-state-evidence/truth/storage-backend-config.js";
@@ -117,8 +118,13 @@ function readJsonIfExists<T>(path: string): T | null {
   }
   try {
     return JSON.parse(readFileSync(path, "utf8")) as T;
-  } catch {
-    return null;
+  } catch (error) {
+    throw new ValidationError("acceptance_readiness.invalid_json", "acceptance_readiness.invalid_json", {
+      details: {
+        path,
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
   }
 }
 

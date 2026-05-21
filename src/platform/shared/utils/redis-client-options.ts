@@ -111,9 +111,17 @@ export function buildRedisClientOptions(
     };
   }
 
+  if (typeof config.host !== "string" || config.host.trim().length === 0) {
+    throw new ValidationError(
+      "redis.host_required",
+      "redis.host_required",
+      { retryable: false, source: "runtime" },
+    );
+  }
+
   return {
     ...common,
-    host: config.host ?? "localhost",
+    host: config.host.trim(),
     port: config.port ?? 6379,
   };
 }

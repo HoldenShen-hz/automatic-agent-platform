@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 /**
  * GraphQL Adapter Service
  *
@@ -259,7 +261,7 @@ export class GraphQLAdapterService {
       throw new Error(`Schema '${schemaName}' not found`);
     }
 
-    const operationId = `sub_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const operationId = `sub_${randomUUID()}`;
     this.subscriptions.set(operationId, onEvent);
 
     return {

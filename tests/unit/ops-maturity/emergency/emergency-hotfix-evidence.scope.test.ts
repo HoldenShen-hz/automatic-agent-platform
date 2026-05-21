@@ -9,7 +9,7 @@ import test from "node:test";
 import {
   EmergencyHotfixEvidenceGate,
   type EmergencyHotfixEvidence,
-} from "../../../../../src/ops-maturity/emergency/emergency-hotfix-evidence.js";
+} from "../../../../src/ops-maturity/emergency/emergency-hotfix-evidence.js";
 
 function createValidEvidence(overrides: Partial<EmergencyHotfixEvidence> = {}): EmergencyHotfixEvidence {
   return {
