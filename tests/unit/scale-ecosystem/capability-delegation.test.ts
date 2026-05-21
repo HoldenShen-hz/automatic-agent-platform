@@ -14,7 +14,7 @@ import {
   type CapabilityCategory,
   type CapabilityPermission,
   type CapabilityConstraintType,
-} from "../../../../src/scale-ecosystem/federation/capability-delegation.js";
+} from "../../../src/scale-ecosystem/federation/capability-delegation.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CapabilityDelegation Construction Tests

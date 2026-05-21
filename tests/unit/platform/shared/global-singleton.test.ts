@@ -7,7 +7,7 @@ import {
   getOrCreateGlobalSingletonAsync,
   resetGlobalSingleton,
   type GlobalSingletonSlot,
-} from "../../../../../src/platform/shared/lifecycle/global-singleton.js";
+} from "../../../../src/platform/shared/lifecycle/global-singleton.js";
 
 test("createGlobalSingletonSlot creates empty slot", () => {
   const slot = createGlobalSingletonSlot<string>();

@@ -8,7 +8,7 @@ import {
   BUDGET_LEDGER_TRANSITIONS,
   BUDGET_RESERVATION_TRANSITIONS,
   type TransitionTable,
-} from "../../../../../src/platform/shared/runtime-state-machine-model.js";
+} from "../../../../src/platform/shared/runtime-state-machine-model.js";
 
 test("HARNESS_RUN_TRANSITIONS has valid structure", () => {
   const transitions = HARNESS_RUN_TRANSITIONS;

@@ -18,8 +18,8 @@ import {
   getServiceCertificates,
   extractServiceAuth,
   getServiceAuthStats,
-} from "../../../../../src/platform/five-plane-control-plane/iam/service-auth.js";
-import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/service-auth.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // Helper to reset state between tests
 function resetServiceAuthState(): void {

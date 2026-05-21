@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SqliteCasRepository, type CasRecord } from "../../../../../../../src/platform/five-plane-state-evidence/events/cas/sqlite-cas-repository.js";
-import type { CasResult } from "../../../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
+import { SqliteCasRepository, type CasRecord } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/sqlite-cas-repository.js";
+import type { CasResult } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
 
 // Mock SqliteConnection for testing
 function createMockConnection(): {

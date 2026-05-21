@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SlackConnector } from "../../../../../src/scale-ecosystem/integration/connectors/slack-connector.js";
-import type { ConnectorExecutionRequest } from "../../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
+import { SlackConnector } from "../../../../src/scale-ecosystem/integration/connectors/slack-connector.js";
+import type { ConnectorExecutionRequest } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 
 function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): ConnectorExecutionRequest {
   return {

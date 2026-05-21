@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { QueueMetricsService, type QueueMetrics, type QueueMetricsSnapshot } from "../../../../../../src/platform/five-plane-execution/queue-metrics/index.js";
+import { QueueMetricsService, type QueueMetrics, type QueueMetricsSnapshot } from "../../../../../src/platform/five-plane-execution/queue-metrics/index.js";
 
 test("QueueMetricsService can be instantiated", () => {
   const service = new QueueMetricsService();

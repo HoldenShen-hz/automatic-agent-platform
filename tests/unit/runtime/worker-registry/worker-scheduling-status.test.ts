@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { toWorkerSchedulingStatus } from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/worker-scheduling-status.js";
+import { toWorkerSchedulingStatus } from "../../../../src/platform/five-plane-execution/worker-pool/worker/worker-scheduling-status.js";
 
-import type { WorkerStatus } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { WorkerStatus } from "../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------
 // toWorkerSchedulingStatus - degraded status

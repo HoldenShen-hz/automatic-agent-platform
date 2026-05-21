@@ -20,8 +20,8 @@ import {
   verifyManifestChecksum,
   createCheckpointManifest,
   requireValidCheckpointManifest,
-} from "../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-manifest.js";
-import { ValidationError } from "../../../src/platform/contracts/errors.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-manifest.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 describe("CheckpointManifest", () => {
   const createValidCheckpointRef = (id: string): CheckpointRef => ({

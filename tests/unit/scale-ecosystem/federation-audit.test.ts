@@ -15,7 +15,7 @@ import {
   type ResourceType,
   type AuditStatus,
   type AuditQuery,
-} from "../../../../src/scale-ecosystem/federation/federation-audit.js";
+} from "../../../src/scale-ecosystem/federation/federation-audit.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FederationAudit Construction Tests

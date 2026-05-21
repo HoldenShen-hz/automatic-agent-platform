@@ -13,7 +13,7 @@ import type {
   GoalBudgetAllocation,
   GoalRiskPropagationRecord,
   CapabilityValidationResult,
-} from "../../src/interaction/goal-decomposer/goal-decomposer-types.js";
+} from "../../../src/interaction/goal-decomposer/goal-decomposer-types.js";
 
 test("Goal interface accepts valid structure", () => {
   const goal: Goal = {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PlatformStartupTargetKind } from "../src/index.js";
+import type { PlatformStartupTargetKind } from "../../src/index.js";
 
 /**
  * Issue 2002: PlatformRootEntryMode and PlatformStartupTargetKind were duplicate definitions.

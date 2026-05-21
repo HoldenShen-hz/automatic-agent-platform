@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildSlotClarificationState, resolveRequiredSlots } from "../../../../src/interaction/nl-gateway/slot-resolver/index.js";
-import type { ExtractedEntity } from "../../../src/interaction/nl-gateway/index.js";
+import type { ExtractedEntity } from "../../../../src/interaction/nl-gateway/index.js";
 
 function makeEntity(type: string, value: string, normalized?: unknown): ExtractedEntity {
   return {

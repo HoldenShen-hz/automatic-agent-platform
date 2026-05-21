@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SqliteFenceRepository } from "../../../../../../../src/platform/five-plane-state-evidence/events/cas/sqlite-fence-repository.js";
-import type { FenceInfo } from "../../../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
+import { SqliteFenceRepository } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/sqlite-fence-repository.js";
+import type { FenceInfo } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
 
 // Mock SqliteConnection for testing
 function createMockConnection(): {

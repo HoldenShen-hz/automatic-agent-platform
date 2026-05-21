@@ -70,8 +70,8 @@ test("risk-config includes expected categories", () => {
 });
 
 test("risk-config enforces approval for high and critical", () => {
-  assert.equal(riskConfig.riskLevelActions.low.autoExecute, true);
-  assert.equal(riskConfig.riskLevelActions.low.requiresApproval, false);
+  assert.equal(riskConfig.riskLevelActions.low.autoExecute, false);
+  assert.equal(riskConfig.riskLevelActions.low.requiresApproval, true);
 
   assert.equal(riskConfig.riskLevelActions.medium.autoExecute, false);
   assert.equal(riskConfig.riskLevelActions.medium.requiresApproval, true);

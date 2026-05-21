@@ -12,7 +12,7 @@ import {
   createTrustRelationshipManager,
   TrustLevel,
   type TrustPolicy,
-} from "../../../../src/scale-ecosystem/federation/trust-relationship.js";
+} from "../../../src/scale-ecosystem/federation/trust-relationship.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TrustRelationshipManager Construction Tests

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   ENTERPRISE_GOVERNANCE_DDL,
-} from "../../../../../src/platform/shared/enterprise-governance-ddl.js";
+} from "../../../../src/platform/shared/enterprise-governance-ddl.js";
 
 test("ENTERPRISE_GOVERNANCE_DDL contains incident_handoff_records table", () => {
   assert.ok(ENTERPRISE_GOVERNANCE_DDL.includes("CREATE TABLE IF NOT EXISTS incident_handoff_records"));

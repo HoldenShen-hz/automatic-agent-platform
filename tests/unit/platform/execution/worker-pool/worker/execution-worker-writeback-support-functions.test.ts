@@ -10,9 +10,9 @@ import {
   removeExecutionId,
   toWorkerStatus,
   toExecutionTerminalStatus,
-} from "../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-writeback-support.js";
+} from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-writeback-support.js";
 
-import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
+import type { WorkerSnapshotRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 function makeSnapshot(overrides: Partial<WorkerSnapshotRecord> = {}): WorkerSnapshotRecord {
   return {

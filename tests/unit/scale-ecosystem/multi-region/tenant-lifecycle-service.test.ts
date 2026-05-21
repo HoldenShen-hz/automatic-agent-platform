@@ -11,7 +11,7 @@ import {
   resetTenantLifecycleService,
   type TenantLifecycleStage,
   type TenantLifecycleConfig,
-} from "../../../src/scale-ecosystem/multi-region/tenant-lifecycle-service.js";
+} from "../../../../src/scale-ecosystem/multi-region/tenant-lifecycle-service.js";
 
 function createLifecycleConfig(tenantId: string): TenantLifecycleConfig {
   return {

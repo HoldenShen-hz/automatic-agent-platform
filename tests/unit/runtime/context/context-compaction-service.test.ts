@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ContextCompactionService, type ContextCompactionOptions, type CompactedContextMessage, type ContextCompactionResult } from "../../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
+import { ContextCompactionService, type ContextCompactionOptions, type CompactedContextMessage, type ContextCompactionResult } from "../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
 import { createHash } from "node:crypto";
 
 /**

@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { JiraConnector } from "../../../../../src/scale-ecosystem/integration/connectors/jira-connector.js";
-import type { ConnectorExecutionRequest } from "../../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
+import { JiraConnector } from "../../../../src/scale-ecosystem/integration/connectors/jira-connector.js";
+import type { ConnectorExecutionRequest } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 
 function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): ConnectorExecutionRequest {
   return {

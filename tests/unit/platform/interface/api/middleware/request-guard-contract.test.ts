@@ -4,7 +4,7 @@ import {
   buildRequestGuardPlan,
   planIncludesGuard,
   type RequestGuardPlanInput,
-} from "../../../../../src/platform/five-plane-interface/api/middleware/request-guard-contract.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/request-guard-contract.js";
 
 test("buildRequestGuardPlan includes rate-limit for GET beforeRouting", () => {
   const input: RequestGuardPlanInput = {

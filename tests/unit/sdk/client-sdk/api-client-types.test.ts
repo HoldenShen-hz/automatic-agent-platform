@@ -17,7 +17,7 @@ import type {
   RetryConfig,
   VersionHandshakeResult,
   ApiRequestOptions,
-} from "../../../src/sdk/client-sdk/api-client-types.js";
+} from "../../../../src/sdk/client-sdk/api-client-types.js";
 
 // =============================================================================
 // ApiClientConfig Tests

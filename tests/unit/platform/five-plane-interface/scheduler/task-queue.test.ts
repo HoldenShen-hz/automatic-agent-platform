@@ -9,7 +9,7 @@ import type {
   PartitionAssignment,
   RetryPolicy,
   TaskDequeueResult,
-} from "../../../../src/platform/five-plane-interface/scheduler/task-queue.js";
+} from "../../../../../src/platform/five-plane-interface/scheduler/task-queue.js";
 
 test("TaskQueueConfig has required fields", () => {
   const config: TaskQueueConfig = {

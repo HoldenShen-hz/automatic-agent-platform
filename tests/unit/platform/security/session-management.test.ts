@@ -13,8 +13,8 @@ import {
   getSessionStats,
   __dangerousResetSessionStoreForTests,
   __dangerousExpireSessionForTests,
-} from "../../../../../src/platform/five-plane-control-plane/iam/session-management.js";
-import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/session-management.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test.describe("Session Management", () => {
   test.beforeEach(() => {

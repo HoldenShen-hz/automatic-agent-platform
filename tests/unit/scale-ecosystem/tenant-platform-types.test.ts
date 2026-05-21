@@ -19,7 +19,7 @@ import {
   type AddOrganizationMembershipInput,
   type CreateTenantInput,
   type TenantLifecycleStage,
-} from "../../../../src/scale-ecosystem/tenant-platform/tenant-platform-types.js";
+} from "../../../src/scale-ecosystem/tenant-platform/tenant-platform-types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Assertion Functions Tests

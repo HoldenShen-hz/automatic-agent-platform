@@ -7,8 +7,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionDispatchServiceAsync, type ExecutionTicketDecision } from "../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service-async.js";
-import type { CreateExecutionTicketInput } from "../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
+import { ExecutionDispatchServiceAsync, type ExecutionTicketDecision } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service-async.js";
+import type { CreateExecutionTicketInput } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 
 // ---------------------------------------------------------------------------
 // Mock Fixtures

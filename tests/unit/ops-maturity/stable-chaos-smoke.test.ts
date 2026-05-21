@@ -9,7 +9,7 @@ import {
   type StableChaosSmokeOptions,
   type StableChaosSmokeReport,
   type StableChaosScenarioResult,
-} from "../../../../src/platform/stability/stable-chaos-smoke.js";
+} from "../../../src/platform/stability/stable-chaos-smoke.js";
 
 const TEST_OUTPUT_DIR = "/tmp/stable-chaos-smoke-test-ops-maturity";
 

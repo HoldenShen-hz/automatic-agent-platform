@@ -6,7 +6,7 @@ import {
   createWorkspaceWritePolicy,
   type SandboxPolicy,
   type SandboxPathCheckResult,
-} from "../../../../../src/platform/shared/sandbox-path-policy.js";
+} from "../../../../src/platform/shared/sandbox-path-policy.js";
 
 test("checkSandboxPath returns allowed true for path within allowed roots", () => {
   const policy: SandboxPolicy = {

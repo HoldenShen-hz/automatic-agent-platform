@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ContextAssembler, type HarnessContextSourceSet, type HarnessContext } from "../../../../../src/platform/five-plane-orchestration/harness/context/index.js";
-import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import { ContextAssembler, type HarnessContextSourceSet, type HarnessContext } from "../../../../src/platform/five-plane-orchestration/harness/context/index.js";
+import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 /**
  * Tests for src/platform/five-plane-orchestration/harness/context/index.ts

@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { CheckpointGCService, DEFAULT_CHECKPOINT_RETENTION_POLICY, type CheckpointGCCandidate, type CheckpointRetentionPolicy } from "../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-gc-service.js";
+import { CheckpointGCService, DEFAULT_CHECKPOINT_RETENTION_POLICY, type CheckpointGCCandidate, type CheckpointRetentionPolicy } from "../../../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-gc-service.js";
 
 describe("CheckpointGCService", () => {
   let testRootDir: string;

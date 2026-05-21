@@ -9,7 +9,7 @@ import {
   PerTenantEncryptionService,
   deriveTenantKey,
   type EncryptionAlgorithm,
-} from "../../../src/scale-ecosystem/multi-region/per-tenant-encryption.js";
+} from "../../../../src/scale-ecosystem/multi-region/per-tenant-encryption.js";
 
 function createEncryptionConfig(
   tenantId: string,

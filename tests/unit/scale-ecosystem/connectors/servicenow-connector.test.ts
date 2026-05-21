@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ServiceNowConnector } from "../../../../../src/scale-ecosystem/integration/connectors/servicenow-connector.js";
-import type { ConnectorExecutionRequest } from "../../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
+import { ServiceNowConnector } from "../../../../src/scale-ecosystem/integration/connectors/servicenow-connector.js";
+import type { ConnectorExecutionRequest } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 
 function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): ConnectorExecutionRequest {
   return {

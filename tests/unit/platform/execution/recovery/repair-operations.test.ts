@@ -12,7 +12,7 @@ import { RepairPipeline, DEFAULT_PIPELINE_OPTIONS, type PipelineState, type Pipe
 import { createTaskCard, type TaskCard, type TaskRiskLevel } from "../../../../../src/platform/five-plane-execution/recovery/task-card.js";
 import { ValidationRepairLoopService, type ValidationLoopInput, type ValidationDecision } from "../../../../../src/platform/five-plane-execution/recovery/validation-repair-loop.js";
 import { StalledExecutionDetector, type StalledExecutionDetectionOptions, type StalledExecutionFinding } from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
-import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 function createTestTaskCard(riskLevel: TaskRiskLevel = "medium", maxRepairRounds = 3): TaskCard {
   return createTaskCard({

@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { QueueMetricCollector } from "../../../../../../src/platform/five-plane-execution/queue-metrics/index.js";
+import { QueueMetricCollector } from "../../../../../src/platform/five-plane-execution/queue-metrics/index.js";
 
 test("QueueMetricCollector can be instantiated with name", () => {
   const collector = new QueueMetricCollector("test-queue");

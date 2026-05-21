@@ -14,8 +14,8 @@ import {
   buildFederationCatalog,
   type FederationTopology,
   type FederationTopologyRegion,
-} from "../../../../src/scale-ecosystem/federation/federation-gateway.js";
-import { TrustLevel } from "../../../../src/scale-ecosystem/federation/trust-level.js";
+} from "../../../src/scale-ecosystem/federation/federation-gateway.js";
+import { TrustLevel } from "../../../src/scale-ecosystem/federation/trust-level.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FederationGateway Construction Tests

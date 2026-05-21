@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-import { RemoteWorkerRegistrationService } from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/remote-worker-registration-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import { RemoteWorkerRegistrationService } from "../../../../src/platform/five-plane-execution/worker-pool/worker/remote-worker-registration-service.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -20,7 +20,7 @@ import type {
   DryRunPreview,
   LocaleConfig,
   CostEstimatorPort,
-} from "../../src/interaction/nl-gateway/nl-gateway-model.js";
+} from "../../../../src/interaction/nl-gateway/nl-gateway-model.js";
 
 test("NlEntryRequest interface accepts valid structure", () => {
   const request: NlEntryRequest = {

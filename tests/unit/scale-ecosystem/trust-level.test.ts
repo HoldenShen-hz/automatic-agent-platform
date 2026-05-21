@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TrustLevel } from "../../../../src/scale-ecosystem/federation/trust-level.js";
+import { TrustLevel } from "../../../src/scale-ecosystem/federation/trust-level.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TrustLevel Enum Tests

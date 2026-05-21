@@ -7,10 +7,10 @@ import {
   toWorkerStatus,
   normalizeLeaseReason,
   recordRejectedEvent,
-} from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-handshake-support.js";
-import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { WorkerSnapshotRecord } from "../../../../../../src/platform/contracts/types/domain.js";
-import type { WorkerRemoteLogInput } from "../../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
+} from "../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-handshake-support.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { WorkerSnapshotRecord } from "../../../../src/platform/contracts/types/domain.js";
+import type { WorkerRemoteLogInput } from "../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 
 // ---------------------------------------------------------------------------
 // parseJsonArray

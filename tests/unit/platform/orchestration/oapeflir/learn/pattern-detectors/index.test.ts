@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // OAPEFLIR Pattern Detectors barrel test - imports from the pattern-detectors module index
-import * as PatternDetectors from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/index.js";
+import * as PatternDetectors from "../../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/index.js";
 
 test("PatternDetectors module is exported", () => {
   assert.ok(PatternDetectors !== undefined);

@@ -18,8 +18,8 @@ import {
   validateCheckpointRef,
   validateCheckpointStorage,
   requireValidCheckpointRef,
-} from "../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-ref-validator.js";
-import { ValidationError } from "../../../src/platform/contracts/errors.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-ref-validator.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 describe("CheckpointRefValidator", () => {
   describe("validateCheckpointRef", () => {

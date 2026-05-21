@@ -12,8 +12,8 @@ import {
   getMfaStats,
   operationRequiresMfa,
   DEFAULT_MFA_POLICY,
-} from "../../../../../src/platform/five-plane-control-plane/iam/mfa-service.js";
-import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/mfa-service.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // Helper to generate valid TOTP code
 function generateValidTotpCode(secret: string): string {

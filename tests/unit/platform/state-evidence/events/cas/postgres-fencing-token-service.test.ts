@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AsyncFencingTokenService, createPostgresFencingTokenService } from "../../../../../../../src/platform/five-plane-state-evidence/events/cas/postgres-fencing-token-service.js";
-import type { FenceMode } from "../../../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
+import { AsyncFencingTokenService, createPostgresFencingTokenService } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/postgres-fencing-token-service.js";
+import type { FenceMode } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
 
 // Mock AsyncSqlDatabase
 interface MockFenceRecord {

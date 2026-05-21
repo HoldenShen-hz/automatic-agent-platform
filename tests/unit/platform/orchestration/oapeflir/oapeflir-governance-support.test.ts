@@ -6,7 +6,7 @@ import test from "node:test";
 import {
   getDefaultDivisionRegistry,
   DEFAULT_DIVISIONS_ROOT,
-} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-governance-support.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-governance-support.js";
 
 test("getDefaultDivisionRegistry is exported as function", () => {
   assert.equal(typeof getDefaultDivisionRegistry, "function");

@@ -10,7 +10,7 @@ import {
   loadExecutionResourceCeilingEnv,
   type RuntimeConfigEnvOptions,
   type ExecutionResourceCeilingEnvConfig,
-} from "../../../../../src/platform/shared/runtime-env.js";
+} from "../../../../src/platform/shared/runtime-env.js";
 
 test("readTrimmedEnv returns null for missing env var", () => {
   const result = readTrimmedEnv({}, "MISSING_VAR");

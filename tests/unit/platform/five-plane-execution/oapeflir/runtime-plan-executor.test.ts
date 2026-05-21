@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   executeOapeflirRuntimePlan,
   type RuntimePlanExecutionInput,
-} from "../../../../src/platform/five-plane-execution/oapeflir/runtime-plan-executor.js";
-import type { PlanGraphBundle, PlanNode } from "../../../../src/platform/contracts/executable-contracts/index.js";
+} from "../../../../../src/platform/five-plane-execution/oapeflir/runtime-plan-executor.js";
+import type { PlanGraphBundle, PlanNode } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 
 function createMockPlanGraphBundle(override?: Partial<PlanGraphBundle>): PlanGraphBundle {
   const node1: PlanNode = {

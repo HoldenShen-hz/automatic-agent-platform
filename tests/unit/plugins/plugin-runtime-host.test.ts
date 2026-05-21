@@ -17,7 +17,7 @@ import {
   buildPluginRuntimeExecArgv,
   buildPluginRuntimeSandboxRoot,
 } from "../../../src/domains/registry/plugin-runtime-host.js";
-import type { PluginLifecycleContext, PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
+import type { PluginLifecycleContext, PluginSandboxPolicy } from "../../../src/domains/registry/plugin-spi.js";
 
 function createSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
