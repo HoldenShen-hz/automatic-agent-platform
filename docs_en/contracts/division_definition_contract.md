@@ -76,6 +76,12 @@ This contract defines the declarative configuration structure of a division, alo
 
 ## 7. Supplementary Rules
 
+### 7.0 `resource_boundaries` Budget Field
+
+- If `resource_boundaries.budget_limit_per_task` is present, its unit is fixed to `USD`.
+- The field must be a positive number representing the per-task budget ceiling, not an abstract score.
+- The loader may expose `budget_limit_per_task_unit: "usd"` in its normalized runtime view.
+
 ### 7.1 `AGENT.md` Loading
 
 - Division-level `AGENT.md` only supplements the behavioral description of that division and does not override platform hard rules.

@@ -86,6 +86,7 @@ interface ConnectionState {
 type ProjectionPollingSource = { consumePendingDeltas(): readonly DashboardDelta[] };
 
 const REPLAY_EVENT_ID_PATTERN = /^[A-Za-z0-9:_-]{1,128}$/u;
+const REJECTED_CLIENT_ID_MAX_CLIENTS = "rejected:max_clients";
 
 function isChannelSubscriptionArray(
   value: readonly string[] | readonly DashboardChannelSubscription[],
@@ -126,6 +127,7 @@ export class DashboardWebSocketServer {
     this.heartbeatTimer = setInterval(() => {
       this.performHeartbeat();
     }, this.config.heartbeatIntervalMs);
+    this.heartbeatTimer.unref?.();
   }
 
   public stop(): void {
@@ -138,10 +140,10 @@ export class DashboardWebSocketServer {
       if (connection.heartbeatTimer != null) {
         clearInterval(connection.heartbeatTimer);
       }
+      connection.isConnected = false;
     }
 
     this.connections.clear();
-    this.outboundMessages.clear();
     this.replayBuffer.length = 0;
     this.stopProjectionIntegration();
   }
@@ -161,8 +163,8 @@ export class DashboardWebSocketServer {
 
     if (this.connections.size >= this.config.maxClients) {
       return {
-        clientId: "",
-        ack: this.createMessage("error", "", {
+        clientId: REJECTED_CLIENT_ID_MAX_CLIENTS,
+        ack: this.createMessage("error", REJECTED_CLIENT_ID_MAX_CLIENTS, {
           error: "max_clients_reached",
           message: `Maximum ${this.config.maxClients} clients allowed`,
         }),
@@ -226,8 +228,8 @@ export class DashboardWebSocketServer {
     if (connection.heartbeatTimer != null) {
       clearInterval(connection.heartbeatTimer);
     }
+    connection.isConnected = false;
     this.connections.delete(clientId);
-    this.outboundMessages.delete(clientId);
   }
 
   public updateSubscriptions(
@@ -590,7 +592,10 @@ export class DashboardWebSocketServer {
       if (deltas.length === 0) {
         nextDelayMs = Math.max(this.projectionPollingBaseIntervalMs * 4, 1000);
       }
-    } catch {
+    } catch (error) {
+      logger.warn("dashboard_websocket_server.projection_poll_backoff", {
+        error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      });
       nextDelayMs = Math.max(this.projectionPollingBaseIntervalMs * 4, 1000);
     } finally {
       this.projectionPollingInFlight = false;

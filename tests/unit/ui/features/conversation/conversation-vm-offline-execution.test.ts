@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
 const source = readFileSync(
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/packages/features/conversation/src/hooks/index.ts",
+  resolveRepoPath("ui/packages/features/conversation/src/hooks/index.ts"),
   "utf8",
 );
 

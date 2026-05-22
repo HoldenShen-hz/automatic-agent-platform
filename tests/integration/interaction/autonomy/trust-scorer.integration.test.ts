@@ -235,11 +235,11 @@ test("TrustScorer: mapTrustLevel returns untrusted for score < 30", () => {
 // Trust Level to Autonomy Level Mapping
 // ============================================================================
 
-test("TrustScorer: mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto", () => {
+test("TrustScorer: mapTrustLevelToAutonomyLevel maps fully_trusted to full_auto", () => {
   const ctx = createIntegrationContext("aa-autonomy-full-");
   try {
     const result = mapTrustLevelToAutonomyLevel("fully_trusted");
-    assert.equal(result, "semi_auto");
+    assert.equal(result, "full_auto");
   } finally {
     ctx.cleanup();
   }

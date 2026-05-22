@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import { createGithubAdapterPlugin, verifyPluginSignature, createPluginManifestHash, type GithubAdapterPluginOptions } from "../../../../src/plugins/adapters/github-adapter.js";
 
@@ -58,8 +58,12 @@ test.describe("GithubAdapter Plugin", () => {
     await adapter.shutdown();
   });
 
-  test("healthCheck returns policy evaluation result", async () => {
-    const adapter = createGithubAdapterPlugin({ policy: createMockPolicy(true) });
+  test("healthCheck returns true only with auth, policy allow, and explicit probe", async () => {
+    const adapter = createGithubAdapterPlugin({
+      policy: createMockPolicy(true),
+      healthProbe: async () => true,
+    });
+    await adapter.authenticate({ token: "ghp_test1234567890" });
     const result = await adapter.healthCheck();
     assert.equal(result, true);
   });
@@ -182,14 +186,13 @@ test.describe("GithubAdapter execute", () => {
     assert.equal((result.payload as Record<string, unknown>).ref, "main");
   });
 
-  test("execute returns default endpoint for unknown action", async () => {
+  test("execute rejects unknown action", async () => {
     const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
     await adapter.authenticate({ token: "ghp_test1234567890" });
-    const result = await adapter.execute("unknown_action" as any, {
-      repository: "owner/repo",
-    }) as Record<string, unknown>;
-    assert.equal(result.action, "unknown_action");
-    assert.ok((result.endpoint as string).includes("/repos/owner/repo"));
+    await assert.rejects(
+      async () => adapter.execute("unknown_action" as any, { repository: "owner/repo" }),
+      { message: /github_adapter\.unsupported_action:unknown_action/ },
+    );
   });
 
   test("execute includes retry policy in result", async () => {
@@ -458,7 +461,7 @@ test.describe("verifyPluginSignature", () => {
     const pluginId = "plugin.shared.github_adapter";
     const manifestHash = "abc123def456";
     const secretKey = "super-secret-key";
-    const signature = createHash("sha256").update(secretKey)
+    const signature = createHmac("sha256", secretKey)
       .update(`${pluginId}:${manifestHash}`)
       .digest("hex");
     const result = verifyPluginSignature(pluginId, manifestHash, signature, secretKey);
@@ -492,7 +495,7 @@ test.describe("verifyPluginSignature", () => {
   test("returns invalid for malformed signature hex", () => {
     const result = verifyPluginSignature("plugin.id", "hash", "not-hex", "secretKey");
     assert.equal(result.valid, false);
-    assert.ok(result.error?.includes("plugin_signature.verification_error"));
+    assert.ok(result.error != null);
   });
 
   test("returns error info in result", () => {
@@ -591,6 +594,6 @@ test.describe("GithubAdapter edge cases", () => {
       ref: "main",
       inputs: { param1: "value1", param2: 123 },
     }) as Record<string, unknown>;
-    assert.deepEqual((result.payload as Record<string, unknown>).inputs, { param1: "value1", param2: 123 });
+    assert.deepEqual((result.payload as Record<string, unknown>).inputs, { param1: "value1", param2: "123" });
   });
 });

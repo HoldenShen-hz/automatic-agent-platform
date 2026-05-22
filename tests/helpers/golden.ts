@@ -6,10 +6,12 @@
  */
 
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const SNAPSHOTS_DIR = join(process.cwd(), "tests", "golden", "snapshots");
+import { resolveRepoPath } from "./repo-root.js";
+
+const SNAPSHOTS_DIR = resolveRepoPath("tests", "golden", "snapshots");
 const UPDATE_MODE = process.env.UPDATE_GOLDEN === "1";
 
 function stringifyGoldenValue(actual: unknown): string {
@@ -46,6 +48,12 @@ export function assertGolden(snapshotName: string, actual: unknown): void {
     return;
   }
 
+  assert.ok(
+    existsSync(snapshotPath),
+    `Golden snapshot "${snapshotName}" is missing at ${snapshotPath}. ` +
+    `Run UPDATE_GOLDEN=1 npm run test:golden to generate it.`,
+  );
+
   // Read and compare snapshot
   const expected = readFileSync(snapshotPath, "utf-8").replace(/\n$/, "");
   assert.equal(
@@ -63,6 +71,11 @@ export function assertGolden(snapshotName: string, actual: unknown): void {
 export function assertGoldenContains(snapshotName: string, actual: string): void {
   assert.notEqual(actual.trim(), "", `Golden substring assertion for "${snapshotName}" requires non-empty actual content.`);
   const snapshotPath = join(SNAPSHOTS_DIR, `${snapshotName}.golden`);
+  assert.ok(
+    existsSync(snapshotPath),
+    `Golden snapshot "${snapshotName}" is missing at ${snapshotPath}. ` +
+    `Run UPDATE_GOLDEN=1 npm run test:golden to generate it.`,
+  );
   const expected = readFileSync(snapshotPath, "utf-8");
   assert.ok(
     expected.includes(actual),
@@ -77,6 +90,11 @@ export function assertGoldenContains(snapshotName: string, actual: string): void
  */
 export function assertGoldenMatches(snapshotName: string, actual: string, pattern: RegExp): void {
   const snapshotPath = join(SNAPSHOTS_DIR, `${snapshotName}.golden`);
+  assert.ok(
+    existsSync(snapshotPath),
+    `Golden snapshot "${snapshotName}" is missing at ${snapshotPath}. ` +
+    `Run UPDATE_GOLDEN=1 npm run test:golden to generate it.`,
+  );
   const expected = readFileSync(snapshotPath, "utf-8").replace(/\n$/, "");
   assert.equal(
     actual,

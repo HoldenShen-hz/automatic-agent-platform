@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AssessmentService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/assessment-service.js";
-import type { TaskSituation } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
+import { AssessmentService } from "../../../../src/platform/five-plane-orchestration/oapeflir/assessment-service.js";
+import type { TaskSituation } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
 
 function makeTaskSituation(overrides: Partial<TaskSituation> = {}): TaskSituation {
   const now = Date.now();

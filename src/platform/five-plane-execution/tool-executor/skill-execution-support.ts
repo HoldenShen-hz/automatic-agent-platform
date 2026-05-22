@@ -399,6 +399,11 @@ export async function defaultGitHeadResolver(workingDirectory: string): Promise<
       stdout += typeof chunk === "string" ? chunk : chunk.toString("utf8");
     });
     child.once("error", () => finish(null));
+    child.once("exit", (code) => {
+      if (code !== 0) {
+        finish(null);
+      }
+    });
     child.once("close", (code) => {
       if (code !== 0) {
         finish(null);

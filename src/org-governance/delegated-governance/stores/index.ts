@@ -149,11 +149,11 @@ export class SqliteDelegationStore implements DelegationStore {
       granteeId: String(row.grantee_id),
       level: String(row.level) as GovernanceDelegation["level"],
       delegatable: Number(row.delegatable) === 1,
-      orgNodeIds: JSON.parse(String(row.org_node_ids_json)) as string[],
-      domainIds: JSON.parse(String(row.domain_ids_json)) as string[],
-      derivedDelegationIds: JSON.parse(String(row.derived_delegation_ids_json)) as string[],
-      permissions: JSON.parse(String(row.permissions_json)) as GovernanceDelegation["permissions"],
-      guardrails: JSON.parse(String(row.guardrails_json)) as GovernanceDelegation["guardrails"],
+      orgNodeIds: safeJsonStringArrayParse(row.org_node_ids_json, "delegated_governance.invalid_org_node_ids_json"),
+      domainIds: safeJsonStringArrayParse(row.domain_ids_json, "delegated_governance.invalid_domain_ids_json"),
+      derivedDelegationIds: safeJsonStringArrayParse(row.derived_delegation_ids_json, "delegated_governance.invalid_derived_delegation_ids_json"),
+      permissions: safeJsonArrayParse(row.permissions_json, "delegated_governance.invalid_permissions_json") as GovernanceDelegation["permissions"],
+      guardrails: safeJsonArrayParse(row.guardrails_json, "delegated_governance.invalid_guardrails_json") as GovernanceDelegation["guardrails"],
       expiresAt: String(row.expires_at),
       revocable: Number(row.revocable) === 1,
       status: String(row.status) as GovernanceDelegation["status"],
@@ -226,7 +226,39 @@ export class SqliteAuditLogStore implements AuditLogStore {
       actorId: String(row.actor_id),
       delegationId: row.delegation_id == null ? null : String(row.delegation_id),
       timestamp: String(row.timestamp),
-      details: JSON.parse(String(row.details_json)) as Record<string, unknown>,
+      details: safeJsonObjectParse(row.details_json, "delegated_governance.invalid_audit_details_json"),
     };
+  }
+}
+
+function safeJsonArrayParse(value: unknown, errorCode: string): unknown[] {
+  const parsed = safeJsonParse(value, errorCode);
+  if (!Array.isArray(parsed)) {
+    throw new Error(errorCode);
+  }
+  return parsed;
+}
+
+function safeJsonStringArrayParse(value: unknown, errorCode: string): string[] {
+  const parsed = safeJsonArrayParse(value, errorCode);
+  if (parsed.some((entry) => typeof entry !== "string")) {
+    throw new Error(errorCode);
+  }
+  return parsed as string[];
+}
+
+function safeJsonObjectParse(value: unknown, errorCode: string): Record<string, unknown> {
+  const parsed = safeJsonParse(value, errorCode);
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(errorCode);
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function safeJsonParse(value: unknown, errorCode: string): unknown {
+  try {
+    return JSON.parse(String(value));
+  } catch {
+    throw new Error(errorCode);
   }
 }

@@ -288,6 +288,20 @@ export const RUNTIME_LAYER_SCHEMA: ConfigFieldSchema = {
           integer: true,
           minExclusive: 0,
         },
+        perTenantRequestsPerMinute: {
+          kind: "number",
+          issue: "config.invalid_runtime.rateLimit.perTenantRequestsPerMinute",
+          integer: true,
+          minExclusive: 0,
+          optional: true,
+        },
+        perPrincipalRequestsPerMinute: {
+          kind: "number",
+          issue: "config.invalid_runtime.rateLimit.perPrincipalRequestsPerMinute",
+          integer: true,
+          minExclusive: 0,
+          optional: true,
+        },
       },
     },
     configDriftReconciler: {

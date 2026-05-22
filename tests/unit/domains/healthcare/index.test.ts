@@ -31,7 +31,7 @@ test("HEALTHCARE_DOMAIN_PRESET has requiredCapabilities", () => {
 });
 
 test("HEALTHCARE_DOMAIN_PRESET has reviewRequiredTaskTypes", () => {
-  assert.deepEqual(HEALTHCARE_DOMAIN_PRESET.reviewRequiredTaskTypes, ["summarize", "coordinate"]);
+  assert.deepEqual(HEALTHCARE_DOMAIN_PRESET.reviewRequiredTaskTypes, ["triage", "summarize", "coordinate"]);
 });
 
 test("HEALTHCARE_DOMAIN_PRESET has defaultWorkflowIds", () => {
@@ -52,8 +52,8 @@ test("requiresHealthcareReview returns true for coordinate task type", () => {
   assert.equal(requiresHealthcareReview("coordinate"), true);
 });
 
-test("requiresHealthcareReview returns false for triage task type", () => {
-  assert.equal(requiresHealthcareReview("triage"), false);
+test("requiresHealthcareReview returns true for triage task type", () => {
+  assert.equal(requiresHealthcareReview("triage"), true);
 });
 
 test("HEALTHCARE_DOMAIN_PRESET is frozen and immutable", () => {

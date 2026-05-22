@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
 import {
   createTauriLinuxAdapter,
@@ -9,12 +10,12 @@ import {
 } from "../../../../../ui/apps/tauri-linux/src/index.js";
 
 const cargoToml = fs.readFileSync(
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/tauri-linux/src-tauri/Cargo.toml",
+  resolveRepoPath("ui/apps/tauri-linux/src-tauri/Cargo.toml"),
   "utf-8",
 );
 const packageJson = JSON.parse(
   fs.readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/tauri-linux/package.json",
+    resolveRepoPath("ui/apps/tauri-linux/package.json"),
     "utf-8",
   ),
 ) as {

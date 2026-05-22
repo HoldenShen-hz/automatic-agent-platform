@@ -9,13 +9,10 @@
  * @see DataPlaneFlowService for the sync implementation
  */
 
-import { createRequire } from "node:module";
-
 import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-
-const require = createRequire(import.meta.url);
+import { DataPlaneFlowService } from "./data-plane-flow-service.js";
 
 /**
  * Async Data Plane Flow Service
@@ -36,11 +33,7 @@ export class DataPlaneFlowServiceAsync extends SyncBackedAsyncService<DataPlaneF
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    super(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { DataPlaneFlowService } = require("./data-plane-flow-service.js");
-      return new DataPlaneFlowService(db, store);
-    });
+    super(() => new DataPlaneFlowService(db, store));
   }
 
   public async createAnalyticsFactAsync(

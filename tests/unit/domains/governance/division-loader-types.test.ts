@@ -77,6 +77,7 @@ test("LoadedDivisionDefinition structure is correct", () => {
   assert.equal(division.orchestrationWorkflowId, "wf_orchestrate");
   assert.ok(division.resourceBoundaries);
   assert.ok(division.faultDomains);
+  assert.equal(division.resourceBoundaries?.budget_limit_per_task, 5);
 });
 
 test("LoadedDivisionDefinition allows null orchestrationWorkflowId", () => {

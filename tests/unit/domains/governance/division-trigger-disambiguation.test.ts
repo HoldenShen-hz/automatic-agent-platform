@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../helpers/repo-root.js";
 
-const repoRoot = "/Users/holden/Project/automatic_agent/automatic_agent_platform";
+const repoRoot = resolveRepoPath();
 
 function readDivision(relativePath: string): string {
   return readFileSync(`${repoRoot}/${relativePath}`, "utf8");

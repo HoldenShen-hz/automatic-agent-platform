@@ -5,6 +5,18 @@ import { DISTRIBUTED_LOCKS_DDL } from "./distributed-lock-types.js";
 import { lockLogger } from "./locking-support.js";
 import type { AcquireLockInput, AcquireLockResult, DistributedLockAdapter, LockBackendKind, LockRecord, LockStatus } from "./distributed-lock-types.js";
 
+function isLegacyAcquireInput(input: AcquireLockInput | { lockName: string; ownerId: string; ttlMs?: number }): input is { lockName: string; ownerId: string; ttlMs?: number } {
+  return "lockName" in input && "ownerId" in input;
+}
+
+function isLegacyReleaseInput(value: string | { lockName: string; ownerId: string }): value is { lockName: string; ownerId: string } {
+  return typeof value === "object" && value != null && "lockName" in value && "ownerId" in value;
+}
+
+function isLegacyInspectInput(value: string | { lockName: string }): value is { lockName: string } {
+  return typeof value === "object" && value != null && "lockName" in value;
+}
+
 export class SqliteLockAdapter implements DistributedLockAdapter {
   readonly backendKind: LockBackendKind = "sqlite";
   private static readonly MAX_LOCK_TTL_MS = 600_000;
@@ -27,7 +39,7 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
   private normalizeAcquireInput(
     input: AcquireLockInput | { lockName: string; ownerId: string; ttlMs?: number },
   ): AcquireLockInput {
-    if ("lockKey" in input && "owner" in input) {
+    if (!isLegacyAcquireInput(input)) {
       return input;
     }
     return {
@@ -83,10 +95,13 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
     }
   }
 
-  release(lockKey: string, owner: string): boolean {
-    if (typeof lockKey === "object" && lockKey != null) {
-      const legacyInput = lockKey as unknown as { lockName: string; ownerId: string };
+  release(lockKey: string | { lockName: string; ownerId: string }, owner?: string): boolean {
+    if (isLegacyReleaseInput(lockKey)) {
+      const legacyInput = lockKey;
       return this.release(legacyInput.lockName, legacyInput.ownerId);
+    }
+    if (owner == null) {
+      return false;
     }
     try {
       const result = this.db.prepare(`DELETE FROM distributed_locks WHERE lock_key = ? AND owner = ?`).run(lockKey, owner);
@@ -133,9 +148,9 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
     }
   }
 
-  inspect(lockKey: string): LockRecord | null {
-    if (typeof lockKey === "object" && lockKey != null) {
-      const legacyInput = lockKey as unknown as { lockName: string };
+  inspect(lockKey: string | { lockName: string }): LockRecord | null {
+    if (isLegacyInspectInput(lockKey)) {
+      const legacyInput = lockKey;
       return this.inspect(legacyInput.lockName);
     }
     try {

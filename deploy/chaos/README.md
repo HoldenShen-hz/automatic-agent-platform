@@ -2,6 +2,8 @@
 
 Chaos manifests in this directory are controlled rehearsal inputs. They must stay opt-in and approval-gated.
 
+The authoritative scenario inventory is `deploy/chaos/catalog.json`. Scheduler-side fallback profiles are exported from `src/ops-maturity/chaos/chaos-experiment-types.ts` as `DEFAULT_CHAOS_SCENARIO_CATALOG` and `DEFAULT_CHAOS_FALLBACK_PROFILES`.
+
 ## Current Scenarios
 
 - `pod-kill.yaml`: workload restart resilience.
@@ -9,6 +11,7 @@ Chaos manifests in this directory are controlled rehearsal inputs. They must sta
 - `postgres-disconnect.yaml`: database disconnect handling.
 - `redis-disconnect.yaml`: queue/cache disconnect handling.
 - `approval-policy.yaml`: required approval policy for chaos execution.
+- `catalog.json`: contract-level scenario catalog and fallback-profile mapping.
 
 ## Safety Rules
 

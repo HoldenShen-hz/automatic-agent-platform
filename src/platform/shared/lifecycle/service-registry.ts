@@ -70,6 +70,7 @@ interface ServiceRegistration<T> {
  */
 export class ServiceRegistry {
   private static _instance: ServiceRegistry | null = null;
+  private static singletonConstructionInProgress = false;
   private static readonly bootstrapRegistrars = new Map<string, (registry: ServiceRegistry) => void>();
   private static readonly liveRegistries = new Set<ServiceRegistry>();
   private readonly services = new Map<string, ServiceRegistration<unknown>>();
@@ -78,6 +79,9 @@ export class ServiceRegistry {
   private resetInProgress = false;
 
   public constructor() {
+    if (ServiceRegistry.singletonConstructionInProgress && ServiceRegistry._instance == null) {
+      ServiceRegistry._instance = this;
+    }
     ServiceRegistry.liveRegistries.add(this);
     for (const registrar of ServiceRegistry.bootstrapRegistrars.values()) {
       registrar(this);
@@ -88,7 +92,15 @@ export class ServiceRegistry {
    * Gets the singleton registry instance.
    */
   public static getInstance(): ServiceRegistry {
-    return ServiceRegistry._instance ??= new ServiceRegistry();
+    if (ServiceRegistry._instance != null) {
+      return ServiceRegistry._instance;
+    }
+    ServiceRegistry.singletonConstructionInProgress = true;
+    try {
+      return ServiceRegistry._instance ??= new ServiceRegistry();
+    } finally {
+      ServiceRegistry.singletonConstructionInProgress = false;
+    }
   }
 
   /**

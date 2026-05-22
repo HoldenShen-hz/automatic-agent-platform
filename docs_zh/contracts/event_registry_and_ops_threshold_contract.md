@@ -103,6 +103,34 @@
 | `skill:step_failed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:execution_completed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 
+### 4.1 Runtime-Service Operational Signals
+
+> `src/scale-ecosystem/runtime-services/*-async.ts` 还会发出一组 service-local observability signals。它们不是 truth fact，但必须登记，避免 runtime service 与运维文档漂移。
+
+| signal | producer | 说明 |
+| --- | --- | --- |
+| `event_published` | durable event bus async | 单事件发布完成 |
+| `event_delivered` | durable event bus async | 单事件投递完成 |
+| `event_delivery_failed` | durable event bus async | 单事件投递失败 |
+| `event_dead_lettered` | durable event bus async | 单事件进入死信 |
+| `subscriber_added` | durable event bus async | 订阅者注册完成 |
+| `subscriber_removed` | durable event bus async | 订阅者移除完成 |
+| `session_opened` | human takeover async | takeover 会话打开 |
+| `session_closed` | human takeover async | takeover 会话关闭 |
+| `batch_flush` | durable event bus async / worker handshake async / worker writeback async | 批量 flush 完成 |
+| `circuit_breaker_open` | durable event bus async / dispatch async / worker handshake async / worker writeback async / human takeover async | 熔断器打开 |
+| `circuit_breaker_close` | durable event bus async / dispatch async / worker handshake async / worker writeback async / human takeover async | 熔断器关闭 |
+| `operation_start` | dispatch async / worker handshake async / human takeover async | 操作开始 |
+| `operation_complete` | dispatch async / worker handshake async / human takeover async | 操作完成 |
+| `operation_retry` | dispatch async / worker handshake async / human takeover async | 操作进入重试 |
+| `operation_timeout` | dispatch async / worker handshake async / human takeover async | 操作超时 |
+| `queue_overflow` | dispatch async / worker handshake async / worker writeback async / human takeover async | 服务内部队列溢出 |
+| `writeback_start` | worker writeback async | writeback 开始 |
+| `writeback_complete` | worker writeback async | writeback 完成 |
+| `writeback_retry` | worker writeback async | writeback 重试 |
+| `writeback_timeout` | worker writeback async | writeback 超时 |
+| `writeback_coalesced` | worker writeback async | writeback 被聚合 |
+
 ## 5. 消费者规范
 
 ### 5.1 Tier 1 消费者

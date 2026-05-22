@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
 const source = fs.readFileSync(
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/web/src/app-shell.tsx",
+  resolveRepoPath("ui/apps/web/src/app-shell.tsx"),
   "utf-8",
 );
 

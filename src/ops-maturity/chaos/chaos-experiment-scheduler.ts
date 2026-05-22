@@ -21,6 +21,8 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import {
   CHAOS_ARCHITECTURE_ANCHORS,
+  DEFAULT_CHAOS_FALLBACK_PROFILES,
+  DEFAULT_CHAOS_SCENARIO_CATALOG,
   DEFAULT_BOUNDARY_CONTROL,
   type BoundaryControl,
   type ChaosExperiment,
@@ -29,6 +31,7 @@ import {
   type ChaosExperimentSchedulerSnapshot,
   type ChaosFaultExecutor,
   type ChaosFaultInjectionResult,
+  type ChaosRollbackActionExecutor,
   type ChaosGameDay,
   type ExperimentResult,
   type ExperimentTarget,
@@ -41,6 +44,8 @@ import {
 } from "./chaos-experiment-types.js";
 export {
   CHAOS_ARCHITECTURE_ANCHORS,
+  DEFAULT_CHAOS_FALLBACK_PROFILES,
+  DEFAULT_CHAOS_SCENARIO_CATALOG,
   DEFAULT_BOUNDARY_CONTROL,
   InMemoryChaosExperimentSchedulerRepository,
 } from "./chaos-experiment-types.js";
@@ -69,17 +74,20 @@ const chaosLogger = new StructuredLogger();
 export class ChaosExperimentScheduler {
   private readonly repository: ChaosExperimentSchedulerRepository | null;
   private readonly faultExecutor: ChaosFaultExecutor;
+  private readonly rollbackActionExecutor: ChaosRollbackActionExecutor;
   private readonly experiments = new Map<string, ChaosExperiment>();
   private readonly steadyStateCache = new Map<string, { value: number; timestamp: number }>();
   private readonly gameDays = new Map<string, ChaosGameDay>();
   private readonly rollbackQueue = new Map<string, RollbackAction[]>();
-  private readonly monitoringIntervals = new Map<string, ReturnType<typeof setInterval>>();
+  private readonly monitoringIntervals = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly rollbackRunIds = new Map<string, string>();
   // R21-18 fix: Track evaluated hypotheses to prevent duplicate accumulation
   private readonly evaluatedHypotheses = new Set<string>();
 
   public constructor(options: ChaosExperimentSchedulerOptions = {}) {
     this.repository = options.repository ?? null;
     this.faultExecutor = options.faultExecutor ?? this.defaultFaultExecutor.bind(this);
+    this.rollbackActionExecutor = options.rollbackActionExecutor ?? this.defaultRollbackActionExecutor.bind(this);
     this.hydrateFromRepository();
   }
 
@@ -428,37 +436,63 @@ export class ChaosExperimentScheduler {
    * Executes rollback actions with a timeout.
    */
   private executeRollbackWithTimeout(experimentId: string, timeoutMs: number): void {
+    const rollbackRunId = newId("rollback_run");
+    const controller = new AbortController();
+    this.rollbackRunIds.set(experimentId, rollbackRunId);
+    let settled = false;
+    const finalize = (status: "completed" | "failed", result: string): void => {
+      if (settled || this.rollbackRunIds.get(experimentId) !== rollbackRunId) {
+        return;
+      }
+      settled = true;
+      this.rollbackRunIds.delete(experimentId);
+      this.completeRollbackActions(experimentId, status, result);
+    };
     const timeout = setTimeout(() => {
-      this.completeRollbackActions(experimentId, "failed", "Rollback timed out");
+      controller.abort(new Error("chaos.rollback.timeout"));
+      finalize("failed", "Rollback timed out");
     }, timeoutMs);
+    timeout.unref?.();
 
-    // Execute rollback actions asynchronously
-    this.executeRollbackActions(experimentId).then((result) => {
+    this.executeRollbackActions(experimentId, controller.signal).then((result) => {
       clearTimeout(timeout);
-      this.completeRollbackActions(experimentId, "completed", result);
+      finalize("completed", result);
     }).catch((error) => {
       clearTimeout(timeout);
-      this.completeRollbackActions(experimentId, "failed", String(error));
+      finalize("failed", error instanceof Error ? error.message : String(error));
     });
   }
 
   /**
    * Executes rollback actions for an experiment.
    */
-  private async executeRollbackActions(experimentId: string): Promise<string> {
+  private async executeRollbackActions(experimentId: string, signal: AbortSignal): Promise<string> {
     const actions = this.rollbackQueue.get(experimentId);
     if (!actions) return "No rollback actions";
+    const experiment = this.experiments.get(experimentId);
+    if (!experiment) {
+      return "Experiment not found";
+    }
 
     for (const action of actions) {
+      if (signal.aborted) {
+        throw new Error("chaos.rollback.aborted");
+      }
       action.status = "executing";
       action.executedAt = nowIso();
 
-      // Simulate rollback action execution
-      await this.simulateRollbackAction(action);
+      try {
+        action.result = await this.rollbackActionExecutor({ experiment, action, signal });
+      } catch (error) {
+        action.status = "failed";
+        action.completedAt = nowIso();
+        action.result = error instanceof Error ? error.message : String(error);
+        throw error;
+      }
 
       action.status = "completed";
       action.completedAt = nowIso();
-      action.result = `Action ${action.actionType} completed successfully`;
+      action.result ??= `Action ${action.actionType} completed successfully`;
     }
 
     return "All rollback actions completed";
@@ -468,23 +502,26 @@ export class ChaosExperimentScheduler {
    * Simulates rollback action execution.
    * In real implementation, this would call actual rollback mechanisms.
    */
-  private async simulateRollbackAction(action: RollbackAction): Promise<void> {
-    // Simulate async operation
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
+  private async defaultRollbackActionExecutor(params: {
+    readonly experiment: ChaosExperiment;
+    readonly action: RollbackAction;
+    readonly signal: AbortSignal;
+  }): Promise<string> {
+    await this.delayWithAbort(100, params.signal);
+    const { action } = params;
     switch (action.actionType) {
       case "stop_fault":
         chaosLogger.log({ level: "info", message: "chaos.rollback.stop_fault", data: { experimentId: action.experimentId } });
-        break;
+        return "Stopped injected fault";
       case "restore_state":
         chaosLogger.log({ level: "info", message: "chaos.rollback.restore_state", data: { experimentId: action.experimentId } });
-        break;
+        return "Restored steady-state dependencies";
       case "notify":
         chaosLogger.log({ level: "info", message: "chaos.rollback.notify", data: { experimentId: action.experimentId } });
-        break;
+        return "Sent rollback notifications";
       case "complete":
         chaosLogger.log({ level: "info", message: "chaos.rollback.complete", data: { experimentId: action.experimentId } });
-        break;
+        return "Rollback workflow completed";
     }
   }
 
@@ -510,6 +547,7 @@ export class ChaosExperimentScheduler {
     }
 
     this.rollbackQueue.delete(experimentId);
+    this.rollbackRunIds.delete(experimentId);
     this.persistSnapshot();
   }
 
@@ -745,43 +783,15 @@ export class ChaosExperimentScheduler {
     // Clear any existing interval for this experiment
     this.stopContinuousMonitoring(experimentId);
 
-    const interval = setInterval(() => {
-      void (async () => {
-        try {
-          const currentExp = this.experiments.get(experimentId);
-          if (!currentExp || currentExp.status !== "running") {
-            this.stopContinuousMonitoring(experimentId);
-            return;
-          }
+    const scheduleNextTick = (): void => {
+      const handle = setTimeout(() => {
+        void this.runContinuousMonitoringTick(experimentId, intervalMs, evaluator, scheduleNextTick);
+      }, intervalMs);
+      handle.unref?.();
+      this.monitoringIntervals.set(experimentId, handle);
+    };
 
-          const result = await evaluator();
-          this.recordContinuousSteadyStateSample(
-            experimentId,
-            currentExp.steadyStateHypotheses[0]?.name ?? "default",
-            result.measuredValue,
-            result.passed,
-            result.message,
-          );
-
-          const updatedExp = this.experiments.get(experimentId);
-          if (!updatedExp || updatedExp.status !== "running") {
-            this.stopContinuousMonitoring(experimentId);
-          }
-        } catch (error) {
-          chaosLogger.log({
-            level: "error",
-            message: "chaos.monitoring.evaluator_failed",
-            data: {
-              experimentId,
-              error: error instanceof Error ? error.message : String(error),
-            },
-          });
-          this.stopContinuousMonitoring(experimentId);
-        }
-      })();
-    }, intervalMs);
-
-    this.monitoringIntervals.set(experimentId, interval);
+    scheduleNextTick();
   }
 
   /**
@@ -791,7 +801,7 @@ export class ChaosExperimentScheduler {
   public stopContinuousMonitoring(experimentId: string): void {
     const interval = this.monitoringIntervals.get(experimentId);
     if (interval) {
-      clearInterval(interval);
+      clearTimeout(interval);
       this.monitoringIntervals.delete(experimentId);
     }
   }
@@ -831,5 +841,66 @@ export class ChaosExperimentScheduler {
       this.steadyStateCache.delete(key);
     }
     this.persistSnapshot();
+  }
+
+  private async runContinuousMonitoringTick(
+    experimentId: string,
+    intervalMs: number,
+    evaluator: () => Promise<{ passed: boolean; measuredValue: number | null; message: string }>,
+    scheduleNextTick: () => void,
+  ): Promise<void> {
+    this.monitoringIntervals.delete(experimentId);
+    try {
+      const currentExp = this.experiments.get(experimentId);
+      if (!currentExp || currentExp.status !== "running") {
+        this.stopContinuousMonitoring(experimentId);
+        return;
+      }
+
+      const result = await evaluator();
+      this.recordContinuousSteadyStateSample(
+        experimentId,
+        currentExp.steadyStateHypotheses[0]?.name ?? "default",
+        result.measuredValue,
+        result.passed,
+        result.message,
+      );
+
+      const updatedExp = this.experiments.get(experimentId);
+      if (!updatedExp || updatedExp.status !== "running") {
+        this.stopContinuousMonitoring(experimentId);
+        return;
+      }
+      void intervalMs;
+      scheduleNextTick();
+    } catch (error) {
+      chaosLogger.log({
+        level: "error",
+        message: "chaos.monitoring.evaluator_failed",
+        data: {
+          experimentId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+      this.stopContinuousMonitoring(experimentId);
+    }
+  }
+
+  private async delayWithAbort(delayMs: number, signal: AbortSignal): Promise<void> {
+    if (signal.aborted) {
+      throw new Error("chaos.rollback.aborted");
+    }
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        signal.removeEventListener("abort", onAbort);
+        resolve();
+      }, delayMs);
+      const onAbort = () => {
+        clearTimeout(timeout);
+        signal.removeEventListener("abort", onAbort);
+        reject(new Error("chaos.rollback.aborted"));
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
   }
 }

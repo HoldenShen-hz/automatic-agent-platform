@@ -79,11 +79,12 @@ test("YONO market review and resolution agents surface governance decisions", ()
     resolutionDeadline: "2026-06-07T00:00:00.000Z",
   });
   const review = reviewAgent.review(market);
-  const draft = resolutionAgent.draft(market, ["evidence:official-announcement"]);
+  const draft = resolutionAgent.draft(market, ["evidence:official-announcement:yes"]);
 
   assert.equal(review.decision, "approve");
   assert.equal(draft.requiresHumanReview, false);
   assert.equal(draft.proposedOutcomeId, market.outcomes[0]!.outcomeId);
+  assert.ok(draft.confidence >= 0.35);
 });
 
 test("YONO points trading creates and cancels orders without real-money settlement", () => {
@@ -106,4 +107,100 @@ test("YONO points trading creates and cancels orders without real-money settleme
 
   assert.equal(order.status, "accepted");
   assert.equal(trading.cancelOrder(order.orderId).status, "cancelled");
+});
+
+test("YONO signal extraction does not treat plain source word as evidence and supports low confidence", () => {
+  const repository = new YonoRepository();
+  const signal = new YonoCommentSignalService(repository).extractSignal({
+    commentId: "comment-1",
+    marketId: "market-1",
+    userId: "user-1",
+    text: "this source seems mixed",
+    createdAt: "2026-05-01T00:00:00.000Z",
+    engagement: { likes: 0, replies: 0, shares: 0, reports: 0 },
+    source: "market_comment",
+    visibility: "public",
+    moderationStatus: "visible",
+  });
+  assert.equal(signal.evidenceBacked, false);
+  assert.equal(signal.confidence, "low");
+});
+
+test("YONO signal probability scales with matched evidence instead of fixed yes/no constants", () => {
+  const repository = new YonoRepository();
+  const service = new YonoCommentSignalService(repository);
+  const weakerYes = service.extractSignal({
+    commentId: "comment-weak",
+    marketId: "market-1",
+    userId: "user-1",
+    text: "yes",
+    createdAt: "2026-05-01T00:00:00.000Z",
+    engagement: { likes: 0, replies: 0, shares: 0, reports: 0 },
+    source: "market_comment",
+    visibility: "public",
+    moderationStatus: "visible",
+  });
+  const strongerYes = service.extractSignal({
+    commentId: "comment-strong",
+    marketId: "market-1",
+    userId: "user-1",
+    text: "yes bullish likely will confirmed",
+    createdAt: "2026-05-01T00:00:00.000Z",
+    engagement: { likes: 0, replies: 0, shares: 0, reports: 0 },
+    source: "market_comment",
+    visibility: "public",
+    moderationStatus: "visible",
+  });
+
+  assert.ok(weakerYes.probability > 0.5);
+  assert.ok(strongerYes.probability > weakerYes.probability);
+});
+
+test("YONO market and order validation fail closed for invalid timing and negative orders", () => {
+  const repository = new YonoRepository();
+  const marketService = new YonoMarketService(repository);
+  const trading = new YonoTradingService(repository);
+
+  assert.throws(
+    () => marketService.createMarket({
+      title: "Invalid timing",
+      description: "Resolves in the wrong order.",
+      creatorId: "user_001",
+      closeAt: "2020-01-01T00:00:00.000Z",
+      resolutionDeadline: "2020-01-02T00:00:00.000Z",
+    }),
+    /yono\.market\.invalid_close_at/,
+  );
+
+  const market = marketService.createMarket({
+    title: "Valid market",
+    description: "Resolves YES if valid evidence is published after launch.",
+    creatorId: "user_001",
+    closeAt: "2026-06-01T00:00:00.000Z",
+    resolutionDeadline: "2026-06-07T00:00:00.000Z",
+  });
+  assert.throws(
+    () => trading.createOrder({
+      marketId: market.marketId,
+      outcomeId: market.outcomes[0]!.outcomeId,
+      userId: "user_001",
+      side: "buy",
+      quantity: -1,
+    }),
+    /yono\.order\.invalid_quantity/,
+  );
+});
+
+test("YONO resolution assist can select matching no outcome from evidence refs", () => {
+  const repository = new YonoRepository();
+  const market = new YonoMarketService(repository).createMarket({
+    title: "Will rollout fail?",
+    description: "Resolves NO if no official outage report is published before the deadline.",
+    creatorId: "user_001",
+    closeAt: "2026-06-01T00:00:00.000Z",
+    resolutionDeadline: "2026-06-07T00:00:00.000Z",
+  });
+  const noOutcome = market.outcomes.find((outcome) => outcome.type === "no");
+  const draft = new YonoResolutionAssistAgent().draft(market, ["evidence:official:no"]);
+  assert.equal(draft.proposedOutcomeId, noOutcome?.outcomeId);
 });

@@ -219,14 +219,16 @@ export const MissionHandoffRequestSchema = z.object({
 export type MissionHandoffRequest = z.infer<typeof MissionHandoffRequestSchema>;
 
 export const MissionErrorCodeSchema = z.enum([
-  "MISSION_NOT_FOUND",
-  "MISSION_REQUIRED",
-  "MISSION_ACCESS_DENIED",
-  "MISSION_STATE_CONFLICT",
-  "MISSION_VERSION_CONFLICT",
-  "MISSION_POLICY_DENIED",
-  "MISSION_BUDGET_EXHAUSTED",
-  "MISSION_LIVE_GUARD_BLOCKED",
+  "mission.not_found",
+  "mission.member_not_found",
+  "mission.required",
+  "mission.access_denied",
+  "mission.state_conflict",
+  "mission.if_match_required",
+  "mission.version_conflict",
+  "mission.policy_denied",
+  "mission.budget_exhausted",
+  "mission.live_guard_blocked",
 ]);
 export type MissionErrorCode = z.infer<typeof MissionErrorCodeSchema>;
 

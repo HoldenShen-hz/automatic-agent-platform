@@ -34,7 +34,7 @@ test("DashboardWebSocketServer rejects when max clients reached", () => {
   registerClient(server, ["dashboard:operator"]);
   const { clientId, ack } = registerClient(server, ["dashboard:operator"]);
 
-  assert.equal(clientId, "");
+  assert.equal(clientId, "rejected:max_clients");
   assert.equal(ack.type, "error");
 });
 

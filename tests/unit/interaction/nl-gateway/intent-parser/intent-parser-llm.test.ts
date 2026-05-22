@@ -83,7 +83,7 @@ test("LlmIntentParser.parseWithLlm uses model when available and confidence is h
   assert.equal(result.language, "en-US");
 });
 
-test("LlmIntentParser.parseWithLlm falls back to heuristic when model returns low confidence", async () => {
+test("LlmIntentParser.parseWithLlm preserves model confidence when response is valid", async () => {
   const mockGateway: IntentParserModelGateway = {
     complete: async () => '{"intentType": "task_create", "confidence": 0.4}',
   };
@@ -91,8 +91,7 @@ test("LlmIntentParser.parseWithLlm falls back to heuristic when model returns lo
 
   const result = await parser.parseWithLlm("create a task");
 
-  // Should fall back to heuristic which gives higher confidence
-  assert.ok(result.confidence >= 0.62);
+  assert.equal(result.confidence, 0.4);
 });
 
 test.skip("LlmIntentParser.parseWithLlm extracts intent from text response when JSON parse fails", async () => {
@@ -135,7 +134,7 @@ test("LlmIntentParser.parseWithLlm does not fall back when fallbackToRegex is fa
   assert.ok(result.confidence < INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD);
 });
 
-test("LlmIntentParser.parseWithLlm normalizes task_create confidence", async () => {
+test("LlmIntentParser.parseWithLlm preserves task_create confidence from model output", async () => {
   const mockGateway: IntentParserModelGateway = {
     complete: async () => '{"intentType": "task_create", "confidence": 0.5}',
   };
@@ -143,8 +142,7 @@ test("LlmIntentParser.parseWithLlm normalizes task_create confidence", async () 
 
   const result = await parser.parseWithLlm("create something");
 
-  // task_create should have confidence boosted to at least 0.82
-  assert.ok(result.confidence >= 0.82);
+  assert.equal(result.confidence, 0.5);
 });
 
 test("parseIntentTokensWithModel returns heuristic when no parser provided", async () => {

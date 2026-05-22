@@ -6,10 +6,12 @@ export function calculateTrustScore(score: CapabilityTrustScore): number {
   if (score.totalExecutions === 0) {
     return 0;
   }
-  const successPoints = (score.successfulExecutions / score.totalExecutions) * 100;
+  const successRate = score.successfulExecutions / score.totalExecutions;
+  const successPoints = successRate * 100;
   const overridePenalty = (score.humanOverrides / score.totalExecutions) * 20;
-  const incidentPenalty = score.incidents * 15;
-  const volumeBonus = Math.min(10, Math.floor(score.totalExecutions / 50));
+  const incidentPenalty = (score.incidents / score.totalExecutions) * 100;
+  const volumeBonusBase = Math.min(10, Math.floor(score.totalExecutions / 50));
+  const volumeBonus = score.incidents === 0 ? Math.round(volumeBonusBase * successRate) : 0;
   return Math.max(0, Math.min(100, Math.round(successPoints - overridePenalty - incidentPenalty + volumeBonus)));
 }
 
@@ -25,7 +27,7 @@ export function mapTrustLevel(score: number): TrustLevel {
 export function mapTrustLevelToAutonomyLevel(level: TrustLevel): ArchitectureAutonomyLevel {
   switch (level) {
     case "fully_trusted":
-      return "semi_auto";
+      return "full_auto";
     case "trusted":
     case "semi_trusted":
       return "semi_auto";

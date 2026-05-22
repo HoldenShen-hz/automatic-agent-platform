@@ -682,9 +682,10 @@ export class CapabilityDelegation {
     overrides: AppliedConstraint[]
   ): AppliedConstraint[] {
     const result: AppliedConstraint[] = [...overrides];
+    const overrideByType = new Map(overrides.map((override) => [override.type, override]));
 
     for (const def of capability.constraints) {
-      if (def.required && !overrides.find((o) => o.type === def.type)) {
+      if (def.required && !overrideByType.has(def.type)) {
         result.push({
           type: def.type,
           name: def.name,

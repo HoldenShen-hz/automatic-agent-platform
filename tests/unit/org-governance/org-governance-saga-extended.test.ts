@@ -34,7 +34,7 @@ test("OrgGovernanceSaga throws when prepare step exists but no prepare handler",
     () => saga.execute("saga-1", [
       { stepId: "p-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
     ]),
-    /missing_prepare_handler/,
+    /org_governance_saga\.missing_prepare_handler/,
   );
 });
 
@@ -49,7 +49,7 @@ test("OrgGovernanceSaga throws when commit step exists but no commit handler", (
       { stepId: "p-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
       { stepId: "c-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
     ]),
-    /missing_commit_handler/,
+    /org_governance_saga\.missing_commit_handler/,
   );
 });
 
@@ -65,7 +65,7 @@ test("OrgGovernanceSaga throws when compensate step exists but no compensate han
       { stepId: "c-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
       { stepId: "comp-1", targetOrgNodeId: "org-1", action: "compensate", phase: "identity" },
     ]),
-    /missing_compensate_handler/,
+    /org_governance_saga\.missing_compensate_handler/,
   );
 });
 
@@ -84,7 +84,7 @@ test("OrgGovernanceSaga throws when commit exists and compensate needed but no c
       { stepId: "p-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
       { stepId: "c-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
     ]),
-    /missing_compensate_handler/,
+    /org_governance_saga\.missing_compensate_handler/,
   );
 });
 
@@ -101,7 +101,7 @@ test("OrgGovernanceSaga throws when audit step exists but no audit handler", () 
       { stepId: "c-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
       { stepId: "a-1", targetOrgNodeId: "org-1", action: "audit", phase: "identity" },
     ]),
-    /missing_audit_handler/,
+    /org_governance_saga\.missing_audit_handler/,
   );
 });
 
@@ -133,7 +133,7 @@ test("OrgGovernanceSaga.executeWithReceipt validates handlers via execute", () =
       { stepId: "p-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
       { stepId: "c-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
     ]),
-    /missing_commit_handler/,
+    /org_governance_saga\.missing_commit_handler/,
   );
 });
 
@@ -304,31 +304,32 @@ test("OrgGovernanceSaga compensation uses stepId from compensation step if exist
   assert.ok(calls.some((id) => id.startsWith("c-1:compensate:org-1")), "org-1 should get synthetic step ID based on failedStepId");
 });
 
-test("OrgGovernanceSaga handler exceptions do not cascade during compensation", () => {
-  const compensationErrors: string[] = [];
+test("OrgGovernanceSaga compensation failures are surfaced after attempting remaining compensations", () => {
+  const compensatedNodeIds: string[] = [];
   const saga = new OrgGovernanceSaga({
     prepare: () => {},
     commit: () => {
       throw new Error("commit failed");
     },
     compensate: (step) => {
+      compensatedNodeIds.push(step.targetOrgNodeId);
       if (step.targetOrgNodeId === "org-2") {
         throw new Error("compensation failed for org-2");
       }
     },
   });
 
-  const result = saga.execute("saga-16", [
-    { stepId: "p-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
-    { stepId: "p-2", targetOrgNodeId: "org-2", action: "prepare", phase: "identity" },
-    { stepId: "c-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
-    { stepId: "c-2", targetOrgNodeId: "org-2", action: "commit", phase: "identity" },
-  ]);
-
-  // Saga should still complete even if compensation throws
-  assert.equal(result.status, "compensated");
-  // org-2 compensation failed, but org-1 was compensated
-  assert.ok(result.compensatedNodeIds.includes("org-1"));
+  assert.throws(
+    () => saga.execute("saga-16", [
+      { stepId: "p-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
+      { stepId: "p-2", targetOrgNodeId: "org-2", action: "prepare", phase: "identity" },
+      { stepId: "c-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
+      { stepId: "c-2", targetOrgNodeId: "org-2", action: "commit", phase: "identity" },
+    ]),
+    /org_governance_saga\.compensation_failed:.*org-2/,
+  );
+  assert.ok(compensatedNodeIds.includes("org-2"));
+  assert.ok(compensatedNodeIds.includes("org-1"));
 });
 
 test("OrgGovernanceSaga executeWithReceipt enrichment uses step phase when step exists", () => {

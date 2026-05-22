@@ -226,7 +226,7 @@ export class WebSocketBridge {
         const parsed = JSON.parse(data.toString());
         const result = WebSocketMessageSchema.safeParse(parsed) as { success: true; data: WebSocketMessageType } | { success: false; data: unknown };
         if (!result.success) {
-          ws.send(JSON.stringify({ type: "error", code: "invalid_message", message: "Message schema validation failed" }));
+          ws.send(JSON.stringify({ type: "error", code: "api.invalid_message", message: "Message schema validation failed" }));
           return;
         }
         this.handleMessage(ws, result.data);
@@ -234,7 +234,7 @@ export class WebSocketBridge {
         logger.warn("WebSocket message rejected: invalid payload", {
           error: error instanceof Error ? error.message : String(error),
         });
-        ws.send(JSON.stringify({ type: "error", code: "invalid_message", message: "Failed to parse message" }));
+        ws.send(JSON.stringify({ type: "error", code: "api.invalid_message", message: "Failed to parse message" }));
       }
     });
     ws.on("close", () => {
@@ -296,7 +296,7 @@ export class WebSocketBridge {
         }
         return;
       default:
-        ws.send(JSON.stringify({ type: "error", code: "unknown_message", message: "Unknown message type" }));
+        ws.send(JSON.stringify({ type: "error", code: "api.unknown_message", message: "Unknown message type" }));
     }
   }
 

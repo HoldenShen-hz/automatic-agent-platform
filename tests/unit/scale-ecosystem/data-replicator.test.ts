@@ -181,14 +181,10 @@ test("computeChecksum produces consistent SHA256 hash", () => {
   assert.equal(checksum1.length, 64); // SHA256 produces 64 hex chars
 });
 
-test("computeChecksum produces consistent MD5 hash", () => {
+test("computeChecksum rejects unsupported checksum algorithms", () => {
   const payload = { data: "test" };
 
-  const checksum1 = computeChecksum(payload, "md5");
-  const checksum2 = computeChecksum(payload, "md5");
-
-  assert.equal(checksum1, checksum2);
-  assert.equal(checksum1.length, 32); // MD5 produces 32 hex chars
+  assert.throws(() => computeChecksum(payload, "md5" as never), /data_replicator\.unsupported_checksum_algorithm:md5/);
 });
 
 test("computeChecksum produces different hashes for different payloads", () => {
@@ -483,7 +479,7 @@ test("createDataReplicator accepts custom options", () => {
     "us-east-1",
     ["us-west-2"],
     { sourceRegionId: "us-east-1", targetRegionIds: ["us-west-2"], residencyMode: "allowed_cross_border" },
-    { batchSize: 50, flushIntervalMs: 10000, retryAttempts: 5, checksumAlgorithm: "md5" },
+    { batchSize: 50, flushIntervalMs: 10000, retryAttempts: 5, checksumAlgorithm: "sha256" },
   );
 
   const status = replicator.getStatus();

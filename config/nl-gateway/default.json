@@ -24,6 +24,12 @@
     "requiredEntityCount": 1,
     "minMessageLength": 6
   },
+  "rateLimit": {
+    "enabled": true,
+    "windowMs": 60000,
+    "perTenantRequestsPerWindow": 120,
+    "perUserRequestsPerWindow": 30
+  },
   "guardrails": {
     "additionalPromptInjectionPatterns": [
       "(?i)ignore\\s+(all|any|previous|prior)\\s+instructions",

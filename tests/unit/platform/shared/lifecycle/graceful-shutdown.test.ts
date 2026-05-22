@@ -196,10 +196,9 @@ test("GracefulShutdown - shutdown is idempotent", async () => {
   assert.equal(result1.handlersRun, result2.handlersRun);
 });
 
-test("GracefulShutdown - can add handler during shutdown does nothing", async () => {
+test("GracefulShutdown - addHandler rejects once shutdown has started", async () => {
   const shutdown = createGracefulShutdown();
 
-  // Manually set shutting down state
   shutdown.addHandler({
     name: "before-shutdown",
     handler: async () => {},
@@ -207,14 +206,41 @@ test("GracefulShutdown - can add handler during shutdown does nothing", async ()
 
   const result = await shutdown.shutdown();
 
-  // Try to add handler after shutdown started (should be rejected)
-  shutdown.addHandler({
-    name: "during-shutdown",
-    handler: async () => {},
+  assert.throws(
+    () => shutdown.addHandler({
+      name: "during-shutdown",
+      handler: async () => {},
+    }),
+    /Cannot add shutdown handler 'during-shutdown' while shutdown is in progress/,
+  );
+  assert.equal(result.handlersRun, 1);
+});
+
+test("GracefulShutdown - duplicate shutdown signals trigger forced exit without unregistering the first handler", async () => {
+  const signalBus = new MockSignalBus();
+  const exits: number[] = [];
+  const gate = createDeferred<void>();
+  const shutdown = new GracefulShutdown({
+    signalBus,
+    registerSignalHandlers: true,
+    exitHandler: (code) => {
+      exits.push(code);
+    },
   });
 
-  // Only the first handler should run
-  assert.equal(result.handlersRun, 1);
+  shutdown.addHandler({
+    name: "slow-cleanup",
+    handler: async () => {
+      await gate.promise;
+    },
+  });
+
+  signalBus.listeners("SIGINT")[0]?.();
+  signalBus.listeners("SIGINT")[0]?.();
+  gate.resolve();
+  await shutdown.shutdown();
+
+  assert.deepEqual(exits, [1]);
 });
 
 test("GracefulShutdown - getLastShutdownResult returns null before shutdown", () => {

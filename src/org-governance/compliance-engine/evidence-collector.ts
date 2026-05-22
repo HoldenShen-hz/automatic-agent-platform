@@ -316,11 +316,13 @@ export class ComplianceEvidenceCollector {
       const nextSchedule = this.collectionSchedule.get(frameworkId);
       if (nextSchedule) {
         const timeout = setTimeout(runCollection, nextSchedule.intervalMs);
+        timeout.unref?.();
         this.pendingCollections.set(frameworkId, timeout);
       }
     };
 
     const timeout = setTimeout(runCollection, schedule.intervalMs);
+    timeout.unref?.();
     this.pendingCollections.set(frameworkId, timeout);
   }
 

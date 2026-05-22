@@ -255,3 +255,23 @@ test("computeDomainRiskLevel uses exported score thresholds", () => {
     critical: 85,
   });
 });
+
+test("computeDomainRiskLevel preserves high default for low scores", () => {
+  const profile: DomainRiskProfile = {
+    profileId: "profile_high_default",
+    domainId: "test",
+    defaultRiskLevel: "high",
+    dimensions: [],
+  };
+  assert.equal(computeDomainRiskLevel(profile, 10), "high");
+});
+
+test("computeDomainRiskLevel falls back safely for NaN score inputs", () => {
+  const profile: DomainRiskProfile = {
+    profileId: "profile_nan_default",
+    domainId: "test",
+    defaultRiskLevel: "medium",
+    dimensions: [],
+  };
+  assert.equal(computeDomainRiskLevel(profile, Number.NaN), "medium");
+});

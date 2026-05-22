@@ -5,7 +5,7 @@ import {
   HarnessRuntimeService,
   type HarnessRunRuntimeState,
   type HarnessFailureType,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/harness/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 const FAILURE_TYPES: HarnessFailureType[] = [
   "operator_abort",

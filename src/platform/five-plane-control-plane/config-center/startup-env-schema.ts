@@ -180,6 +180,12 @@ export const ApiEnableWebSocketSchema = BooleanString.optional();
  */
 export const MetricsPortSchema = PositivePort.optional();
 
+/**
+ * Schema for AA_METRICS_HOST — dedicated metrics server bind host.
+ * Optional: defaults to 127.0.0.1 so metrics stay loopback-only unless explicitly widened.
+ */
+export const MetricsHostSchema = NonEmptyString.optional();
+
 // ---------------------------------------------------------------------------
 // Execution resource ceiling schemas (P0 — misconfig can cause resource exhaustion)
 // ---------------------------------------------------------------------------
@@ -348,6 +354,7 @@ export const StartupEnvSchema = z.object({
   AA_WEBHOOK_SECRET: WebhookSecretSchema,
   AA_API_ENABLE_WEBSOCKET: ApiEnableWebSocketSchema,
   AA_METRICS_PORT: MetricsPortSchema,
+  AA_METRICS_HOST: MetricsHostSchema,
   AA_STORAGE_DRIVER: StorageDriverSchema,
   AA_STORAGE_POSTGRES_DSN: PostgresDsnSchema,
   AA_PG_DSN: PostgresDsnSchema,
@@ -459,6 +466,7 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_WEBHOOK_SECRET: env["AA_WEBHOOK_SECRET"] ?? undefined,
     AA_API_ENABLE_WEBSOCKET: env["AA_API_ENABLE_WEBSOCKET"] ?? undefined,
     AA_METRICS_PORT: env["AA_METRICS_PORT"] ?? undefined,
+    AA_METRICS_HOST: env["AA_METRICS_HOST"] ?? undefined,
     AA_STORAGE_DRIVER: env["AA_STORAGE_DRIVER"] ?? undefined,
     AA_STORAGE_POSTGRES_DSN: env["AA_STORAGE_POSTGRES_DSN"] ?? undefined,
     AA_PG_DSN: env["AA_PG_DSN"] ?? undefined,

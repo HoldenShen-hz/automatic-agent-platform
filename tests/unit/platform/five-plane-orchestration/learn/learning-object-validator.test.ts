@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LearningObjectValidator } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/learn/learning-object-validator.js";
+import { LearningObjectValidator } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-validator.js";
 
 function makeLearningObject(overrides: Partial<{
   learningObjectId: string;

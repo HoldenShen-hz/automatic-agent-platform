@@ -283,7 +283,7 @@ async function main(): Promise<void> {
     if (metricsServer != null) {
       await new Promise<void>((resolve, reject) => {
         metricsServer.once("error", reject);
-        metricsServer.listen(envConfig.metricsPort, envConfig.apiHost ?? "127.0.0.1", () => {
+        metricsServer.listen(envConfig.metricsPort, envConfig.metricsHost ?? "127.0.0.1", () => {
           metricsServer.off("error", reject);
           resolve();
         });

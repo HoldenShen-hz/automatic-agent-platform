@@ -129,12 +129,14 @@ test("loadApiServerEnv rejects invalid websocket toggle values", () => {
 test("loadApiServerEnv parses metrics and otel settings", () => {
   const config = loadApiServerEnv({
     AA_METRICS_PORT: "9090",
+    AA_METRICS_HOST: "127.0.0.2",
     AA_OTEL_ENABLED: "true",
     AA_OTEL_ENDPOINT: "http://otel-collector:4318/v1/traces",
     AA_OTEL_SERVICE_NAME: "automatic-agent-api",
     AA_OTEL_SERVICE_VERSION: "0.2.0",
   });
   assert.equal(config.metricsPort, 9090);
+  assert.equal(config.metricsHost, "127.0.0.2");
   assert.equal(config.otelEnabled, true);
   assert.equal(config.otelEndpoint, "http://otel-collector:4318/v1/traces");
   assert.equal(config.otelServiceName, "automatic-agent-api");

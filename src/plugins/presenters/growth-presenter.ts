@@ -38,18 +38,21 @@ function formatABTest(output: MachineOutput): string {
 }
 
 export function createGrowthPresenterPlugin(): DomainPresenterPlugin {
+  let initialized = false;
   return {
     pluginId: "plugin.growth.presenter",
     domainId: "growth",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.campaign", "present.abtest"],
     async initialize() {
+      initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
     async formatOutput(input): Promise<HumanOutput> {

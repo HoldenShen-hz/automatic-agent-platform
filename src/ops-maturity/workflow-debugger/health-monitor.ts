@@ -62,6 +62,11 @@ const DEFAULT_FAILED_THRESHOLD = 0.5; // 50% failure rate
 const DEFAULT_MAX_PROBES = 1000;
 const DEFAULT_CHECK_INTERVAL_MS = 30_000; // 30 seconds
 
+function toTimestampMillis(timestamp: string): number | null {
+  const parsed = Date.parse(timestamp);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export class WorkflowDebuggerHealthMonitor {
   private readonly windowMs: number;
   private readonly minSampleSize: number;
@@ -112,11 +117,16 @@ export class WorkflowDebuggerHealthMonitor {
       return null;
     }
 
-    const windowStart = new Date(new Date(now).getTime() - this.windowMs).toISOString();
+    const windowEndMillis = Date.parse(now);
+    const windowStartMillis = windowEndMillis - this.windowMs;
+    const windowStart = new Date(windowStartMillis).toISOString();
     const windowEnd = now;
 
     // Filter to only probes within the sliding window
-    const windowProbes = allProbes.filter((p) => p.timestamp >= windowStart && p.timestamp <= windowEnd);
+    const windowProbes = allProbes.filter((probe) => {
+      const probeMillis = toTimestampMillis(probe.timestamp);
+      return probeMillis != null && probeMillis >= windowStartMillis && probeMillis <= windowEndMillis;
+    });
 
     if (windowProbes.length === 0) {
       // No recent probes - return a null state indicating no data
@@ -174,10 +184,14 @@ export class WorkflowDebuggerHealthMonitor {
         oldestProbeInWindow: null,
       };
     }
-    const oldestProbeInWindow = windowProbes.reduce<string>(
-      (oldest, p) => (p.timestamp < oldest ? p.timestamp : oldest),
-      firstWindowProbe.timestamp,
-    );
+    const oldestProbeInWindow = windowProbes.reduce<string>((oldest, probe) => {
+      const oldestMillis = toTimestampMillis(oldest);
+      const probeMillis = toTimestampMillis(probe.timestamp);
+      if (oldestMillis == null || probeMillis == null) {
+        return oldest;
+      }
+      return probeMillis < oldestMillis ? probe.timestamp : oldest;
+    }, firstWindowProbe.timestamp);
 
     return {
       componentId,
@@ -237,7 +251,7 @@ export class WorkflowDebuggerHealthMonitor {
    * Called automatically during snapshot, but can be called manually for cleanup.
    */
   public pruneOldProbes(now: string = nowIso()): number {
-    const cutoff = new Date(new Date(now).getTime() - this.windowMs).toISOString();
+    const cutoffMillis = Date.parse(now) - this.windowMs;
     let totalPruned = 0;
     const componentIds = [...this.probes.keys()];
 
@@ -246,7 +260,10 @@ export class WorkflowDebuggerHealthMonitor {
       if (!probes) continue;
 
       const originalLength = probes.length;
-      const pruned = probes.filter((p) => p.timestamp >= cutoff);
+      const pruned = probes.filter((probe) => {
+        const probeMillis = toTimestampMillis(probe.timestamp);
+        return probeMillis != null && probeMillis >= cutoffMillis;
+      });
       const prunedCount = originalLength - pruned.length;
       totalPruned += prunedCount;
 

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExperienceDistillationService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/learn/experience-distillation-service.js";
+import { ExperienceDistillationService } from "../../../../../src/platform/five-plane-orchestration/learn/experience-distillation-service.js";
 
 function makeSignal(overrides: Partial<{
   learningSignalId: string;

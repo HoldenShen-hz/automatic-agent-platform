@@ -1,0 +1,7 @@
+{
+  "registry": "ghcr.io/automatic-agent",
+  "imageRepository": "automatic-agent-system",
+  "configPath": "config/runtime/default.json",
+  "deployWorkflowPath": ".github/workflows/deploy-environment.yml",
+  "publishWorkflowPath": ".github/workflows/publish-image.yml"
+}

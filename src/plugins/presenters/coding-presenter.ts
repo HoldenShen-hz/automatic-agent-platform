@@ -5,18 +5,21 @@ function stringifyPayload(payload: Record<string, unknown>): string {
 }
 
 export function createCodingPresenterPlugin(): DomainPresenterPlugin {
+  let initialized = false;
   return {
     pluginId: "plugin.coding.presenter",
     domainId: "coding",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.diff", "present.summary"],
     async initialize() {
+      initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
     async formatOutput(input): Promise<HumanOutput> {

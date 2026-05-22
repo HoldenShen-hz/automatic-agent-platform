@@ -1,4 +1,7 @@
 {
+  "references": [
+    { "path": "./ui/tsconfig.json" }
+  ],
   "compilerOptions": {
     "target": "ES2023",
     "module": "NodeNext",

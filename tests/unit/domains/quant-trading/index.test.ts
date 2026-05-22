@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DEFAULT_QUANT_TRADING_PRE_TRADE_LIMIT_POLICY,
   QuantTradingTaskTypeSchema,
   QUANT_TRADING_DOMAIN_PRESET,
+  evaluateQuantTradingPreTradeRisk,
   requiresQuantTradingReview,
   type QuantTradingTaskType,
 } from "../../../../src/domains/quant-trading/index.js";
@@ -60,4 +62,37 @@ test("QUANT_TRADING_DOMAIN_PRESET is frozen and immutable", () => {
   assert.ok(Object.isFrozen(QUANT_TRADING_DOMAIN_PRESET));
   assert.ok(Object.isFrozen(QUANT_TRADING_DOMAIN_PRESET.requiredCapabilities));
   assert.ok(Object.isFrozen(QUANT_TRADING_DOMAIN_PRESET.reviewRequiredTaskTypes));
+});
+
+test("evaluateQuantTradingPreTradeRisk applies guards to simulate tasks", () => {
+  const decision = evaluateQuantTradingPreTradeRisk({
+    taskType: "simulate",
+    symbol: "AAPL",
+    side: "buy",
+    orderQuantityUnits: 100,
+    orderNotionalUsd: 150_000,
+    currentPositionUnits: 950,
+    realizedDailyLossUsd: 30_000,
+    drawdownPercent: 15,
+    limitPolicy: DEFAULT_QUANT_TRADING_PRE_TRADE_LIMIT_POLICY,
+  });
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasons.includes("quant_trading.pre_trade_risk.order_notional_limit_exceeded"));
+});
+
+test("evaluateQuantTradingPreTradeRisk rejects negative notional and quantity", () => {
+  const decision = evaluateQuantTradingPreTradeRisk({
+    taskType: "trade",
+    symbol: "AAPL",
+    side: "buy",
+    orderQuantityUnits: -1,
+    orderNotionalUsd: -10,
+    currentPositionUnits: 0,
+    realizedDailyLossUsd: 0,
+    drawdownPercent: 0,
+    limitPolicy: DEFAULT_QUANT_TRADING_PRE_TRADE_LIMIT_POLICY,
+  });
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasons.includes("quant_trading.pre_trade_risk.invalid_order_quantity"));
+  assert.ok(decision.reasons.includes("quant_trading.pre_trade_risk.invalid_order_notional"));
 });

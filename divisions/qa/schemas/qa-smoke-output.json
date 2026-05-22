@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QaSmokeValidationOutput",
+  "type": "object",
+  "required": ["summary", "result", "smokeStatus"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "type": "string",
+      "minLength": 1
+    },
+    "smokeStatus": {
+      "type": "string",
+      "enum": ["pass", "fail", "blocked"]
+    },
+    "checkedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

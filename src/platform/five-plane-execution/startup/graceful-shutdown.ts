@@ -61,16 +61,19 @@ export class GracefulShutdown {
   private readonly handlers: ShutdownHandler[] = [];
   private readonly signalBus: SignalCapable;
   private readonly exitHandler: (code: number) => void;
+  private readonly usesDefaultExitHandler: boolean;
   private readonly signalListeners = new Map<"SIGTERM" | "SIGINT", () => void>();
   private isShuttingDown = false;
   private shutdownPromise: Promise<ShutdownResult> | null = null;
   private shutdownResult: ShutdownResult | null = null;
+  private signalExitCode: number | null = null;
 
   constructor(options: GracefulShutdownOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.forceKillAfterTimeout = options.forceKillAfterTimeout ?? true;
     this.logger = options.logger ?? new StructuredLogger({ retentionLimit: 100 });
     this.signalBus = options.signalBus ?? process;
+    this.usesDefaultExitHandler = options.exitHandler == null;
     this.exitHandler = options.exitHandler ?? ((code) => {
       process.exitCode = code;
     });
@@ -92,12 +95,7 @@ export class GracefulShutdown {
    */
   public addHandler(handler: ShutdownHandler): void {
     if (this.isShuttingDown) {
-      this.logger.log({
-        level: "warn",
-        message: "Cannot add shutdown handler while shutting down",
-        data: { handlerName: handler.name },
-      });
-      return;
+      throw new Error(`Cannot add shutdown handler '${handler.name}' while shutdown is in progress.`);
     }
     this.handlers.push(handler);
   }
@@ -112,6 +110,15 @@ export class GracefulShutdown {
 
     for (const signal of ["SIGTERM", "SIGINT"] as const) {
       const listener = () => {
+        if (this.isShuttingDown) {
+          this.logger.log({
+            level: "warn",
+            message: "Received duplicate shutdown signal while already shutting down",
+            data: { signal, handlerCount: this.handlers.length },
+          });
+          this.requestSignalExit(1);
+          return;
+        }
         void this.handleSignal(signal);
       };
       this.signalBus.on(signal, listener);
@@ -127,8 +134,6 @@ export class GracefulShutdown {
   }
 
   private async handleSignal(signal: "SIGTERM" | "SIGINT"): Promise<void> {
-    this.unregisterSignalHandlers();
-
     this.logger.log({
       level: "info",
       message: `Received ${signal}, initiating graceful shutdown`,
@@ -142,7 +147,7 @@ export class GracefulShutdown {
           message: "Graceful shutdown timed out, forcing exit",
           data: { timeoutMs: this.timeoutMs, signal },
         });
-        this.exitHandler(1);
+        this.requestSignalExit(1);
       }, this.timeoutMs)
       : null;
     forcedExitTimer?.unref?.();
@@ -157,18 +162,19 @@ export class GracefulShutdown {
           durationMs: this.shutdownResult.durationMs,
         },
       });
-      this.exitHandler(this.shutdownResult.success ? 0 : 1);
+      this.requestSignalExit(this.shutdownResult.success ? 0 : 1);
     } catch (error) {
       this.logger.log({
         level: "error",
         message: "Graceful shutdown failed",
         data: { error: error instanceof Error ? error.message : String(error) },
       });
-      this.exitHandler(1);
+      this.requestSignalExit(1);
     } finally {
       if (forcedExitTimer != null) {
         clearTimeout(forcedExitTimer);
       }
+      this.unregisterSignalHandlers();
     }
   }
 
@@ -216,6 +222,18 @@ export class GracefulShutdown {
     this.shutdownPromise = null;
     this.shutdownResult = null;
     this.handlers.length = 0;
+    this.signalExitCode = null;
+  }
+
+  private requestSignalExit(code: number): void {
+    if (this.signalExitCode != null) {
+      return;
+    }
+    this.signalExitCode = code;
+    this.exitHandler(code);
+    if (this.usesDefaultExitHandler) {
+      setImmediate(() => process.exit(code));
+    }
   }
 
   private async executeShutdown(): Promise<ShutdownResult> {

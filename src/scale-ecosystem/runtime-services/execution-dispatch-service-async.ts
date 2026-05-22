@@ -336,20 +336,32 @@ export class ExecutionDispatchServiceAsync extends LocalTypedEventEmitter<Record
     }
 
     // Create timeout promise
-    const timeoutController = new AbortController();
+    let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+    let abortHandler: (() => void) | null = null;
+    const cleanupTimeout = () => {
+      if (timeoutTimer != null) {
+        clearTimeout(timeoutTimer);
+        timeoutTimer = null;
+      }
+      if (signal != null && abortHandler != null) {
+        signal.removeEventListener("abort", abortHandler);
+        abortHandler = null;
+      }
+    };
     const timeoutPromise = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
+      timeoutTimer = setTimeout(() => {
         if (!signal?.aborted) {
           reject(new Error(`Operation ${operationName} timed out after ${timeoutMs}ms`));
         }
       }, timeoutMs);
-
-      signal?.addEventListener("abort", () => {
-        clearTimeout(timer);
-        if (!signal!.aborted) {
-          reject(new Error(`Operation ${operationName} was aborted`));
-        }
-      });
+      abortHandler = () => {
+        cleanupTimeout();
+        reject(new Error(`Operation ${operationName} was aborted`));
+      };
+      signal?.addEventListener("abort", abortHandler, { once: true });
+      if (signal?.aborted) {
+        abortHandler();
+      }
     });
 
     let lastError: Error | null = null;
@@ -379,6 +391,7 @@ export class ExecutionDispatchServiceAsync extends LocalTypedEventEmitter<Record
         }
 
         const durationMs = Date.now() - startedAt;
+        cleanupTimeout();
         this.emit("operation_complete", { type: "operation_complete", operationId, operation: operationName, durationMs });
 
         return result;
@@ -389,6 +402,7 @@ export class ExecutionDispatchServiceAsync extends LocalTypedEventEmitter<Record
         if (!this.isRetryableError(lastError)) {
           // Non-retryable error - fail immediately
           const durationMs = Date.now() - startedAt;
+          cleanupTimeout();
           this.emit("operation_complete", { type: "operation_complete", operationId, operation: operationName, durationMs });
           this.recordCircuitBreakerFailure();
           throw lastError;
@@ -397,6 +411,7 @@ export class ExecutionDispatchServiceAsync extends LocalTypedEventEmitter<Record
         // Check if we've exhausted retries
         if (attempt >= this.options.maxRetries) {
           const durationMs = Date.now() - startedAt;
+          cleanupTimeout();
           this.emit("operation_complete", { type: "operation_complete", operationId, operation: operationName, durationMs });
           this.recordCircuitBreakerFailure();
           throw lastError;
@@ -405,6 +420,7 @@ export class ExecutionDispatchServiceAsync extends LocalTypedEventEmitter<Record
     }
 
     // Should not reach here, but just in case
+    cleanupTimeout();
     this.recordCircuitBreakerFailure();
     throw lastError ?? new Error("Operation failed");
   }

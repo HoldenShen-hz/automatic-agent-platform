@@ -116,6 +116,21 @@ test("ApiKeyService.validateApiKey returns invalid for expired key", () => {
   assert.equal(result.reason, "key_expired");
 });
 
+test("ApiKeyService.validateApiKey removes expired key from lookup index", () => {
+  const service = new ApiKeyService({ hashPepper: "test-pepper" });
+
+  const { rawKey } = service.generateApiKey({
+    name: "Expired Key",
+    ownerId: "owner-123",
+    expiresAt: new Date(Date.now() - 1000).toISOString(),
+    createdBy: "admin",
+  });
+
+  assert.equal(service.validateApiKey(rawKey).reason, "key_expired");
+  assert.equal(service.validateApiKey(rawKey).reason, "key_expired");
+  assert.equal(service.listAuditLog().filter((entry) => entry.action === "expire").length, 1);
+});
+
 test("ApiKeyService.revokeApiKey revokes active key", () => {
   const service = new ApiKeyService();
 

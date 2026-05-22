@@ -1,6 +1,6 @@
 # Automatic Agent Platform
 
-Enterprise automatic-agent platform baseline built on Node.js 20/22 + TypeScript ESM. The repository follows a seven-layer architecture documented in `docs_zh/architecture/00-platform-architecture.md` and `docs_en/architecture/00-platform-architecture.md`; inside that architecture, the runtime implementation is organized around five execution planes under `src/platform/five-plane-*`.
+Enterprise automatic-agent platform baseline built on Node.js 22 + TypeScript ESM. The repository follows a seven-layer architecture documented in `docs_zh/architecture/00-platform-architecture.md` and `docs_en/architecture/00-platform-architecture.md`; inside that architecture, the runtime implementation is organized around five execution planes under `src/platform/five-plane-*`.
 
 ## Quick Start
 
@@ -13,6 +13,8 @@ npm test
 `npm test` runs the repository baseline gate (`typecheck`, repo hygiene audits, `test:raw`, coverage gate, and stable validation). Use `npm run test:unit`, `npm run test:integration`, `npm run test:golden`, or `npm run test:raw` for narrower loops.
 
 `npm run aa:dev` is a development-only shortcut that requires dev dependencies such as `tsx`; production or container environments should use the built CLI (`aa ...` or `npm run api`) after `npm run build`.
+
+`npm run test:golden` is a targeted contract-snapshot suite. A single golden test file may validate multiple `.golden` fixtures, and the repository hygiene gate now audits that every referenced snapshot exists.
 
 Common local commands:
 
@@ -57,6 +59,7 @@ Stable script overview:
 - `docs_zh/adr/` — architectural decisions
 - `docs_zh/contracts/` — authoritative contracts
 - `docs_zh/reference/docs-sync.md` — zh/en sync rules and delayed-translation policy
+- `docs_zh/reference/division-catalog.md` — division family map, canonical surfaces, and legacy aliases
 - `translate_docs.py` — legacy translation helper with maintenance notes in its module docstring
 - `docs_zh/analysis/00-architecture-coverage-matrix.md` — chapter-to-code coverage matrix
 - `docs_zh/analysis/01-codebase-vs-design-review.md` — current codebase review
@@ -83,11 +86,14 @@ src/
   testing/          # test-support utilities shipped with source
 tests/
   unit/ integration/ golden/ e2e/
+  fixtures/packs/   # example pack fixtures for naming/validation coverage, not publishable packages
 ```
 
 ## Current Notes
 
 - `src/core/runtime/` remains as a compatibility surface for legacy imports; primary runtime changes should land in the five-plane modules unless a compatibility export is intentionally required.
+- `src/plugins/` contains built-in runtime plugins, `tests/fixtures/packs/` contains pack fixtures only, `src/sdk/harness-sdk/` contains the harness-facing SDK surface, and `src/scale-ecosystem/marketplace/` contains marketplace/runtime registry services.
+- Division families are intentionally scoped, not synonymous: `quality-assurance` is the canonical release-certification division, while `qa` is a lightweight smoke-validation alias; the operations family split is documented in `docs_zh/reference/division-catalog.md` and `config/quality/division-catalog.json`.
 - Root docs, ADR, contracts, and review matrices are expected to stay consistent. If a boundary changes, update the matching contract and tests in the same change.
 
 ## License

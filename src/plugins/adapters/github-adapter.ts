@@ -11,6 +11,7 @@ export interface GithubAdapterPluginOptions {
   signatureKey?: string;
   defaultTimeoutMs?: number;
   defaultRateLimitPerMinute?: number;
+  healthProbe?: (input: { readonly apiBaseUrl: string; readonly credentialFingerprint: string | null }) => Promise<boolean> | boolean;
 }
 
 /**
@@ -79,6 +80,87 @@ function requireString(value: unknown, field: string): string {
   return value.trim();
 }
 
+function normalizeApiBaseUrl(value: string | undefined): string {
+  const raw = (value ?? "https://api.github.com").trim();
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("github_adapter.invalid_api_base_url");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error("github_adapter.invalid_api_base_url_protocol");
+  }
+  parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+function buildCredentialFingerprint(token: string): string {
+  const prefix = token.startsWith("secret://") ? "secret-ref" : "token";
+  return `${prefix}:${createHash("sha256").update(token).digest("hex").slice(0, 12)}`;
+}
+
+function requireIssueNumber(value: unknown): string {
+  const issueNumber = requireString(value, "issueNumber");
+  if (!/^\d+$/.test(issueNumber)) {
+    throw new Error("github_adapter.invalid_issue_number");
+  }
+  return issueNumber;
+}
+
+function isPrimitiveWorkflowInput(value: unknown): value is string | number | boolean | null {
+  return value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+
+function sanitizeWorkflowInputs(value: unknown): Record<string, string> {
+  if (value == null) {
+    return {};
+  }
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("github_adapter.invalid_workflow_inputs");
+  }
+  const result: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(key) || !isPrimitiveWorkflowInput(entry)) {
+      throw new Error("github_adapter.invalid_workflow_inputs");
+    }
+    result[key] = entry == null ? "" : String(entry);
+  }
+  return result;
+}
+
+function redactSensitiveValue(key: string, value: unknown): unknown {
+  return /(token|secret|credential|password|key)$/i.test(key) ? "[REDACTED]" : value;
+}
+
+function canonicalizeForHash(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeForHash(item));
+  }
+  if (value != null && typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(objectValue)
+        .sort()
+        .map((key) => [key, canonicalizeForHash(redactSensitiveValue(key, objectValue[key]))]),
+    );
+  }
+  return value;
+}
+
+function createIdempotencyKey(action: string, repository: string, params: Record<string, unknown>): string | null {
+  if (action === "get_file") {
+    return null;
+  }
+  return createHash("sha256")
+    .update(JSON.stringify({
+      action,
+      repository,
+      params: canonicalizeForHash(params),
+    }))
+    .digest("hex");
+}
+
 function requireRepository(value: unknown): string {
   const repository = requireString(value, "repository");
   const normalized = repository.trim();
@@ -99,7 +181,7 @@ function requireRepository(value: unknown): string {
 }
 
 export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = {}): ExternalAdapterPlugin {
-  const apiBaseUrl = (options.apiBaseUrl ?? "https://api.github.com").replace(/\/+$/, "");
+  const apiBaseUrl = normalizeApiBaseUrl(options.apiBaseUrl);
   const policy = options.policy ?? new NetworkEgressPolicyService({
     mode: "enforce",
     allowedDomains: ["api.github.com", "github.com"],
@@ -117,14 +199,23 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
       return undefined;
     },
     async healthCheck() {
-      return policy.evaluate(`${apiBaseUrl}/rate_limit`).allowed;
+      if (credentialFingerprint == null) {
+        return false;
+      }
+      if (!policy.evaluate(`${apiBaseUrl}/rate_limit`).allowed) {
+        return false;
+      }
+      if (options.healthProbe != null) {
+        return await options.healthProbe({ apiBaseUrl, credentialFingerprint });
+      }
+      return false;
     },
     async shutdown() {
       credentialFingerprint = null;
     },
     async authenticate(credentials) {
       const token = requireString(credentials["token"] ?? credentials["managedSecretRef"], "token");
-      credentialFingerprint = token.startsWith("secret://") ? token : `token:${token.slice(0, 4)}`;
+      credentialFingerprint = buildCredentialFingerprint(token);
     },
     async execute(action, params) {
       if (!credentialFingerprint) {
@@ -149,9 +240,7 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
           },
         );
       }
-      const idempotencyKey = action === "get_file" ? null : createHash("sha256")
-        .update(`${action}:${repository}:${JSON.stringify(params)}`)
-        .digest("hex");
+      const idempotencyKey = createIdempotencyKey(action, repository, params);
       return {
         adapter: "github",
         action,
@@ -184,13 +273,13 @@ function buildEndpoint(apiBaseUrl: string, action: string, repository: string, p
     case "create_issue":
       return `${apiBaseUrl}/repos/${repository}/issues`;
     case "create_pr_comment":
-      return `${apiBaseUrl}/repos/${repository}/issues/${requireString(params["issueNumber"], "issueNumber")}/comments`;
+      return `${apiBaseUrl}/repos/${repository}/issues/${requireIssueNumber(params["issueNumber"])}/comments`;
     case "dispatch_workflow":
       return `${apiBaseUrl}/repos/${repository}/actions/workflows/${requireString(params["workflowId"], "workflowId")}/dispatches`;
     case "get_file":
       return `${apiBaseUrl}/repos/${repository}/contents/${encodeRepositoryPath(requireString(params["path"], "path"))}`;
     default:
-      return `${apiBaseUrl}/repos/${repository}`;
+      throw new Error(`github_adapter.unsupported_action:${action}`);
   }
 }
 
@@ -204,14 +293,14 @@ function buildPayload(action: string, params: Record<string, unknown>): Record<s
       };
     case "create_pr_comment":
       return {
-        issueNumber: requireString(params["issueNumber"], "issueNumber"),
+        issueNumber: requireIssueNumber(params["issueNumber"]),
         body: requireString(params["body"], "body"),
       };
     case "dispatch_workflow":
       return {
         workflowId: requireString(params["workflowId"], "workflowId"),
         ref: requireString(params["ref"], "ref"),
-        inputs: typeof params["inputs"] === "object" && params["inputs"] != null ? params["inputs"] : {},
+        inputs: sanitizeWorkflowInputs(params["inputs"]),
       };
     case "get_file":
       return {
@@ -219,6 +308,6 @@ function buildPayload(action: string, params: Record<string, unknown>): Record<s
         ref: typeof params["ref"] === "string" ? params["ref"] : "main",
       };
     default:
-      return { ...params };
+      throw new Error(`github_adapter.unsupported_action:${action}`);
   }
 }

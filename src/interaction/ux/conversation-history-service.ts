@@ -53,6 +53,32 @@ export interface ConversationHistoryOptions {
   readonly isRestricted?: boolean;
 }
 
+function isConversationTurnRecord(value: unknown): value is ConversationTurnRecord {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return typeof record["turnId"] === "string"
+    && (record["role"] === "user" || record["role"] === "assistant" || record["role"] === "system")
+    && typeof record["message"] === "string"
+    && typeof record["timestamp"] === "string";
+}
+
+function isConversationSessionRecord(value: unknown): value is ConversationSessionRecord {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return typeof record["sessionId"] === "string"
+    && typeof record["tenantId"] === "string"
+    && typeof record["userId"] === "string"
+    && Array.isArray(record["turns"])
+    && record["turns"].every((turn) => isConversationTurnRecord(turn))
+    && typeof record["createdAt"] === "string"
+    && typeof record["updatedAt"] === "string"
+    && (record["status"] === "active" || record["status"] === "completed" || record["status"] === "abandoned");
+}
+
 /**
  * Conversation History Service
  *
@@ -285,10 +311,11 @@ export class ConversationHistoryService {
     try {
       if (typeof memory.contentJson === "string") {
         const parsed = JSON.parse(memory.contentJson);
-        return parsed.sessionId ?? null;
+        return typeof parsed?.sessionId === "string" ? parsed.sessionId : null;
       }
       if (typeof memory.contentJson === "object" && memory.contentJson !== null) {
-        return (memory.contentJson as Record<string, unknown>).sessionId as string ?? null;
+        const sessionId = (memory.contentJson as Record<string, unknown>).sessionId;
+        return typeof sessionId === "string" ? sessionId : null;
       }
       return null;
     } catch {
@@ -308,10 +335,14 @@ export class ConversationHistoryService {
    */
   private deserializeSession(content: unknown): ConversationSessionRecord {
     if (typeof content === "string") {
-      return JSON.parse(content) as ConversationSessionRecord;
+      const parsed = JSON.parse(content) as unknown;
+      if (isConversationSessionRecord(parsed)) {
+        return parsed;
+      }
+      throw new Error("Invalid session content");
     }
-    if (typeof content === "object" && content !== null) {
-      return content as ConversationSessionRecord;
+    if (isConversationSessionRecord(content)) {
+      return content;
     }
     throw new Error("Invalid session content");
   }

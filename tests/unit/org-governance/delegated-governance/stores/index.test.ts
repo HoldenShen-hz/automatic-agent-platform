@@ -322,3 +322,29 @@ test("SqliteAuditLogStore lists by delegation id", () => {
   assert.equal(byDel.length, 1);
   assert.equal(byDel[0].action, "action_target");
 });
+
+test("SqliteDelegationStore fails closed on malformed delegation json", () => {
+  const db = new DatabaseSync(":memory:");
+  const store = new SqliteDelegationStore(db);
+  db.exec(`
+    INSERT INTO governance_delegations (
+      delegation_id, grantor_id, grantee_id, level, delegatable,
+      org_node_ids_json, domain_ids_json, derived_delegation_ids_json,
+      permissions_json, guardrails_json, expires_at, revocable, status
+    ) VALUES (
+      'del_bad_json', 'grantor_1', 'grantee_1', 'delegated', 1,
+      'not-json', '[]', '[]', '[]', '[]', '2026-04-30T00:00:00.000Z', 1, 'active'
+    )
+  `);
+  assert.throws(() => store.list(), /delegated_governance\.invalid_org_node_ids_json/);
+});
+
+test("SqliteAuditLogStore fails closed on malformed audit detail json", () => {
+  const db = new DatabaseSync(":memory:");
+  const store = new SqliteAuditLogStore(db);
+  db.exec(`
+    INSERT INTO governance_audit_log (action, actor_id, delegation_id, timestamp, details_json)
+    VALUES ('action_bad_json', 'actor_1', 'del_1', '2026-04-14T12:00:00.000Z', 'not-json')
+  `);
+  assert.throws(() => store.list(), /delegated_governance\.invalid_audit_details_json/);
+});

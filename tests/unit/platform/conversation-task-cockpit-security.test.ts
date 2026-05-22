@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../helpers/repo-root.js";
 
 import { getPlatformArchitectureServices } from "../../../src/platform-architecture-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("R28-45 conversation hook uses a shared ConversationClient instead of per-hook useMemo instantiation", () => {
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/packages/features/conversation/src/hooks/index.ts",
+    resolveRepoPath("ui/packages/features/conversation/src/hooks/index.ts"),
     "utf8",
   );
 
@@ -18,7 +19,7 @@ test("R28-45 conversation hook uses a shared ConversationClient instead of per-h
 
 test("R28-47 task cockpit hook rolls back optimistic local mutations when REST updates fail", () => {
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/packages/features/task-cockpit/src/hooks/index.ts",
+    resolveRepoPath("ui/packages/features/task-cockpit/src/hooks/index.ts"),
     "utf8",
   );
 
@@ -28,7 +29,7 @@ test("R28-47 task cockpit hook rolls back optimistic local mutations when REST u
 
 test("R28-48 security integration test actually injects control characters into the command under test", () => {
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/integration/security/input-validation.test.ts",
+    resolveRepoPath("tests/integration/security/input-validation.test.ts"),
     "utf8",
   );
 
@@ -76,7 +77,7 @@ test("R28-50 service registry drops stale initialized instances when a service i
 test("R28-53 security defaults add explicit MCP sandbox and rate-limit policy", () => {
   const config = JSON.parse(
     readFileSync(
-      "/Users/holden/Project/automatic_agent/automatic_agent_platform/config/security/default.json",
+      resolveRepoPath("config/security/default.json"),
       "utf8",
     ),
   ) as {
@@ -105,7 +106,7 @@ test("R28-53 security defaults add explicit MCP sandbox and rate-limit policy", 
 test("R28-54 medium-risk defaults require approval and do not auto-execute", () => {
   const config = JSON.parse(
     readFileSync(
-      "/Users/holden/Project/automatic_agent/automatic_agent_platform/config/risk/default.json",
+      resolveRepoPath("config/risk/default.json"),
       "utf8",
     ),
   ) as {

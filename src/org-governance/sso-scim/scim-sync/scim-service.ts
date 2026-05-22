@@ -9,6 +9,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §48
  */
 
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
@@ -187,7 +188,7 @@ export class ScimProvisionService {
 
     const primaryEmail = user.emails.find((e) => e.primary)?.value;
     if (primaryEmail) {
-      this.userByEmail.set(`${tenantId}:${primaryEmail.toLowerCase()}`, id);
+      this.userByEmail.set(this.buildUserEmailIndexKey(tenantId, primaryEmail), id);
     }
 
     this.recordEvent("user_created", id, tenantId);
@@ -238,7 +239,7 @@ export class ScimProvisionService {
    */
   public getUserByEmail(email: string, tenantId?: string): ScimUser | null {
     if (tenantId != null) {
-      const userId = this.userByEmail.get(`${tenantId}:${email.toLowerCase()}`);
+      const userId = this.userByEmail.get(this.buildUserEmailIndexKey(tenantId, email));
       if (!userId) return null;
       const user = this.users.get(userId);
       if (!user) return null;
@@ -287,7 +288,7 @@ export class ScimProvisionService {
       }
       const primaryEmail = updates.emails.find((e) => e.primary)?.value;
       if (primaryEmail) {
-        this.userByEmail.set(`${tenantId}:${primaryEmail.toLowerCase()}`, userId);
+        this.userByEmail.set(this.buildUserEmailIndexKey(tenantId, primaryEmail), userId);
       }
     }
 
@@ -324,7 +325,7 @@ export class ScimProvisionService {
     this.userByUsername.delete(`${tenantId}:${existing.userName.toLowerCase()}`);
 
     for (const email of existing.emails) {
-      this.userByEmail.delete(`${tenantId}:${email.value.toLowerCase()}`);
+        this.userByEmail.delete(this.buildUserEmailIndexKey(tenantId, email.value));
     }
 
     // Remove from all groups
@@ -747,7 +748,7 @@ export class ScimProvisionService {
     }
 
     if (resourceId == null) {
-      throw new Error(`bulk.invalid_path:${resolvedPath}`);
+      throw new Error(`scim.bulk.invalid_path:${resolvedPath}`);
     }
 
     if (resourceType === "Users") {
@@ -763,23 +764,23 @@ export class ScimProvisionService {
   ): ScimBulkOperationResponse {
     if (operation.method === "PUT") {
       const updated = this.updateUser(userId, operation.data as Partial<Omit<ScimUser, "id" | "meta">>, tenantId);
-      if (!updated) throw new Error(`bulk.user_not_found:${userId}`);
+      if (!updated) throw new Error(`scim.bulk.user_not_found:${userId}`);
       return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Users/${userId}`, status: "200", response: updated };
     }
 
     if (operation.method === "PATCH") {
       const updated = this.patchUser(userId, operation.data as readonly ScimPatchOperation[], tenantId);
-      if (!updated) throw new Error(`bulk.user_not_found:${userId}`);
+      if (!updated) throw new Error(`scim.bulk.user_not_found:${userId}`);
       return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Users/${userId}`, status: "200", response: updated };
     }
 
     if (operation.method === "DELETE") {
       const deleted = this.deleteUser(userId, tenantId);
-      if (!deleted) throw new Error(`bulk.user_not_found:${userId}`);
+      if (!deleted) throw new Error(`scim.bulk.user_not_found:${userId}`);
       return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Users/${userId}`, status: "204" };
     }
 
-    throw new Error(`bulk.unsupported_method:${operation.method}`);
+    throw new Error(`scim.bulk.unsupported_method:${operation.method}`);
   }
 
   private executeGroupBulkOperation(
@@ -789,23 +790,23 @@ export class ScimProvisionService {
   ): ScimBulkOperationResponse {
     if (operation.method === "PUT") {
       const updated = this.updateGroup(groupId, operation.data as Partial<Pick<ScimGroup, "displayName" | "members">>, tenantId);
-      if (!updated) throw new Error(`bulk.group_not_found:${groupId}`);
+      if (!updated) throw new Error(`scim.bulk.group_not_found:${groupId}`);
       return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Groups/${groupId}`, status: "200", response: updated };
     }
 
     if (operation.method === "PATCH") {
       const updated = this.patchGroup(groupId, operation.data as readonly ScimPatchOperation[], tenantId);
-      if (!updated) throw new Error(`bulk.group_not_found:${groupId}`);
+      if (!updated) throw new Error(`scim.bulk.group_not_found:${groupId}`);
       return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Groups/${groupId}`, status: "200", response: updated };
     }
 
     if (operation.method === "DELETE") {
       const deleted = this.deleteGroup(groupId, tenantId);
-      if (!deleted) throw new Error(`bulk.group_not_found:${groupId}`);
+      if (!deleted) throw new Error(`scim.bulk.group_not_found:${groupId}`);
       return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Groups/${groupId}`, status: "204" };
     }
 
-    throw new Error(`bulk.unsupported_method:${operation.method}`);
+    throw new Error(`scim.bulk.unsupported_method:${operation.method}`);
   }
 
   private patchUser(userId: string, operations: readonly ScimPatchOperation[], tenantId: string): ScimUser | null {
@@ -848,7 +849,7 @@ export class ScimProvisionService {
     const sanitized = path.replace(/^\/scim\/v2/, "");
     const match = sanitized.match(/^\/(Users|Groups)(?:\/([^/]+))?$/);
     if (!match) {
-      throw new Error(`bulk.invalid_path:${path}`);
+      throw new Error(`scim.bulk.invalid_path:${path}`);
     }
     return {
       resourceType: match[1] as "Users" | "Groups",
@@ -858,6 +859,11 @@ export class ScimProvisionService {
 
   private resolveBulkLocation(path: string, bulkIdMap: Map<string, string>): string {
     return path.replace(/bulkId:([A-Za-z0-9_.-]+)/g, (_match, bulkId) => bulkIdMap.get(String(bulkId)) ?? `bulkId:${String(bulkId)}`);
+  }
+
+  private buildUserEmailIndexKey(tenantId: string, email: string): string {
+    const normalizedEmail = email.trim().toLowerCase();
+    return createHash("sha256").update(tenantId).update("\u0000").update(normalizedEmail).digest("hex");
   }
 
   private resolveBulkReferences(value: unknown, bulkIdMap: Map<string, string>): unknown {

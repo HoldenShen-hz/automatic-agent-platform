@@ -1,28 +1,25 @@
 id: qa
 version: 1
-name: QA Division
-description: Test planning, test automation, quality assurance, bug reporting.
-priority: 40
-default_workflow: qa_single_step
-orchestration_workflow: qa_single_step
+name: QA Smoke Validation Division
+description: Legacy QA alias reserved for lightweight smoke validation and quick regression triage; full release certification belongs to quality-assurance.
+priority: 30
+default_workflow: qa_smoke_validation
+orchestration_workflow: qa_smoke_validation
 triggers:
-  - test
-  - testing
-  - QA
-  - quality
-  - bug
-  - verification
-  - validation
+  - smoke test
+  - smoke validation
+  - quick regression
+  - qa smoke
 roles:
   - id: qa_engineer
-    name: QA Engineer
-    prompt: roles/qa/engineer.prompt.md
+    name: QA Smoke Engineer
+    prompt: roles/qa_engineer.prompt.md
     model: balanced
     tools: [read, bash]
     max_instances: 3
   - id: test_architect
     name: Test Architect
-    prompt: roles/qa/architect.prompt.md
+    prompt: roles/test_architect.prompt.md
     model: reasoning
     tools: [read]
     max_instances: 2

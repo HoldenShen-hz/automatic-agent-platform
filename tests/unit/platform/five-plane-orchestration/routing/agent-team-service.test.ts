@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PlannedWorkflow } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/routing/workflow-planner.js";
-import { AgentTeamService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/routing/agent-team-service.js";
-import type { AgentTeamStage, AgentTeamPlan } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/routing/agent-team-service.js";
+import type { PlannedWorkflow } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import { AgentTeamService } from "../../../../../src/platform/five-plane-orchestration/routing/agent-team-service.js";
+import type { AgentTeamStage, AgentTeamPlan } from "../../../../../src/platform/five-plane-orchestration/routing/agent-team-service.js";
 
 // ============================================================================
 // Test helpers

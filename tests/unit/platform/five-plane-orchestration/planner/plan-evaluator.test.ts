@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlanEvaluator } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/planner/plan-evaluator.js";
+import { PlanEvaluator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
 
 function makeAssessment(overrides: Partial<{
   risk: "low" | "medium" | "high" | "critical";

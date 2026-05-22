@@ -87,20 +87,6 @@ function mirrorCoverageRuntimeSupport() {
     rmSync(configTarget, { recursive: true, force: true });
     cpSync(configSource, configTarget, { recursive: true });
   }
-
-  const helperSource = path.join(process.cwd(), "helpers");
-  const helperTarget = path.join(process.cwd(), "dist", "helpers");
-  if (existsSync(helperSource)) {
-    rmSync(helperTarget, { recursive: true, force: true });
-    cpSync(helperSource, helperTarget, { recursive: true });
-  }
-
-  const testHelperSource = path.join(process.cwd(), "tests", "helpers");
-  const testHelperTarget = path.join(process.cwd(), "dist", "tests", "helpers");
-  if (existsSync(testHelperSource)) {
-    rmSync(testHelperTarget, { recursive: true, force: true });
-    cpSync(testHelperSource, testHelperTarget, { recursive: true });
-  }
 }
 
 function generateCoverageSummaryFromCurrentRun() {

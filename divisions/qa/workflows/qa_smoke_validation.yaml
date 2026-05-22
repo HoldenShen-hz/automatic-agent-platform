@@ -1,0 +1,9 @@
+id: qa_smoke_validation
+division_id: qa
+steps:
+  - step_id: run_smoke_validation
+    role_id: qa_engineer
+    output_key: smoke_result
+    output_schema: schemas/qa-smoke-output.json
+    timeout_ms: 120000
+    max_attempts: 1

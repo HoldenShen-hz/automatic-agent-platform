@@ -5,6 +5,7 @@ This document explains the responsibility boundaries of `config/environments/`, 
 ## Configuration Sources
 
 - `config/environments/*.json`: Environment-level runtime parameters, such as region, profile, and service switches.
+- `config/environments/default.json`: Shared non-secret defaults for every environment; each environment file should only override environment-specific fields.
 - `config/security/*.json`: Security policy defaults, such as approval, sandbox, authentication, and capability limits.
 - `.env.example`: Local environment variable template, allowing only empty values or non-sensitive placeholders.
 

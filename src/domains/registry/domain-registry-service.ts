@@ -269,7 +269,9 @@ export class DomainRegistryService {
         .filter((entry) => entry.enabled)
         .map((entry) => entry.toolName),
     );
-    return toolNames.filter((tool) => enabledTools.has(tool) || domain.capabilities.requiredTools.includes(tool) || domain.capabilities.optionalTools.includes(tool));
+    const requiredTools = new Set(domain.capabilities.requiredTools);
+    const optionalTools = new Set(domain.capabilities.optionalTools);
+    return toolNames.filter((tool) => enabledTools.has(tool) || requiredTools.has(tool) || optionalTools.has(tool));
   }
 
   public getWorkflow(domainId: string, workflowId: string): WorkflowConfig | null {

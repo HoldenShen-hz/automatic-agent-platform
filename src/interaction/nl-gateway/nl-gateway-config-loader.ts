@@ -53,6 +53,13 @@ export interface GuardrailConfig {
   readonly additionalGenericAmbiguousPatterns: readonly string[];
 }
 
+export interface NlGatewayRateLimitConfig {
+  readonly enabled: boolean;
+  readonly windowMs: number;
+  readonly perTenantRequestsPerWindow: number;
+  readonly perUserRequestsPerWindow: number;
+}
+
 /**
  * NL Gateway configuration
  */
@@ -61,6 +68,7 @@ export interface NlGatewayConfig {
   readonly disambiguation: DisambiguationConfig;
   readonly intent: IntentConfig;
   readonly entityExtraction: EntityExtractionConfig;
+  readonly rateLimit: NlGatewayRateLimitConfig;
   readonly guardrails?: GuardrailConfig;
 }
 
@@ -85,6 +93,12 @@ const FullNlGatewayConfigSchema = z.object({
   entityExtraction: z.object({
     requiredEntityCount: z.number().int().nonnegative(),
     minMessageLength: z.number().int().nonnegative(),
+  }),
+  rateLimit: z.object({
+    enabled: z.boolean(),
+    windowMs: z.number().int().positive(),
+    perTenantRequestsPerWindow: z.number().int().positive(),
+    perUserRequestsPerWindow: z.number().int().positive(),
   }),
   guardrails: z.object({
     additionalPromptInjectionPatterns: z.array(z.string().min(1)),
@@ -111,6 +125,12 @@ const PartialNlGatewayConfigSchema = z.object({
   entityExtraction: z.object({
     requiredEntityCount: z.number().int().nonnegative().optional(),
     minMessageLength: z.number().int().nonnegative().optional(),
+  }).optional(),
+  rateLimit: z.object({
+    enabled: z.boolean().optional(),
+    windowMs: z.number().int().positive().optional(),
+    perTenantRequestsPerWindow: z.number().int().positive().optional(),
+    perUserRequestsPerWindow: z.number().int().positive().optional(),
   }).optional(),
   guardrails: z.object({
     additionalPromptInjectionPatterns: z.array(z.string().min(1)).optional(),
@@ -145,6 +165,12 @@ const DEFAULT_NL_GATEWAY_CONFIG: NlGatewayConfig = {
   entityExtraction: {
     requiredEntityCount: 1,
     minMessageLength: 6,
+  },
+  rateLimit: {
+    enabled: true,
+    windowMs: 60_000,
+    perTenantRequestsPerWindow: 120,
+    perUserRequestsPerWindow: 30,
   },
   guardrails: {
     additionalPromptInjectionPatterns: [],
@@ -215,6 +241,14 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
         minMessageLength:
           parsed.entityExtraction?.minMessageLength ?? DEFAULT_NL_GATEWAY_CONFIG.entityExtraction.minMessageLength,
       },
+      rateLimit: {
+        enabled: parsed.rateLimit?.enabled ?? DEFAULT_NL_GATEWAY_CONFIG.rateLimit.enabled,
+        windowMs: parsed.rateLimit?.windowMs ?? DEFAULT_NL_GATEWAY_CONFIG.rateLimit.windowMs,
+        perTenantRequestsPerWindow:
+          parsed.rateLimit?.perTenantRequestsPerWindow ?? DEFAULT_NL_GATEWAY_CONFIG.rateLimit.perTenantRequestsPerWindow,
+        perUserRequestsPerWindow:
+          parsed.rateLimit?.perUserRequestsPerWindow ?? DEFAULT_NL_GATEWAY_CONFIG.rateLimit.perUserRequestsPerWindow,
+      },
       guardrails: {
         additionalPromptInjectionPatterns:
           parsed.guardrails?.additionalPromptInjectionPatterns
@@ -232,6 +266,7 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
       disambiguation: normalized.disambiguation,
       intent: normalized.intent,
       entityExtraction: normalized.entityExtraction,
+      rateLimit: normalized.rateLimit,
       ...(normalized.guardrails == null ? {} : { guardrails: normalized.guardrails }),
     };
   } catch (error) {

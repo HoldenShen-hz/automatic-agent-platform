@@ -6,7 +6,7 @@ import {
   OAPEFLIR_STAGES,
   createStageTransitionFSM,
   type StageStatus,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
+} from "../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 test("StageTransitionFSM creates with all stages pending", () => {
   const fsm = new StageTransitionFSM();

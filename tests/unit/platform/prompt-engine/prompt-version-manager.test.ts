@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../helpers/repo-root.js";
 
 import { createAssetProductionAdapterPlugin } from "../../../../src/plugins/adapters/asset-production-adapter.js";
 import { createCrmAdapterPlugin } from "../../../../src/plugins/adapters/crm-adapter.js";
@@ -12,11 +13,11 @@ import { TelemetrySink, type TelemetryExporter } from "../../../../ui/packages/s
 
 test("R28-21 adapter healthCheck implementations are not hardcoded to true", async () => {
   const gameDevSource = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/plugins/adapters/game-dev-adapter.ts",
+    resolveRepoPath("src/plugins/adapters/game-dev-adapter.ts"),
     "utf8",
   );
   const assetSource = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/plugins/adapters/asset-production-adapter.ts",
+    resolveRepoPath("src/plugins/adapters/asset-production-adapter.ts"),
     "utf8",
   );
 
@@ -31,7 +32,7 @@ test("R28-21 adapter healthCheck implementations are not hardcoded to true", asy
 
 test("R28-22 and R28-24 prompt-version-manager has a single VersionLineage declaration and no dead versionCache", () => {
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/prompt-engine/registry/prompt-version-manager.ts",
+    resolveRepoPath("src/platform/prompt-engine/registry/prompt-version-manager.ts"),
     "utf8",
   );
 
@@ -68,7 +69,7 @@ test("R28-23 and R28-28 pack scaffold rejects packIds that can corrupt templates
 
 test("R28-25 websocket bridge uses subprotocol auth instead of query-string JWTs", () => {
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-interface/channel-gateway/websocket-bridge.ts",
+    resolveRepoPath("src/platform/five-plane-interface/channel-gateway/websocket-bridge.ts"),
     "utf8",
   );
 
@@ -122,7 +123,7 @@ test("R28-27 createDeliveryMessage starts in a pending state before any delivery
 
 test("R28-40 approval web view exposes accessibility labels and descriptions for delegate and decision controls", () => {
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/packages/features/approval/src/web/index.tsx",
+    resolveRepoPath("ui/packages/features/approval/src/web/index.tsx"),
     "utf8",
   );
 

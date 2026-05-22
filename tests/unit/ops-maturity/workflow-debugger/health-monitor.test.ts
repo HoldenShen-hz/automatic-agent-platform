@@ -144,6 +144,28 @@ test("WorkflowDebuggerHealthMonitor sliding window - only recent probes count", 
   assert.equal(snapshot.status, "healthy");
 });
 
+test("WorkflowDebuggerHealthMonitor normalizes timezone offsets before window filtering", () => {
+  const monitor = new WorkflowDebuggerHealthMonitor({ windowMs: 30_000, minSampleSize: 1 });
+
+  monitor.recordProbe({
+    componentId: "comp1",
+    status: "failed",
+    timestamp: "2026-01-01T12:00:20+08:00",
+  });
+  monitor.recordProbe({
+    componentId: "comp1",
+    status: "healthy",
+    timestamp: "2026-01-01T12:00:40+08:00",
+  });
+
+  const snapshot = monitor.getSnapshot("comp1", "2026-01-01T04:01:00.000Z");
+  assert.ok(snapshot);
+  assert.equal(snapshot.totalProbes, 1);
+  assert.equal(snapshot.status, "healthy");
+  assert.equal(snapshot.healthyCount, 1);
+  assert.equal(snapshot.failedCount, 0);
+});
+
 test("WorkflowDebuggerHealthMonitor returns empty state for component with only old probes", () => {
   const monitor = new WorkflowDebuggerHealthMonitor({ windowMs: 30_000 });
 

@@ -29,11 +29,12 @@ test("GrowthPresenter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("GrowthPresenter.healthCheck returns true", async () => {
+test("GrowthPresenter.healthCheck reflects lifecycle state", async () => {
   const plugin = createGrowthPresenterPlugin();
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("GrowthPresenter.shutdown returns undefined", async () => {

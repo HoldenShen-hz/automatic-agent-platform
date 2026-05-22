@@ -8,14 +8,14 @@ import {
   type OapeflirStage,
   type OapeflirStageStatus,
   type OapeflirStageRecord,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/stage-timeline.js";
-import { OapeflirStageTimelineBuilder } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/stage-timeline.js";
+} from "../../../../src/platform/five-plane-orchestration/oapeflir/stage-timeline.js";
+import { OapeflirStageTimelineBuilder } from "../../../../src/platform/five-plane-orchestration/oapeflir/stage-timeline.js";
 import {
   StageTransitionFSM,
   OAPEFLIR_STAGES,
   createStageTransitionFSM,
   type StageTransitionResult,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
+} from "../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 test("OapeflirStageSchema accepts valid stages", () => {
   const result = OapeflirStageSchema.safeParse("observe");

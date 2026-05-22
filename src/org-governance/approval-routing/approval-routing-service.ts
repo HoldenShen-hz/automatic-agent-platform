@@ -197,6 +197,11 @@ export class ApprovalRoutingService {
       ? null
       : new Date(Date.parse(nowIso) + options.timeoutMinutes * 60_000).toISOString();
     const conditionalApproverIds = [...(options.conditionalApproverIds ?? [])].filter((id) => id.length > 0);
+    const allowedConditionalApprovers = this.buildAllowedConditionalApproverSet(routing.matchedOrgNodeId, nowIso, routing.approverChain);
+    const invalidConditionalApprover = conditionalApproverIds.find((id) => !allowedConditionalApprovers.has(id));
+    if (invalidConditionalApprover != null) {
+      throw new Error(`approval_route.conditional_approver_not_allowed:${invalidConditionalApprover}`);
+    }
 
     let steps: ApprovalChainStep[];
     if (chainMode === "parallel") {
@@ -240,6 +245,20 @@ export class ApprovalRoutingService {
       acc[approverId] = resolveDelegatedApprover(this.delegations, approverId, orgNodeId, nowIso);
       return acc;
     }, {});
+  }
+
+  private buildAllowedConditionalApproverSet(
+    orgNodeId: string,
+    nowIso: string,
+    approverChain: readonly string[],
+  ): Set<string> {
+    const node = this.orgNodes.find((item) => item.orgNodeId === orgNodeId) ?? null;
+    const allowed = new Set<string>(approverChain);
+    for (const ownerId of node?.ownerUserIds ?? []) {
+      allowed.add(ownerId);
+      allowed.add(resolveDelegatedApprover(this.delegations, ownerId, orgNodeId, nowIso));
+    }
+    return allowed;
   }
 
   private buildAmountSnapshot(request: ApprovalRouteRequest): ApprovalRouteDecision["routeSnapshot"]["amount"] {

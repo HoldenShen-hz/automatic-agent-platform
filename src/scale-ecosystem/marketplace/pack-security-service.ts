@@ -11,7 +11,6 @@
  */
 
 import { createHash } from "node:crypto";
-import * as vm from "node:vm";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface SecurityScanInput {
@@ -130,6 +129,27 @@ const HIGH_RISK_PERMISSIONS = [
 
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/i;
 const INLINE_SOURCE_PREFIX = "inline:";
+const LOG_SENSITIVE_PATTERN = /(password|secret|token|api[_-]?key)/i;
+const DYNAMIC_CODE_PATTERN = /\b(eval|Function)\b|constructor\s*\.\s*constructor/i;
+const COMMAND_EXEC_PATTERN = /\b(exec|spawn|fork)\b|child_process/i;
+const NETWORK_ACCESS_PATTERN = /\b(fetch|XMLHttpRequest|WebSocket)\s*\(|\bhttps?\.(request|get)\s*\(|\bnet\.(connect|createConnection)\s*\(/i;
+const FILE_ACCESS_PATTERN = /\b(readFile|writeFile|appendFile|createReadStream|createWriteStream|openSync|readFileSync|writeFileSync)\b/i;
+const SANDBOX_ESCAPE_PATTERN = /constructor\s*\.\s*constructor\s*\(|globalThis\s*\[\s*["']process["']\s*\]/i;
+const CHILD_PROCESS_INDICATOR_PATTERNS = [
+  /child_process/i,
+  /(?:globalThis|global|process)\s*\[\s*["']child_process["']\s*\]/i,
+  /require\s*\(\s*["']child_process["']\s*\)/i,
+  /import\s*\(\s*["']child_process["']\s*\)/i,
+];
+const SHELL_TRUE_PATTERN = /\bshell\s*:\s*true\b/i;
+
+function normalizeSourceForHeuristics(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 class OsvDependencyVulnerabilitySource implements DependencyVulnerabilitySource {
   private readonly apiUrl: string;
@@ -459,30 +479,24 @@ export class PackSecurityService {
       }
     }
 
-    // Phase 2: Actual code execution in isolated VM sandbox
+    // Phase 2: fail-close heuristic scan for runtime-only abuse indicators.
     const sandboxIssues = await this.executeInSandbox(input);
     issues.push(...sandboxIssues);
 
     return { issues };
   }
 
-  /**
-   * Execute pack source code in an isolated VM sandbox to detect runtime malicious behavior.
-   * This catches threats that static permission scanning misses, such as:
-   * - Obfuscated malicious code that doesn't match static patterns
-   * - Timing-based attacks that trigger on specific conditions
-   * - Environment detection to bypass security checks
-   */
   private async executeInSandbox(input: SecurityScanInput): Promise<SecurityIssue[]> {
     const issues: SecurityIssue[] = [];
     const sourceCode = this.resolveSourceContent(input);
 
     if (!sourceCode || sourceCode.trim().length === 0) {
-      // If no source code provided, run static analysis only
       return issues;
     }
 
-    if (/\bfetch\s*\(/i.test(sourceCode)) {
+    const normalizedSource = normalizeSourceForHeuristics(sourceCode);
+
+    if (NETWORK_ACCESS_PATTERN.test(normalizedSource)) {
       issues.push({
         severity: "critical",
         category: "sandbox_violation",
@@ -491,230 +505,50 @@ export class PackSecurityService {
         location: "runtime",
       });
     }
-
-    // Prepare sandbox context with only whitelisted APIs
-    const sandboxApi = {
-      // Restricted console - captures output for analysis
-      console: {
-        log: (...args: unknown[]) => { capturedLogs.push(args.map(String).join(" ")); },
-        warn: (...args: unknown[]) => { capturedLogs.push("[WARN] " + args.map(String).join(" ")); },
-        error: (...args: unknown[]) => { capturedLogs.push("[ERROR] " + args.map(String).join(" ")); },
-      },
-      // Restricted Math (prevent timing attacks via Math.random seeding)
-      Math: {
-        random: () => 0.5, // Deterministic Math.random
-        floor: Math.floor,
-        ceil: Math.ceil,
-        round: Math.round,
-        abs: Math.abs,
-        min: Math.min,
-        max: Math.max,
-        PI: Math.PI,
-        E: Math.E,
-        sqrt: Math.sqrt,
-        pow: Math.pow,
-      },
-      // Restricted Date (prevent time-based triggers) - provide as object, not class
-      Date: {
-        now: () => 0,
-        toISOString: () => "1970-01-01T00:00:00.000Z",
-        // Additional Date static methods that might be called
-        parse: Date.parse,
-        UTC: Date.UTC,
-      },
-      // Performance timing API (for measuring execution time)
-      performance: {
-        now: () => 0,
-      },
-      // Restricted JSON
-      JSON: {
-        parse: JSON.parse,
-        stringify: JSON.stringify,
-      },
-      // Restricted Array
-      Array: {
-        isArray: Array.isArray,
-        from: Array.from,
-        of: Array.of,
-      },
-      // Restricted Object
-      Object: {
-        keys: Object.keys,
-        values: Object.values,
-        entries: Object.entries,
-        assign: Object.assign,
-        create: Object.create,
-        freeze: Object.freeze,
-        seal: Object.seal,
-      },
-      // Restricted String
-      String: {
-        fromCharCode: String.fromCharCode,
-        split: String.prototype.split,
-        substring: String.prototype.substring,
-        trim: String.prototype.trim,
-      },
-      // Restricted RegExp
-      RegExp: undefined,
-      // Restricted Function constructor (blocks eval and new Function)
-      Function: undefined,
-      // Restricted Promises (prevent async exfiltration)
-      Promise: undefined,
-      // Restricted fetch (prevent network exfiltration)
-      fetch: undefined,
-      // Restricted WebAssembly (prevents WASM-based exploits)
-      WebAssembly: undefined,
-      // Block access to process, Buffer, and other Node.js globals
-      process: undefined,
-      Buffer: undefined,
-      globalThis: undefined,
-      global: undefined,
-      // Restricted setTimeout/setInterval (prevents timing-based attacks)
-      setTimeout: undefined,
-      setInterval: undefined,
-      clearTimeout: undefined,
-      clearInterval: undefined,
-      // Block require/import
-      require: undefined,
-      // Block module exports access
-      module: undefined,
-      exports: undefined,
-      __dirname: undefined,
-      __filename: undefined,
-    };
-
-    const capturedLogs: string[] = [];
-    const networkAttempts: string[] = [];
-    const fileAccessAttempts: string[] = [];
-    let executionTimeMs = 0;
-
-    // Create the sandbox context
-    const context = vm.createContext({
-      ...sandboxApi,
-      // Track captured logs
-      __getCapturedLogs: () => capturedLogs,
-      // Track security-relevant events
-      __addNetworkAttempt: (url: string) => networkAttempts.push(url),
-      __addFileAccess: (path: string) => fileAccessAttempts.push(path),
-    });
-
-    // Wrap source code to capture return value and execution time
-    const wrappedCode = `
-      (function() {
-        const __startTime = performance.now();
-        try {
-          const __result = (function() {
-            ${sourceCode}
-          })();
-          const __endTime = performance.now();
-          return {
-            success: true,
-            result: __result,
-            duration: __endTime - __startTime
-          };
-        } catch (__err) {
-          const __endTime = performance.now();
-          return {
-            success: false,
-            error: __err instanceof Error ? __err.message : String(__err),
-            duration: __endTime - __startTime
-          };
-        }
-      })()
-    `;
-
-    try {
-      const result = vm.runInContext(wrappedCode, context, {
-        timeout: 5000, // 5 second timeout to prevent infinite loops
-        displayErrors: true,
+    if (FILE_ACCESS_PATTERN.test(normalizedSource)) {
+      issues.push({
+        severity: "high",
+        category: "sandbox_violation",
+        code: "SAND013",
+        message: "Pack attempted unauthorized file access",
+        location: "runtime",
       });
-
-      executionTimeMs = result.duration;
-
-      // Check for excessive execution time (potential DoS)
-      if (executionTimeMs > 2000) {
-        issues.push({
-          severity: "high",
-          category: "sandbox_violation",
-          code: "SAND011",
-          message: `Pack code execution took ${executionTimeMs}ms - possible infinite loop or DoS attempt`,
-          location: "runtime",
-        });
-      }
-
-      // Check if code attempted network access
-      if (networkAttempts.length > 0) {
-        issues.push({
-          severity: "critical",
-          category: "sandbox_violation",
-          code: "SAND012",
-          message: `Pack attempted unauthorized network access: ${networkAttempts.join(", ")}`,
-          location: "runtime",
-        });
-      }
-
-      // Check if code attempted file access
-      if (fileAccessAttempts.length > 0) {
-        issues.push({
-          severity: "high",
-          category: "sandbox_violation",
-          code: "SAND013",
-          message: `Pack attempted unauthorized file access: ${fileAccessAttempts.join(", ")}`,
-          location: "runtime",
-        });
-      }
-
-      // Check captured logs for suspicious patterns
-      const suspiciousPatterns = [
-        { pattern: /password|secret|token|api[_-]?key/i, code: "SAND014", message: "Potentially sensitive data in logs" },
-        { pattern: /eval|Function|constructor/i, code: "SAND015", message: "Dynamic code construction detected" },
-        { pattern: /process|child_process|exec/i, code: "SAND016", message: "Potential command execution attempt" },
-      ];
-
-      for (const { pattern, code, message } of suspiciousPatterns) {
-        for (const log of capturedLogs) {
-          if (pattern.test(log)) {
-            issues.push({
-              severity: "medium",
-              category: "sandbox_violation",
-              code,
-              message: `${message}: "${log.substring(0, 100)}"`,
-              location: "runtime",
-            });
-          }
-        }
-      }
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-
-      // Check for specific sandbox escape or abuse attempts
-      if (errorMessage.includes("Script execution timed out")) {
-        issues.push({
-          severity: "high",
-          category: "sandbox_violation",
-          code: "SAND011",
-          message: `Pack code execution timed out: ${errorMessage}`,
-          location: "runtime",
-        });
-      } else if (errorMessage.includes("Cannot access strict mode") ||
-          errorMessage.includes("VM context")) {
-        issues.push({
-          severity: "critical",
-          category: "sandbox_violation",
-          code: "SAND017",
-          message: `Sandbox escape attempt detected: ${errorMessage}`,
-          location: "runtime",
-        });
-      } else {
-        issues.push({
-          severity: "low",
-          category: "sandbox_violation",
-          code: "SAND018",
-          message: `Pack code threw error during sandbox execution: ${errorMessage}`,
-          location: "runtime",
-        });
-      }
+    }
+    if (LOG_SENSITIVE_PATTERN.test(normalizedSource) && /\bconsole\.(log|warn|error)\s*\(/i.test(normalizedSource)) {
+      issues.push({
+        severity: "medium",
+        category: "sandbox_violation",
+        code: "SAND014",
+        message: "Potentially sensitive data may be emitted through pack logging",
+        location: "runtime",
+      });
+    }
+    if (DYNAMIC_CODE_PATTERN.test(normalizedSource)) {
+      issues.push({
+        severity: "medium",
+        category: "sandbox_violation",
+        code: "SAND015",
+        message: "Dynamic code construction detected",
+        location: "runtime",
+      });
+    }
+    if (COMMAND_EXEC_PATTERN.test(normalizedSource)) {
+      issues.push({
+        severity: "medium",
+        category: "sandbox_violation",
+        code: "SAND016",
+        message: "Potential command execution attempt detected",
+        location: "runtime",
+      });
+    }
+    if (SANDBOX_ESCAPE_PATTERN.test(normalizedSource)) {
+      issues.push({
+        severity: "critical",
+        category: "sandbox_violation",
+        code: "SAND017",
+        message: "Sandbox escape primitives detected in pack source",
+        location: "runtime",
+      });
     }
 
     return issues;
@@ -753,6 +587,7 @@ export class PackSecurityService {
   private runStaticAnalysis(input: SecurityScanInput): { issues: SecurityIssue[] } {
     const issues: SecurityIssue[] = [];
     const sourceContent = this.resolveSourceContent(input);
+    const normalizedSource = normalizeSourceForHeuristics(sourceContent);
 
     for (const { pattern, code, message } of CRITICAL_VULNERABILITY_PATTERNS) {
       if (pattern.test(sourceContent)) {
@@ -764,6 +599,18 @@ export class PackSecurityService {
           location: "source",
         });
       }
+    }
+    if (
+      CHILD_PROCESS_INDICATOR_PATTERNS.some((pattern) => pattern.test(normalizedSource))
+      && SHELL_TRUE_PATTERN.test(normalizedSource)
+    ) {
+      issues.push({
+        severity: "high",
+        category: "static_analysis",
+        code: "SAND004",
+        message: "Shell execution enabled in child process",
+        location: "source",
+      });
     }
 
     if (input.capabilities.includes("exec") && input.permissions.includes("exec:bash")) {

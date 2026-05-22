@@ -622,9 +622,11 @@ test("computeChecksum produces sha256 hash by default", () => {
   assert.equal(checksum.length, 64); // SHA-256 produces 64 hex chars
 });
 
-test("computeChecksum produces md5 hash when specified", () => {
-  const checksum = computeChecksum({ data: "test" }, "md5");
-  assert.equal(checksum.length, 32); // MD5 produces 32 hex chars
+test("computeChecksum rejects md5 when specified", () => {
+  assert.throws(
+    () => computeChecksum({ data: "test" }, "md5" as never),
+    /data_replicator\.unsupported_checksum_algorithm:md5/,
+  );
 });
 
 test("computeChecksum produces same result for same input", () => {

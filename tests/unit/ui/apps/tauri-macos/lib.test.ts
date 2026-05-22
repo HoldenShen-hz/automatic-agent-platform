@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
 import {
   createTauriMacosAdapter,
@@ -9,11 +10,11 @@ import {
 } from "../../../../../ui/apps/tauri-macos/src/index.js";
 
 const rustSource = fs.readFileSync(
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/tauri-macos/src-tauri/src/lib.rs",
+  resolveRepoPath("ui/apps/tauri-macos/src-tauri/src/lib.rs"),
   "utf-8",
 );
 const cargoToml = fs.readFileSync(
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/tauri-macos/src-tauri/Cargo.toml",
+  resolveRepoPath("ui/apps/tauri-macos/src-tauri/Cargo.toml"),
   "utf-8",
 );
 

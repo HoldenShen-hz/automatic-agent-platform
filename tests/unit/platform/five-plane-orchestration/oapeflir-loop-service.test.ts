@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OapeflirLoopService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
-import { MockExecuteBridge } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
+import { OapeflirLoopService } from "../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { MockExecuteBridge } from "../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 
 test("OapeflirLoopService can be instantiated with no arguments", () => {
   const service = new OapeflirLoopService();

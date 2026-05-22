@@ -200,3 +200,31 @@ test("createWebFetchTool HEAD method works without body", async () => {
 
   assert.ok(result.status === "succeeded" || result.status === "blocked" || result.status === "failed");
 });
+
+test("createWebFetchTool aborts overly chatty response streams", async () => {
+  let chunkIndex = 0;
+  const tool = createWebFetchTool({
+    dnsLookup: async () => [{ address: "93.184.216.34", family: 4 }],
+    fetchImplementation: async () => new Response(new ReadableStream<Uint8Array>({
+      pull(controller) {
+        chunkIndex += 1;
+        controller.enqueue(new Uint8Array([97]));
+      },
+      cancel() {
+        return Promise.resolve();
+      },
+    }), {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+    }),
+  });
+
+  const result = await tool.execute({
+    url: "https://example.com/stream",
+    maxSizeBytes: 20_000,
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.errorCode, "RESPONSE_STREAM_LIMIT_EXCEEDED");
+  assert.ok(chunkIndex > 10_000);
+});

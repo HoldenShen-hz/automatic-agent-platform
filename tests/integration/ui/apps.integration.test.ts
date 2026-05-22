@@ -1,3 +1,4 @@
+import { resolveRepoPath } from "../../helpers/repo-root.js";
 /**
  * Integration tests for ui/apps modules
  *
@@ -218,7 +219,7 @@ test.describe("Security configuration alignment", () => {
 test.describe("HTML security headers", () => {
   test("electron-win index.html has proper document structure", async () => {
     const fs = await import("node:fs");
-    const htmlPath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/electron-win/index.html";
+    const htmlPath = resolveRepoPath("ui/apps/electron-win/index.html");
     const html = fs.readFileSync(htmlPath, "utf-8");
 
     // Should have DOCTYPE
@@ -233,7 +234,7 @@ test.describe("HTML security headers", () => {
   test("web security headers are sourced from Vite config rather than duplicated in index.html", async () => {
     const fs = await import("node:fs");
     const viteConfig = await import("../../../ui/apps/web/vite.config.ts");
-    const htmlPath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/web/index.html";
+    const htmlPath = resolveRepoPath("ui/apps/web/index.html");
     const html = fs.readFileSync(htmlPath, "utf-8");
 
     assert.ok(!html.includes('http-equiv="Content-Security-Policy"'));
@@ -242,7 +243,7 @@ test.describe("HTML security headers", () => {
 
   test("web index.html does not hardcode CSRF meta tokens", async () => {
     const fs = await import("node:fs");
-    const htmlPath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/web/index.html";
+    const htmlPath = resolveRepoPath("ui/apps/web/index.html");
     const html = fs.readFileSync(htmlPath, "utf-8");
 
     assert.ok(!html.includes('name="aa-csrf-token"'));
@@ -252,7 +253,7 @@ test.describe("HTML security headers", () => {
 test.describe("Dependency verification", () => {
   test("electron-win package.json has electron dependency", async () => {
     const fs = await import("node:fs");
-    const packagePath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/electron-win/package.json";
+    const packagePath = resolveRepoPath("ui/apps/electron-win/package.json");
     const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
 
     // Issue #2173: No electron dependency
@@ -270,7 +271,7 @@ test.describe("Dependency verification", () => {
 
   test("mobile package.json has react-native dependency", async () => {
     const fs = await import("node:fs");
-    const packagePath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/mobile/package.json";
+    const packagePath = resolveRepoPath("ui/apps/mobile/package.json");
     const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
 
     // Issue #2174: No react-native dependency

@@ -37,6 +37,8 @@ This document answers 3 questions:
 
 ## 4. Ring 1 / Ring 2 Event Registry
 
+> This table freezes the baseline semantics for high-frequency and operations-critical events only; the complete canonical registry lives in `src/platform/five-plane-state-evidence/events/event-registry.ts` and is compile-time checked by `event-types.ts` / the typed event bus. Lower-frequency `platform.*` sub-events may land in code first as long as this contract is updated with the same tiering/producer/consumer rules.
+
 | event_type | tier | producer | primary_consumers | ack_required | replay_required |
 | --- | --- | --- | --- | --- | --- |
 | `platform.task.created` | `tier1` | gateway / scheduler | runtime, observability | Yes | Yes |
@@ -100,6 +102,34 @@ This document answers 3 questions:
 | `skill:step_succeeded` | `tier2` | skill execution service | inspect_projection | No | No |
 | `skill:step_failed` | `tier2` | skill execution service | inspect_projection | No | No |
 | `skill:execution_completed` | `tier2` | skill execution service | inspect_projection | No | No |
+
+### 4.1 Runtime-Service Operational Signals
+
+> `src/scale-ecosystem/runtime-services/*-async.ts` also emits a set of service-local observability signals. They are not truth facts, but they must be documented to keep runtime services and operations contracts aligned.
+
+| signal | producer | description |
+| --- | --- | --- |
+| `event_published` | durable event bus async | A single event publish completed |
+| `event_delivered` | durable event bus async | A single event delivery completed |
+| `event_delivery_failed` | durable event bus async | A single event delivery failed |
+| `event_dead_lettered` | durable event bus async | A single event moved to dead letter |
+| `subscriber_added` | durable event bus async | A subscriber registration completed |
+| `subscriber_removed` | durable event bus async | A subscriber removal completed |
+| `session_opened` | human takeover async | A takeover session opened |
+| `session_closed` | human takeover async | A takeover session closed |
+| `batch_flush` | durable event bus async / worker handshake async / worker writeback async | Batch flush completed |
+| `circuit_breaker_open` | durable event bus async / dispatch async / worker handshake async / worker writeback async / human takeover async | Circuit breaker opened |
+| `circuit_breaker_close` | durable event bus async / dispatch async / worker handshake async / worker writeback async / human takeover async | Circuit breaker closed |
+| `operation_start` | dispatch async / worker handshake async / human takeover async | Operation started |
+| `operation_complete` | dispatch async / worker handshake async / human takeover async | Operation completed |
+| `operation_retry` | dispatch async / worker handshake async / human takeover async | Operation entered retry |
+| `operation_timeout` | dispatch async / worker handshake async / human takeover async | Operation timed out |
+| `queue_overflow` | dispatch async / worker handshake async / worker writeback async / human takeover async | Internal service queue overflowed |
+| `writeback_start` | worker writeback async | Writeback started |
+| `writeback_complete` | worker writeback async | Writeback completed |
+| `writeback_retry` | worker writeback async | Writeback retried |
+| `writeback_timeout` | worker writeback async | Writeback timed out |
+| `writeback_coalesced` | worker writeback async | Writeback requests were coalesced |
 
 ## 5. Consumer Specifications
 

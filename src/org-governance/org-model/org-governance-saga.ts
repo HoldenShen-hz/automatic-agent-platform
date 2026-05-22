@@ -225,19 +225,19 @@ export class OrgGovernanceSaga {
 
   private validateHandlers(steps: readonly OrgGovernanceSagaStep[]): void {
     if (steps.some((step) => step.action === "prepare") && this.handlers.prepare == null) {
-      throw new Error("missing_prepare_handler");
+      throw new Error("org_governance_saga.missing_prepare_handler");
     }
     if (steps.some((step) => step.action === "commit") && this.handlers.commit == null) {
-      throw new Error("missing_commit_handler");
+      throw new Error("org_governance_saga.missing_commit_handler");
     }
     if (
       (steps.some((step) => step.action === "compensate") || steps.some((step) => step.action === "commit"))
       && this.handlers.compensate == null
     ) {
-      throw new Error("missing_compensate_handler");
+      throw new Error("org_governance_saga.missing_compensate_handler");
     }
     if (steps.some((step) => step.action === "audit") && this.handlers.audit == null) {
-      throw new Error("missing_audit_handler");
+      throw new Error("org_governance_saga.missing_audit_handler");
     }
   }
 
@@ -338,6 +338,7 @@ export class OrgGovernanceSaga {
       }
     }
 
+    const compensationFailures: string[] = [];
     if (failedStepId != null) {
       const compensationSteps = this.sortSteps(steps, "compensate");
       const compensationNodes = [...new Set([...committedNodeIds, ...preparedNodeIds])].reverse();
@@ -369,6 +370,7 @@ export class OrgGovernanceSaga {
             targetOrgNodeId: compensationStep.targetOrgNodeId,
             outcome: "failed",
           });
+          compensationFailures.push(compensationStep.stepId);
         }
       }
     } else {
@@ -395,6 +397,10 @@ export class OrgGovernanceSaga {
         targetOrgNodeId: step.targetOrgNodeId,
         outcome: "audited",
       });
+    }
+
+    if (compensationFailures.length > 0) {
+      throw new Error(`org_governance_saga.compensation_failed:${compensationFailures.join(",")}`);
     }
 
     return {

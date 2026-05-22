@@ -48,8 +48,27 @@ Examples:
 | `policy.approval_required` | `policy` | `false` | Manual approval required |
 | `policy.action_denied` | `policy` | `false` | Policy explicitly denied |
 | `auth.permission_denied` | `auth` | `false` | Insufficient permissions |
+| `mission.not_found` | `mission` | `false` | Mission does not exist |
+| `mission.member_not_found` | `mission` | `false` | Mission member does not exist |
+| `mission.if_match_required` | `mission` | `false` | Mission write requires `If-Match` |
+| `mission.version_conflict` | `mission` | `false` | Mission version conflict |
 | `budget.budget_exceeded` | `budget` | `false` | Budget exceeded |
 | `budget.quota_exceeded` | `budget` | `false` | Quota exceeded |
+| `api.not_found` | `api` | `false` | API route not found |
+| `api.invalid_message` | `api` | `false` | WebSocket/channel message is invalid |
+| `api.unknown_message` | `api` | `false` | WebSocket/channel message type is unknown |
+| `api.payload_too_large` | `api` | `false` | API request body is too large |
+| `api.origin_forbidden` | `api` | `false` | API origin is not allowed |
+| `api.prompt_bundle_not_found` | `api` | `false` | Prompt bundle does not exist |
+| `api.rate_limit_exceeded` | `api` | `true` | API rate limit triggered |
+| `api.server_shutting_down` | `api` | `true` | Server is shutting down |
+| `api.duplicate_request` | `api` | `false` | API detected a duplicate request body or request id |
+| `api.idempotency_key_required` | `api` | `false` | Idempotency key is required |
+| `api.idempotency_key_conflict` | `api` | `false` | Idempotency key conflicts with a previous request |
+| `api.idempotency_request_in_flight` | `api` | `true` | Same idempotency key is still in flight |
+| `api.idempotency_cached_response_corrupt` | `api` | `true` | Cached idempotent response is corrupt |
+| `api.openapi_auth_required` | `api` | `false` | OpenAPI access requires authentication |
+| `api.unsupported_media_type` | `api` | `false` | Unsupported request media type |
 | `provider.rate_limited` | `provider` | `true` | Provider 429 or equivalent rate limiting |
 | `provider.temporary_unavailable` | `provider` | `true` | Provider temporarily unavailable |
 | `provider.compaction_unavailable` | `provider` | `true` | Compaction/summarize provider temporarily unavailable |
@@ -81,6 +100,7 @@ Examples:
 - Provider `5xx` maps to `provider.temporary_unavailable`
 - File lock acquisition conflict maps to `tool.file_lock_conflict`
 - File lock wait timeout maps to `tool.file_lock_timeout`
+- WebSocket/channel message validation failures map to `api.invalid_message`
 
 ## 5. Supplementary Rules
 

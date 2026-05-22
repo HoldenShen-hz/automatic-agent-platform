@@ -5,6 +5,7 @@
  * fingerprint comparison, and cross-agent analysis.
  */
 
+import { timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 import { BehaviorFingerprintBuilder } from "./fingerprint-builder/index.js";
@@ -154,7 +155,7 @@ export class DriftDetectorService implements IDriftDetector {
     baseline: import("./fingerprint-builder/index.js").BehaviorFingerprint,
   ): DriftSignal | null {
     // Compare fingerprint hashes directly
-    if (current.hash === baseline.hash) {
+    if (safeHashEquals(current.hash, baseline.hash)) {
       return null; // No drift detected
     }
     if (current.normalizedFeatures.length === 0 || baseline.normalizedFeatures.length === 0) {
@@ -390,6 +391,15 @@ export class DriftDetectorService implements IDriftDetector {
       .filter((value) => value > 0);
     return durations.length > 0 ? Math.max(...durations) : 0;
   }
+}
+
+function safeHashEquals(left: string, right: string): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 function isChangepointConfig(value: DriftDetectorConfig | DriftDetectorServiceOptions): value is DriftDetectorConfig {

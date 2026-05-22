@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
-const repoRoot = "/Users/holden/Project/automatic_agent/automatic_agent_platform";
+const repoRoot = resolveRepoPath();
 
 function readJson(path: string): Record<string, unknown> {
   return Function(`"use strict"; return (${readFileSync(path, "utf8")});`)() as Record<string, unknown>;

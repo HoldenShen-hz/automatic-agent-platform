@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { resolveRepoPath } from "../../../helpers/repo-root.js";
 
 import {
   ChaosExperimentScheduler,
@@ -457,7 +458,7 @@ test("ChaosExperimentScheduler: steadyStateCache has richer type with timestamp"
   const scheduler = new ChaosExperimentScheduler();
   const source = await import("node:fs");
   const text = source.readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/ops-maturity/chaos/chaos-experiment-scheduler.ts",
+    resolveRepoPath("src/ops-maturity/chaos/chaos-experiment-scheduler.ts"),
     "utf-8",
   );
   // Verify the cache stores objects with value and timestamp

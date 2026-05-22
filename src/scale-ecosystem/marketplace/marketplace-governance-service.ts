@@ -142,6 +142,17 @@ function hashPermissionSurface(permissions: readonly string[]): string {
   return createHash("sha256").update(canonical).digest("hex");
 }
 
+function parseStoredJson<T>(value: string, code: string, details: Record<string, unknown>): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    throw new ValidationError(code, code, {
+      retryable: false,
+      details,
+    });
+  }
+}
+
 const MIN_SUNSET_GRACE_DAYS = 180;
 const MIN_MIGRATION_COMPLETION_RATIO = 0.95;
 
@@ -265,7 +276,11 @@ export class MarketplaceGovernanceService {
       });
     }
 
-    const permissions = JSON.parse(packageRecord.permissionsJson) as string[];
+    const permissions = parseStoredJson<string[]>(
+      packageRecord.permissionsJson,
+      "marketplace.invalid_permissions_json",
+      { packageId: packageRecord.packageId },
+    );
     const submittedAt = input.submittedAt == null ? nowIso() : assertTimestamp(input.submittedAt, "marketplace.invalid_submitted_at");
 
     const review: MarketplaceReviewRecord = {
@@ -353,7 +368,11 @@ export class MarketplaceGovernanceService {
     // Packages that do not require human review still need an audit record.
     // Auto-approve them lazily on first publish instead of forcing callers to submit a review.
     if (reviewRecord == null && packageRecord.reviewRequired !== 1) {
-      const permissions = JSON.parse(packageRecord.permissionsJson) as string[];
+      const permissions = parseStoredJson<string[]>(
+        packageRecord.permissionsJson,
+        "marketplace.invalid_permissions_json",
+        { packageId: packageRecord.packageId },
+      );
       const autoReview: MarketplaceReviewRecord = {
         reviewId: newId("review"),
         tenantId: packageRecord.tenantId,
@@ -687,9 +706,21 @@ export class MarketplaceGovernanceService {
     const entries = packages.map<MarketplaceCatalogEntry>((record) => {
       const review = reviewByPackage.get(record.packageId);
       const publication = publicationByPackage.get(record.packageId);
-      const compatibility = JSON.parse(record.compatibilityJson) as MarketplaceCatalogEntry["compatibility"];
-      const capabilities = JSON.parse(record.capabilitiesJson) as string[];
-      const permissions = JSON.parse(record.permissionsJson) as string[];
+      const compatibility = parseStoredJson<MarketplaceCatalogEntry["compatibility"]>(
+        record.compatibilityJson,
+        "marketplace.invalid_compatibility_json",
+        { packageId: record.packageId },
+      );
+      const capabilities = parseStoredJson<string[]>(
+        record.capabilitiesJson,
+        "marketplace.invalid_capabilities_json",
+        { packageId: record.packageId },
+      );
+      const permissions = parseStoredJson<string[]>(
+        record.permissionsJson,
+        "marketplace.invalid_permissions_json",
+        { packageId: record.packageId },
+      );
       const reasonCodes: string[] = [];
 
       // Check review status

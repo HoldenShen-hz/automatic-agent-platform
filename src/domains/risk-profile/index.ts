@@ -72,6 +72,13 @@ export const DOMAIN_RISK_SCORE_THRESHOLDS = Object.freeze({
 });
 
 export function computeDomainRiskLevel(profile: DomainRiskProfile, score: number): DomainRiskLevel {
+  if (!Number.isFinite(score)) {
+    return profile.defaultRiskLevel === "critical"
+      ? "medium"
+      : profile.defaultRiskLevel === "high"
+        ? "high"
+        : profile.defaultRiskLevel;
+  }
   if (score >= DOMAIN_RISK_SCORE_THRESHOLDS.critical) {
     return "critical";
   }
@@ -81,5 +88,9 @@ export function computeDomainRiskLevel(profile: DomainRiskProfile, score: number
   if (score >= DOMAIN_RISK_SCORE_THRESHOLDS.medium) {
     return "medium";
   }
-  return profile.defaultRiskLevel === "critical" ? "medium" : "low";
+  return profile.defaultRiskLevel === "critical"
+    ? "medium"
+    : profile.defaultRiskLevel === "high"
+      ? "high"
+      : "low";
 }

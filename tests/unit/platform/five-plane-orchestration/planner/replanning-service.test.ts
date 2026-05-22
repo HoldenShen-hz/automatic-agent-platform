@@ -6,8 +6,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplanningService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/planner/replanning-service.js";
-import { newId } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/types/ids.js";
+import { ReplanningService } from "../../../../../src/platform/five-plane-orchestration/planner/replanning-service.js";
+import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 /**
  * R5-1 FIX: makePlanGraphBundle creates a proper PlanGraphBundle for testing

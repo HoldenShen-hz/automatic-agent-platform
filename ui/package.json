@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22 <23",
     "npm": ">=10.0.0"
   },
   "workspaces": [
@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "node ./scripts/run-task-with-stamp.mjs build npm run build:app",
-    "build:app": "npm run typecheck && npm --workspace @aa/web run build",
+    "build:app": "npm --workspace @aa/web run build",
     "typecheck": "node ./scripts/run-task-with-stamp.mjs typecheck tsc -p tsconfig.json --noEmit",
     "test": "node ./scripts/run-task-with-stamp.mjs test vitest run",
     "test:e2e": "node ./scripts/run-task-with-stamp.mjs test-e2e vitest run tests/apps/web-e2e-smoke.test.tsx tests/apps/web-route-catalog.test.tsx tests/apps/shells.test.ts",

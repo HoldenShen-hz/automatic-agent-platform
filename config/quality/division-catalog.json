@@ -1,0 +1,35 @@
+{
+  "divisions": [
+    {
+      "divisionId": "qa",
+      "family": "quality",
+      "scope": "smoke_validation_alias",
+      "canonicalDivisionId": "quality-assurance"
+    },
+    {
+      "divisionId": "quality-assurance",
+      "family": "quality",
+      "scope": "release_certification"
+    },
+    {
+      "divisionId": "engineering_ops",
+      "family": "operations",
+      "scope": "build_release_delivery"
+    },
+    {
+      "divisionId": "general_ops",
+      "family": "operations",
+      "scope": "generic_operator_fallback"
+    },
+    {
+      "divisionId": "operations",
+      "family": "operations",
+      "scope": "service_operations"
+    },
+    {
+      "divisionId": "it-operations",
+      "family": "operations",
+      "scope": "workstation_identity_operations"
+    }
+  ]
+}

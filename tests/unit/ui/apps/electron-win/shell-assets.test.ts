@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
 const html = fs.readFileSync(
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/electron-win/index.html",
+  resolveRepoPath("ui/apps/electron-win/index.html"),
   "utf-8",
 );
 const packageJson = JSON.parse(
   fs.readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/electron-win/package.json",
+    resolveRepoPath("ui/apps/electron-win/package.json"),
     "utf-8",
   ),
 ) as {

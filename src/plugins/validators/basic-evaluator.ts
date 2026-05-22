@@ -13,7 +13,7 @@ interface BasicValidationContract {
 interface QualityScoringConfig {
   readonly completenessWeight: number;    // Weight for field completeness
   readonly typeAccuracyWeight: number;    // Weight for type accuracy
-  readonly suggestionPenalty: number;      // Penalty per suggestion needed
+  readonly suggestionPenalty: number;      // Penalty multiplier per suggestion, bounded to protect score range
 }
 
 /** R11-14: Quality evaluation result with scoring */
@@ -79,10 +79,21 @@ type ValidatorInput = {
 };
 
 const DEFAULT_QUALITY_SCORING_CONFIG: QualityScoringConfig = {
-  completenessWeight: 0.4,
-  typeAccuracyWeight: 0.4,
-  suggestionPenalty: 0.1,
+  completenessWeight: 0.5,
+  typeAccuracyWeight: 0.5,
+  suggestionPenalty: 0.05,
 };
+
+function normalizeScoringConfig(config: QualityScoringConfig): QualityScoringConfig {
+  const completenessWeight = Math.max(0, config.completenessWeight);
+  const typeAccuracyWeight = Math.max(0, config.typeAccuracyWeight);
+  const totalWeight = completenessWeight + typeAccuracyWeight || 1;
+  return {
+    completenessWeight: completenessWeight / totalWeight,
+    typeAccuracyWeight: typeAccuracyWeight / totalWeight,
+    suggestionPenalty: Math.max(0, Math.min(0.25, config.suggestionPenalty)),
+  };
+}
 
 function describeValueType(value: unknown): string {
   if (Array.isArray(value)) {
@@ -119,6 +130,7 @@ function validateWithQualityScoring(
   contract: BasicValidationContract,
   scoringConfig: QualityScoringConfig = DEFAULT_QUALITY_SCORING_CONFIG
 ): QualityEvaluationResult {
+  const normalizedConfig = normalizeScoringConfig(scoringConfig);
   const payload = (input as Record<string, unknown>) ?? {};
   const errors: Array<{ field: string; message: string; severity: "error" | "warning" }> = [];
   const suggestions: string[] = [];
@@ -225,19 +237,15 @@ function validateWithQualityScoring(
   }
 
   // Calculate suggestion penalty
-  const suggestionPenalty = Math.min(1, suggestions.length * scoringConfig.suggestionPenalty);
+  const suggestionPenalty = Math.min(0.75, suggestions.length * normalizedConfig.suggestionPenalty);
   const qualityThreshold = contract.qualityThreshold ?? 0.75;
 
   // Calculate overall quality score
-  const qualityScore = Math.max(
-    0,
-    Math.min(
-      1,
-      (completenessScore * scoringConfig.completenessWeight) +
-      (typeAccuracyScore * scoringConfig.typeAccuracyWeight) -
-      suggestionPenalty
-    )
+  const weightedBaseScore = (
+    (completenessScore * normalizedConfig.completenessWeight) +
+    (typeAccuracyScore * normalizedConfig.typeAccuracyWeight)
   );
+  const qualityScore = Math.max(0, Math.min(1, weightedBaseScore * (1 - suggestionPenalty)));
 
   const reasonCodes = [
     ...(errors.length > 0 ? ["validator.schema_errors"] : []),
@@ -398,7 +406,7 @@ function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPl
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
       initialized = false;
@@ -446,7 +454,8 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
 export function createBasicEvaluatorPluginWithScoring(
   scoringConfig: Partial<QualityScoringConfig> = {}
 ): DomainValidatorPlugin {
-  const config = { ...DEFAULT_QUALITY_SCORING_CONFIG, ...scoringConfig };
+  const config = normalizeScoringConfig({ ...DEFAULT_QUALITY_SCORING_CONFIG, ...scoringConfig });
+  let initialized = false;
 
   return {
     pluginId: "plugin.core.basic-evaluator-with-scoring",
@@ -454,12 +463,14 @@ export function createBasicEvaluatorPluginWithScoring(
     spiType: "validator",
     capabilityIds: ["output.validate", "output.quality_score"],
     async initialize() {
+      initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
     async validate(input) {

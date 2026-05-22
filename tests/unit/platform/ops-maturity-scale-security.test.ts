@@ -195,7 +195,8 @@ test("1959..1968: prompt eval, versioning, traffic split, and tamper-evident pro
 
   assert.match(llmEvalSource, /calculateWelchTTtest/);
   assert.match(llmEvalSource, /bootstrapConfidenceInterval/);
-  assert.match(llmEvalSource, /try \{\s*return JSON\.parse\(suite\.cases\) as EvalCaseDefinition\[\];\s*\} catch \{/s);
+  assert.match(llmEvalSource, /logger\.warn\("llm_eval_service\.parse_cases_failed"/);
+  assert.match(llmEvalSource, /return \[\];/);
   assert.match(outcomeEvaluatorSource, /successSignal: 0\.3/);
   assert.match(outcomeEvaluatorSource, /completionOutcome: 0\.4/);
   assert.match(outcomeEvaluatorSource, /failureSignal: 0\.2/);

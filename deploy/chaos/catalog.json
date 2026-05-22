@@ -1,0 +1,30 @@
+{
+  "apiVersion": "automatic-agent.io/v1",
+  "kind": "ChaosScenarioCatalog",
+  "scenarios": [
+    {
+      "scenarioId": "network-delay",
+      "manifestPath": "deploy/chaos/network-delay.yaml",
+      "fallbackProfileId": "network-delay-fallback",
+      "faultType": "latency"
+    },
+    {
+      "scenarioId": "pod-kill",
+      "manifestPath": "deploy/chaos/pod-kill.yaml",
+      "fallbackProfileId": "pod-kill-fallback",
+      "faultType": "error"
+    },
+    {
+      "scenarioId": "postgres-disconnect",
+      "manifestPath": "deploy/chaos/postgres-disconnect.yaml",
+      "fallbackProfileId": "postgres-disconnect-fallback",
+      "faultType": "timeout"
+    },
+    {
+      "scenarioId": "redis-disconnect",
+      "manifestPath": "deploy/chaos/redis-disconnect.yaml",
+      "fallbackProfileId": "redis-disconnect-fallback",
+      "faultType": "timeout"
+    }
+  ]
+}

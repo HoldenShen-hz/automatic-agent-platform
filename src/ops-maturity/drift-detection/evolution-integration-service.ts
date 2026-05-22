@@ -8,6 +8,8 @@
  * - Proposals are created (to feed into the approval workflow)
  */
 
+import { randomUUID } from "node:crypto";
+
 import type { EvidenceRecord } from './learning/evidence-store.js';
 import type { ReflectionRecord } from './learning/reflection-engine.js';
 import type { ProposalKind } from './learning/proposal-engine.js';
@@ -44,6 +46,10 @@ export const DEFAULT_CONFIG: EvolutionIntegrationConfig = {
   proposalConfidenceThreshold: 0.6,
   enableAutomaticProposal: true,
 };
+
+function createEvidenceId(): string {
+  return `ev_${randomUUID()}`;
+}
 
 /**
  * Service that integrates evidence collection, reflection, and proposal
@@ -177,7 +183,7 @@ export class EvolutionIntegrationService {
     const reasonCode = input.reasonCode;
     const taskType = this.inferTaskType(reasonCode);
     const evidence: EvidenceRecord = {
-      id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: createEvidenceId(),
       taskType,
       sessionId: input.sessionId,
       traceId: input.executionId,
@@ -215,7 +221,7 @@ export class EvolutionIntegrationService {
     toolCalls: number;
   }): Promise<void> {
     const evidence: EvidenceRecord = {
-      id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: createEvidenceId(),
       taskType: 'general',
       sessionId: input.sessionId,
       traceId: input.executionId,

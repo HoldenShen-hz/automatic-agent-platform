@@ -209,6 +209,7 @@ export class NlEntryService implements NlEntryPort {
   private readonly contextEnricher = new ContextEnricher();
   private readonly responseFormatter = new ResponseFormatter();
   private readonly clarificationRounds = new Map<string, number>();
+  private readonly requestRateLimits = new Map<string, { count: number; windowStartedAt: number }>();
   private readonly promptInjectionPatterns: readonly RegExp[];
   private readonly genericAmbiguousPatterns: readonly RegExp[];
 
@@ -272,6 +273,7 @@ export class NlEntryService implements NlEntryPort {
   }
 
   public async parseDetailed(request: NlEntryRequest): Promise<IntentParseResult> {
+    this.enforceRateLimit(request);
     const locale = this.resolveLocale(request);
     const priorConversationContext = this.getPriorConversationContext(request);
     const securityFindings = detectPromptInjection(request.message, this.promptInjectionPatterns);
@@ -420,6 +422,28 @@ export class NlEntryService implements NlEntryPort {
     const requiresApproval = critical || high || requiresApprovalIntent(intentType);
 
     return { riskLevel, riskFactors, requiresApproval };
+  }
+
+  private enforceRateLimit(request: NlEntryRequest): void {
+    if (!this.nlConfig.rateLimit.enabled) {
+      return;
+    }
+    const now = Date.now();
+    this.consumeRateLimit(`tenant:${request.tenantId}`, this.nlConfig.rateLimit.perTenantRequestsPerWindow, now);
+    this.consumeRateLimit(`tenant:${request.tenantId}:user:${request.userId}`, this.nlConfig.rateLimit.perUserRequestsPerWindow, now);
+  }
+
+  private consumeRateLimit(key: string, limit: number, now: number): void {
+    const windowMs = this.nlConfig.rateLimit.windowMs;
+    const current = this.requestRateLimits.get(key);
+    if (current == null || now - current.windowStartedAt >= windowMs) {
+      this.requestRateLimits.set(key, { count: 1, windowStartedAt: now });
+      return;
+    }
+    if (current.count >= limit) {
+      throw new Error(`nl_gateway.rate_limited:${key}`);
+    }
+    current.count += 1;
   }
 
   public async buildTask(request: NlEntryRequest): Promise<TaskBuildResult> {

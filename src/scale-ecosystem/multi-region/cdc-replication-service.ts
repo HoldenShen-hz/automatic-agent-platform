@@ -226,6 +226,8 @@ export interface CDCConflictResolutionResult {
  * CDC replication service for multi-region data sync
  */
 export class CDCReplicationService {
+  private static readonly MAX_CONFLICT_TASKS = 512;
+  private static readonly MAX_CONFLICTS_PER_TASK = 100;
   private readonly checkpoints = new Map<string, CDCReplicationCheckpoint>();
   private readonly configs = new Map<string, RegionReplicationConfig>();
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
@@ -647,7 +649,13 @@ export class CDCReplicationService {
   public recordConflict(taskId: string, conflict: CDCReplicationConflict): void {
     const history = this.conflictHistory.get(taskId) ?? [];
     history.push(conflict);
-    this.conflictHistory.set(taskId, history.slice(-100));
+    this.conflictHistory.set(taskId, history.slice(-CDCReplicationService.MAX_CONFLICTS_PER_TASK));
+    if (this.conflictHistory.size > CDCReplicationService.MAX_CONFLICT_TASKS) {
+      const oldestTaskId = this.conflictHistory.keys().next().value;
+      if (typeof oldestTaskId === "string" && oldestTaskId !== taskId) {
+        this.conflictHistory.delete(oldestTaskId);
+      }
+    }
   }
 
   public getConflictHistory(taskId: string): readonly CDCReplicationConflict[] {

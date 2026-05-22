@@ -395,25 +395,52 @@ function scoreMetric(metric: CrossAgentMetric, metrics: CrossAgentMetric[]): num
  * a confidence interval built from resampled peers.
  */
 function isSignificantlyDifferent(value: number, peerValues: number[], alpha = 0.05): boolean {
+  if (peerValues.length === 0) {
+    return false;
+  }
   if (peerValues.length < 3) {
     const { mean, stdDev } = computeMeanStdDev(peerValues);
-    if (stdDev > 0) {
-      const zScore = Math.abs(value - mean) / stdDev;
-      if (zScore > 1.25) {
-        return true;
-      }
-    }
-    const denominator = Math.max(Math.abs(mean), 1e-9);
-    return Math.abs(value - mean) / denominator >= 0.2;
+    const deviationFloor = Math.max((stdDev || 0) * 1.96, Math.abs(mean) * 0.2, 1e-9);
+    return Math.abs(value - mean) > deviationFloor;
   }
   const iterations = 100;
   const bootstrapMeans: number[] = [];
+  const rng = createDeterministicSampler([value, ...peerValues]);
   for (let i = 0; i < iterations; i++) {
-    const sample = peerValues.map(() => peerValues[Math.floor(Math.random() * peerValues.length)]!);
+    const sample = peerValues.map(() => peerValues[Math.floor(rng() * peerValues.length)]!);
     bootstrapMeans.push(sample.reduce((a, b) => a + b, 0) / sample.length);
   }
   bootstrapMeans.sort((a, b) => a - b);
-  const lower = bootstrapMeans[Math.floor(alpha / 2 * iterations)!]!;
-  const upper = bootstrapMeans[Math.floor((1 - alpha / 2) * iterations)!]!;
+  const lower = interpolateQuantile(bootstrapMeans, alpha / 2);
+  const upper = interpolateQuantile(bootstrapMeans, 1 - alpha / 2);
   return value < lower || value > upper;
+}
+
+function createDeterministicSampler(values: readonly number[]): () => number {
+  let state = 0x811c9dc5;
+  for (const value of values) {
+    const normalized = Number.isFinite(value) ? Math.round(value * 1_000_000) : 0;
+    state ^= normalized >>> 0;
+    state = Math.imul(state, 0x01000193) >>> 0;
+  }
+  return () => {
+    state = Math.imul(state, 1664525) + 1013904223 >>> 0;
+    return state / 0x1_0000_0000;
+  };
+}
+
+function interpolateQuantile(sortedValues: readonly number[], quantile: number): number {
+  if (sortedValues.length === 0) {
+    return Number.NaN;
+  }
+  const clampedQuantile = Math.max(0, Math.min(1, quantile));
+  const index = clampedQuantile * (sortedValues.length - 1);
+  const lowerIndex = Math.floor(index);
+  const upperIndex = Math.ceil(index);
+  if (lowerIndex === upperIndex) {
+    return sortedValues[lowerIndex]!;
+  }
+  const lower = sortedValues[lowerIndex]!;
+  const upper = sortedValues[upperIndex]!;
+  return lower + (upper - lower) * (index - lowerIndex);
 }

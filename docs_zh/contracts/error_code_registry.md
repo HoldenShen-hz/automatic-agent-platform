@@ -48,8 +48,27 @@
 | `policy.approval_required` | `policy` | `false` | 必须人工审批 |
 | `policy.action_denied` | `policy` | `false` | 策略显式拒绝 |
 | `auth.permission_denied` | `auth` | `false` | 权限不足 |
+| `mission.not_found` | `mission` | `false` | Mission 不存在 |
+| `mission.member_not_found` | `mission` | `false` | Mission 成员不存在 |
+| `mission.if_match_required` | `mission` | `false` | Mission 写操作缺少 `If-Match` |
+| `mission.version_conflict` | `mission` | `false` | Mission 版本冲突 |
 | `budget.budget_exceeded` | `budget` | `false` | 预算超限 |
 | `budget.quota_exceeded` | `budget` | `false` | 配额超限 |
+| `api.not_found` | `api` | `false` | API 路由不存在 |
+| `api.invalid_message` | `api` | `false` | WebSocket / channel message 不合法 |
+| `api.unknown_message` | `api` | `false` | WebSocket / channel message 类型未知 |
+| `api.payload_too_large` | `api` | `false` | API 请求体过大 |
+| `api.origin_forbidden` | `api` | `false` | API Origin 不在白名单 |
+| `api.prompt_bundle_not_found` | `api` | `false` | Prompt bundle 不存在 |
+| `api.rate_limit_exceeded` | `api` | `true` | API 限流触发 |
+| `api.server_shutting_down` | `api` | `true` | 服务正在关闭 |
+| `api.duplicate_request` | `api` | `false` | API 检测到重复请求体或 request id |
+| `api.idempotency_key_required` | `api` | `false` | 缺少幂等键 |
+| `api.idempotency_key_conflict` | `api` | `false` | 幂等键与历史请求冲突 |
+| `api.idempotency_request_in_flight` | `api` | `true` | 相同幂等键请求仍在处理中 |
+| `api.idempotency_cached_response_corrupt` | `api` | `true` | 幂等缓存损坏 |
+| `api.openapi_auth_required` | `api` | `false` | OpenAPI 文档访问需要鉴权 |
+| `api.unsupported_media_type` | `api` | `false` | 请求媒体类型不支持 |
 | `provider.rate_limited` | `provider` | `true` | provider 429 或等价限流 |
 | `provider.temporary_unavailable` | `provider` | `true` | provider 暂时不可用 |
 | `provider.compaction_unavailable` | `provider` | `true` | compaction / summarize provider 临时不可用 |
@@ -85,6 +104,7 @@
 - 文件锁等待超时映射到 `tool.file_lock_timeout`
 - 历史兼容告警 `AA_LEGACY_CONTRACT` 映射到 `contract.legacy_surface_used`
 - 历史兼容告警 `AA_DEPRECATED_CONTRACT` 映射到 `contract.deprecated_surface_used`
+- WebSocket / channel message 验证失败映射到 `api.invalid_message`
 
 ## 5. 补充规则
 

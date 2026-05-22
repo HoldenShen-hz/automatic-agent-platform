@@ -93,6 +93,7 @@ export interface ReconciliationJobInput {
  * until all critical issues are resolved or max retries are exhausted.
  */
 export class FailoverReconciliationJob {
+  private static readonly MAX_HISTORY_ENTRIES = 128;
   private readonly history: ReconciliationScanResult[] = [];
   private readonly maxRetries: number;
   private readonly baseDelayMs: number;
@@ -211,6 +212,9 @@ export class FailoverReconciliationJob {
     };
 
     this.history.push(result);
+    if (this.history.length > FailoverReconciliationJob.MAX_HISTORY_ENTRIES) {
+      this.history.splice(0, this.history.length - FailoverReconciliationJob.MAX_HISTORY_ENTRIES);
+    }
     return result;
   }
 

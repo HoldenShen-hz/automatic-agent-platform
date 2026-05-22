@@ -262,23 +262,20 @@ test("computeChecksum different for different payloads", () => {
   assert.notEqual(checksum1, checksum2);
 });
 
-test("computeChecksum works with md5 algorithm", () => {
+test("computeChecksum rejects unsupported algorithms", () => {
   const payload = { data: "test" };
 
-  const checksum = computeChecksum(payload, "md5");
-
-  assert.ok(checksum.length === 32); // MD5 hex is 32 chars
+  assert.throws(() => computeChecksum(payload, "md5" as never), /data_replicator\.unsupported_checksum_algorithm:md5/);
 });
 
-test("computeChecksum produces different results for sha256 vs md5", () => {
+test("computeChecksum remains deterministic for sha256", () => {
   const payload = { data: "same" };
 
   const sha256Checksum = computeChecksum(payload, "sha256");
-  const md5Checksum = computeChecksum(payload, "md5");
+  const repeatedChecksum = computeChecksum(payload, "sha256");
 
-  assert.notEqual(sha256Checksum, md5Checksum);
   assert.ok(sha256Checksum.length === 64);
-  assert.ok(md5Checksum.length === 32);
+  assert.equal(sha256Checksum, repeatedChecksum);
 });
 
 test("computeChecksum handles nested objects", () => {
@@ -872,14 +869,13 @@ test("createDataReplicator applies custom retryAttempts", () => {
   assert.ok(replicator !== null);
 });
 
-test("createDataReplicator applies custom checksumAlgorithm", () => {
+test("createDataReplicator keeps sha256 checksum algorithm", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
     residencyMode: "same_jurisdiction",
-  }, { checksumAlgorithm: "md5" });
+  }, { checksumAlgorithm: "sha256" });
 
   const event = replicator.recordEvent("eu-west", "task", "task-1", { data: "test" });
-  // MD5 checksum is 32 chars
-  assert.equal(event.checksum.length, 32);
+  assert.equal(event.checksum.length, 64);
 });

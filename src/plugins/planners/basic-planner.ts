@@ -1,18 +1,21 @@
 import type { DomainPlannerPlugin } from "../../domains/registry/plugin-spi.js";
 
 export function createBasicPlannerPlugin(): DomainPlannerPlugin {
+  let initialized = false;
   return {
     pluginId: "plugin.core.basic-planner",
     domainId: "core",
     spiType: "planner",
     capabilityIds: ["workflow.suggest"],
     async initialize() {
+      initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
     async suggestWorkflow(task) {

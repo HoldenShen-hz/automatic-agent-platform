@@ -5,6 +5,8 @@
 ## NPM / 源码版本
 
 - `package.json` 中的 `version` 是源码包版本事实来源。
+- `CHANGELOG.md` 必须同时维护 `Unreleased` 和最近一次已发布版本，避免把未发布提交误写成已发版事实。
+- 当前仓库仍处于 `0.x` 预 GA 阶段：频繁 contract/docs 变更不要求每次提交都滚 `package.json`，但一旦发布包或镜像，就必须回写 changelog。
 - 版本变更必须配套 changelog gate。
 - Node/npm 支持范围由 `package.json` 的 `engines` 字段声明。
 

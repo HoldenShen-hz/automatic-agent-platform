@@ -126,7 +126,7 @@ test("RuntimeConstraintSet merge uses constraint intersection semantics", () => 
 test("MissionErrorEnvelope requires trace and correlation identifiers", () => {
   assert.throws(() =>
     MissionErrorEnvelopeSchema.parse({
-      code: "MISSION_REQUIRED",
+      code: "mission.required",
       message: "Mission required",
       requestId: "req_001",
       traceId: "trace_001",

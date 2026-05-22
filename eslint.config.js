@@ -11,9 +11,6 @@ export default [
       "scripts/**/*.mjs",
       "tests/**/*.ts",
       "helpers/**/*.ts",
-      "helpers/**/*.js",
-      "packs/**/*.ts",
-      "packs/**/*.js",
       "deploy/**/*.mjs",
     ],
     rules: {
@@ -22,6 +19,12 @@ export default [
       "@typescript-eslint/no-floating-promises": "warn",
       "@typescript-eslint/no-misused-promises": "warn",
       "@typescript-eslint/require-await": "warn",
+    },
+  },
+  {
+    files: ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.mjs"],
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
     },
   },
   {

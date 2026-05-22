@@ -47,11 +47,16 @@ test("computeChecksum generates consistent checksums", () => {
   const payload = { data: "test" };
 
   const sha256 = computeChecksum(payload, "sha256");
-  const md5 = computeChecksum(payload, "md5");
+  const repeatedSha256 = computeChecksum(payload, "sha256");
 
   assert.ok(sha256.length === 64); // SHA256 hex is 64 chars
-  assert.ok(md5.length === 32); // MD5 hex is 32 chars
-  assert.notEqual(sha256, md5);
+  assert.equal(sha256, repeatedSha256);
+});
+
+test("computeChecksum rejects md5 inputs", () => {
+  const payload = { data: "test" };
+
+  assert.throws(() => computeChecksum(payload, "md5" as never), /data_replicator\.unsupported_checksum_algorithm:md5/);
 });
 
 test("computeChecksum produces same result for same payload", () => {

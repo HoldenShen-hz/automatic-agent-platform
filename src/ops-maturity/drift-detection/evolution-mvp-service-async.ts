@@ -9,13 +9,12 @@
  * @see EvolutionMvpService for the sync implementation
  */
 
-import { createRequire } from "node:module";
-
 import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
+import type { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-
-const require = createRequire(import.meta.url);
+import type { MemoryService } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
+import { EvolutionMvpService } from "./evolution-mvp-service.js";
 
 /**
  * Async Evolution MVP Service
@@ -36,9 +35,11 @@ export class EvolutionServiceAsync extends SyncBackedAsyncService<EvolutionMvpSe
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    super(() => {
-      const { EvolutionMvpService } = require("./evolution-mvp-service.js");
-      return new EvolutionMvpService(db, store);
-    });
+    super(() => new EvolutionMvpService(
+      db,
+      store,
+      undefined as unknown as ApprovalService,
+      undefined as unknown as MemoryService,
+    ));
   }
 }

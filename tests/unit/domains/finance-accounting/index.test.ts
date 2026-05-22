@@ -34,7 +34,7 @@ test("FINANCE_ACCOUNTING_DOMAIN_PRESET has correct required capabilities", () =>
 });
 
 test("FINANCE_ACCOUNTING_DOMAIN_PRESET has correct review required task types", () => {
-  assert.deepEqual(FINANCE_ACCOUNTING_DOMAIN_PRESET.reviewRequiredTaskTypes, ["report", "forecast"]);
+  assert.deepEqual(FINANCE_ACCOUNTING_DOMAIN_PRESET.reviewRequiredTaskTypes, ["reconcile", "report", "forecast"]);
 });
 
 test("requiresFinanceAccountingReview returns true for report task type", () => {
@@ -45,6 +45,6 @@ test("requiresFinanceAccountingReview returns true for forecast task type", () =
   assert.equal(requiresFinanceAccountingReview("forecast"), true);
 });
 
-test("requiresFinanceAccountingReview returns false for reconcile task type", () => {
-  assert.equal(requiresFinanceAccountingReview("reconcile"), false);
+test("requiresFinanceAccountingReview returns true for reconcile task type", () => {
+  assert.equal(requiresFinanceAccountingReview("reconcile"), true);
 });

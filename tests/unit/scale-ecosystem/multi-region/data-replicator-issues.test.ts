@@ -283,9 +283,9 @@ test("data-replicator-2197: pendingCount reflects only events that remain unconf
   const result = await replicator.flush("us-west-2");
   const checkpoint = replicator.getCheckpoint("us-west-2");
 
-  assert.equal(result.lastSequence, 2);
+  assert.equal(result.lastSequence, 3);
   assert.equal(checkpoint?.pendingCount, 1);
-  assert.equal(checkpoint?.sequenceNumber, 2);
+  assert.equal(checkpoint?.sequenceNumber, 3);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -468,13 +468,8 @@ test("ReplicationEventBuffer: maxSize triggers flush", () => {
   assert.equal(result, true);
 });
 
-test("computeChecksum: sha256 and md5 produce different hashes", () => {
+test("computeChecksum: unsupported algorithms fail closed", () => {
   const payload = { data: "test" };
 
-  const sha256Hash = computeChecksum(payload, "sha256");
-  const md5Hash = computeChecksum(payload, "md5");
-
-  assert.notEqual(sha256Hash, md5Hash);
-  assert.equal(sha256Hash.length, 64); // SHA256 hex length
-  assert.equal(md5Hash.length, 32); // MD5 hex length
+  assert.throws(() => computeChecksum(payload, "md5" as never), /data_replicator\.unsupported_checksum_algorithm:md5/);
 });

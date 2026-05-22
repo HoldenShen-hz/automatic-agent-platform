@@ -107,6 +107,20 @@ test("OidcIdentityService fetchUserInfo uses timeout AbortSignal", async () => {
   }
 });
 
+test("OidcIdentityService blocks loopback OIDC endpoints before fetch", async () => {
+  const service = new OidcIdentityService({
+    ...createOidcConfig(),
+    userInfoEndpoint: "http://127.0.0.1/internal-userinfo",
+  }, undefined, {
+    allowMockFallback: false,
+  });
+
+  await assert.rejects(
+    () => service.fetchUserInfo("access-token"),
+    /oidc\.blocked_provider_url/,
+  );
+});
+
 test("OidcIdentityService returns null for invalid access token", () => {
   const service = new OidcIdentityService(createOidcConfig());
 

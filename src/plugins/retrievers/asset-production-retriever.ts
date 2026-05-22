@@ -28,18 +28,20 @@ function buildQuery(intent: string, context: Record<string, unknown>): string {
 }
 
 export function createAssetProductionRetrieverPlugin(): DomainRetrieverPlugin {
+  let initialized = false;
   return {
     pluginId: "plugin.assetproduction.retriever",
     domainId: "assetproduction",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "assetproduction.figma_search"],
     async initialize() {
-      // No-op: knowledge plane is available immediately
+      initialized = true;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
     async retrieve(query) {

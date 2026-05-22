@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../helpers/repo-root.js";
 
 import { createAssetProductionAdapterPlugin } from "../../../../src/plugins/adapters/asset-production-adapter.js";
 import { createCrmAdapterPlugin } from "../../../../src/plugins/adapters/crm-adapter.js";
@@ -82,7 +83,7 @@ test("R28-13 game-dev adapter requires authentication and retains egress checks 
   assert.equal(result.success, true);
 
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/plugins/adapters/game-dev-adapter.ts",
+    resolveRepoPath("src/plugins/adapters/game-dev-adapter.ts"),
     "utf8",
   );
   assert.match(source, /gameDevPolicy\.evaluate\(/);
@@ -98,7 +99,7 @@ test("R28-14 asset-production adapter requires authentication and retains egress
   assert.equal(result.success, true);
 
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/plugins/adapters/asset-production-adapter.ts",
+    resolveRepoPath("src/plugins/adapters/asset-production-adapter.ts"),
     "utf8",
   );
   assert.match(source, /assetProductionPolicy\.evaluate\(/);

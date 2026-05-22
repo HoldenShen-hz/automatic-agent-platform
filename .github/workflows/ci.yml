@@ -8,6 +8,7 @@ on:
       - master
   pull_request:
   schedule:
+    # Weekly baseline/security sweep at Monday 05:00 UTC (Monday 13:00 Asia/Shanghai).
     - cron: "0 5 * * 1"
 
 permissions:
@@ -17,15 +18,12 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      matrix:
-        node-version: [20, 22]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +31,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -64,7 +62,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.node-version }}
+          name: test-results-node-22
           path: |
             test-results/
             coverage/

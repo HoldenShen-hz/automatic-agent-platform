@@ -50,22 +50,22 @@ interface SerializablePlan {
 
 function assertValidSerializableTask(task: SerializableTask, index: number): void {
   if (task.domainId.trim().length === 0 || task.description.trim().length === 0) {
-    throw new Error(`goal_decomposer.invalid_llm_plan_task:${index}`);
+    throw new Error(`goal_decomposer.llm_plan_invalid_task:${index}`);
   }
   if (!["auto", "supervised", "manual"].includes(task.delegationMode)) {
-    throw new Error(`goal_decomposer.invalid_llm_plan_delegation_mode:${index}`);
+    throw new Error(`goal_decomposer.llm_plan_invalid_delegation_mode:${index}`);
   }
   if (
     !Array.isArray(task.expectedOutputs)
     || task.expectedOutputs.some((item) => typeof item !== "string" || item.trim().length === 0)
   ) {
-    throw new Error(`goal_decomposer.invalid_llm_plan_expected_outputs:${index}`);
+    throw new Error(`goal_decomposer.llm_plan_invalid_expected_outputs:${index}`);
   }
   if (!Number.isFinite(task.estimatedCostUsd) || task.estimatedCostUsd < 0) {
-    throw new Error(`goal_decomposer.invalid_llm_plan_estimated_cost:${index}`);
+    throw new Error(`goal_decomposer.llm_plan_invalid_estimated_cost:${index}`);
   }
   if (!/^\d+(m|h|d)$/.test(task.estimatedDuration.trim())) {
-    throw new Error(`goal_decomposer.invalid_llm_plan_estimated_duration:${index}`);
+    throw new Error(`goal_decomposer.llm_plan_invalid_estimated_duration:${index}`);
   }
 }
 
@@ -81,10 +81,10 @@ function validateDependencyGraph(taskIds: readonly string[], dependencyGraph: re
 
   for (const edge of dependencyGraph) {
     if (!taskIdSet.has(edge.fromTask) || !taskIdSet.has(edge.toTask)) {
-      throw new Error("goal_decomposer.invalid_llm_plan_dependency_reference");
+      throw new Error("goal_decomposer.llm_plan_invalid_dependency_reference");
     }
     if (edge.fromTask === edge.toTask) {
-      throw new Error("goal_decomposer.invalid_llm_plan_self_cycle");
+      throw new Error("goal_decomposer.llm_plan_invalid_self_cycle");
     }
     adjacency.get(edge.fromTask)?.push(edge.toTask);
     indegree.set(edge.toTask, (indegree.get(edge.toTask) ?? 0) + 1);
@@ -105,7 +105,7 @@ function validateDependencyGraph(taskIds: readonly string[], dependencyGraph: re
   }
 
   if (visited !== taskIds.length) {
-    throw new Error("goal_decomposer.invalid_llm_plan_cycle_detected");
+    throw new Error("goal_decomposer.llm_plan_invalid_cycle_detected");
   }
 }
 
@@ -373,7 +373,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     const parsed = JSON.parse(normalized) as SerializablePlan;
     assertJsonDepthWithinLimit(parsed, MAX_LLM_PLAN_JSON_DEPTH);
     if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.dependencyGraph)) {
-      throw new Error("goal_decomposer.invalid_llm_plan_shape");
+      throw new Error("goal_decomposer.llm_plan_invalid_shape");
     }
     parsed.tasks.forEach((task, index) => assertValidSerializableTask(task, index));
     const taskIds = parsed.tasks.map((_, index) => this.normalizeTaskReference("plan", String(index + 1)));

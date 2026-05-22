@@ -66,14 +66,24 @@ interface AccountBalance {
   version: number;
 }
 
+interface BudgetReallocationServiceOptions {
+  readonly idempotencyKeyTtlMs?: number;
+}
+
 export class BudgetReallocationService {
   // In-memory stores (replace with proper DB in production)
   private readonly reallocations = new Map<string, BudgetReallocationRecord>();
   private readonly balances = new Map<string, AccountBalance>();
-  private readonly idempotencyKeys = new Set<string>();
+  private readonly idempotencyKeys = new Map<string, number>();
+  private readonly idempotencyKeyTtlMs: number;
+
+  public constructor(options: BudgetReallocationServiceOptions = {}) {
+    this.idempotencyKeyTtlMs = options.idempotencyKeyTtlMs ?? 24 * 60 * 60 * 1000;
+  }
 
   // §53.3: Race condition protection - reject duplicate idempotency keys
   private checkIdempotency(idempotencyKey: string): void {
+    this.pruneExpiredIdempotencyKeys();
     if (this.idempotencyKeys.has(idempotencyKey)) {
       throw new MonetizationError(
         `billing.duplicate_reallocation:${idempotencyKey}`,
@@ -99,7 +109,7 @@ export class BudgetReallocationService {
 
     // §53.3: Validate sufficient funds
     if (sourceBalance.creditUsd < input.amountUsd) {
-      this.idempotencyKeys.add(input.idempotencyKey);
+      this.recordIdempotencyKey(input.idempotencyKey, requestedAt);
       throw new MonetizationError(
         `billing.insufficient_credit:${input.sourceAccountId}`,
         `Source account has insufficient credit for reallocation`,
@@ -147,7 +157,7 @@ export class BudgetReallocationService {
       reallocation.completedAt = nowIso();
 
       // Add idempotency key to prevent duplicate processing
-      this.idempotencyKeys.add(input.idempotencyKey);
+      this.recordIdempotencyKey(input.idempotencyKey, requestedAt);
     } catch (error) {
       // Rollback on failure
       reallocation.status = "failed";
@@ -197,5 +207,17 @@ export class BudgetReallocationService {
       this.balances.set(accountId, balance);
     }
     return balance;
+  }
+
+  private recordIdempotencyKey(idempotencyKey: string, requestedAt: string): void {
+    this.idempotencyKeys.set(idempotencyKey, Date.parse(requestedAt));
+  }
+
+  private pruneExpiredIdempotencyKeys(nowMs = Date.now()): void {
+    for (const [idempotencyKey, recordedAtMs] of this.idempotencyKeys.entries()) {
+      if (!Number.isFinite(recordedAtMs) || recordedAtMs + this.idempotencyKeyTtlMs <= nowMs) {
+        this.idempotencyKeys.delete(idempotencyKey);
+      }
+    }
   }
 }

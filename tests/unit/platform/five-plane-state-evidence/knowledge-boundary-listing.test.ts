@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../helpers/repo-root.js";
 
 import { canAccessKnowledgeBoundary } from "../../../../src/org-governance/knowledge-boundary/boundary-manager/index.js";
 import {
@@ -195,7 +196,7 @@ test("R28-09 listDownloadsByListing passes the sanitized limit instead of raw in
 
 test("R28-10 prompt repository no longer calls this.conn.execute directly", () => {
   const source = readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-state-evidence/truth/async-repositories/prompt-repository.ts",
+    resolveRepoPath("src/platform/five-plane-state-evidence/truth/async-repositories/prompt-repository.ts"),
     "utf8",
   );
 

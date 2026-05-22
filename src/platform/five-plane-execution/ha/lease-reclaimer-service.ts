@@ -68,6 +68,7 @@ export interface LeaseReclaimerRecoveryReport extends RecoveryReport {
  */
 export class LeaseReclaimerService implements RecoveryWorker {
   private intervalHandle: ReturnType<typeof setTimeout> | null = null;
+  private cyclePromise: Promise<void> | null = null;
   private disposed: boolean = false;
   private running: boolean = false;
 
@@ -283,10 +284,23 @@ export class LeaseReclaimerService implements RecoveryWorker {
       return;
     }
 
-    this.intervalHandle = setTimeout(async () => {
-      await this.doReclaimCycle();
-      this.scheduleNextReclaim();
+    this.intervalHandle = setTimeout(() => {
+      this.intervalHandle = null;
+      this.cyclePromise = this.doReclaimCycle()
+        .then(() => undefined)
+        .catch((error: unknown) => {
+          logger.log({
+            level: "error",
+            message: "lease_reclaimer.scheduled_cycle_failed",
+            data: { error: error instanceof Error ? error.message : String(error) },
+          });
+        })
+        .finally(() => {
+          this.cyclePromise = null;
+          this.scheduleNextReclaim();
+        });
     }, this.config.reclaimIntervalMs);
+    this.intervalHandle.unref?.();
   }
 
   /**

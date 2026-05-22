@@ -84,6 +84,12 @@ Mature industrial platforms must drill at minimum:
 - Random OAPEFLIR stage interruption
 - Random rollout gate blockage
 
+### 6.1 Chaos Scenario Catalog And Fallback Profiles
+
+- `deploy/chaos/catalog.json` is the authoritative in-repo index for chaos scenarios.
+- Every scenario must map to a scheduler-recognized fallback profile.
+- Default fallback profiles are maintained in `src/ops-maturity/chaos/chaos-experiment-types.ts` as `DEFAULT_CHAOS_FALLBACK_PROFILES`.
+
 ## 7. Release Gates
 
 Before release there must be:

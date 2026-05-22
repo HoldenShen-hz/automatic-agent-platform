@@ -243,22 +243,22 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     // R5-18: Delegation chain depth limit (max=3)
     const maxDelegationDepth = this.options.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
     if (currentDepth > maxDelegationDepth) {
-      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDepth}:${maxDelegationDepth}`);
+      throw new Error(`goal_decomposer.depth_exceeded:delegation:${goal.goalId}:${currentDepth}:${maxDelegationDepth}`);
     }
     const currentDelegationDepth = Math.max(this.delegationDepth.get(goal.goalId) ?? 0, currentDepth);
     if (currentDelegationDepth >= maxDelegationDepth) {
-      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDelegationDepth}:${maxDelegationDepth}`);
+      throw new Error(`goal_decomposer.depth_exceeded:delegation:${goal.goalId}:${currentDelegationDepth}:${maxDelegationDepth}`);
     }
     this.delegationDepth.set(goal.goalId, currentDelegationDepth + 1);
 
     if (this.options.callDepth != null && currentDepth > this.options.callDepth) {
-      throw new Error(`goal_decomposer.call_depth_exceeded:${currentDepth}:${this.options.callDepth}`);
+      throw new Error(`goal_decomposer.depth_exceeded:call:${currentDepth}:${this.options.callDepth}`);
     }
 
     // R5-18: Global call depth cap (=8)
     const globalCallDepth = this.options.globalCallDepth ?? 0;
     if (globalCallDepth >= DEFAULT_GLOBAL_CALL_DEPTH_CAP) {
-      throw new Error(`goal_decomposer.global_call_depth_exceeded:${globalCallDepth}`);
+      throw new Error(`goal_decomposer.depth_exceeded:global_call:${globalCallDepth}:${DEFAULT_GLOBAL_CALL_DEPTH_CAP}`);
     }
 
     const constraintEnvelope = parseConstraintEnvelope(goal);
@@ -803,11 +803,21 @@ export class GoalDecompositionService implements GoalDecompositionPort {
           .sort((left, right) => left - right)
           .map((level) => sorted.filter((taskId) => levels.get(taskId) === level));
 
+    if (hasCycle) {
+      return {
+        hasCycle,
+        topologicallySortedTaskIds: taskIds,
+        parallelTaskGroups: parallelGroups,
+        criticalPathTaskIds: [],
+        maxDependencyDepth,
+      };
+    }
+
     const durationByTask = new Map(tasks.map((task) => [task.taskId, parseDurationHours(task.estimatedDuration)]));
     const longestDistance = new Map<string, number>();
     const predecessor = new Map<string, string | null>();
 
-    for (const taskId of hasCycle ? taskIds : sorted) {
+    for (const taskId of sorted) {
       const parents = reverse.get(taskId) ?? [];
       if (parents.length === 0) {
         longestDistance.set(taskId, durationByTask.get(taskId) ?? 0);
@@ -825,16 +835,6 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       }
       longestDistance.set(taskId, Math.max(0, maxParentDistance));
       predecessor.set(taskId, maxParent);
-    }
-
-    if (hasCycle) {
-      return {
-        hasCycle,
-        topologicallySortedTaskIds: taskIds,
-        parallelTaskGroups: parallelGroups,
-        criticalPathTaskIds: [],
-        maxDependencyDepth,
-      };
     }
 
     const criticalTail = [...longestDistance.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;

@@ -1,6 +1,7 @@
 # Architecture Decision Records (ADR)
 
 > 本目录包含项目的架构决策记录（ADR）。每个 ADR 记录重要技术决策的背景、考量与结论。
+> `docs_zh/adr/README.md` 与 `docs_en/adr/README.md` 的编号、状态和日期必须保持同步；若正文翻译延后，按 `docs_zh/reference/docs-sync.md` 记录。
 
 ## ADR 索引
 
@@ -75,12 +76,12 @@
 | [071](./071-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
-| [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Accepted | 2026-04-20 |
-| [070](./070-conclusion.md) | 结论 | Accepted | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Accepted | 2026-04-17 |
-| [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted |  |
+| [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Partially Superseded | 2026-04-20 |
+| [070](./070-conclusion.md) | 结论 | Superseded by ADR-109 to ADR-113 | 2026-04-20 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Partially Superseded | 2026-04-17 |
+| [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
 | [075](./075-controlled-rollout-release.md) | 六级受控发布与 Rollout 状态机 | Accepted | 2026-04-17 |
-| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane 架构与信任模型 | Accepted | 2026-04-17 |
+| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane 架构与信任模型 | Partially Superseded | 2026-04-17 |
 | [079](./079-feedback-hub-signals.md) | Feedback Hub 与七类信号预处理 | Accepted | 2026-04-17 |
 | [080](./080-learn-hub-pattern-detection.md) | Learn Hub 与四模式检测器 | Accepted | 2026-04-17 |
 | [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
@@ -90,9 +91,9 @@
 | [085](./085-organization-governance-and-knowledge-boundary.md) | Organization Governance And Knowledge Boundary | Accepted | 2026-04-20 |
 | [086](./086-scale-ecosystem-and-cross-region-runtime.md) | Scale Ecosystem And Cross Region Runtime | Accepted | 2026-04-20 |
 | [087](./087-ops-maturity-runtime.md) | Ops Maturity Runtime | Accepted | 2026-04-20 |
-| [088](./088-platform-surface-communication-and-extensibility.md) | ADR 088: Platform Surface, Communication, and Extensibility | Accepted |  |
-| [089](./089-ai-operations-governance-and-quality.md) | ADR 089: AI Operations Governance and Quality | Accepted |  |
-| [090](./090-runtime-data-reliability-and-operations.md) | ADR 090: Runtime, Data Reliability, and Operations | Accepted |  |
+| [088](./088-platform-surface-communication-and-extensibility.md) | ADR 088: Platform Surface, Communication, and Extensibility | Accepted | 2026-04-20 |
+| [089](./089-ai-operations-governance-and-quality.md) | ADR 089: AI Operations Governance and Quality | Accepted | 2026-04-20 |
+| [090](./090-runtime-data-reliability-and-operations.md) | ADR 090: Runtime, Data Reliability, and Operations | Accepted | 2026-04-20 |
 | [091](./091-harness-eight-pillar-model.md) | Harness Eight Pillar Model | Accepted | 2026-04-23 |
 | [092](./092-harness-loop-controller.md) | Harness Loop Controller | Accepted | 2026-04-23 |
 | [093](./093-harness-constraint-engine.md) | Harness Constraint Engine | Accepted | 2026-04-23 |

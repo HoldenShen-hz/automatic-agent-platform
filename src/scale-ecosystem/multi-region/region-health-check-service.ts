@@ -182,7 +182,8 @@ export class RegionHealthCheckService {
       const result = await (circuitBreaker
         ? circuitBreaker.execute(() => this.performHealthCheck(config))
         : this.performHealthCheck(config));
-      const latencyMs = Date.now() - startTime;
+      const latencyMs = result.metrics.find((metric) => metric.metricName === "latency")?.value
+        ?? (Date.now() - startTime);
 
       const healthResult: RegionHealthCheckResult = {
         regionId,

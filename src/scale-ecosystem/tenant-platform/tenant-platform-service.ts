@@ -128,24 +128,27 @@ export class TenantPlatformService {
     return results;
   }
 
-  public evaluateSlo(sloId: string, metrics: Record<string, number>): boolean {
-    for (const slo of this.sloDefinitions.values()) {
-      if (slo.sloId === sloId) {
-        const value = metrics[slo.metric];
-        if (value === undefined) {
-          return false;
-        }
-        switch (slo.operator) {
-          case ">":
-            return value > slo.target;
-          case "<":
-            return value < slo.target;
-          case ">=":
-            return value >= slo.target;
-          case "<=":
-            return value <= slo.target;
-        }
-      }
+  public evaluateSlo(sloId: string, metrics: Record<string, number>, tenantId?: string): boolean {
+    const matchingSlos = tenantId == null
+      ? [...this.sloDefinitions.values()].filter((slo) => slo.sloId === sloId)
+      : [this.sloDefinitions.get(`${tenantId}:${sloId}`)].filter((slo): slo is Slo => slo != null);
+    if (matchingSlos.length !== 1) {
+      return false;
+    }
+    const slo = matchingSlos[0]!;
+    const value = metrics[slo.metric];
+    if (value === undefined) {
+      return false;
+    }
+    switch (slo.operator) {
+      case ">":
+        return value > slo.target;
+      case "<":
+        return value < slo.target;
+      case ">=":
+        return value >= slo.target;
+      case "<=":
+        return value <= slo.target;
     }
     return false;
   }

@@ -575,6 +575,7 @@ export class ExecutionDispatchService {
         : [this.getCandidateWorker(options.preferredWorkerId)].filter((worker): worker is RegisteredWorkerView => worker != null);
 
     return candidates.map((worker) => {
+        const capabilitySet = new Set(worker.capabilities);
         // R6-10: Check heartbeat staleness - reject workers with stale heartbeats (>30s per §14)
         const heartbeatStalenessThresholdMs = 30_000; // 30 seconds per §14 gap detection
         const lastHeartbeatMs = Date.parse(worker.lastHeartbeatAt);
@@ -626,7 +627,7 @@ export class ExecutionDispatchService {
           return this.toWorkerEvaluation(worker, false, "worker_remote_session_unready", []);
         }
 
-        const missingCapabilities = requiredCapabilities.filter((capability) => !worker.capabilities.includes(capability));
+        const missingCapabilities = requiredCapabilities.filter((capability) => !capabilitySet.has(capability));
         if (missingCapabilities.length > 0) {
           return this.toWorkerEvaluation(worker, false, "missing_capabilities", missingCapabilities);
         }
@@ -638,36 +639,38 @@ export class ExecutionDispatchService {
     ticket: ExecutionTicketRecord,
     evaluations: DispatchWorkerEvaluation[],
   ): DispatchWorkerEvaluation[] {
-    const acceptedSignals = evaluations
-      .filter((evaluation) => evaluation.accepted)
-      .map((evaluation) => this.getCandidateWorker(evaluation.workerId))
-      .filter((worker): worker is RegisteredWorkerView => worker != null)
-      .map((worker) => ({
+    const acceptedSignals: Array<{
+      worker: RegisteredWorkerView;
+      affinityMatched: boolean;
+      effectiveActiveLeaseCount: number;
+      loadScore: number;
+    }> = [];
+    for (const evaluation of evaluations) {
+      if (!evaluation.accepted) {
+        continue;
+      }
+      const worker = this.getCandidateWorker(evaluation.workerId);
+      if (worker == null) {
+        continue;
+      }
+      const loadInput = {
+        workerId: worker.workerId,
+        queueAffinity: worker.queueAffinity,
+        maxConcurrency: worker.maxConcurrency,
+        availableSlots: worker.availableSlots,
+        activeLeaseCount: worker.activeLeaseCount,
+        runningExecutionCount: worker.runningExecutionIds.length,
+        saturation: worker.saturation,
+        toolBacklogCount: worker.toolBacklogCount,
+        cpuPct: worker.cpuPct,
+      };
+      acceptedSignals.push({
         worker,
         affinityMatched: ticket.queueName != null && worker.queueAffinity === ticket.queueName,
-        effectiveActiveLeaseCount: computeEffectiveActiveLeaseCount({
-          workerId: worker.workerId,
-          queueAffinity: worker.queueAffinity,
-          maxConcurrency: worker.maxConcurrency,
-          availableSlots: worker.availableSlots,
-          activeLeaseCount: worker.activeLeaseCount,
-          runningExecutionCount: worker.runningExecutionIds.length,
-          saturation: worker.saturation,
-          toolBacklogCount: worker.toolBacklogCount,
-          cpuPct: worker.cpuPct,
-        }),
-        loadScore: computeWorkerLoadScore({
-          workerId: worker.workerId,
-          queueAffinity: worker.queueAffinity,
-          maxConcurrency: worker.maxConcurrency,
-          availableSlots: worker.availableSlots,
-          activeLeaseCount: worker.activeLeaseCount,
-          runningExecutionCount: worker.runningExecutionIds.length,
-          saturation: worker.saturation,
-          toolBacklogCount: worker.toolBacklogCount,
-          cpuPct: worker.cpuPct,
-        }),
-      }));
+        effectiveActiveLeaseCount: computeEffectiveActiveLeaseCount(loadInput),
+        loadScore: computeWorkerLoadScore(loadInput),
+      });
+    }
     const loadSkew = summarizeWorkerLoadSkew(
       acceptedSignals.map(({ worker }) => ({
         workerId: worker.workerId,

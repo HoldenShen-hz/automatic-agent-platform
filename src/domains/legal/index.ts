@@ -4,11 +4,11 @@ import { createDomainModulePreset, requiresPresetReview } from "../domain-module
 export const LegalTaskTypeSchema = z.enum(["review", "redline", "advise"]);
 export type LegalTaskType = z.infer<typeof LegalTaskTypeSchema>;
 
-export const LEGAL_DOMAIN_PRESET = createDomainModulePreset("legal", ["review", "redline", "advise"] as const, ["redline", "advise"] as const);
+export const LEGAL_DOMAIN_PRESET = createDomainModulePreset("legal", ["review", "redline", "advise"] as const, ["review", "redline", "advise"] as const);
 export type LegalDomainPreset = typeof LEGAL_DOMAIN_PRESET;
 
 export function requiresAttorneyReview(taskType: LegalTaskType): boolean {
-  return taskType === "review" || taskType === "redline" || taskType === "advise";
+  return requiresLegalReview(taskType);
 }
 
 export function requiresLegalReview(taskType: LegalTaskType): boolean {

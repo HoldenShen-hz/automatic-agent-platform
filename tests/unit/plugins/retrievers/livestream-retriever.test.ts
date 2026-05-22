@@ -28,11 +28,12 @@ test("LivestreamRetriever.initialize is no-op", async () => {
   await plugin.initialize();
 });
 
-test("LivestreamRetriever.healthCheck returns true", async () => {
+test("LivestreamRetriever.healthCheck reflects lifecycle state", async () => {
   const plugin = createLivestreamRetrieverPlugin();
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("LivestreamRetriever.shutdown returns undefined", async () => {

@@ -9,8 +9,6 @@
  * @see BillingService for the sync implementation
  */
 
-import { createRequire } from "node:module";
-
 import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
@@ -23,8 +21,7 @@ import type {
   RecordUsageResult,
 } from "./types.js";
 import type { BillingAccountRecord } from "../../platform/contracts/types/domain.js";
-
-const require = createRequire(import.meta.url);
+import { BillingService } from "./billing-service.js";
 
 /**
  * Async Billing Service
@@ -45,11 +42,7 @@ export class BillingServiceAsync extends SyncBackedAsyncService<BillingServiceSy
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore, options?: BillingServiceOptions) {
-    super(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { BillingService } = require("./billing-service.js");
-      return new BillingService(db, store, options);
-    });
+    super(() => new BillingService(db, store, options));
   }
 
   /**

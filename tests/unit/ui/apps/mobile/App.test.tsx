@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
 import { MobileApp } from "../../../../../ui/apps/mobile/src/App.js";
 import { mobileShellManifest } from "../../../../../ui/apps/mobile/src/index.js";
 
 const appSource = fs.readFileSync(
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/mobile/src/App.tsx",
+  resolveRepoPath("ui/apps/mobile/src/App.tsx"),
   "utf-8",
 );
 const packageJson = JSON.parse(
   fs.readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/mobile/package.json",
+    resolveRepoPath("ui/apps/mobile/package.json"),
     "utf-8",
   ),
 ) as {

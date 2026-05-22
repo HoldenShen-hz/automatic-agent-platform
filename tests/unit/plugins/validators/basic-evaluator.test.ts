@@ -18,10 +18,11 @@ test("createBasicEvaluatorPlugin initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("createBasicEvaluatorPlugin healthCheck returns true", async () => {
+test("createBasicEvaluatorPlugin healthCheck reflects lifecycle state", async () => {
   const plugin = createBasicEvaluatorPlugin();
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize();
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("createBasicEvaluatorPlugin shutdown returns undefined", async () => {

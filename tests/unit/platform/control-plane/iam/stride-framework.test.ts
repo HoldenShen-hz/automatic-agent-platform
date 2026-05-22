@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { resolveRepoPath } from "../../../../helpers/repo-root.js";
 
 import {
   STRIDE_CATEGORIES,
@@ -46,7 +47,7 @@ test("listThreatsByCategory mirrors registry matrix behavior", () => {
 test("security threat inventory file documents all STRIDE dimensions", () => {
   const file = JSON.parse(
     readFileSync(
-      "/Users/holden/Project/automatic_agent/automatic_agent_platform/config/security/threat-matrix.json",
+      resolveRepoPath("config/security/threat-matrix.json"),
       "utf8",
     ),
   ) as { dimensions: Record<string, unknown> };

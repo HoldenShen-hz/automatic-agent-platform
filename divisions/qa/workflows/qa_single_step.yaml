@@ -1,9 +1,0 @@
-id: qa_single_step
-division_id: qa
-steps:
-  - step_id: test_work
-    role_id: qa_engineer
-    output_key: test_result
-    output_schema: schemas/minimal-output.json
-    timeout_ms: 120000
-    max_attempts: 1

@@ -1,0 +1,10 @@
+{
+  "task": "build",
+  "command": [
+    "npm",
+    "run",
+    "build:app"
+  ],
+  "startedAt": "2026-05-22T02:44:04.265Z",
+  "completedAt": "2026-05-22T02:44:06.709Z"
+}

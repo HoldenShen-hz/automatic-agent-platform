@@ -40,6 +40,8 @@ export interface ApiServerEnvConfig {
   enableWebSocket: boolean;
   /** Optional dedicated metrics server port */
   metricsPort?: number;
+  /** Optional dedicated metrics server host. Defaults to loopback. */
+  metricsHost?: string;
   /** Whether to bootstrap OpenTelemetry */
   otelEnabled: boolean;
   /** OTLP endpoint for traces */
@@ -192,6 +194,7 @@ export function loadApiServerEnv(env: NodeJS.ProcessEnv = process.env): ApiServe
     parsePositiveInteger(readTrimmedEnv(env, "AA_LOG_DATADOG_FLUSH_INTERVAL_MS"), "api.invalid_log_datadog_flush_interval_ms") ?? undefined;
   const enableWebSocket = parseBoolean(readTrimmedEnv(env, "AA_API_ENABLE_WEBSOCKET"), "api.invalid_enable_websocket") ?? true;
   const metricsPort = parsePositivePort(readTrimmedEnv(env, "AA_METRICS_PORT"));
+  const metricsHost = readTrimmedEnv(env, "AA_METRICS_HOST");
   const otelEnabled = parseBoolean(readTrimmedEnv(env, "AA_OTEL_ENABLED"), "api.invalid_otel_enabled") ?? true;
   const otelEndpoint = readTrimmedEnv(env, "AA_OTEL_ENDPOINT");
   const otelServiceName = readTrimmedEnv(env, "AA_OTEL_SERVICE_NAME") ?? "automatic-agent";
@@ -241,6 +244,7 @@ export function loadApiServerEnv(env: NodeJS.ProcessEnv = process.env): ApiServe
         },
     enableWebSocket,
     ...(metricsPort !== undefined ? { metricsPort } : {}),
+    ...(metricsHost ? { metricsHost } : {}),
     otelEnabled,
     otelEndpoint,
     otelServiceName,

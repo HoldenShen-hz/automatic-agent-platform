@@ -5,6 +5,7 @@ import {
   LegalTaskTypeSchema,
   LEGAL_DOMAIN_PRESET,
   LegalDomainPreset,
+  requiresAttorneyReview,
   requiresLegalReview,
 } from "../../../../src/domains/legal/index.js";
 
@@ -34,7 +35,7 @@ test("LEGAL_DOMAIN_PRESET has correct required capabilities", () => {
 });
 
 test("LEGAL_DOMAIN_PRESET has correct review required task types", () => {
-  assert.deepEqual(LEGAL_DOMAIN_PRESET.reviewRequiredTaskTypes, ["redline", "advise"]);
+  assert.deepEqual(LEGAL_DOMAIN_PRESET.reviewRequiredTaskTypes, ["review", "redline", "advise"]);
 });
 
 test("requiresLegalReview returns true for redline task type", () => {
@@ -45,6 +46,12 @@ test("requiresLegalReview returns true for advise task type", () => {
   assert.equal(requiresLegalReview("advise"), true);
 });
 
-test("requiresLegalReview returns false for review task type", () => {
-  assert.equal(requiresLegalReview("review"), false);
+test("requiresLegalReview returns true for review task type", () => {
+  assert.equal(requiresLegalReview("review"), true);
+});
+
+test("requiresAttorneyReview matches legal review policy for all legal task types", () => {
+  assert.equal(requiresAttorneyReview("review"), true);
+  assert.equal(requiresAttorneyReview("redline"), true);
+  assert.equal(requiresAttorneyReview("advise"), true);
 });

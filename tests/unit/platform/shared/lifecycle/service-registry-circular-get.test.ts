@@ -143,3 +143,18 @@ test("ServiceRegistry topologicalSort throws on circular dependencies", async ()
 
   assert.throws(() => registry.topologicalSort(), /circular dependency detected in topological sort/);
 });
+
+test("ServiceRegistry getInstance reuses the same singleton during bootstrap reentry", async () => {
+  const registry = ServiceRegistry.getInstance();
+  await registry.reset();
+
+  let reentered: ServiceRegistry | null = null;
+  ServiceRegistry.registerBootstrap("test.reentrant-singleton", () => {
+    reentered = ServiceRegistry.getInstance();
+  });
+
+  const created = ServiceRegistry.getInstance();
+  assert.equal(reentered, created);
+
+  await created.reset();
+});

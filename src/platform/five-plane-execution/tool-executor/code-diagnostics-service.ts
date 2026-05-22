@@ -17,7 +17,7 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
-import { dirname, extname, resolve, sep } from "node:path";
+import { dirname, extname, relative, resolve, sep } from "node:path";
 
 import ts from "typescript";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -301,6 +301,24 @@ async function collectPythonDiagnosticsForFiles(request: CodeDiagnosticsRunReque
   const diagnostics: CodeDiagnosticEntry[] = [];
 
   for (const filePath of request.filePaths) {
+    const relativePath = relative(request.workspaceRoot, filePath);
+    if (
+      relativePath.length === 0
+      || relativePath.startsWith("..")
+      || relativePath.includes(`${sep}..${sep}`)
+    ) {
+      diagnostics.push({
+        language: "python",
+        severity: "warning",
+        filePath,
+        message: "python diagnostics skipped: file path is outside the workspace root",
+        code: "python.path_outside_workspace",
+        source: "py_compile",
+        line: null,
+        column: null,
+      });
+      continue;
+    }
     const execution = await new Promise<{
       exitCode: number | null;
       stdout: string;
@@ -309,7 +327,7 @@ async function collectPythonDiagnosticsForFiles(request: CodeDiagnosticsRunReque
       outputTruncated: boolean;
       spawnError: NodeJS.ErrnoException | null;
     }>((resolve) => {
-      const child = spawn("python3", ["-m", "py_compile", filePath], {
+      const child = spawn("python3", ["-m", "py_compile", relativePath], {
         cwd: request.workspaceRoot,
         stdio: ["ignore", "pipe", "pipe"] as const,
       });

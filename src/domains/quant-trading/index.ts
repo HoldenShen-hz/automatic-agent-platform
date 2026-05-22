@@ -48,7 +48,7 @@ export function requiresQuantTradingReview(taskType: QuantTradingTaskType): bool
 export function evaluateQuantTradingPreTradeRisk(
   input: QuantTradingPreTradeRiskInput,
 ): QuantTradingPreTradeRiskDecision {
-  if (input.taskType !== "trade") {
+  if (input.taskType === "research") {
     return {
       allowed: true,
       reasons: [],
@@ -63,6 +63,18 @@ export function evaluateQuantTradingPreTradeRisk(
     "drawdown_limit",
   ];
   const reasons: string[] = [];
+  if (!Number.isFinite(input.orderQuantityUnits) || input.orderQuantityUnits < 0) {
+    reasons.push("quant_trading.pre_trade_risk.invalid_order_quantity");
+  }
+  if (!Number.isFinite(input.orderNotionalUsd) || input.orderNotionalUsd < 0) {
+    reasons.push("quant_trading.pre_trade_risk.invalid_order_notional");
+  }
+  if (!Number.isFinite(input.realizedDailyLossUsd) || input.realizedDailyLossUsd < 0) {
+    reasons.push("quant_trading.pre_trade_risk.invalid_daily_loss");
+  }
+  if (!Number.isFinite(input.drawdownPercent) || input.drawdownPercent < 0) {
+    reasons.push("quant_trading.pre_trade_risk.invalid_drawdown");
+  }
   const projectedPositionUnits = input.projectedPositionUnits ?? (
     input.side === "buy"
       ? input.currentPositionUnits + input.orderQuantityUnits
@@ -70,7 +82,7 @@ export function evaluateQuantTradingPreTradeRisk(
   );
   const projectedDailyLossUsd = input.projectedDailyLossUsd ?? input.realizedDailyLossUsd;
 
-  if (input.orderNotionalUsd > input.limitPolicy.maxOrderNotionalUsd) {
+  if (Math.abs(input.orderNotionalUsd) > input.limitPolicy.maxOrderNotionalUsd) {
     reasons.push("quant_trading.pre_trade_risk.order_notional_limit_exceeded");
   }
   if (Math.abs(projectedPositionUnits) > input.limitPolicy.maxPositionUnits) {

@@ -159,6 +159,15 @@ export class YonoMarketService {
   }): YonoMarket {
     const marketId = newId("ymkt");
     const timestamp = nowIso();
+    const openAtMs = Date.parse(timestamp);
+    const closeAtMs = Date.parse(input.closeAt);
+    const resolutionDeadlineMs = Date.parse(input.resolutionDeadline);
+    if (!Number.isFinite(closeAtMs) || closeAtMs <= openAtMs) {
+      throw new Error("yono.market.invalid_close_at");
+    }
+    if (!Number.isFinite(resolutionDeadlineMs) || resolutionDeadlineMs <= closeAtMs) {
+      throw new Error("yono.market.invalid_resolution_deadline");
+    }
     const outcomeSpecs = input.outcomes ?? [{ label: "YES", type: "yes" }, { label: "NO", type: "no" }];
     const outcomes = outcomeSpecs.map((outcome) => YonoOutcomeSchema.parse({
       outcomeId: newId("yout"),
@@ -169,6 +178,7 @@ export class YonoMarketService {
       impliedProbability: 0.5,
       liquidityUsd: 0,
     }));
+    const risk = deriveMarketRisk(input.category ?? "web3", input.tags ?? [], closeAtMs - openAtMs);
     const market = this.repository.saveMarket({
       marketId,
       title: input.title,
@@ -184,7 +194,7 @@ export class YonoMarketService {
       resolverPolicyId: "yono.default.resolution-policy",
       liquidity: { totalLiquidityUsd: 0, volume24hUsd: 0, volumeTotalUsd: 0 },
       probability: { marketProbability: 0.5, updatedAt: timestamp },
-      risk: { manipulationRisk: "low", resolutionRisk: "medium", ambiguityRisk: "medium", regulatoryRisk: "medium" },
+      risk,
       tags: [...(input.tags ?? [])],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -255,15 +265,15 @@ export class YonoCommentSignalService {
     const yesScore = scoreWords(text, ["yes", "bullish", "likely", "will", "confirmed"]);
     const noScore = scoreWords(text, ["no", "bearish", "unlikely", "wont", "won't", "fake"]);
     const stance = yesScore > noScore ? "yes" : noScore > yesScore ? "no" : "neutral";
-    const probability = stance === "yes" ? 0.65 : stance === "no" ? 0.35 : 0.5;
+    const probability = deriveSignalProbability(yesScore, noScore);
     const signal = this.repository.saveSignal({
       signalId: newId("ysig"),
       commentId: comment.commentId,
       marketId: comment.marketId,
       stance,
       probability,
-      evidenceBacked: /https?:\/\/|source|evidence|announcement|onchain|data/.test(text),
-      confidence: Math.abs(yesScore - noScore) >= 2 ? "high" : "medium",
+      evidenceBacked: hasEvidenceMarker(text),
+      confidence: Math.abs(yesScore - noScore) >= 2 ? "high" : Math.abs(yesScore - noScore) === 1 ? "medium" : "low",
       extractedAt: nowIso(),
     });
     this.repository.appendEvent("yono.comment.signal_extracted", comment.marketId, { signalId: signal.signalId });
@@ -304,9 +314,13 @@ export class YonoConsensusProbabilityService {
     const forecasts = this.repository.listForecasts(marketId);
     const commentSignalProbability = average(signals.map((signal) => signal.probability ?? 0.5), market.probability.marketProbability);
     const forecastProbability = average(forecasts.map((forecast) => forecast.probability), market.probability.marketProbability);
-    const yonoConsensusProbability = clamp01(
-      market.probability.marketProbability * 0.4 + commentSignalProbability * 0.3 + forecastProbability * 0.3,
-    );
+    const yonoConsensusProbability = combineConsensusProbability({
+      marketProbability: market.probability.marketProbability,
+      commentSignalProbability,
+      forecastProbability,
+      signalCount: signals.length,
+      forecastCount: forecasts.length,
+    });
     const updated = this.repository.saveMarket({
       ...market,
       probability: {
@@ -333,9 +347,13 @@ export class YonoSocialForecastAgent {
     const weightedYesSignal = yesSignals.length / total;
     const weightedNoSignal = noSignals.length / total;
     const firstSignalStance = signals[0]?.stance;
-    const manipulationRisk = firstSignalStance != null && signals.length >= 5 && signals.every((signal) => signal.stance === firstSignalStance)
-      ? "high"
-      : "low";
+    const manipulationRisk = firstSignalStance == null
+      ? "low"
+      : signals.length >= 5 && signals.every((signal) => signal.stance === firstSignalStance)
+        ? "high"
+        : signals.length >= 3 && signals.every((signal) => signal.stance === firstSignalStance)
+          ? "medium"
+          : "low";
     return {
       marketId,
       commentSignalProbability: clamp01(0.5 + (weightedYesSignal - weightedNoSignal) * 0.3),
@@ -380,14 +398,17 @@ export class YonoMarketReviewAgent {
 
 export class YonoResolutionAssistAgent {
   public draft(market: YonoMarket, evidenceRefs: readonly string[]): ResolutionDraft {
-    const proposedOutcome = market.outcomes[0];
+    const proposedOutcome = selectResolutionOutcome(market, evidenceRefs);
     if (proposedOutcome == null) {
       throw new Error("yono.resolution.no_outcomes");
     }
+    const evidenceConfidence = Math.min(0.95, 0.35 + evidenceRefs.length * 0.15);
+    const confidencePenalty = market.risk.ambiguityRisk === "high" ? 0.2 : 0;
+    const confidence = Number(Math.max(0.2, evidenceConfidence - confidencePenalty).toFixed(2));
     return {
       marketId: market.marketId,
       proposedOutcomeId: proposedOutcome.outcomeId,
-      confidence: evidenceRefs.length > 0 ? 0.72 : 0.42,
+      confidence,
       evidenceRefs,
       reasoningSummary: evidenceRefs.length > 0
         ? "Resolution draft is based on provided evidence references."
@@ -402,6 +423,12 @@ export class YonoTradingService {
   public constructor(private readonly repository: YonoRepository) {}
 
   public createOrder(input: { readonly marketId: string; readonly outcomeId: string; readonly userId: string; readonly side: "buy" | "sell"; readonly orderType?: "market" | "limit"; readonly quantity: number; readonly limitPrice?: number }): YonoOrder {
+    if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+      throw new Error("yono.order.invalid_quantity");
+    }
+    if (input.limitPrice != null && (!Number.isFinite(input.limitPrice) || input.limitPrice < 0)) {
+      throw new Error("yono.order.invalid_limit_price");
+    }
     const timestamp = nowIso();
     const order = this.repository.saveOrder({
       orderId: newId("yord"),
@@ -520,14 +547,16 @@ export const YONO_DOMAIN_DEFINITION: DomainDefinition = {
 };
 
 export function registerYonoDomain(registry: DomainRegistryService): DomainDefinition {
-  if (registry.get(YONO_DOMAIN_ID) != null) {
-    return registry.get(YONO_DOMAIN_ID)!;
+  const existing = registry.get(YONO_DOMAIN_ID);
+  if (existing != null) {
+    return existing;
   }
   return registry.register(YONO_DOMAIN_DEFINITION, { skipSmokeTest: true });
 }
 
 function scoreWords(text: string, words: readonly string[]): number {
-  return words.reduce((score, word) => score + (text.includes(word) ? 1 : 0), 0);
+  const normalizedWords = tokenizeText(text);
+  return words.reduce((score, word) => score + (normalizedWords.has(word) ? 1 : 0), 0);
 }
 
 function average(values: readonly number[], fallback: number): number {
@@ -539,6 +568,76 @@ function average(values: readonly number[], fallback: number): number {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+function deriveSignalProbability(yesScore: number, noScore: number): number {
+  const total = yesScore + noScore;
+  if (total === 0 || yesScore === noScore) {
+    return 0.5;
+  }
+  const diff = yesScore - noScore;
+  return clamp01(0.5 + (diff / Math.max(6, total * 3)));
+}
+
+function hasEvidenceMarker(text: string): boolean {
+  return /https?:\/\/\S+|evidence:|source:|official announcement|official source|onchain|dataset/.test(text);
+}
+
+function tokenizeText(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z0-9]+/i)
+      .filter((token) => token.length > 0),
+  );
+}
+
+function combineConsensusProbability(input: {
+  readonly marketProbability: number;
+  readonly commentSignalProbability: number;
+  readonly forecastProbability: number;
+  readonly signalCount: number;
+  readonly forecastCount: number;
+}): number {
+  const marketWeight = 1;
+  const signalWeight = Math.min(3, input.signalCount);
+  const forecastWeight = Math.min(3, input.forecastCount);
+  const totalWeight = marketWeight + signalWeight + forecastWeight;
+  return clamp01(
+    (
+      input.marketProbability * marketWeight
+      + input.commentSignalProbability * signalWeight
+      + input.forecastProbability * forecastWeight
+    ) / totalWeight,
+  );
+}
+
+function selectResolutionOutcome(market: YonoMarket, evidenceRefs: readonly string[]): YonoOutcome | null {
+  const normalizedEvidence = evidenceRefs.map((entry) => entry.toLowerCase());
+  for (const outcome of market.outcomes) {
+    const label = outcome.label.toLowerCase();
+    const type = outcome.type.toLowerCase();
+    if (normalizedEvidence.some((entry) => entry.includes(label) || entry.includes(type))) {
+      return outcome;
+    }
+  }
+  return market.outcomes[0] ?? null;
+}
+
+function deriveMarketRisk(
+  category: YonoCategory,
+  tags: readonly string[],
+  timeToCloseMs: number,
+): YonoMarket["risk"] {
+  const normalizedTags = new Set(tags.map((tag) => tag.toLowerCase()));
+  const manipulationRisk = timeToCloseMs <= 24 * 60 * 60 * 1000 ? "high" : normalizedTags.has("thin-liquidity") ? "medium" : "low";
+  const regulatoryRisk = normalizedTags.has("regulated") ? "high" : category === "macro" ? "medium" : "low";
+  return {
+    manipulationRisk,
+    resolutionRisk: normalizedTags.has("subjective") ? "high" : "medium",
+    ambiguityRisk: normalizedTags.has("ambiguous") ? "high" : "medium",
+    regulatoryRisk,
+  };
 }
 
 function createYonoWorkflowStep(stepName: string, toolHints: readonly string[], requiresReview: boolean) {

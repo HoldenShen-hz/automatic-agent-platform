@@ -275,7 +275,7 @@ test("LlmIntentParser uses provided model gateway", async () => {
   assert.equal(result.confidence, 0.88);
 });
 
-test("LlmIntentParser normalizes task_create confidence to minimum 0.82", async () => {
+test("LlmIntentParser preserves task_create confidence from validated model output", async () => {
   const mockGateway = {
     complete: async () => '{"intentType":"task_create","confidence":0.5}',
   };
@@ -285,7 +285,7 @@ test("LlmIntentParser normalizes task_create confidence to minimum 0.82", async 
   const result = await parser.parseWithLlm("test");
 
   assert.equal(result.intentType, "task_create");
-  assert.equal(result.confidence, 0.82);
+  assert.equal(result.confidence, 0.5);
 });
 
 test("LlmIntentParser falls back to heuristic on JSON parse error", async () => {

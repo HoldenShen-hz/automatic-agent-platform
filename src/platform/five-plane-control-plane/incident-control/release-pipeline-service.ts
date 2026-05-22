@@ -41,6 +41,7 @@ import {
 } from "./release-pipeline-support.js";
 
 export class ReleasePipelineService {
+  private static readonly DEFAULT_ENVIRONMENT_CONFIG_NAME = "default.json";
   private readonly repoRootDir: string;
   private readonly configRootDir: string;
   private readonly artifactStore: ArtifactStore;
@@ -85,13 +86,29 @@ export class ReleasePipelineService {
     if (this.environmentConfigCache?.cacheKey === cacheKey) {
       return this.environmentConfigCache.configs.map((config) => ({ ...config }));
     }
-    const configs = entries.map((entry) => {
+    const defaultEntryPath = join(this.configRootDir, ReleasePipelineService.DEFAULT_ENVIRONMENT_CONFIG_NAME);
+    const defaultConfig = existsSync(defaultEntryPath)
+      ? this.readEnvironmentConfigFile(defaultEntryPath)
+      : null;
+    const configs = entries
+      .filter((entry) => entry !== ReleasePipelineService.DEFAULT_ENVIRONMENT_CONFIG_NAME)
+      .map((entry) => {
       const path = join(this.configRootDir, entry);
-      const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
-      return this.validateEnvironmentConfig(path, parsed);
+      const parsed = this.readEnvironmentConfigFile(path);
+      return this.validateEnvironmentConfig(path, defaultConfig == null ? parsed : { ...defaultConfig, ...parsed });
     });
     this.environmentConfigCache = { cacheKey, configs };
     return configs.map((config) => ({ ...config }));
+  }
+
+  private readEnvironmentConfigFile(path: string): Record<string, unknown> {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
+    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new ValidationError("release.invalid_environment_config", "release.invalid_environment_config", {
+        details: { path },
+      });
+    }
+    return parsed as Record<string, unknown>;
   }
 
   /**

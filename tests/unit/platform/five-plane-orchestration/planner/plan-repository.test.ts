@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlanRepository } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/planner/plan-repository.js";
+import { PlanRepository } from "../../../../../src/platform/five-plane-orchestration/planner/plan-repository.js";
 
 function makePlan(overrides: Partial<{ planId: string; taskId: string; version: number }> = {}): {
   planId: string;

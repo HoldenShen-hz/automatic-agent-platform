@@ -15,7 +15,9 @@
   },
   "rateLimit": {
     "enabled": true,
-    "requestsPerMinute": 120
+    "requestsPerMinute": 120,
+    "perTenantRequestsPerMinute": 90,
+    "perPrincipalRequestsPerMinute": 60
   },
   "configDriftReconciler": {
     "interval": 300000

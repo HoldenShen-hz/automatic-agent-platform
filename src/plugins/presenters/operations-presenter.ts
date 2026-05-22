@@ -27,18 +27,21 @@ function formatRunbook(output: MachineOutput): string {
 }
 
 export function createOperationsPresenterPlugin(): DomainPresenterPlugin {
+  let initialized = false;
   return {
     pluginId: "plugin.operations.presenter",
     domainId: "operations",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.incident", "present.runbook"],
     async initialize() {
+      initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
     async formatOutput(input): Promise<HumanOutput> {

@@ -9,13 +9,10 @@
  * @see TenantPlatformService for the sync implementation
  */
 
-import { createRequire } from "node:module";
-
 import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-
-const require = createRequire(import.meta.url);
+import { TenantPlatformService } from "./tenant-platform-service.js";
 
 /**
  * Async Tenant Platform Service
@@ -36,10 +33,7 @@ export class TenantPlatformServiceAsync extends SyncBackedAsyncService<TenantPla
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    super(() => {
-      const { TenantPlatformService } = require("./tenant-platform-service.js");
-      return new TenantPlatformService(db, store);
-    });
+    super(() => new TenantPlatformService(db, store));
   }
 
   public async createWorkspaceAsync(

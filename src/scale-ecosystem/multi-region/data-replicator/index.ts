@@ -119,7 +119,7 @@ export interface DataReplicatorConfig {
   batchSize: number;
   flushIntervalMs: number;
   retryAttempts: number;
-  checksumAlgorithm: "sha256" | "md5";
+  checksumAlgorithm: "sha256";
   emit?: (targetRegionId: string, event: ReplicationEvent) => void;
   replicationOutboxStore?: ReplicationOutboxStore;
   compensateReplicationFailure?: ReplicationFailureCompensator;
@@ -238,7 +238,10 @@ class InMemoryReplicationOutboxStore implements ReplicationOutboxStore {
 // Checksum Utility
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function computeChecksum(payload: unknown, algorithm: "sha256" | "md5" = "sha256"): string {
+export function computeChecksum(payload: unknown, algorithm: "sha256" = "sha256"): string {
+  if (algorithm !== "sha256") {
+    throw new Error(`data_replicator.unsupported_checksum_algorithm:${algorithm}`);
+  }
   const data = JSON.stringify(payload);
   return createHash(algorithm).update(data).digest("hex");
 }

@@ -49,6 +49,21 @@ export const CHAOS_ARCHITECTURE_ANCHORS: ChaosArchitectureAnchor = {
   architectureRef: "docs_zh/architecture/02-code-architecture-reference.md",
 };
 
+export interface ChaosScenarioCatalogEntry {
+  readonly scenarioId: string;
+  readonly manifestPath: string;
+  readonly fallbackProfileId: string;
+  readonly faultType: FaultInjection["faultType"];
+}
+
+export interface ChaosFallbackProfile {
+  readonly profileId: string;
+  readonly faultType: FaultInjection["faultType"];
+  readonly intensity: number;
+  readonly durationMs: number;
+  readonly parameters: Readonly<Record<string, unknown>>;
+}
+
 export interface SteadyStateHypothesis {
   name: string;
   metricName: string;
@@ -68,6 +83,64 @@ export interface FaultInjection {
   durationMs: number;
   parameters: Readonly<Record<string, unknown>>;
 }
+
+export const DEFAULT_CHAOS_FALLBACK_PROFILES: readonly ChaosFallbackProfile[] = [
+  {
+    profileId: "network-delay-fallback",
+    faultType: "latency",
+    intensity: 0.5,
+    durationMs: 120000,
+    parameters: { latencyMs: 500, jitterMs: 100 },
+  },
+  {
+    profileId: "pod-kill-fallback",
+    faultType: "error",
+    intensity: 1,
+    durationMs: 30000,
+    parameters: { mode: "one" },
+  },
+  {
+    profileId: "postgres-disconnect-fallback",
+    faultType: "timeout",
+    intensity: 1,
+    durationMs: 60000,
+    parameters: { target: "postgres" },
+  },
+  {
+    profileId: "redis-disconnect-fallback",
+    faultType: "timeout",
+    intensity: 1,
+    durationMs: 60000,
+    parameters: { target: "redis" },
+  },
+] as const;
+
+export const DEFAULT_CHAOS_SCENARIO_CATALOG: readonly ChaosScenarioCatalogEntry[] = [
+  {
+    scenarioId: "network-delay",
+    manifestPath: "deploy/chaos/network-delay.yaml",
+    fallbackProfileId: "network-delay-fallback",
+    faultType: "latency",
+  },
+  {
+    scenarioId: "pod-kill",
+    manifestPath: "deploy/chaos/pod-kill.yaml",
+    fallbackProfileId: "pod-kill-fallback",
+    faultType: "error",
+  },
+  {
+    scenarioId: "postgres-disconnect",
+    manifestPath: "deploy/chaos/postgres-disconnect.yaml",
+    fallbackProfileId: "postgres-disconnect-fallback",
+    faultType: "timeout",
+  },
+  {
+    scenarioId: "redis-disconnect",
+    manifestPath: "deploy/chaos/redis-disconnect.yaml",
+    fallbackProfileId: "redis-disconnect-fallback",
+    faultType: "timeout",
+  },
+] as const;
 
 export interface ChaosExperiment {
   experimentId: string;
@@ -175,7 +248,14 @@ export type ChaosFaultExecutor = (params: {
   readonly fault: FaultInjection;
 }) => ChaosFaultInjectionResult;
 
+export type ChaosRollbackActionExecutor = (params: {
+  readonly experiment: ChaosExperiment;
+  readonly action: RollbackAction;
+  readonly signal: AbortSignal;
+}) => Promise<string> | string;
+
 export interface ChaosExperimentSchedulerOptions {
   readonly repository?: ChaosExperimentSchedulerRepository;
   readonly faultExecutor?: ChaosFaultExecutor;
+  readonly rollbackActionExecutor?: ChaosRollbackActionExecutor;
 }

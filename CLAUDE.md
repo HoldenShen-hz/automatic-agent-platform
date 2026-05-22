@@ -17,6 +17,8 @@ npm run test:integration
 npm run test:golden
 ```
 
+`npm run test:golden` validates targeted contract snapshots. A single golden test file can own multiple `.golden` fixtures, and the repo hygiene gate audits that every referenced snapshot exists.
+
 Single-test flow:
 
 ```bash

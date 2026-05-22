@@ -106,23 +106,9 @@ export class DurableWorkflowBuilderRepository implements WorkflowBuilderReposito
       return null;
     }
     try {
-      const outputs = JSON.parse(workflowState.outputsJson);
-      return {
-        draftId: outputs.draftId ?? draftId,
-        taskId: workflowState.taskId,
-        builderJson: outputs.builderJson ?? "{}",
-        createdAt: outputs.createdAt ?? workflowState.startedAt,
-        updatedAt: workflowState.updatedAt,
-      };
+      return parseStoredWorkflowBuilderRecord(workflowState);
     } catch {
-      // If parsing fails, return a record with the raw outputs
-      return {
-        draftId,
-        taskId: workflowState.taskId,
-        builderJson: workflowState.outputsJson,
-        createdAt: workflowState.startedAt,
-        updatedAt: workflowState.updatedAt,
-      };
+      return null;
     }
   }
 
@@ -188,6 +174,106 @@ export interface WorkflowBuilderSaveReview {
     readonly riskClass: RiskClass;
     readonly estimatedBudgetAmount: number;
     readonly timeoutMs: number;
+  };
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isVisualWorkflowBuilder(value: unknown): value is VisualWorkflowBuilder {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  const canvas = candidate["canvas"];
+  const validation = candidate["validation"];
+  const progressiveDisclosure = candidate["progressiveDisclosure"];
+  const livePreview = candidate["livePreview"];
+  if (typeof canvas !== "object" || canvas == null) {
+    return false;
+  }
+  const nodes = (canvas as Record<string, unknown>)["nodes"];
+  const edges = (canvas as Record<string, unknown>)["edges"];
+  if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+    return false;
+  }
+  if (!nodes.every((node) => {
+    if (typeof node !== "object" || node == null) {
+      return false;
+    }
+    const record = node as Record<string, unknown>;
+    return typeof record["nodeId"] === "string"
+      && typeof record["componentId"] === "string"
+      && typeof record["label"] === "string";
+  })) {
+    return false;
+  }
+  if (!edges.every((edge) => {
+    if (typeof edge !== "object" || edge == null) {
+      return false;
+    }
+    const record = edge as Record<string, unknown>;
+    return typeof record["fromNodeId"] === "string" && typeof record["toNodeId"] === "string";
+  })) {
+    return false;
+  }
+  if (typeof livePreview !== "object" || livePreview == null) {
+    return false;
+  }
+  const preview = livePreview as Record<string, unknown>;
+  if (
+    typeof preview["estimatedDuration"] !== "string"
+    || typeof preview["estimatedCost"] !== "string"
+    || typeof preview["riskAssessment"] !== "string"
+    || !isStringArray(preview["stepByStepDescription"])
+  ) {
+    return false;
+  }
+  if (typeof validation !== "object" || validation == null) {
+    return false;
+  }
+  const validationRecord = validation as Record<string, unknown>;
+  if (typeof validationRecord["valid"] !== "boolean" || !isStringArray(validationRecord["messages"])) {
+    return false;
+  }
+  if (typeof progressiveDisclosure !== "object" || progressiveDisclosure == null) {
+    return false;
+  }
+  const disclosure = progressiveDisclosure as Record<string, unknown>;
+  return (
+    (disclosure["level"] === "minimal" || disclosure["level"] === "guided" || disclosure["level"] === "governed")
+    && isStringArray(disclosure["hiddenCategories"])
+    && isStringArray(disclosure["defaultExpandedCategories"])
+  );
+}
+
+function parseStoredWorkflowBuilderRecord(
+  workflowState: {
+    readonly taskId: string;
+    readonly outputsJson: string;
+    readonly startedAt: string;
+    readonly updatedAt: string;
+  },
+): WorkflowBuilderRecord | null {
+  const envelope = JSON.parse(workflowState.outputsJson) as Record<string, unknown>;
+  if (
+    typeof envelope["draftId"] !== "string"
+    || typeof envelope["builderJson"] !== "string"
+    || typeof envelope["createdAt"] !== "string"
+  ) {
+    return null;
+  }
+  const parsedBuilder = JSON.parse(envelope["builderJson"]);
+  if (!isVisualWorkflowBuilder(parsedBuilder)) {
+    return null;
+  }
+  return {
+    draftId: envelope["draftId"],
+    taskId: workflowState.taskId,
+    builderJson: envelope["builderJson"],
+    createdAt: envelope["createdAt"],
+    updatedAt: workflowState.updatedAt,
   };
 }
 
@@ -690,7 +776,8 @@ export class WorkflowBuilderService {
       return null;
     }
     try {
-      return JSON.parse(record.builderJson) as VisualWorkflowBuilder;
+      const parsed = JSON.parse(record.builderJson) as unknown;
+      return isVisualWorkflowBuilder(parsed) ? parsed : null;
     } catch {
       return null;
     }

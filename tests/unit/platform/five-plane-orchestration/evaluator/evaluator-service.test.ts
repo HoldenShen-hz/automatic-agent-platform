@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EvaluatorService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/evaluator/evaluator-service.js";
-import type { PlanGraphBundle } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/executable-contracts/index.js";
-import type { FeedbackBatch } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import { EvaluatorService } from "../../../../../src/platform/five-plane-orchestration/evaluator/evaluator-service.js";
+import type { PlanGraphBundle } from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import type { FeedbackBatch } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function createMockPlanGraphBundle(overrides: Partial<PlanGraphBundle> = {}): PlanGraphBundle {
   const now = Date.now();

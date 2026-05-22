@@ -12,6 +12,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { EvalSqlDatabase } from "./eval-storage-port.js";
 import type {
   AbTestCaseEvaluation,
@@ -57,6 +58,7 @@ export type {
 } from "./llm-eval-types.js";
 
 type RawRow = Record<string, unknown>;
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 function inferProviderFamilyFromModel(modelId: string): string {
   const normalized = modelId.trim().toLowerCase();
@@ -627,7 +629,11 @@ export class LlmEvalService {
   private parseCases(suite: EvalSuiteRecord): EvalCaseDefinition[] {
     try {
       return JSON.parse(suite.cases) as EvalCaseDefinition[];
-    } catch {
+    } catch (error) {
+      logger.warn("llm_eval_service.parse_cases_failed", {
+        suiteId: suite.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return [];
     }
   }

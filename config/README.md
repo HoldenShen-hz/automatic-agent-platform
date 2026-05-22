@@ -15,6 +15,7 @@ Configuration is split by concern. Do not add new config files without a clear o
 - New security fields must be represented across all relevant `config/security/*.json` files.
 - New runtime fields must have default, test, staging/pre-prod, and prod behavior reviewed.
 - Environment differences must be documented in `docs_zh/reference/environment-configuration.md`.
+- Shared environment defaults belong in `config/environments/default.json`; per-environment files should only override environment-specific fields.
 
 ## Validation
 

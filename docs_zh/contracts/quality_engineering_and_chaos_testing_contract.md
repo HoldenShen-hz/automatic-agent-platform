@@ -84,6 +84,12 @@
 - 随机 OAPEFLIR stage 中断
 - 随机 rollout gate 阻断
 
+### 6.1 混沌场景清单与 fallback profile
+
+- `deploy/chaos/catalog.json` 是仓库内混沌场景清单的权威索引。
+- 每个场景都必须映射一个 scheduler 可识别的 fallback profile。
+- 默认 fallback profile 由 `src/ops-maturity/chaos/chaos-experiment-types.ts` 中的 `DEFAULT_CHAOS_FALLBACK_PROFILES` 维护。
+
 ## 7. 发布门禁
 
 发布前必须有：

@@ -84,6 +84,31 @@ function toRawWorkflowStepConfig(entry: Record<string, unknown>): RawWorkflowSte
   };
 }
 
+function normalizeResourceBoundaries(
+  value: unknown,
+  divisionId: string,
+): Record<string, unknown> | null {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+  const normalized = { ...value };
+  const rawBudgetLimit = normalized.budget_limit_per_task;
+  if (rawBudgetLimit != null) {
+    const numericBudgetLimit = typeof rawBudgetLimit === "number"
+      ? rawBudgetLimit
+      : Number.parseFloat(String(rawBudgetLimit));
+    if (!Number.isFinite(numericBudgetLimit) || numericBudgetLimit <= 0) {
+      throwDivisionValidationError("division.invalid_budget_limit_per_task", {
+        divisionId,
+        value: rawBudgetLimit,
+      });
+    }
+    normalized.budget_limit_per_task = numericBudgetLimit;
+    normalized.budget_limit_per_task_unit = "usd";
+  }
+  return normalized;
+}
+
 function toCompensationModel(value: unknown): MinimalWorkflowStep["compensationModel"] | undefined {
   switch (value) {
     case "idempotent_replay":
@@ -402,9 +427,10 @@ export class DivisionLoader {
       orchestrationWorkflowId,
       roles,
       workflows,
-      resourceBoundaries: isPlainObject(divisionConfig.resource_boundaries)
-        ? divisionConfig.resource_boundaries
-        : null,
+      resourceBoundaries: normalizeResourceBoundaries(
+        divisionConfig.resource_boundaries,
+        divisionConfig.id,
+      ),
       faultDomains: isPlainObject(divisionConfig.fault_domains)
         ? divisionConfig.fault_domains
         : null,

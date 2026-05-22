@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- Pending post-`0.1.0` repository hygiene, contract-governance, and review taxonomy updates that are not yet a packaged release.
+
 ## [0.1.0] - 2026-05-14
 
 - Added repository hygiene documentation for review maintenance, scripts, golden tests, deployment runbooks, chaos experiments, data output, platform symlinks, legacy runtime compatibility, domains, contracts, configuration, docs synchronization, and npm scripts.

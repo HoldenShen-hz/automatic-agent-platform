@@ -114,6 +114,48 @@ test("release pipeline service lists environment configs and builds immutable bu
   }
 });
 
+test("release pipeline service inherits shared environment defaults from default.json", async () => {
+  const workspace = createTempWorkspace("aa-release-pipeline-default-config-");
+  try {
+    const configRoot = join(workspace, "config", "environments");
+    const runtimeRoot = join(workspace, "config", "runtime");
+    await import("node:fs").then(({ mkdirSync, writeFileSync }) => {
+      mkdirSync(configRoot, { recursive: true });
+      mkdirSync(runtimeRoot, { recursive: true });
+      writeFileSync(join(runtimeRoot, "default.json"), "{}\n");
+      writeFileSync(join(configRoot, "default.json"), JSON.stringify({
+        registry: "registry.example.com",
+        imageRepository: "automatic-agent-shared",
+        configPath: "config/runtime/default.json",
+        deployWorkflowPath: ".github/workflows/deploy-environment.yml",
+        publishWorkflowPath: ".github/workflows/publish-image.yml",
+      }, null, 2));
+      writeFileSync(join(configRoot, "prod.json"), JSON.stringify({
+        environment: "prod",
+        deploymentNamespace: "automatic-agent-prod",
+        configBundleRef: "config-bundle://runtime/prod",
+        registryCredentialRef: "secret://system/registry/ghcr/prod",
+        deploymentCredentialRef: "secret://system/deploy/kubeconfig/prod",
+        clusterName: "prod-cluster",
+        allowedRolloutStrategies: ["blue_green"],
+      }, null, 2));
+    });
+
+    const service = new ReleasePipelineService({
+      repoRootDir: REPO_ROOT,
+      configRootDir: configRoot,
+      artifactStoreOptions: { rootDir: join(workspace, "artifacts") },
+    });
+
+    const configs = service.listEnvironmentConfigs();
+    assert.equal(configs.length, 1);
+    assert.equal(configs[0]?.registry, "registry.example.com");
+    assert.equal(configs[0]?.imageRepository, "automatic-agent-shared");
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("release pipeline export writes json and markdown artifacts", async () => {
   const workspace = createTempWorkspace("aa-release-pipeline-export-");
   const dbPath = join(workspace, "release-pipeline-export.db");

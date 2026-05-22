@@ -5,6 +5,7 @@
 ## 配置来源
 
 - `config/environments/*.json`：环境级运行参数，例如 region、profile、服务开关。
+- `config/environments/default.json`：所有环境共享的非敏感默认值；各环境文件只覆盖差异项。
 - `config/security/*.json`：安全策略默认值，例如 approval、sandbox、认证和能力限制。
 - `.env.example`：本地环境变量模板，只允许空值或非敏感占位符。
 

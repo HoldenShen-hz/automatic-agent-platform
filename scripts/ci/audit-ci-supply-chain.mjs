@@ -12,7 +12,7 @@ function check(name, ok, detail) {
 
 const ci = read(".github/workflows/ci.yml");
 check("ci explicit permissions", /permissions:[\s\S]*contents:\s*read[\s\S]*security-events:\s*write/.test(ci), "CI declares least-privilege read plus CodeQL upload permission");
-check("ci concurrency", /concurrency:[\s\S]*cancel-in-progress:\s*true/.test(ci), "CI cancels superseded runs");
+check("ci concurrency", /concurrency:[\s\S]*cancel-in-progress:\s*\$\{\{\s*github\.event_name\s*!=\s*'schedule'\s*\}\}/.test(ci), "CI cancels superseded runs except for scheduled sweeps");
 check("ci npm ci", /run:\s*npm ci/.test(ci), "CI installs from lockfile");
 check("ci npm audit sarif pipeline", /npm audit --audit-level=high --omit=dev --json/.test(ci) && /upload-sarif@v3/.test(ci), "CI converts npm audit findings into SARIF and uploads them");
 check("ci typecheck", /npm run typecheck/.test(ci), "CI runs typecheck");
@@ -42,7 +42,7 @@ const alertmanager = read("deploy/prometheus/alertmanager.yml");
 check("alertmanager critical route", /pagerduty-critical/.test(alertmanager) && /slack-warning/.test(alertmanager), "Alertmanager routes critical and warning alerts");
 
 const packageJson = read("package.json");
-check("package engines", /"engines":\s*{[\s\S]*"node":\s*">=20 <23"/.test(packageJson), "package declares Node support");
+check("package engines", /"engines":\s*{[\s\S]*"node":\s*">=22 <23"/.test(packageJson), "package declares Node 22 support");
 check("package lock present", existsSync("package-lock.json"), "package-lock.json exists");
 check("license present", existsSync("LICENSE") && /MIT License/.test(read("LICENSE")), "MIT LICENSE exists");
 

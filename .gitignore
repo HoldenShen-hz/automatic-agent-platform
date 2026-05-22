@@ -72,3 +72,14 @@ full-coverage/
 *.db-shm
 *.db-wal
 tests/**/*.db
+
+# Generated TypeScript output should not live under tests/helpers roots
+tests/**/*.test.js
+tests/**/*.test.js.map
+tests/**/*.test.d.ts
+tests/helpers/*.js
+tests/helpers/*.js.map
+tests/helpers/*.d.ts
+helpers/*.js
+helpers/*.js.map
+helpers/*.d.ts

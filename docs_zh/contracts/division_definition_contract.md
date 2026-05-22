@@ -76,6 +76,12 @@
 
 ## 7. 补充规则
 
+### 7.0 `resource_boundaries` 预算字段
+
+- `resource_boundaries.budget_limit_per_task` 若存在，单位固定为 `USD`。
+- 该字段必须是正数，表示单任务预算上限，而不是抽象分值。
+- loader 可以在运行时补入 `budget_limit_per_task_unit: "usd"` 作为规范化视图。
+
 ### 7.1 `AGENT.md` 加载
 
 - division 级 `AGENT.md` 仅补充该 division 的行为说明，不覆盖平台硬规则。

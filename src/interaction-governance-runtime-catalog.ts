@@ -27,10 +27,8 @@ export function buildInteractionGovernanceRuntimeCatalog(): InteractionGovernanc
 export function registerInteractionGovernanceRuntimeCatalog(
   registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): InteractionGovernanceRuntimeCatalog {
-  try {
+  if (registry.has(INTERACTION_GOVERNANCE_RUNTIME_CATALOG_SERVICE_ID)) {
     return registry.get<InteractionGovernanceRuntimeCatalog>(INTERACTION_GOVERNANCE_RUNTIME_CATALOG_SERVICE_ID);
-  } catch {
-    // Register lazily on first access.
   }
 
   const interaction = registerInteractionBootstrap(registry).catalog;

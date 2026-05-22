@@ -1,6 +1,7 @@
 # Architecture Decision Records (ADR)
 
 > This directory contains Architecture Decision Records (ADR) for the project. Each ADR records the background, considerations, and conclusions of important technical decisions.
+> `docs_zh/adr/README.md` and `docs_en/adr/README.md` must keep ADR numbers, status, and dates aligned; if body translation lags, track it under `docs_zh/reference/docs-sync.md`.
 
 ## ADR Index
 

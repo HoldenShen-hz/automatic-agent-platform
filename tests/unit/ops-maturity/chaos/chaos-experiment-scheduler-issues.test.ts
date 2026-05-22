@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { resolveRepoPath } from "../../../helpers/repo-root.js";
 
 import { ChaosExperimentScheduler, SteadyStateHypothesis } from "../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
 
@@ -102,7 +103,7 @@ test("ChaosExperimentScheduler: autoTerminateIfNeeded marks experiment as cancel
 test("ChaosExperimentScheduler source uses steadyStateCache field", async () => {
   const source = await import("node:fs");
   const text = source.readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/ops-maturity/chaos/chaos-experiment-scheduler.ts",
+    resolveRepoPath("src/ops-maturity/chaos/chaos-experiment-scheduler.ts"),
     "utf-8",
   );
   assert.equal(text.includes("private readonly steadyStateCache"), true);

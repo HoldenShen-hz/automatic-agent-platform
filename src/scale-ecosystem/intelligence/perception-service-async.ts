@@ -9,14 +9,11 @@
  * @see PerceptionService for the sync implementation
  */
 
-import { createRequire } from "node:module";
-
 import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { IntelItemRecord } from "../../platform/contracts/types/domain.js";
-
-const require = createRequire(import.meta.url);
+import { PerceptionService } from "./perception-service.js";
 
 /**
  * Async Perception Service
@@ -37,10 +34,7 @@ export class PerceptionServiceAsync extends SyncBackedAsyncService<PerceptionSer
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    super(() => {
-      const { PerceptionService } = require("./perception-service.js");
-      return new PerceptionService(db, store);
-    });
+    super(() => new PerceptionService(db, store));
   }
 
   public async registerSourceAsync(

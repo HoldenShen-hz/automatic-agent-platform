@@ -25,18 +25,20 @@ function buildQuery(intent: string, context: Record<string, unknown>): string {
 }
 
 export function createGrowthRetrieverPlugin(): DomainRetrieverPlugin {
+  let initialized = false;
   return {
     pluginId: "plugin.growth.retriever",
     domainId: "growth",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "growth.playbook_search"],
     async initialize() {
-      // No-op: knowledge plane is available immediately
+      initialized = true;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
     async retrieve(query) {

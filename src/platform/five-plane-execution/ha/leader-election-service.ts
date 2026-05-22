@@ -117,6 +117,8 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
   private heartbeatIntervalHandle: ReturnType<typeof setInterval> | null = null;
   private readonly retryTimeoutHandles = new Set<ReturnType<typeof setTimeout>>();
   private attemptElectionPromise: Promise<void> | null = null;
+  private renewalInFlight = false;
+  private heartbeatInFlight = false;
   private disposed: boolean = false;
 
   // Config
@@ -587,7 +589,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
     }
 
     this.renewalIntervalHandle = setInterval(() => {
-      this.renewLeadership();
+      void this.runRenewalTick();
     }, this.config.leaseRenewalIntervalMs);
     this.renewalIntervalHandle.unref?.();
 
@@ -624,9 +626,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
     }
 
     this.heartbeatIntervalHandle = setInterval(() => {
-      if (typeof this.coordinatorCompat.updateNodeHeartbeat === "function") {
-        this.coordinatorCompat.updateNodeHeartbeat(this.effectiveNodeId, "active");
-      }
+      void this.runHeartbeatTick();
     }, this.config.heartbeatIntervalMs);
     this.heartbeatIntervalHandle.unref?.();
   }
@@ -644,14 +644,47 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
   /**
    * Renews the leadership lease.
    */
-  private renewLeadership(): void {
+  private async runHeartbeatTick(): Promise<void> {
+    if (this.heartbeatInFlight || this.disposed) {
+      return;
+    }
+    if (typeof this.coordinatorCompat.updateNodeHeartbeat !== "function") {
+      return;
+    }
+    this.heartbeatInFlight = true;
+    try {
+      await Promise.resolve(this.coordinatorCompat.updateNodeHeartbeat(this.effectiveNodeId, "active"));
+    } catch (error) {
+      logger.log({
+        level: "error",
+        message: "leader_election.heartbeat_error",
+        data: { error: error instanceof Error ? error.message : String(error) },
+      });
+    } finally {
+      this.heartbeatInFlight = false;
+    }
+  }
+
+  private async runRenewalTick(): Promise<void> {
+    if (this.renewalInFlight) {
+      return;
+    }
+    this.renewalInFlight = true;
+    try {
+      await this.renewLeadership();
+    } finally {
+      this.renewalInFlight = false;
+    }
+  }
+
+  private async renewLeadership(): Promise<void> {
     if (this.state !== "leader" || this.disposed) {
       this.stopRenewalLoop();
       return;
     }
 
     try {
-      const result = this.renewLeadershipCompat();
+      const result = await Promise.resolve(this.renewLeadershipCompat());
 
       if (result.renewed) {
         this.currentLease = result.lease;

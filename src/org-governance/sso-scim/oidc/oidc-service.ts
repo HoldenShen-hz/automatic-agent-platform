@@ -10,6 +10,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import { parseSafeOutboundUrl } from "../../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import type { OidcProviderConfig } from "./index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +138,11 @@ const DEFAULT_CONFIG: OidcServiceConfig = {
  */
 function isProductionEnvironment(): boolean {
   return process.env.NODE_ENV === "production";
+}
+
+function isOidcProviderUrlPolicyError(error: unknown): boolean {
+  return error instanceof Error
+    && /oidc\.(?:invalid_provider_url|blocked_provider_url)/.test(error.message);
 }
 
 /**
@@ -317,8 +323,9 @@ export class OidcIdentityService {
       // Network / transport failures are tolerated outside production so
       // local tests and non-production flows can still exercise session logic.
       if (
-        isProductionEnvironment() ||
-        (err instanceof Error && err.message.startsWith("oidc.userinfo_fetch_failed:"))
+        isOidcProviderUrlPolicyError(err)
+        || isProductionEnvironment()
+        || (err instanceof Error && err.message.startsWith("oidc.userinfo_fetch_failed:"))
       ) {
         throw err;
       }
@@ -628,7 +635,7 @@ export class OidcIdentityService {
       };
     } catch (err) {
       // §48: If in production and mock fallback disabled, propagate error
-      if (!this.config.allowMockFallback && isProductionEnvironment()) {
+      if (isOidcProviderUrlPolicyError(err) || (!this.config.allowMockFallback && isProductionEnvironment())) {
         throw err;
       }
       // In non-production, fall back to mock tokens
@@ -639,11 +646,15 @@ export class OidcIdentityService {
   }
 
   private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    const safeUrl = parseSafeOutboundUrl(url, {
+      invalid: "oidc.invalid_provider_url",
+      blocked: "oidc.blocked_provider_url",
+    });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.fetchTimeoutMs);
     timeout.unref?.();
     try {
-      return await fetch(url, { ...init, signal: controller.signal });
+      return await fetch(safeUrl, { ...init, signal: controller.signal });
     } finally {
       clearTimeout(timeout);
     }

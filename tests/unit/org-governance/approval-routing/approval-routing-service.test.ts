@@ -260,6 +260,21 @@ test("ApprovalRoutingService escalates when time threshold exceeded for high ris
   assert.ok(result.auditRecord.reasonCodes.includes("approval.escalated"));
 });
 
+test("ApprovalRoutingService rejects conditional approvers outside the matched org scope", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
+  const service = new ApprovalRoutingService({ orgNodes: nodes });
+
+  assert.throws(
+    () => service.planChain(
+      { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
+      "2026-04-20T00:00:00.000Z",
+      "2026-04-20T00:00:00.000Z",
+      { chainMode: "conditional", conditionalApproverIds: ["external-user"] },
+    ),
+    /approval_route\.conditional_approver_not_allowed:external-user/,
+  );
+});
+
 test("ApprovalRoutingService picks the most specific eligible escalation rule", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const escalationRules = [
@@ -511,13 +526,13 @@ test("ApprovalRoutingService builds parallel and conditional chain plans", () =>
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 600 },
     "2026-04-20T00:00:00.000Z",
     "2026-04-20T00:05:00.000Z",
-    { chainMode: "conditional", conditionalApproverIds: ["legal-reviewer"] },
+    { chainMode: "conditional", conditionalApproverIds: ["vp"] },
   );
 
   assert.equal(parallelPlan.steps.length, 1);
   assert.deepStrictEqual(parallelPlan.steps[0]?.approverIds, ["director", "vp"]);
-  assert.equal(conditionalPlan.steps.length, 3);
-  assert.deepStrictEqual(conditionalPlan.steps[2]?.approverIds, ["legal-reviewer"]);
+  assert.equal(conditionalPlan.steps.length, 2);
+  assert.deepStrictEqual(conditionalPlan.steps[1]?.approverIds, ["vp"]);
 });
 
 test("ApprovalRoutingService generates unique audit recordIds for same requester+node", () => {
