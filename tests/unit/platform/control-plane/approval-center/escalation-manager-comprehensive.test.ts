@@ -192,7 +192,7 @@ describe("EscalationManager", () => {
 
       assert.throws(() => {
         manager.resetDelegationTtl(delegation);
-      }, /max.*reset/);
+      }, /reset TTL more than 3 times/);
     });
 
     it("should throw when delegation not active", () => {
@@ -212,7 +212,7 @@ describe("EscalationManager", () => {
 
       assert.throws(() => {
         manager.resetDelegationTtl(delegation);
-      }, /not active/);
+      }, /inactive delegation/);
     });
   });
 
@@ -220,22 +220,11 @@ describe("EscalationManager", () => {
     it("should revoke an active delegation", () => {
       const manager = new EscalationManager();
 
-      const delegation = {
-        delegationId: "delegation-123",
-        fromApprover: "approver-1",
-        toApprover: "approver-2",
-        delegatedAt: nowIso(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        originalApprovalId: "approval-123",
-        ttlResetCount: 0,
-        maxTtlResets: 3,
-        status: DelegationStatus.ACTIVE,
-      };
-
-      manager.revokeDelegation("delegation-123");
+      const delegation = manager.createDelegation("approver-1", "approver-2", "approval-123");
+      manager.revokeDelegation(delegation.delegationId);
 
       // Delegation should now be revoked
-      const stored = manager.getDelegation("delegation-123");
+      const stored = manager.getDelegation(delegation.delegationId);
       assert.strictEqual(stored?.status, DelegationStatus.REVOKED);
     });
 
@@ -252,21 +241,10 @@ describe("EscalationManager", () => {
     it("should mark delegation as completed", () => {
       const manager = new EscalationManager();
 
-      const delegation = {
-        delegationId: "delegation-123",
-        fromApprover: "approver-1",
-        toApprover: "approver-2",
-        delegatedAt: nowIso(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        originalApprovalId: "approval-123",
-        ttlResetCount: 0,
-        maxTtlResets: 3,
-        status: DelegationStatus.ACTIVE,
-      };
+      const delegation = manager.createDelegation("approver-1", "approver-2", "approval-123");
+      manager.completeDelegation(delegation.delegationId);
 
-      manager.completeDelegation("delegation-123");
-
-      const stored = manager.getDelegation("delegation-123");
+      const stored = manager.getDelegation(delegation.delegationId);
       assert.strictEqual(stored?.status, DelegationStatus.COMPLETED);
     });
   });
@@ -283,8 +261,8 @@ describe("EscalationManager", () => {
     it("should return delegation when it exists", () => {
       const manager = new EscalationManager();
 
-      manager.createDelegation("approver-1", "approver-2", "approval-123");
-      const result = manager.getDelegation("delegation-1");
+      const delegation = manager.createDelegation("approver-1", "approver-2", "approval-123");
+      const result = manager.getDelegation(delegation.delegationId);
 
       assert.ok(result);
     });

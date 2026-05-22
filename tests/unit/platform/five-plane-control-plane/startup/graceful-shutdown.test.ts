@@ -170,7 +170,7 @@ test("addHandler() adds handler to the list", () => {
   assert.equal((shutdown as any).handlers[0].name, "test-handler");
 });
 
-test("addHandler() does not add handler while shutting down", () => {
+test("addHandler() throws while shutting down", () => {
   const shutdown = new GracefulShutdown();
   const handler1 = createPassingHandler("handler-1");
   const handler2 = createPassingHandler("handler-2");
@@ -178,8 +178,10 @@ test("addHandler() does not add handler while shutting down", () => {
   shutdown.addHandler(handler1);
   // Manually set shutting down state
   (shutdown as any).isShuttingDown = true;
-  shutdown.addHandler(handler2);
-
+  assert.throws(
+    () => shutdown.addHandler(handler2),
+    /Cannot add shutdown handler 'handler-2' while shutdown is in progress\./,
+  );
   assert.equal((shutdown as any).handlers.length, 1, "should not add handler during shutdown");
 });
 

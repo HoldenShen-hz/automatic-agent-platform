@@ -105,7 +105,7 @@ function validateDependencyGraph(taskIds: readonly string[], dependencyGraph: re
   }
 
   if (visited !== taskIds.length) {
-    throw new Error("goal_decomposer.llm_plan_invalid_cycle_detected");
+    throw new Error("goal_decomposer.invalid_llm_plan_cycle_detected");
   }
 }
 
@@ -373,7 +373,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     const parsed = JSON.parse(normalized) as SerializablePlan;
     assertJsonDepthWithinLimit(parsed, MAX_LLM_PLAN_JSON_DEPTH);
     if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.dependencyGraph)) {
-      throw new Error("goal_decomposer.llm_plan_invalid_shape");
+      throw new Error("goal_decomposer.invalid_llm_plan_shape");
     }
     parsed.tasks.forEach((task, index) => assertValidSerializableTask(task, index));
     const taskIds = parsed.tasks.map((_, index) => this.normalizeTaskReference("plan", String(index + 1)));

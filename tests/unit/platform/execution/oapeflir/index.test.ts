@@ -51,7 +51,6 @@ test("index exports RuntimePlanExecutionInput type", () => {
 });
 
 test("index exports RuntimePlanExecutor type as function type", () => {
-  assert.equal(typeof RuntimePlanExecutor, "type" || "undefined");
   // RuntimePlanExecutor should be compatible with the executeOapeflirRuntimePlan function
   const executor: RuntimePlanExecutor = executeOapeflirRuntimePlan;
   assert.equal(typeof executor, "function");

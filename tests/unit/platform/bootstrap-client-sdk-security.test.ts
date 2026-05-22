@@ -175,8 +175,8 @@ test("2000..2004: domain, gateway, entrypoint, runtime, and threat-model configs
   assert.equal(gatewaysDefault.tls.minVersion, "TLSv1.2");
   assert.equal(gatewaysDefault.tls.rejectUnauthorized, true);
 
-  assert.equal(runtimeDefault.maxToolCalls, 64);
-  assert.equal(runtimeDefault.maxAgentRounds, 32);
+  assert.equal(runtimeDefault.maxToolCalls, 32);
+  assert.equal(runtimeDefault.maxAgentRounds, 16);
 
   assert.match(architectureTypesSource, /export type PlatformStartupTargetKind = "summary" \| "demo" \| PlatformAppKind;/);
   assert.ok(!rootIndexSource.includes("PlatformRootEntryMode"));

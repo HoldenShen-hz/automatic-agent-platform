@@ -1,37 +1,19 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-22T06:20:05.010Z",
+  "generatedAt": "2026-05-22T06:49:33.293Z",
   "minimums": {
-    "lines": 70.6,
-    "statements": 70.6,
+    "lines": 70.7,
+    "statements": 70.7,
     "functions": 73.7,
     "branches": 77.1
   },
   "global": {
-    "lines": 70.6,
-    "statements": 70.6,
+    "lines": 70.7,
+    "statements": 70.7,
     "functions": 73.7,
     "branches": 77.1
   },
   "directories": {
-    "src/interaction/dashboard/contracts": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/dashboard/health-scorer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
     "src/interaction/goal-decomposer/dependency-graph": {
       "fileCount": 1,
       "metrics": {
@@ -141,42 +123,6 @@
       }
     },
     "src/platform/five-plane-execution/oapeflir": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/five-plane-orchestration/harness/constraints": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/five-plane-orchestration/harness/protocol": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/five-plane-orchestration/harness/sandbox": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/five-plane-orchestration/harness/types": {
       "fileCount": 2,
       "metrics": {
         "lines": 0,
@@ -932,6 +878,15 @@
         "branches": 90
       }
     },
+    "src/interaction/dashboard/health-scorer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 56.9,
+        "statements": 56.9,
+        "functions": 80,
+        "branches": 33.3
+      }
+    },
     "src/ops-maturity/multimodal/speech-processor": {
       "fileCount": 1,
       "metrics": {
@@ -1679,15 +1634,6 @@
         "branches": 70.8
       }
     },
-    "src/platform/five-plane-orchestration/agent-delegation": {
-      "fileCount": 11,
-      "metrics": {
-        "lines": 82.8,
-        "statements": 82.8,
-        "functions": 91.7,
-        "branches": 86.7
-      }
-    },
     "src/platform/prompt-engine/rollout": {
       "fileCount": 3,
       "metrics": {
@@ -1704,6 +1650,15 @@
         "statements": 82.9,
         "functions": 50,
         "branches": 100
+      }
+    },
+    "src/platform/five-plane-orchestration/agent-delegation": {
+      "fileCount": 11,
+      "metrics": {
+        "lines": 82.9,
+        "statements": 82.9,
+        "functions": 91.7,
+        "branches": 86.8
       }
     },
     "src/platform/five-plane-control-plane/incident-control": {
@@ -1781,10 +1736,10 @@
     "src/platform/prompt-engine/registry": {
       "fileCount": 3,
       "metrics": {
-        "lines": 84.1,
-        "statements": 84.1,
+        "lines": 83.9,
+        "statements": 83.9,
         "functions": 86.7,
-        "branches": 81.8
+        "branches": 81.4
       }
     },
     "src": {
@@ -3182,6 +3137,15 @@
         "branches": 100
       }
     },
+    "src/interaction/dashboard/contracts": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/ops-maturity/capacity-planner/simulator": {
       "fileCount": 1,
       "metrics": {
@@ -3461,6 +3425,15 @@
         "branches": 100
       }
     },
+    "src/platform/five-plane-orchestration/harness/constraints": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/platform/five-plane-orchestration/harness/context": {
       "fileCount": 1,
       "metrics": {
@@ -3533,8 +3506,35 @@
         "branches": 100
       }
     },
+    "src/platform/five-plane-orchestration/harness/protocol": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/five-plane-orchestration/harness/sandbox": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/platform/five-plane-orchestration/harness/toolbelt": {
       "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/five-plane-orchestration/harness/types": {
+      "fileCount": 2,
       "metrics": {
         "lines": 100,
         "statements": 100,

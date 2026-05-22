@@ -85,7 +85,7 @@ test("GracefulShutdown - addHandler adds to the list", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - addHandler warns when shutting down", () => {
+test("GracefulShutdown - addHandler throws while shutting down", () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
   });
@@ -108,8 +108,10 @@ test("GracefulShutdown - addHandler warns when shutting down", () => {
   // Start shutdown in background
   const shutdownPromise = shutdown.shutdown();
 
-  // Try to add handler while shutting down - should warn but not throw
-  shutdown.addHandler(handler2);
+  assert.throws(
+    () => shutdown.addHandler(handler2),
+    /Cannot add shutdown handler 'handler2' while shutdown is in progress\./,
+  );
 
   shutdownPromise.catch(() => {
     // Expected to fail since we're calling shutdown() inside handler

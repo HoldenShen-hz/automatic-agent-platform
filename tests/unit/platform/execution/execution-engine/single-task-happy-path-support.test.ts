@@ -69,7 +69,9 @@ test("createContext includes spanId when present", () => {
 
   const context = createContext(traceContext, "SPAN_TEST");
 
-  assert.equal(context.spanId, "span_abc");
+  assert.ok(context.spanId != null);
+  assert.notEqual(context.spanId, "span_abc");
+  assert.equal(context.parentSpanId, "span_abc");
 });
 
 test("createContext includes correlationId when present", () => {
@@ -106,8 +108,12 @@ test("HappyPathInput optional properties work correctly", () => {
   assert.equal(input.tenantId, "tenant_123");
 });
 
-test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS is frozen", () => {
-  assert.ok(Object.isFrozen(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS));
+test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS is typed as readonly defaults", () => {
+  assert.deepEqual(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS, {
+    memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
+    eventLoopLagThresholdMs: Number.POSITIVE_INFINITY,
+    tier1AckDegradedThreshold: 100,
+  });
 });
 
 test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS values are correct types", () => {

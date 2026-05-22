@@ -65,7 +65,7 @@ export interface ApiKeyServiceOptions {
   readonly hashPepper?: string;
 }
 
-type ApiKeyAuditAction = "generate" | "revoke" | "rotate" | "validate_fail" | "expire";
+type ApiKeyAuditAction = "revoke" | "rotate" | "expire";
 
 interface ApiKeyAuditEntry {
   readonly action: ApiKeyAuditAction;
@@ -113,25 +113,33 @@ export class ApiKeyService {
     const existingKeyIds = this.keyHashIndex.get(keyHash) ?? new Set<string>();
     existingKeyIds.add(record.keyId);
     this.keyHashIndex.set(keyHash, existingKeyIds);
-    this.appendAudit("generate", record.keyId, input.createdBy, record.createdAt);
-
     return { record, rawKey };
   }
 
   public validateApiKey(rawKey: string, tenantId?: string): ApiKeyValidationResult {
     const matchingRecords = this.findMatchingRecords(rawKey, tenantId);
     if (matchingRecords.length === 0) {
-      this.appendAudit("validate_fail", "api_key:unknown", "system", nowIso());
-      return { valid: false, keyId: null, ownerId: null, tenantId: null, scopes: [], reason: "invalid_key" };
+      return {
+        valid: false,
+        keyId: null,
+        ownerId: null,
+        tenantId: null,
+        scopes: [],
+        reason: tenantId == null ? "invalid_key" : "key_not_found",
+      };
+    }
+    if (tenantId == null && matchingRecords.length === 1) {
+      const siblingIds = this.keyHashIndex.get(matchingRecords[0]!.keyHash);
+      if ((siblingIds?.size ?? 0) > 1) {
+        return { valid: false, keyId: null, ownerId: null, tenantId: null, scopes: [], reason: "tenant_context_required" };
+      }
     }
     if (tenantId == null && matchingRecords.length > 1) {
-      this.appendAudit("validate_fail", matchingRecords[0]?.keyId ?? "api_key:unknown", "system", nowIso());
       return { valid: false, keyId: null, ownerId: null, tenantId: null, scopes: [], reason: "tenant_context_required" };
     }
     const record = matchingRecords[0]!;
 
     if (record.status !== "active") {
-      this.appendAudit("validate_fail", record.keyId, "system", nowIso());
       return { valid: false, keyId: record.keyId, ownerId: null, tenantId: record.tenantId, scopes: [], reason: `key_${record.status}` };
     }
 
@@ -209,7 +217,7 @@ export class ApiKeyService {
     return `aa_${randomBytes(32).toString("hex")}`;
   }
 
-  private hashKey(rawKey: string, tenantId: string): string {
+  private hashKey(rawKey: string, tenantId = "tenant:global"): string {
     return createHmac("sha256", this.hashPepper)
       .update(tenantId)
       .update("\u0000")

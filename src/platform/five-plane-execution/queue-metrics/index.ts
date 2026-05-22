@@ -145,7 +145,7 @@ export class QueueMetricCollector {
       dequeuedPerMinute: this.dequeued,
       throughputPerMinute: this.enqueued - this.dequeued,
       failureRate: this.enqueued > 0 ? this.failed / this.enqueued : 0,
-      successRate: this.enqueued > 0 ? (this.enqueued - this.failed) / this.enqueued : 0,
+      successRate: this.enqueued > 0 ? (this.enqueued - this.failed) / this.enqueued : 1,
     };
   }
 

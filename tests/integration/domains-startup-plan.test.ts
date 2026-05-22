@@ -7,7 +7,11 @@ import {
   DOMAINS_STARTUP_PLAN_SERVICE_ID,
   type DomainsStartupPlan,
 } from "../../src/domains-startup-plan.js";
-import { registerDomainsBootstrap } from "../../src/domains/domains-bootstrap.js";
+import {
+  DOMAIN_RING_BOOTSTRAP_SERVICE_IDS,
+  registerDomainsBootstrap,
+  type DomainRingBootstrap,
+} from "../../src/domains/domains-bootstrap.js";
 import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-registry.js";
 
 test("buildDomainsStartupPlan returns correct structure", () => {
@@ -81,6 +85,28 @@ test("registered plan returns same instance on subsequent calls", async () => {
     const plan2 = registry.get<DomainsStartupPlan>(DOMAINS_STARTUP_PLAN_SERVICE_ID);
 
     assert.equal(plan1, plan2);
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("registerDomainsStartupPlan does not override ring bootstrap registrations", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    registerDomainsBootstrap(registry);
+    const ringBootstrapBefore = registry.get<DomainRingBootstrap>(
+      DOMAIN_RING_BOOTSTRAP_SERVICE_IDS.ring1,
+    );
+
+    registerDomainsStartupPlan(registry);
+
+    const ringBootstrapAfter = registry.get<DomainRingBootstrap>(
+      DOMAIN_RING_BOOTSTRAP_SERVICE_IDS.ring1,
+    );
+
+    assert.equal(ringBootstrapAfter, ringBootstrapBefore);
+    assert.equal(ringBootstrapAfter.ringId, "ring1");
+    assert.ok(Array.isArray(ringBootstrapAfter.baselines));
   } finally {
     await registry.reset();
   }

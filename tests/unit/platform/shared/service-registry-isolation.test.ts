@@ -122,7 +122,7 @@ test("ServiceRegistry topologicalSort throws for circular dependency", () => {
   );
 });
 
-test("ServiceRegistry reset clears instances and registrations", () => {
+test("ServiceRegistry reset clears instances but preserves registrations", async () => {
   const registry = new ServiceRegistry();
 
   registry.register("persist-registration", {
@@ -134,9 +134,12 @@ test("ServiceRegistry reset clears instances and registrations", () => {
   assert.equal(registry.isInitialized("persist-registration"), true);
 
   // Reset
-  registry.reset();
+  await registry.reset();
 
-  assert.throws(() => registry.get("persist-registration"), /not_registered/);
+  assert.equal(registry.isInitialized("persist-registration"), false);
+
+  const reinitialized = registry.get<{ value: number }>("persist-registration");
+  assert.equal(reinitialized.value, 1);
 });
 
 test("ServiceRegistry teardownAll handles missing teardown function", async () => {

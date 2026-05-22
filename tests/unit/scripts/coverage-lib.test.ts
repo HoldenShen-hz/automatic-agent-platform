@@ -210,6 +210,44 @@ test("compareAgainstBaseline passes when coverage meets baseline", () => {
   assert.ok(result.failures.length === 0, "should have no failures");
 });
 
+test("compareAgainstBaseline tolerates small rounded drift between equivalent runs", () => {
+  const report = {
+    global: {
+      lines: { covered: 899, total: 1000, pct: 89.9 },
+      statements: { covered: 899, total: 1000, pct: 89.9 },
+      functions: { covered: 90, total: 100, pct: 90 },
+      branches: { covered: 833, total: 1000, pct: 83.3 },
+    },
+    directories: [
+      {
+        directory: "src/platform",
+        fileCount: 1,
+        metrics: {
+          lines: { covered: 828, total: 1000, pct: 82.8 },
+          statements: { covered: 828, total: 1000, pct: 82.8 },
+          functions: { covered: 917, total: 1000, pct: 91.7 },
+          branches: { covered: 867, total: 1000, pct: 86.7 },
+        },
+      },
+    ],
+  };
+
+  const baseline = {
+    minimums: { lines: 90, statements: 90, functions: 90, branches: 83.3 },
+    global: { lines: 90, statements: 90, functions: 90, branches: 83.3 },
+    directories: {
+      "src/platform": {
+        fileCount: 1,
+        metrics: { lines: 83.0, statements: 83.0, functions: 91.7, branches: 86.9 },
+      },
+    },
+  };
+
+  const result = compareAgainstBaseline(report, baseline);
+
+  assert.deepEqual(result.failures, []);
+});
+
 test("compareAgainstBaseline tracks untracked directories", () => {
   const report = {
     global: {

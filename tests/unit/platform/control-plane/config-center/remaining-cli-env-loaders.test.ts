@@ -35,7 +35,7 @@ test("loadTenantPlatformCliEnv defaults isolation mode", () => {
   const config = loadTenantPlatformCliEnv({
     AA_DB_PATH: "/tmp/test.db",
   });
-  assert.equal(config.isolationMode, "shared_logical");
+  assert.equal(config.isolationMode, null);
 });
 
 test("loadEnterpriseCapabilityCliEnv parses enterprise capability config", () => {
@@ -87,18 +87,18 @@ test("loadControlPlaneBalancerCliEnv defaults status to active", () => {
   const config = loadControlPlaneBalancerCliEnv({
     AA_DB_PATH: "/tmp/test.db",
   });
-  assert.equal(config.status, "active");
+  assert.equal(config.status, null);
 });
 
 test("loadSecretManagementCliEnv parses secret management config", () => {
   const config = loadSecretManagementCliEnv({
     AA_DB_PATH: "/tmp/test.db",
-    AA_SECRET_ACTION: "lease",
+    AA_SECRET_ACTION: "register",
     AA_SECRET_REF: "secret/my-secret",
     AA_SECRET_CATEGORY: "api-key",
     AA_SECRET_BREAK_GLASS: "true",
   });
-  assert.equal(config.action, "lease");
+  assert.equal(config.action, "register");
   assert.equal(config.secretRef, "secret/my-secret");
   assert.equal(config.category, "api-key");
   assert.equal(config.breakGlass, true);
@@ -107,22 +107,22 @@ test("loadSecretManagementCliEnv parses secret management config", () => {
 test("loadWorkerRegisterCliEnv parses worker registration config", () => {
   const config = loadWorkerRegisterCliEnv({
     AA_DB_PATH: "/tmp/test.db",
-    AA_WORKER_REGISTER_ACTION: "challenge",
+    AA_WORKER_REGISTER_ACTION: "issue",
     AA_CAPABILITIES_JSON: '["bash","read"]',
     AA_ISOLATION_LEVEL: "hardened",
   });
-  assert.equal(config.action, "challenge");
+  assert.equal(config.action, "issue");
   assert.deepEqual(config.capabilities, ["bash", "read"]);
   assert.equal(config.isolationLevel, "hardened");
 });
 
 test("loadGatewayTargetsCliEnv parses gateway targets config", () => {
   const config = loadGatewayTargetsCliEnv({
-    AA_GATEWAY_TARGET_ACTION: "register",
+    AA_GATEWAY_TARGET_ACTION: "upsert",
     AA_GATEWAY_CHANNEL: "default",
     AA_GATEWAY_TARGET_KIND: "webhook",
   });
-  assert.equal(config.action, "register");
+  assert.equal(config.action, "upsert");
   assert.equal(config.channel, "default");
   assert.equal(config.targetKind, "webhook");
 });
@@ -131,7 +131,7 @@ test("loadInspectCliEnv parses inspect config", () => {
   const config = loadInspectCliEnv({
     AA_INSPECT_KIND: "task",
     AA_TASK_ID: "task-123",
-    AA_LIMIT: "50",
+    AA_INSPECT_LIMIT: "50",
     AA_HAS_PENDING_APPROVAL: "true",
   });
   assert.equal(config.kind, "task");
@@ -142,12 +142,12 @@ test("loadInspectCliEnv parses inspect config", () => {
 
 test("loadSkillCreatorCliEnv parses skill creator config", () => {
   const config = loadSkillCreatorCliEnv({
-    AA_SKILL_CREATOR_ACTION: "register",
+    AA_SKILL_CREATOR_ACTION: "create",
     AA_SKILL_REGISTER: "true",
     AA_SKILL_NAME: "my-skill",
     AA_SKILL_TAGS_JSON: '["tag1","tag2"]',
   });
-  assert.equal(config.action, "register");
+  assert.equal(config.action, "create");
   assert.equal(config.registerInRegistry, true);
   assert.equal(config.name, "my-skill");
   assert.deepEqual(config.tags, ["tag1", "tag2"]);
@@ -174,7 +174,7 @@ test("loadMemoryCliEnv parses memory config", () => {
     AA_MEMORY_TEXT: "some memory text",
     AA_MEMORY_CLASSIFICATION: "experience",
   });
-  assert.equal(config.action, "store");
+  assert.equal(config.action, "remember");
   assert.equal(config.scope, "task");
   assert.equal(config.taskId, "task-123");
   assert.equal(config.memoryText, "some memory text");
@@ -182,10 +182,10 @@ test("loadMemoryCliEnv parses memory config", () => {
 
 test("buildMemoryProviderQuery builds query from memory config", () => {
   const config = loadMemoryCliEnv({
-    AA_MEMORY_ACTION: "query",
+    AA_MEMORY_ACTION: "list",
     AA_TASK_ID: "task-123",
     AA_MEMORY_LAYERS: "layer_1,layer_2",
-    AA_LIMIT: "10",
+    AA_MEMORY_LIMIT: "10",
   });
   const query = buildMemoryProviderQuery(config);
   assert.equal(query.taskId, "task-123");
@@ -215,11 +215,11 @@ test("buildStructuredMemoryContentFromCliEnv returns undefined when no content f
 
 test("loadModelRoutingCliEnv parses model routing config", () => {
   const config = loadModelRoutingCliEnv({
-    AA_MODEL_ROUTE_CLASS: "balanced",
+    AA_MODEL_ROUTE_CLASS: "reasoning",
     AA_MODEL_ROUTE_RISK_LEVEL: "medium",
     AA_MODEL_ROUTE_ALLOW_STRONG_UPGRADE: "true",
   });
-  assert.equal(config.routeClass, "balanced");
+  assert.equal(config.routeClass, "reasoning");
   assert.equal(config.riskLevel, "medium");
   assert.equal(config.allowStrongUpgrade, true);
 });

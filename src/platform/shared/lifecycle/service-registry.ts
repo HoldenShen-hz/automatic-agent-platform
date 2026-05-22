@@ -133,8 +133,9 @@ export class ServiceRegistry {
   public async reset(): Promise<void> {
     this.resetInProgress = true;
     this.initializing.clear();
-    ServiceRegistry.liveRegistries.delete(this);
-    if (ServiceRegistry._instance === this) {
+    const resettingSingleton = ServiceRegistry._instance === this;
+    if (resettingSingleton) {
+      ServiceRegistry.liveRegistries.delete(this);
       ServiceRegistry._instance = null;
     }
     const teardownEntries = [...this.instances].map(([name, instance]) => ({
@@ -159,7 +160,6 @@ export class ServiceRegistry {
     }
     await Promise.all(pending);
 
-    this.services.clear();
     this.instances.clear();
     this.resetInProgress = false;
   }
@@ -203,8 +203,8 @@ export class ServiceRegistry {
   public get<T>(name: string): T {
     if (this.resetInProgress) {
       throw new InternalAppError(
-        "service_registry.not_registered",
-        `service_registry.not_registered: ServiceRegistry: no service registered with name "${name}"`,
+        "service_registry.reset_in_progress",
+        `service_registry.reset_in_progress: Cannot get "${name}" while reset is in progress`,
         { source: "internal", details: { serviceName: name } },
       );
     }
@@ -216,6 +216,14 @@ export class ServiceRegistry {
    * Uses a visiting set to detect and prevent infinite loops on circular dependencies.
    */
   private getRecursive<T>(name: string, visiting: Set<string>): T {
+    if (visiting.has(name)) {
+      throw new InternalAppError(
+        "service_registry.circular_dependency",
+        `service_registry.circular_dependency: circular dependency detected while resolving "${name}"`,
+        { source: "internal", details: { serviceName: name, visiting: [...visiting, name] } },
+      );
+    }
+
     // Already initialized - return cached
     const cached = this.instances.get(name) as T | undefined;
     if (cached !== undefined) return cached;
@@ -238,11 +246,11 @@ export class ServiceRegistry {
     }
 
     // Initialize transitive dependencies first (depth-first)
-    if (registration.dependsOn && !visiting.has(name)) {
+    if (registration.dependsOn) {
       visiting.add(name);
       try {
         for (const dep of registration.dependsOn) {
-          if (this.services.has(dep) && !visiting.has(dep)) {
+          if (this.services.has(dep)) {
             this.getRecursive(dep, visiting);
           }
         }
@@ -272,7 +280,7 @@ export class ServiceRegistry {
   /**
    * Initializes all registered services eagerly.
    */
-  public async initializeAll(): Promise<void> {
+  public initializeAll(): void {
     for (const name of this.services.keys()) {
       this.get(name);
     }

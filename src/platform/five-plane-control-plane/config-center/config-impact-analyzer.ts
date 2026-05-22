@@ -436,6 +436,10 @@ export class ConfigImpactAnalyzer {
     blastRadius: number,
     changes: ConfigDiffEntry[],
   ): RolloutStrategy {
+    if (severity === "low" && changes.length <= 1) {
+      return "immediate";
+    }
+
     // Emergency override for critical security changes
     if (severity === "critical" && changes.some((c) => c.path.includes("security"))) {
       return "emergency_override";
@@ -516,7 +520,7 @@ export class ConfigImpactAnalyzer {
       SECURITY_SENSITIVE_KEYS.some((key) => c.path.includes(key))
     );
     if (securityChanges.length > 0) {
-      warnings.push(`Security-sensitive keys modified: ${securityChanges.map((c) => c.path).join(", ")}`);
+      warnings.push(`security-sensitive keys modified: ${securityChanges.map((c) => c.path).join(", ")}`);
     }
 
     // Warn about performance-sensitive changes

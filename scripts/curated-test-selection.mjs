@@ -96,6 +96,8 @@ const INCLUDED_PREFIXES = [
 const INCLUDED_FILES = new Set([
   "tests/integration/platform/interface/api/mission-routes.test.ts",
   "tests/integration/platform/interface/api/mission-task-binding.test.ts",
+  "tests/unit/interaction/dashboard-port.test.ts",
+  "tests/unit/interaction/dashboard/health-scorer/index.test.ts",
 ]);
 
 const EXCLUDED_FILES = new Set([

@@ -48,6 +48,23 @@ export interface ApprovalTimeoutExecutionResult {
   respondedAt: string;
 }
 
+function isApprovalRepositoryLike(value: unknown): value is Pick<ApprovalRepository, "listApprovalsByStatus" | "getApproval"> {
+  if (value == null || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.listApprovalsByStatus === "function"
+    && typeof candidate.getApproval === "function";
+}
+
+function isApprovalServiceLike(value: unknown): value is Pick<ApprovalService, "applyDecision"> {
+  if (value == null || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.applyDecision === "function";
+}
+
 /**
  * Scans for expired pending approvals and applies their timeout policy.
  *
@@ -71,10 +88,10 @@ export class ApprovalTimeoutExecutor {
     approvalRepoOrOptions?: ApprovalRepository | ApprovalTimeoutExecutorOptions,
     options: ApprovalTimeoutExecutorOptions = {},
   ) {
-    if (approvalServiceOrDb instanceof ApprovalService) {
+    if (approvalServiceOrDb instanceof ApprovalService || isApprovalServiceLike(approvalServiceOrDb)) {
       this.approvalService = approvalServiceOrDb;
       this.store = store;
-      this.approvalRepo = approvalRepoOrOptions instanceof ApprovalRepository
+      this.approvalRepo = approvalRepoOrOptions instanceof ApprovalRepository || isApprovalRepositoryLike(approvalRepoOrOptions)
         ? approvalRepoOrOptions
         : (() => {
           throw new Error("approval_timeout_executor.repository_required");

@@ -165,18 +165,18 @@ test("ServiceRegistry throws for unregistered service", () => {
   );
 });
 
-test("ServiceRegistry reset clears all services", () => {
+test("ServiceRegistry singleton reset returns a fresh registry instance", async () => {
   const registry = ServiceRegistry.getInstance();
   registry.register("reset-test-service", {
     init: () => ({ value: 1 }),
   });
   registry.get("reset-test-service");
   assert.equal(registry.isInitialized("reset-test-service"), true);
-  registry.reset();
-  assert.throws(
-    () => registry.get("reset-test-service"),
-    /ServiceRegistry: no service registered/
-  );
+  await registry.reset();
+
+  const nextRegistry = ServiceRegistry.getInstance();
+  assert.notStrictEqual(nextRegistry, registry);
+  assert.equal(nextRegistry.has("reset-test-service"), false);
 });
 
 // ============================================================================

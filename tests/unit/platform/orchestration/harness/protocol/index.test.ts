@@ -19,6 +19,11 @@ import type {
   WorkflowSleepLease,
 } from "../../../../../../src/platform/five-plane-orchestration/harness/protocol/index.js";
 
+test("protocol index loads as a runtime module", async () => {
+  const protocolModule = await import("../../../../../../src/platform/five-plane-orchestration/harness/protocol/index.js");
+  assert.equal(Object.keys(protocolModule).length, 0);
+});
+
 test("ContextSnapshot type can be used as interface", () => {
   const snapshot: ContextSnapshot = {
     taskId: "task-123",

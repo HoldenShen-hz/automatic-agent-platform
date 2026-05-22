@@ -62,7 +62,7 @@ test("DashboardWebSocketServer maxClients can be configured to zero", () => {
   const { clientId, ack } = registerClient(server, ["dashboard:operator"]);
 
   // Should reject immediately since maxClients is 0
-  assert.equal(clientId, "");
+  assert.equal(clientId, "rejected:max_clients");
   assert.equal(ack.type, "error");
 });
 

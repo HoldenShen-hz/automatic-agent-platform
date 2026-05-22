@@ -2,6 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { FeedbackEnvelope } from "../../../../../src/platform/five-plane-orchestration/harness/types/feedback-envelope.js";
 
+test("types/feedback-envelope.ts loads as a runtime module", async () => {
+  const feedbackEnvelopeModule = await import("../../../../../src/platform/five-plane-orchestration/harness/types/feedback-envelope.js");
+  assert.equal(Object.keys(feedbackEnvelopeModule).length, 0);
+});
+
 test("types/feedback-envelope.ts exports FeedbackEnvelope type", () => {
   const envelope: FeedbackEnvelope = {
     feedbackId: "feedback-123",

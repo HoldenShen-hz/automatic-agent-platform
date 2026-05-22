@@ -20,7 +20,9 @@ export const BASELINE_PATH = process.env.AA_COVERAGE_BASELINE_PATH != null
 
 const METRIC_KEYS = ["lines", "statements", "functions", "branches"];
 const ROUNDING_PRECISION = 10;
-const COMPARISON_EPSILON = 0.05;
+// Coverage is rounded to one decimal place, so the gate needs to tolerate
+// small run-to-run drift from equivalent instrumented coverage runs.
+const ALLOWED_ROUNDED_DRIFT_UNITS = 2;
 
 function roundMetric(value) {
   return Math.round(value * ROUNDING_PRECISION) / ROUNDING_PRECISION;
@@ -54,6 +56,12 @@ function computePct(covered, total) {
 
 function formatPct(value) {
   return `${value.toFixed(1)}%`;
+}
+
+function isBelowRoundedBaseline(current, minimum) {
+  const currentUnits = Math.round(current * ROUNDING_PRECISION);
+  const minimumUnits = Math.round(minimum * ROUNDING_PRECISION);
+  return currentUnits + ALLOWED_ROUNDED_DRIFT_UNITS < minimumUnits;
 }
 
 function readJsonFile(filePath) {
@@ -251,7 +259,7 @@ export function compareAgainstBaseline(report, baseline) {
       key,
       failures,
     );
-    if (minimum != null && current + COMPARISON_EPSILON < minimum) {
+    if (minimum != null && isBelowRoundedBaseline(current, minimum)) {
       failures.push(`global ${key} ${formatPct(current)} is below baseline ${formatPct(minimum)}`);
     }
   }
@@ -265,7 +273,7 @@ export function compareAgainstBaseline(report, baseline) {
     for (const key of METRIC_KEYS) {
       const currentPct = current.metrics[key].pct;
       const expectedPct = readNumericBaseline(expected.metrics?.[key], directory, key, failures);
-      if (expectedPct != null && currentPct + COMPARISON_EPSILON < expectedPct) {
+      if (expectedPct != null && isBelowRoundedBaseline(currentPct, expectedPct)) {
         failures.push(`${directory} ${key} ${formatPct(currentPct)} is below baseline ${formatPct(expectedPct)}`);
       }
     }

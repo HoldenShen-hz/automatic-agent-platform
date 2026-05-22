@@ -40,14 +40,12 @@ test("getOrCreateGlobalSingleton creates instance on first call", () => {
 
 test("getOrCreateGlobalSingleton returns existing instance on subsequent calls", () => {
   const slot = createGlobalSingletonSlot<string>();
-  const factory = () => "new-instance";
-
-  const instance1 = getOrCreateGlobalSingleton(slot, factory, { name: "test" });
-  const instance2 = getOrCreateGlobalSingleton(slot, factory, { name: "test" });
+  const instance1 = getOrCreateGlobalSingleton(slot, () => "new-instance", { name: "test" });
+  const instance2 = getOrCreateGlobalSingleton(slot, () => "replacement-instance", { name: "test" });
 
   assert.strictEqual(instance1, instance2);
-  assert.strictEqual(instance1, "test-instance");
-  assert.strictEqual(slot.instance, "test-instance");
+  assert.strictEqual(instance1, "new-instance");
+  assert.strictEqual(slot.instance, "new-instance");
 });
 
 test("getOrCreateGlobalSingleton throws when initialization in progress", () => {
@@ -82,12 +80,13 @@ test("getOrCreateGlobalSingleton accepts configuration fingerprint", () => {
 
 test("getOrCreateGlobalSingleton throws on configuration drift", () => {
   const slot = createGlobalSingletonSlot<string>();
-  slot.configurationFingerprint = "original-fingerprint";
-
-  const factory = () => "new-instance";
+  getOrCreateGlobalSingleton(slot, () => "original-instance", {
+    name: "test",
+    configurationFingerprint: "original-fingerprint",
+  });
 
   assert.throws(
-    () => getOrCreateGlobalSingleton(slot, factory, {
+    () => getOrCreateGlobalSingleton(slot, () => "new-instance", {
       name: "test",
       configurationFingerprint: "different-fingerprint",
     }),

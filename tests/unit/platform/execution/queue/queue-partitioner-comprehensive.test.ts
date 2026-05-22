@@ -180,7 +180,7 @@ test("QueuePartitioner.route enqueues job to correct partition", () => {
   const adapter = new MockQueueAdapter();
 
   partitioner.registerPartition({
-    name: "task-partition",
+    name: "queue:task",
     aggregateType: "task",
     priority: 1,
     consumerGroup: "cg-1",
@@ -225,7 +225,7 @@ test("QueuePartitioner.getPartitionStats returns stats for all registered partit
   const adapter = new MockQueueAdapter();
 
   partitioner.registerPartition({
-    name: "task-partition",
+    name: "queue:task",
     aggregateType: "task",
     priority: 1,
     consumerGroup: "cg-1",
@@ -247,7 +247,7 @@ test("QueuePartitioner.detectOverload returns empty array when no overload", () 
   const adapter = new MockQueueAdapter();
 
   partitioner.registerPartition({
-    name: "task-partition",
+    name: "queue:task",
     aggregateType: "task",
     priority: 1,
     consumerGroup: "cg-1",
@@ -273,7 +273,7 @@ test("QueuePartitioner.detectOverload detects when waiting + delayed exceeds max
   adapter.enqueue({ queueName: "queue:task", payload: { aggregateType: "task" } });
 
   partitioner.registerPartition({
-    name: "task-partition",
+    name: "queue:task",
     aggregateType: "task",
     priority: 1,
     consumerGroup: "cg-1",

@@ -35,8 +35,9 @@ export class MultiPartyApprovalService {
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
+    repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
   ) {
-    this.repository = createRuntimeLifecycleRepository(store);
+    this.repository = repository;
   }
 
   public createMultiPartyRequest(

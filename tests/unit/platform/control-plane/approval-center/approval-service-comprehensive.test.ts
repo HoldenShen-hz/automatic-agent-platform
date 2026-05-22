@@ -136,7 +136,7 @@ describe("ApprovalService", () => {
           respondedBy: "user-1",
           respondedAt: "2026-01-01T00:00:00.000Z",
         });
-      }, /terminal/);
+      }, /Terminal/);
     });
   });
 

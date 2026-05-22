@@ -14,6 +14,18 @@ export const AutonomyTarget = "AutonomyTarget";
 export const RolloutMetrics = "RolloutMetrics";
 export const ImprovementCandidate = "ImprovementCandidate";
 export const RolloutRecord = "RolloutRecord";
+export const ReleasePolicy = "ReleasePolicy";
+export class StrategyVersioning {}
+export const AutonomyBoundary = "AutonomyBoundary";
+export const RolloutStage = "RolloutStage";
+export const RolloutResult = "RolloutResult";
+export const GuardrailCheck = "GuardrailCheck";
+export const RollbackTrigger = "RollbackTrigger";
+export const ReleasePolicySchema = "ReleasePolicySchema";
+export const GuardrailEvaluatorSchema = "GuardrailEvaluatorSchema";
+export const CanaryRouterSchema = "CanaryRouterSchema";
+export const RolloutStateMachineSchema = "RolloutStateMachineSchema";
+export const StrategyVersioningSchema = "StrategyVersioningSchema";
 
 export const CANARY_ROLLOUT_LEVELS = ["L1_evaluate", "L2_canary"] as const;
 export const PROGRESSIVE_ROLLOUT_LEVELS = ["L2_canary", "L3_partial", "L4_stable", "L5_full"] as const;

@@ -13,25 +13,25 @@ export class ImprovementRollbackStateMachine {
     if (state !== "released") {
       throw new Error(`improvement.rollback_requires_released:${improvementId}`);
     }
-    return {
+    return Object.freeze({
       improvementId,
       fromState: state,
       toState: "rollback_pending",
       postmortemRequired: true,
       reasonCode: "improvement.rollback_pending",
-    };
+    });
   }
 
   public completeRollback(improvementId: string, state: ImprovementReleaseState): ImprovementRollbackReceipt {
     if (state !== "rollback_pending") {
       throw new Error(`improvement.rollback_complete_requires_pending:${improvementId}`);
     }
-    return {
+    return Object.freeze({
       improvementId,
       fromState: state,
       toState: "rolled_back",
       postmortemRequired: true,
       reasonCode: "improvement.rolled_back",
-    };
+    });
   }
 }

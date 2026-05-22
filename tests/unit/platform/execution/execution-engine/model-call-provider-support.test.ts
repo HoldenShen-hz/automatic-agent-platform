@@ -46,6 +46,7 @@ test("buildBudgetReservationRequest creates valid request", () => {
     messages: [],
     maxTokens: 4096,
     tenantId: "tenant_123",
+    harnessRunId: "harness_run:test-case",
     traceId: "trace_abc",
   };
   const policy = getDefaultBudgetPolicy();
@@ -56,7 +57,7 @@ test("buildBudgetReservationRequest creates valid request", () => {
   assert.equal(reservation.policy, policy);
   assert.equal(reservation.spend.nextEstimatedCostUsd, estimatedCost);
   assert.equal(reservation.tenantId, "tenant_123");
-  assert.ok(reservation.harnessRunId.includes("harness_run"));
+  assert.equal(reservation.harnessRunId, "harness_run:test-case");
   assert.equal(reservation.traceId, "trace_abc");
   assert.equal(reservation.emittedBy, "model_call_provider");
 });

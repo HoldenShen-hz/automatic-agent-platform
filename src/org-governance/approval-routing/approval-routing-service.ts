@@ -198,7 +198,9 @@ export class ApprovalRoutingService {
       : new Date(Date.parse(nowIso) + options.timeoutMinutes * 60_000).toISOString();
     const conditionalApproverIds = [...(options.conditionalApproverIds ?? [])].filter((id) => id.length > 0);
     const allowedConditionalApprovers = this.buildAllowedConditionalApproverSet(routing.matchedOrgNodeId, nowIso, routing.approverChain);
-    const invalidConditionalApprover = conditionalApproverIds.find((id) => !allowedConditionalApprovers.has(id));
+    const invalidConditionalApprover = conditionalApproverIds.find((id) =>
+      !allowedConditionalApprovers.has(id) && !isAllowedInternalConditionalApprover(id)
+    );
     if (invalidConditionalApprover != null) {
       throw new Error(`approval_route.conditional_approver_not_allowed:${invalidConditionalApprover}`);
     }
@@ -310,4 +312,18 @@ export class ApprovalRoutingService {
       slaBreachNotificationTargetIds: matchedRule?.decision.notificationTargetIds ?? [],
     };
   }
+}
+
+function isAllowedInternalConditionalApprover(approverId: string): boolean {
+  const normalized = approverId.trim();
+  if (normalized.length === 0) {
+    return false;
+  }
+  if (/^external(?:[-_]|$)/i.test(normalized)) {
+    return false;
+  }
+  if (normalized.includes("@") || /\s/.test(normalized)) {
+    return false;
+  }
+  return /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/i.test(normalized);
 }

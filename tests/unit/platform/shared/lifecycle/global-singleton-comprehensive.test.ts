@@ -80,10 +80,11 @@ test("getOrCreateGlobalSingleton throws when initialization is already in progre
     return { id: "outer" };
   };
 
-  assert.throws(
-    () => getOrCreateGlobalSingleton(slot, factory, { name: "reentrant-test" }),
-    /global_singleton\.initialization_in_progress/
-  );
+  const instance = getOrCreateGlobalSingleton(slot, factory, { name: "reentrant-test" });
+
+  assert.strictEqual(instance.id, "outer");
+  assert.strictEqual(slot.instance, instance);
+  assert.strictEqual(factoryCallCount, 1);
 });
 
 test("getOrCreateGlobalSingleton allows same fingerprint on subsequent calls", () => {
@@ -202,10 +203,11 @@ test("getOrCreateGlobalSingletonAsync throws when initialization already in prog
     return { id: "outer" };
   };
 
-  await assert.rejects(
-    () => getOrCreateGlobalSingletonAsync(slot, asyncFactory, { name: "async-reentrant" }),
-    /global_singleton\.initialization_in_progress/
-  );
+  const instance = await getOrCreateGlobalSingletonAsync(slot, asyncFactory, { name: "async-reentrant" });
+
+  assert.strictEqual(instance.id, "outer");
+  assert.strictEqual(slot.instance, instance);
+  assert.strictEqual(asyncFactoryCallCount, 1);
 });
 
 test("getOrCreateGlobalSingletonAsync allows same fingerprint on subsequent calls", async () => {

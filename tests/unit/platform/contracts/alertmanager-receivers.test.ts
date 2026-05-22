@@ -18,7 +18,8 @@ test("[SYS-OBS-5.3] alertmanager receivers expose dedicated transport configs", 
   };
   const receivers = new Map(config.receivers.map((receiver) => [receiver.name, receiver]));
 
-  assert.match(receivers.get("default-warning")?.webhook_configs?.[0]?.url ?? "", /api-server:3000\/v1\/alerts\/webhook/);
+  assert.equal(receivers.has("ops-null"), true);
+  assert.equal(receivers.get("slack-warning")?.webhook_configs?.length ?? 0, 0, "slack-warning should not use generic webhook_configs");
   assert.ok((receivers.get("slack-warning")?.slack_configs?.length ?? 0) > 0, "slack-warning should define slack_configs");
   assert.ok((receivers.get("pagerduty-critical")?.pagerduty_configs?.length ?? 0) > 0, "pagerduty-critical should define pagerduty_configs");
 });

@@ -1,4 +1,4 @@
-export type {
+export {
   RuntimePlanExecutionInput,
   RuntimePlanExecutor,
 } from "./runtime-plan-executor.js";

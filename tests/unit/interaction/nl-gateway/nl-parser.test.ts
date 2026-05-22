@@ -292,7 +292,7 @@ test("LlmIntentParser uses regex fallback for approve intent", async () => {
 });
 
 test("LlmIntentParser parses LLM response with task_create correctly", async () => {
-  // LLM response contains task_create - parseLlmResponse will find it
+  // Structured JSON responses preserve the model-provided confidence.
   const mockGateway = createMockModelGateway({
     complete: async () => '{"intentType":"task_create","confidence":0.6}',
   });
@@ -300,10 +300,9 @@ test("LlmIntentParser parses LLM response with task_create correctly", async () 
   const parser = new LlmIntentParser(mockGateway, true);
   const result = await parser.parseWithLlm("some message");
 
-  // parseLlmResponse extracts task_create from response and hardcodes confidence to 0.82
-  // 0.82 >= LLM_ACCEPT_THRESHOLD (0.75), so result is task_create (NOT fallen back)
+  // parseWithLlm accepts valid JSON output directly rather than forcing the accept threshold here.
   assert.equal(result.intentType, "task_create");
-  assert.equal(result.confidence, 0.82);
+  assert.equal(result.confidence, 0.6);
 });
 
 test("LlmIntentParser uses regex fallback for status intent", async () => {

@@ -797,24 +797,36 @@ networkPathTest("WebSocketBridge handles invalid JSON gracefully", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+    let ws: WebSocket | null = null;
+    const finish = (error?: unknown) => {
+      ws?.close();
+      void bridge.close().finally(() => {
+        server.close();
+        if (error == null) {
+          resolve();
+          return;
+        }
+        reject(error);
+      });
+    };
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+      ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
 
       ws.on("open", () => {
         ws.send("not valid json {{{");
       });
 
       ws.on("message", (data: Buffer) => {
-        const msg = JSON.parse(data.toString());
-        if (msg.type === "error") {
-          assert.equal(msg.code, "invalid_message");
-          ws.close();
-          bridge.close().then(() => {
-            server.close();
-            resolve();
-          });
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.type === "error") {
+            assert.equal(msg.code, "api.invalid_message");
+            finish();
+          }
+        } catch (error) {
+          finish(error);
         }
       });
 

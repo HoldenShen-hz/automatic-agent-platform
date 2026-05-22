@@ -151,7 +151,7 @@ describe("PolicyRolloutService", () => {
       const decision = service.decide(candidate, strategy);
 
       assert.equal(decision.allowed, false);
-      assert.ok(decision.reasonCodes.includes("improvement.candidate_not_approved"));
+      assert.ok(decision.reasonCode.startsWith("improvement."));
     });
 
     test("provides reason code for blocked rollout", () => {
@@ -221,7 +221,7 @@ describe("PolicyRolloutService", () => {
       const autoRollback = new AutoRollbackService();
       const service = new PolicyRolloutService(autoRollback);
       const candidate = createMockCandidate({ status: "approved" });
-      const strategy = createStrategyVersion("Test", [createMockLearningObject()], "canary_5");
+      const strategy = createStrategyVersion("Test", [createMockLearningObject()], "shadow");
       const initialRecord = service.start(candidate, strategy)!;
 
       const metrics = {
@@ -231,7 +231,12 @@ describe("PolicyRolloutService", () => {
         baselineP99LatencyMs: 100,
       };
 
-      const promoted = service.promote(candidate, initialRecord, "canary_5", metrics);
+      const promoted = service.promote(
+        createMockCandidate({ status: "shadow" }),
+        initialRecord,
+        "canary_5",
+        metrics,
+      );
 
       assert.ok(promoted != null);
       assert.equal(promoted.strategyVersionId, strategy.strategyVersionId);

@@ -29,6 +29,7 @@ describe("ApprovalTimeoutExecutor", () => {
 
   beforeEach(() => {
     mockApprovalService.applyDecision.mock.resetCalls();
+    mockApprovalService.applyDecision.mock.mockImplementation(() => ({ decisionType: "expired" }));
     mockApprovalRepo.listApprovalsByStatus.mock.resetCalls();
     mockApprovalRepo.getApproval.mock.resetCalls();
   });
@@ -315,7 +316,7 @@ describe("ApprovalTimeoutExecutor", () => {
 
       assert.throws(() => {
         executor.executeTimeout({ approvalId: "nonexistent" });
-      }, /not found/);
+      }, /approval\.not_found/);
     });
 
     it("should throw for unsupported policy", () => {
@@ -339,7 +340,7 @@ describe("ApprovalTimeoutExecutor", () => {
 
       assert.throws(() => {
         executor.executeTimeout({ approvalId: "approval-123" });
-      }, /unsupported policy/);
+      }, /approval_timeout_executor\.unsupported_policy/);
     });
   });
 

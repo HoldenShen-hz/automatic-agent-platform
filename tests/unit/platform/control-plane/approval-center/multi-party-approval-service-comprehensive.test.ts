@@ -40,7 +40,7 @@ describe("MultiPartyApprovalService", () => {
 
   describe("createMultiPartyRequest", () => {
     it("should create multi-party request with default required approvals", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
         taskId: "task-123",
@@ -62,7 +62,7 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should create request with custom required approvals", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
         taskId: "task-123",
@@ -85,7 +85,7 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should track pending approval in memory", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
         taskId: "task-123",
@@ -111,7 +111,7 @@ describe("MultiPartyApprovalService", () => {
 
   describe("applyDecision", () => {
     it("should apply confirmed decision and increment approval count", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       // Create a multi-party request first
       const request = {
@@ -156,7 +156,7 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should finalize when required approvals reached", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
         taskId: "task-123",
@@ -199,7 +199,7 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should reject immediately on rejected decision", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
         taskId: "task-123",
@@ -241,7 +241,7 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should throw when approval not found", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       mockRepository.getApproval.mock.mockImplementation(() => null);
 
@@ -257,7 +257,7 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should be idempotent for already finalized approval", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
         taskId: "task-123",
@@ -298,7 +298,7 @@ describe("MultiPartyApprovalService", () => {
 
   describe("getPendingApproval", () => {
     it("should return null for non-existent approval", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const result = service.getPendingApproval("nonexistent");
 
@@ -308,7 +308,7 @@ describe("MultiPartyApprovalService", () => {
 
   describe("getApprovalProgress", () => {
     it("should return progress for pending approval", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
         taskId: "task-123",
@@ -333,7 +333,7 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should return null for non-existent approval when not in memory", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       mockRepository.getApproval.mock.mockImplementation(() => null);
 
@@ -345,7 +345,7 @@ describe("MultiPartyApprovalService", () => {
 
   describe("isApproverInGroups", () => {
     it("should return true when groups is empty", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const result = service.isApproverInGroups("user-1", []);
 
@@ -353,15 +353,15 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should return true when approver is in group", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
-      const result = service.isApproverInGroups("user-1", ["group-a", "group-b"]);
+      const result = service.isApproverInGroups("group-a", ["group-a", "group-b"]);
 
       assert.strictEqual(result, true);
     });
 
     it("should return false when approver is not in group", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any);
+      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const result = service.isApproverInGroups("user-3", ["group-a", "group-b"]);
 

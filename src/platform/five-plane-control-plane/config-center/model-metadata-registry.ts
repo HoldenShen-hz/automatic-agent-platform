@@ -53,15 +53,20 @@ export interface ModelMetadataRegistry {
  * @returns Path to the bundled models.bundled.json file
  * @throws ValidationError if no bundled file is found
  */
-function resolveBundledRegistryPath(): string {
+function bundledRegistryCandidates(configRoot?: string): string[] {
   const startDir = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
+  return [
+    ...(configRoot == null ? [] : [join(configRoot, "providers", "models.bundled.json")]),
     join(startDir, "../../../config/providers/models.bundled.json"),
     join(startDir, "../../../../config/providers/models.bundled.json"),
     join(startDir, "../../../../../config/providers/models.bundled.json"),
     join(process.cwd(), "config", "providers", "models.bundled.json"),
     join(process.cwd(), "..", "config", "providers", "models.bundled.json"),
   ];
+}
+
+function resolveBundledRegistryPath(configRoot?: string): string {
+  const candidates = bundledRegistryCandidates(configRoot);
   const bundledPath = candidates.find((candidate) => existsSync(candidate));
   if (bundledPath == null) {
     throw new ValidationError("config.model_registry_bundled_missing", "config.model_registry_bundled_missing");
@@ -234,8 +239,8 @@ function parseRegistry(raw: string, filePath: string): ModelMetadataRegistry {
  * Loads the bundled model registry from the filesystem.
  * @returns Parsed bundled registry
  */
-function loadBundledRegistry(): ModelMetadataRegistry {
-  const bundledPath = resolveBundledRegistryPath();
+function loadBundledRegistry(configRoot?: string): ModelMetadataRegistry {
+  const bundledPath = resolveBundledRegistryPath(configRoot);
   return parseRegistry(readFileSync(bundledPath, "utf8"), bundledPath);
 }
 
@@ -280,7 +285,7 @@ export const DEFAULT_MODEL_METADATA_REGISTRY: ModelMetadataRegistry = loadBundle
  * @returns Merged model metadata registry
  */
 export function loadModelMetadataRegistry(configRoot: string, sandboxPolicy: SandboxPolicy): ModelMetadataRegistry {
-  const bundled = loadBundledRegistry();
+  const bundled = loadBundledRegistry(configRoot);
   const registryPath = join(configRoot, "providers", "models.json");
   if (!existsSync(registryPath)) {
     return bundled;

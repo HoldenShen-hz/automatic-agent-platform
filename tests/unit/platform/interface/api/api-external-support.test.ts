@@ -5,10 +5,7 @@ import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("api-external-support exports nowIso", () => {
   assert.ok(nowIso !== undefined);
-  assert.equal(typeof nowIso, "string");
-  assert.ok(nowIso.length > 0);
-  // Should be valid ISO timestamp
-  assert.ok(new Date(nowIso).getTime() >= 0, "nowIso should be a valid date string");
+  assert.equal(typeof nowIso, "function");
 });
 
 test("nowIso returns current time in ISO format", () => {

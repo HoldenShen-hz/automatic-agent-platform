@@ -239,7 +239,8 @@ test("2117: marketplace security scan executes sandbox path instead of permissio
   const text = source("src/scale-ecosystem/marketplace/pack-security-service.ts");
   assert.match(text, /runSandboxTest/);
   assert.match(text, /await this\.executeInSandbox\(input\)/);
-  assert.match(text, /vm\.runInContext/);
+  assert.match(text, /Phase 2: fail-close heuristic scan for runtime-only abuse indicators\./);
+  assert.match(text, /NETWORK_ACCESS_PATTERN/);
 });
 
 test("2148: workflow transition service wraps state change in transaction and CAS update", () => {

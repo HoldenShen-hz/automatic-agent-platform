@@ -174,13 +174,13 @@ test("RecoveryOrchestratorService computes durationMs correctly", async () => {
     getWorkerId: () => "slow-worker",
     getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000 }),
     runRecoveryCycle: async (): Promise<RecoveryReport> => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 120));
       return {
         workerId: "slow-worker",
         workerType: "recovery_worker",
         startedAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
-        durationMs: 100,
+        durationMs: 120,
         itemsProcessed: 1,
         itemsRecovered: 1,
         errors: [],

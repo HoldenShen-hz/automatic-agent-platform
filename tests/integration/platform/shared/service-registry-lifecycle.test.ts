@@ -218,7 +218,7 @@ test("service-registry-lifecycle: isInitialized returns true after service is ac
   await registry.reset();
 });
 
-test("service-registry-lifecycle: reset clears instances and registrations", async () => {
+test("service-registry-lifecycle: reset clears instances but preserves registrations", async () => {
   const registry = new ServiceRegistry();
 
   registry.register("test.reset-check", {
@@ -233,12 +233,15 @@ test("service-registry-lifecycle: reset clears instances and registrations", asy
   // Reset
   await registry.reset();
 
-  // Both instance and registration are cleared after reset
+  // Instance is cleared after reset
   assert.equal(registry.isInitialized("test.reset-check"), false);
 
-  // Topological sort should not contain the service after reset
+  // Registration is preserved for scoped registries
   const sorted = registry.topologicalSort();
-  assert.ok(!sorted.includes("test.reset-check"), "Service should be removed from registry after reset");
+  assert.ok(sorted.includes("test.reset-check"), "Service should remain registered after reset");
+
+  const instance2 = registry.get<{ value: number }>("test.reset-check");
+  assert.equal(instance2.value, 42);
 
   await registry.reset();
 });

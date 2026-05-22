@@ -15,6 +15,11 @@ import type {
   WorkflowSleepLease,
 } from "../../../../../src/platform/five-plane-orchestration/harness/types/index.js";
 
+test("types/index.ts loads as a runtime module", async () => {
+  const harnessTypesModule = await import("../../../../../src/platform/five-plane-orchestration/harness/types/index.js");
+  assert.equal(Object.keys(harnessTypesModule).length, 0);
+});
+
 test("types/index.ts exports ConstraintPack", () => {
   const pack: ConstraintPack = {
     policyIds: ["policy-1"],

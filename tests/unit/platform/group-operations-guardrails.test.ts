@@ -55,7 +55,7 @@ test("R27-57 determineStatus uses the current region latency threshold instead o
     await new Promise((resolve) => setTimeout(resolve, 15));
     return {
       metrics: [
-        { metricName: "latency", value: 1, threshold: 5, isHealthy: true },
+        { metricName: "latency", value: 6, threshold: 5, isHealthy: false },
         { metricName: "error_rate", value: 0, threshold: 0.2, isHealthy: true },
       ],
     };

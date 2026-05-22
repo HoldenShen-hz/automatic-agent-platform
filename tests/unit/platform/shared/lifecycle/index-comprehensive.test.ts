@@ -88,7 +88,7 @@ test("ServiceRegistry has method works correctly from barrel import", () => {
   assert.strictEqual(registry.has("nonexistent-barrel-test"), false);
 });
 
-test("ServiceRegistry isInitialized method works from barrel import", () => {
+test("ServiceRegistry isInitialized method works from barrel import", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
@@ -103,7 +103,7 @@ test("ServiceRegistry isInitialized method works from barrel import", () => {
   assert.strictEqual(registry.isInitialized("barrel-init-test"), true);
 });
 
-test("ServiceRegistry topologicalSort works from barrel import", () => {
+test("ServiceRegistry topologicalSort works from barrel import", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 

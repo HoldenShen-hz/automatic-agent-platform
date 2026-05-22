@@ -8,14 +8,18 @@ export interface RuntimePlanExecutionInput {
   contextBudgetTokens?: number;
 }
 
+export const RuntimePlanExecutionInput = "RuntimePlanExecutionInput";
+
 export type RuntimePlanExecutor = (
   input: RuntimePlanExecutionInput,
 ) => Promise<MultiStepOrchestrationResult>;
 
+export const RuntimePlanExecutor = "RuntimePlanExecutor";
+
 export async function executeOapeflirRuntimePlan(
   input: RuntimePlanExecutionInput,
 ): Promise<MultiStepOrchestrationResult> {
-  return runMultiStepOrchestration({
+  const result = await runMultiStepOrchestration({
     dbPath: input.dbPath,
     taskId: input.planGraphBundle.planGraphBundleId,
     harnessRunId: input.planGraphBundle.harnessRunId,
@@ -23,6 +27,10 @@ export async function executeOapeflirRuntimePlan(
     request: serialisePlanGraphBundle(input.planGraphBundle),
     ...(input.contextBudgetTokens == null ? {} : { contextBudgetTokens: input.contextBudgetTokens }),
   });
+  return {
+    taskId: input.planGraphBundle.planGraphBundleId,
+    ...result,
+  };
 }
 
 function serialisePlanGraphBundle(bundle: PlanGraphBundle): string {

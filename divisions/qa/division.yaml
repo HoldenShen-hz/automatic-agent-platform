@@ -6,6 +6,7 @@ priority: 30
 default_workflow: qa_smoke_validation
 orchestration_workflow: qa_smoke_validation
 triggers:
+  - bug
   - smoke test
   - smoke validation
   - quick regression

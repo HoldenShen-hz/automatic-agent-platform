@@ -243,22 +243,22 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     // R5-18: Delegation chain depth limit (max=3)
     const maxDelegationDepth = this.options.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
     if (currentDepth > maxDelegationDepth) {
-      throw new Error(`goal_decomposer.depth_exceeded:delegation:${goal.goalId}:${currentDepth}:${maxDelegationDepth}`);
+      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDepth}:${maxDelegationDepth}`);
     }
     const currentDelegationDepth = Math.max(this.delegationDepth.get(goal.goalId) ?? 0, currentDepth);
     if (currentDelegationDepth >= maxDelegationDepth) {
-      throw new Error(`goal_decomposer.depth_exceeded:delegation:${goal.goalId}:${currentDelegationDepth}:${maxDelegationDepth}`);
+      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDelegationDepth}:${maxDelegationDepth}`);
     }
     this.delegationDepth.set(goal.goalId, currentDelegationDepth + 1);
 
     if (this.options.callDepth != null && currentDepth > this.options.callDepth) {
-      throw new Error(`goal_decomposer.depth_exceeded:call:${currentDepth}:${this.options.callDepth}`);
+      throw new Error(`goal_decomposer.call_depth_exceeded:${currentDepth}:${this.options.callDepth}`);
     }
 
     // R5-18: Global call depth cap (=8)
     const globalCallDepth = this.options.globalCallDepth ?? 0;
     if (globalCallDepth >= DEFAULT_GLOBAL_CALL_DEPTH_CAP) {
-      throw new Error(`goal_decomposer.depth_exceeded:global_call:${globalCallDepth}:${DEFAULT_GLOBAL_CALL_DEPTH_CAP}`);
+      throw new Error(`goal_decomposer.global_call_depth_exceeded:${globalCallDepth}:${DEFAULT_GLOBAL_CALL_DEPTH_CAP}`);
     }
 
     const constraintEnvelope = parseConstraintEnvelope(goal);

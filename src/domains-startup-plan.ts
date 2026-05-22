@@ -46,12 +46,6 @@ export function registerDomainsStartupPlan(
   registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): DomainsStartupPlan {
   const plan = buildDomainsStartupPlan();
-  for (const step of plan.steps) {
-    registry.register<DomainsStartupStep>(step.bootstrapServiceId, {
-      init: () => step,
-      dependsOn: [DOMAIN_RING_BOOTSTRAP_SERVICE_IDS[step.stepId]],
-    });
-  }
   registry.register<DomainsStartupPlan>(DOMAINS_STARTUP_PLAN_SERVICE_ID, {
     init: () => plan,
     dependsOn: [DOMAINS_BOOTSTRAP_SERVICE_ID, ...plan.steps.map((step) => step.bootstrapServiceId)],
