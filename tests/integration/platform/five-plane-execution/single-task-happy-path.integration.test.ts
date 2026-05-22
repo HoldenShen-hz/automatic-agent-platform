@@ -9,13 +9,17 @@ import { runSingleTaskExecution } from "../../../../src/platform/five-plane-exec
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_DB_DIR = join(__dirname, "../../../../.test-db");
 
+function createTestDbPath(name: string): string {
+  return join(TEST_DB_DIR, `${name}-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.db`);
+}
+
 test("integration: runSingleTaskExecution completes happy path", async () => {
   // Ensure test db directory exists
   if (!fs.existsSync(TEST_DB_DIR)) {
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `happy-path-${Date.now()}.db`);
+  const dbPath = createTestDbPath("happy-path");
 
   try {
     const snapshot = await runSingleTaskExecution({
@@ -48,7 +52,7 @@ test("integration: runSingleTaskExecution creates task and workflow records", as
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `happy-path-records-${Date.now()}.db`);
+  const dbPath = createTestDbPath("happy-path-records");
 
   try {
     const snapshot = await runSingleTaskExecution({
@@ -84,7 +88,7 @@ test("integration: runSingleTaskExecution handles admission queue decision", asy
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `happy-path-admission-${Date.now()}.db`);
+  const dbPath = createTestDbPath("happy-path-admission");
 
   try {
     // Use an admission policy that will cause queue decision
@@ -120,7 +124,7 @@ test("integration: runSingleTaskExecution persists step output", async () => {
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `happy-path-step-output-${Date.now()}.db`);
+  const dbPath = createTestDbPath("happy-path-step-output");
 
   try {
     const snapshot = await runSingleTaskExecution({

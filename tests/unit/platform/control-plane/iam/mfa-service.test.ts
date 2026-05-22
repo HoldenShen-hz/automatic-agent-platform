@@ -10,17 +10,25 @@ import {
   startMfaEnrollment,
   completeMfaEnrollment,
   getMfaCredentials,
+  getMfaStats,
   hasActiveMfa,
   createMfaChallenge,
   verifyMfaChallenge,
   disableMfa,
   operationRequiresMfa,
   DEFAULT_MFA_POLICY,
+  __dangerousResetMfaStateForTests,
+  __dangerousExpireEnrollmentSessionForTests,
+  __dangerousExpireVerificationChallengeForTests,
   type MfaPolicy,
   type MfaVerificationResult,
 } from "../../../../../src/platform/five-plane-control-plane/iam/mfa-service.js";
 
 const MFA_CODE_LENGTH = 6;
+
+test.beforeEach(() => {
+  __dangerousResetMfaStateForTests();
+});
 
 /**
  * Replicates the internal generateTotpCode logic for testing purposes.
@@ -137,11 +145,11 @@ test("completeMfaEnrollment rejects expired enrollment", () => {
     method: "totp",
   });
 
-  // Manually expire the enrollment by modifying internal state is not possible
-  // So we test with a non-existent enrollment ID
+  __dangerousExpireEnrollmentSessionForTests(enrollment.enrollmentId);
+
   assert.throws(() => {
     completeMfaEnrollment({
-      enrollmentId: "non-existent-id",
+      enrollmentId: enrollment.enrollmentId,
       verificationCode: "123456",
     });
   }, /enrollment_not_found/);
@@ -242,6 +250,55 @@ test("verifyMfaChallenge verifies correct code", () => {
   assert.equal(result.verified, true);
   assert.equal(result.status, "verified");
   assert.ok(result.attemptsRemaining > 0);
+});
+
+test("verifyMfaChallenge rejects expired challenge sessions", () => {
+  const principalId = "user-expired-challenge";
+  const enrollment = startMfaEnrollment({ principalId, method: "totp" });
+  const code = generateTotpCode(enrollment.secret);
+  completeMfaEnrollment({ enrollmentId: enrollment.enrollmentId, verificationCode: code });
+
+  const challenge = createMfaChallenge({
+    principalId,
+    method: "totp",
+    challengeType: "login",
+  });
+  __dangerousExpireVerificationChallengeForTests(challenge.challengeId);
+
+  assert.throws(
+    () => verifyMfaChallenge({ challengeId: challenge.challengeId, code }),
+    /challenge_not_found/,
+  );
+});
+
+test("getMfaStats reports active and locked credentials", () => {
+  const principalId = "user-mfa-stats";
+  const enrollment = startMfaEnrollment({ principalId, method: "totp" });
+  const baseTime = Date.now();
+  const originalDateNow = Date.now;
+  const code = generateTotpCode(enrollment.secret, baseTime);
+
+  completeMfaEnrollment({ enrollmentId: enrollment.enrollmentId, verificationCode: code });
+
+  Date.now = () => baseTime + 31_000;
+  const challenge = createMfaChallenge({
+    principalId,
+    method: "totp",
+    challengeType: "login",
+  });
+  const wrongCode = "000000" === code ? "999999" : "000000";
+  let lockedResult: MfaVerificationResult | null = null;
+  for (let attempt = 0; attempt < DEFAULT_MFA_POLICY.maxVerificationAttempts; attempt += 1) {
+    lockedResult = verifyMfaChallenge({ challengeId: challenge.challengeId, code: wrongCode });
+  }
+  Date.now = originalDateNow;
+
+  assert.equal(lockedResult?.status, "locked");
+  assert.deepEqual(getMfaStats(), {
+    totalEnrollments: 1,
+    activeCredentials: 1,
+    lockedAccounts: 1,
+  });
 });
 
 test("completeMfaEnrollment does not expose TOTP secret through credential metadata", () => {

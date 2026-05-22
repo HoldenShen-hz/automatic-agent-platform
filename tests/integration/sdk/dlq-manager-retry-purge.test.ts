@@ -203,6 +203,8 @@ test("2282: list gateway dead letters with channel filter", () => {
   const ctx = createIntegrationContext("aa-dlq-list-gw-");
   try {
     const storage = openPreparedStorage(ctx.dbPath);
+    const newerMovedAt = "2026-01-01T00:00:02.000Z";
+    const olderMovedAt = "2026-01-01T00:00:01.000Z";
 
     // Insert test data
     storage.sql.connection.prepare(`
@@ -213,7 +215,7 @@ test("2282: list gateway dead letters with channel filter", () => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       "msg_list_gw_1", "channel_list", "target_list", "{\"message\":\"list-1\"}", "timeout", "timeout error", 408, 2,
-      new Date().toISOString(), new Date().toISOString(), "http://example.com/list", "prov_list_1"
+      olderMovedAt, newerMovedAt, "http://example.com/list", "prov_list_1"
     );
 
     storage.sql.connection.prepare(`
@@ -224,7 +226,7 @@ test("2282: list gateway dead letters with channel filter", () => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       "msg_list_gw_2", "channel_list", "target_list_2", "{\"message\":\"list-2\"}", "error", "error message", 500, 1,
-      new Date().toISOString(), new Date().toISOString(), "http://example.com/list2", "prov_list_2"
+      olderMovedAt, olderMovedAt, "http://example.com/list2", "prov_list_2"
     );
 
     // Test listing with channel filter

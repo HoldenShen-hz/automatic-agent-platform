@@ -384,8 +384,10 @@ test("DelegationManager with custom options uses configured defaults", async () 
 
     const handle = await service.delegate(parent, spec);
 
-    // spec.timeout (120000) should be used, not defaultTimeout (60000)
-    assert.equal(handle.timeout, 120000);
+    // spec.timeout (120000) should be used, not defaultTimeout (60000).
+    // The exposed remaining timeout is computed after wall-clock time has advanced.
+    assert.ok(handle.timeout <= 120000);
+    assert.ok(handle.timeout >= 119000);
   } finally {
     ctx.cleanup();
   }

@@ -1583,7 +1583,6 @@ serialTest("drain-events CLI drains default consumers and clears pending tier1 a
 
 serialTest(
   "replay-events CLI replays failed consumer acknowledgements",
-  { skip: "Complex CLI integration test with environmental dependencies" },
   () => {
     const workspace = createTempWorkspace("aa-cli-replay-events-");
     const dbPath = join(workspace, "replay-events-cli.db");
@@ -1634,7 +1633,7 @@ serialTest(
       assert.equal(replayed[0]?.consumerId, "task_projection");
       assert.equal(replayed[0]?.outcome, "delivered");
       assert.equal(replayed[0]?.replayedFromHistoryCount, 1);
-      assert.equal(replayed[0]?.delivered, 0);
+      assert.equal(replayed[0]?.delivered, 1);
       assert.equal(replayed[0]?.failedBefore, 0);
       assert.equal(replayed[0]?.failedAfter, 0);
       assert.equal(replayed[0]?.pendingAfter, 0);

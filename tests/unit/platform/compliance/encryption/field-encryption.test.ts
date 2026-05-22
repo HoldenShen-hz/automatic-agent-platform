@@ -30,6 +30,170 @@ test("FieldEncryptionService protectRecord handles deeply nested paths", () => {
   assert.notStrictEqual(l4.data, "deep secret value");
 });
 
+test("FieldEncryptionService protectRecord encrypts array-indexed field paths", () => {
+  const service = new FieldEncryptionService();
+  const result = service.protectRecord({
+    record: {
+      users: [
+        { name: "Alice", phones: ["111-1111", "222-2222"] },
+        { name: "Bob", phones: ["333-3333"] },
+      ],
+    },
+    rules: [
+      { fieldPath: "users[0].name", classification: "confidential" },
+      { fieldPath: "users[0].phones[1]", classification: "restricted" },
+    ],
+    keyRef: "kms://tenant/array-index-key",
+  });
+
+  const users = (result.protectedRecord.users as Array<Record<string, unknown>>);
+  assert.equal(result.protectedFields.length, 2);
+  assert.notEqual(users[0]?.name, "Alice");
+  assert.notEqual((users[0]?.phones as string[])[1], "222-2222");
+  assert.equal(
+    service.revealField({ ciphertext: users[0]?.name as string, keyRef: "kms://tenant/array-index-key" }),
+    "Alice",
+  );
+  assert.equal(
+    service.revealField({
+      ciphertext: (users[0]?.phones as string[])[1] as string,
+      keyRef: "kms://tenant/array-index-key",
+    }),
+    "222-2222",
+  );
+});
+
+test("FieldEncryptionService protectRecord skips invalid array traversal paths", () => {
+  const service = new FieldEncryptionService();
+  const result = service.protectRecord({
+    record: {
+      user: {
+        profile: "not-an-object",
+      },
+      tags: "not-an-array",
+    },
+    rules: [
+      { fieldPath: "user.profile.name", classification: "internal" },
+      { fieldPath: "tags[0]", classification: "confidential" },
+    ],
+    keyRef: "kms://tenant/invalid-array-key",
+  });
+
+  assert.deepEqual(result.protectedRecord, {
+    user: {
+      profile: "not-an-object",
+    },
+    tags: "not-an-array",
+  });
+  assert.equal(result.protectedFields.length, 0);
+});
+
+test("FieldEncryptionService protectRecord tolerates malformed cloned roots and nested objects", () => {
+  const service = new FieldEncryptionService();
+  const originalStructuredClone = globalThis.structuredClone;
+
+  try {
+    globalThis.structuredClone = (() => "broken-root") as typeof structuredClone;
+    const rootResult = service.protectRecord({
+      record: {
+        user: {
+          name: "Alice",
+        },
+      },
+      rules: [{ fieldPath: "user.name", classification: "confidential" }],
+      keyRef: "kms://tenant/broken-root-key",
+    });
+    assert.equal(rootResult.protectedFields.length, 1);
+    assert.equal(rootResult.protectedRecord, "broken-root");
+
+    globalThis.structuredClone = (() => ({ user: {} })) as typeof structuredClone;
+    const nestedResult = service.protectRecord({
+      record: {
+        user: {
+          profile: {
+            name: "Alice",
+          },
+        },
+      },
+      rules: [{ fieldPath: "user.profile.name", classification: "confidential" }],
+      keyRef: "kms://tenant/broken-nested-key",
+    });
+
+    assert.equal(nestedResult.protectedFields.length, 1);
+    const nestedUser = nestedResult.protectedRecord.user as Record<string, unknown>;
+    const nestedProfile = nestedUser.profile as Record<string, unknown>;
+    assert.equal(
+      service.revealField({
+        ciphertext: nestedProfile.name as string,
+        keyRef: "kms://tenant/broken-nested-key",
+      }),
+      "Alice",
+    );
+  } finally {
+    globalThis.structuredClone = originalStructuredClone;
+  }
+});
+
+test("FieldEncryptionService protectRecord tolerates malformed cloned arrays and terminal containers", () => {
+  const service = new FieldEncryptionService();
+  const originalStructuredClone = globalThis.structuredClone;
+
+  try {
+    globalThis.structuredClone = (() => ({ users: {} })) as typeof structuredClone;
+    const nonArrayResult = service.protectRecord({
+      record: {
+        users: [{ name: "Alice" }],
+      },
+      rules: [{ fieldPath: "users[0].name", classification: "confidential" }],
+      keyRef: "kms://tenant/non-array-key",
+    });
+    assert.equal(nonArrayResult.protectedFields.length, 1);
+    assert.deepEqual(nonArrayResult.protectedRecord, { users: {} });
+
+    globalThis.structuredClone = (() => ({ users: [null] })) as typeof structuredClone;
+    const repairedArrayResult = service.protectRecord({
+      record: {
+        users: [{ name: "Alice" }],
+      },
+      rules: [{ fieldPath: "users[0].name", classification: "confidential" }],
+      keyRef: "kms://tenant/repaired-array-key",
+    });
+    const repairedUsers = repairedArrayResult.protectedRecord.users as Array<Record<string, unknown>>;
+    assert.equal(repairedArrayResult.protectedFields.length, 1);
+    assert.equal(
+      service.revealField({
+        ciphertext: repairedUsers[0]?.name as string,
+        keyRef: "kms://tenant/repaired-array-key",
+      }),
+      "Alice",
+    );
+
+    globalThis.structuredClone = (() => ({ users: {} })) as typeof structuredClone;
+    const terminalResult = service.protectRecord({
+      record: {
+        users: ["Alice"],
+      },
+      rules: [{ fieldPath: "users[0]", classification: "restricted" }],
+      keyRef: "kms://tenant/terminal-array-key",
+    });
+    assert.equal(terminalResult.protectedFields.length, 1);
+    assert.deepEqual(terminalResult.protectedRecord, { users: {} });
+
+    globalThis.structuredClone = (() => "broken-leaf") as typeof structuredClone;
+    const brokenLeafResult = service.protectRecord({
+      record: {
+        name: "Alice",
+      },
+      rules: [{ fieldPath: "name", classification: "internal" }],
+      keyRef: "kms://tenant/broken-leaf-key",
+    });
+    assert.equal(brokenLeafResult.protectedFields.length, 1);
+    assert.equal(brokenLeafResult.protectedRecord, "broken-leaf");
+  } finally {
+    globalThis.structuredClone = originalStructuredClone;
+  }
+});
+
 test("FieldEncryptionService protectRecord creates intermediate objects for existing paths", () => {
   const service = new FieldEncryptionService();
   const result = service.protectRecord({

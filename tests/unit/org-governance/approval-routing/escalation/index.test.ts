@@ -7,6 +7,7 @@ import { strict as assert } from "node:assert/strict";
 import {
   evaluateApprovalEscalation,
   shouldEscalateApproval,
+  traverseOrgHierarchy,
   type ApprovalEscalationRule,
 } from "../../../../../src/org-governance/approval-routing/escalation/index.js";
 
@@ -182,4 +183,71 @@ test("evaluateApprovalEscalation returns SLA breach notification targets when en
   assert.strictEqual(decision.shouldEscalate, true);
   assert.strictEqual(decision.shouldNotifySlaBreach, true);
   assert.deepStrictEqual(decision.notificationTargetIds, ["compliance", "oncall-manager"]);
+});
+
+test("traverseOrgHierarchy walks up to the nearest owner when the current node has none", () => {
+  const target = traverseOrgHierarchy(
+    "team-a",
+    [
+      { orgNodeId: "team-a", parentOrgNodeId: "dept-a", ownerUserIds: [] },
+      { orgNodeId: "dept-a", parentOrgNodeId: "org-root", ownerUserIds: ["director-1"] },
+      { orgNodeId: "org-root", parentOrgNodeId: null, ownerUserIds: ["vp-1"] },
+    ],
+    3,
+  );
+
+  assert.strictEqual(target, "director-1");
+});
+
+test("evaluateApprovalEscalation uses hierarchy fallback for SLA notification targets", () => {
+  const decision = evaluateApprovalEscalation(
+    createRule({
+      notifyOnSlaBreach: true,
+      slaBreachNotificationTargetIds: [],
+      maxEscalationDepth: 3,
+    }),
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    {
+      slaBreached: true,
+      orgNodeId: "team-a",
+      orgNodes: [
+        { orgNodeId: "team-a", parentOrgNodeId: "dept-a", ownerUserIds: [] },
+        { orgNodeId: "dept-a", parentOrgNodeId: null, ownerUserIds: ["director-1"] },
+      ],
+    },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, true);
+  assert.strictEqual(decision.shouldNotifySlaBreach, true);
+  assert.deepStrictEqual(decision.notificationTargetIds, ["director-1"]);
+});
+
+test("evaluateApprovalEscalation ignores invalid cooldown timestamps and null hierarchy targets", () => {
+  const decision = evaluateApprovalEscalation(
+    createRule({
+      cooldownMinutes: 15,
+      notifyOnSlaBreach: true,
+      slaBreachNotificationTargetIds: [],
+      maxEscalationDepth: 2,
+    }),
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    {
+      slaBreached: true,
+      lastEscalatedAtIso: "not-a-timestamp",
+      orgNodeId: "team-a",
+      orgNodes: [
+        { orgNodeId: "team-a", parentOrgNodeId: "dept-a", ownerUserIds: [] },
+        { orgNodeId: "dept-a", parentOrgNodeId: null, ownerUserIds: [] },
+      ],
+    },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, true);
+  assert.strictEqual(decision.shouldNotifySlaBreach, false);
+  assert.deepStrictEqual(decision.notificationTargetIds, []);
+  assert.strictEqual(decision.reason, "eligible");
 });

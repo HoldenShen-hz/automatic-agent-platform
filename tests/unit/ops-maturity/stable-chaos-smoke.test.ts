@@ -11,11 +11,13 @@ import {
   type StableChaosScenarioResult,
 } from "../../../src/platform/stability/stable-chaos-smoke.js";
 
-const TEST_OUTPUT_DIR = "/tmp/stable-chaos-smoke-test-ops-maturity";
+const TEST_OUTPUT_DIR_PREFIX = "/tmp/stable-chaos-smoke-test-ops-maturity";
 
-function cleanOutputDir() {
-  rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
-  mkdirSync(TEST_OUTPUT_DIR, { recursive: true });
+function prepareOutputDir(name: string): string {
+  const outputDir = `${TEST_OUTPUT_DIR_PREFIX}-${process.pid}-${name}`;
+  rmSync(outputDir, { recursive: true, force: true });
+  mkdirSync(outputDir, { recursive: true });
+  return outputDir;
 }
 
 test("runStableChaosSmoke exports are available", () => {
@@ -24,15 +26,15 @@ test("runStableChaosSmoke exports are available", () => {
 });
 
 test("runStableChaosSmoke runs all five scenarios", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("all-scenarios");
 
-  const report: StableChaosSmokeReport = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report: StableChaosSmokeReport = await runStableChaosSmoke({ outputDir });
 
   assert.equal(report.totalScenarios, 5);
   assert.equal(report.scenarios.length, 5);
   assert.ok(report.startedAt);
   assert.ok(report.finishedAt);
-  assert.equal(report.outputDir, TEST_OUTPUT_DIR);
+  assert.equal(report.outputDir, outputDir);
 
   const scenarioIds = report.scenarios.map((s) => s.scenarioId);
   assert.ok(scenarioIds.includes("stale_execution_repair"));
@@ -43,9 +45,9 @@ test("runStableChaosSmoke runs all five scenarios", async () => {
 });
 
 test("runStableChaosSmoke returns report with correct structure", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("report-structure");
 
-  const report: StableChaosSmokeReport = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report: StableChaosSmokeReport = await runStableChaosSmoke({ outputDir });
 
   assert.equal(typeof report.startedAt, "string");
   assert.equal(typeof report.finishedAt, "string");
@@ -56,9 +58,9 @@ test("runStableChaosSmoke returns report with correct structure", async () => {
 });
 
 test("runStableChaosSmoke stale_execution_repair scenario passes", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("stale-execution");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
   const scenario = report.scenarios.find((s) => s.scenarioId === "stale_execution_repair");
 
   assert.ok(scenario);
@@ -69,9 +71,9 @@ test("runStableChaosSmoke stale_execution_repair scenario passes", async () => {
 });
 
 test("runStableChaosSmoke orphan_session_cleanup scenario passes", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("orphan-session");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
   const scenario = report.scenarios.find((s) => s.scenarioId === "orphan_session_cleanup");
 
   assert.ok(scenario);
@@ -79,9 +81,9 @@ test("runStableChaosSmoke orphan_session_cleanup scenario passes", async () => {
 });
 
 test("runStableChaosSmoke orphan_queue_claim_reconciled_via_runtime_repair scenario passes", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("orphan-queue-claim");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
   const scenario = report.scenarios.find((s) => s.scenarioId === "orphan_queue_claim_reconciled_via_runtime_repair");
 
   assert.ok(scenario);
@@ -89,9 +91,9 @@ test("runStableChaosSmoke orphan_queue_claim_reconciled_via_runtime_repair scena
 });
 
 test("runStableChaosSmoke duplicate_approval_response_idempotent scenario passes", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("duplicate-approval");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
   const scenario = report.scenarios.find((s) => s.scenarioId === "duplicate_approval_response_idempotent");
 
   assert.ok(scenario);
@@ -99,9 +101,9 @@ test("runStableChaosSmoke duplicate_approval_response_idempotent scenario passes
 });
 
 test("runStableChaosSmoke missing_ack_rebuild_and_replay scenario passes", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("missing-ack");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
   const scenario = report.scenarios.find((s) => s.scenarioId === "missing_ack_rebuild_and_replay");
 
   assert.ok(scenario);
@@ -109,9 +111,9 @@ test("runStableChaosSmoke missing_ack_rebuild_and_replay scenario passes", async
 });
 
 test("runStableChaosSmoke tracks passed and failed counts", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("counts");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
 
   assert.equal(report.passedScenarios + report.failedScenarios, report.totalScenarios);
   assert.equal(report.passedScenarios, 5);
@@ -119,12 +121,13 @@ test("runStableChaosSmoke tracks passed and failed counts", async () => {
 });
 
 test("writeStableChaosSmokeReport writes valid JSON", () => {
-  const outputFile = join(TEST_OUTPUT_DIR, "report-output.json");
+  const outputDir = prepareOutputDir("write-report");
+  const outputFile = join(outputDir, "report-output.json");
 
   const report: StableChaosSmokeReport = {
     startedAt: new Date().toISOString(),
     finishedAt: new Date().toISOString(),
-    outputDir: TEST_OUTPUT_DIR,
+    outputDir,
     totalScenarios: 2,
     passedScenarios: 2,
     failedScenarios: 0,
@@ -187,9 +190,9 @@ test("runStableChaosSmoke creates output directory if not exists", async () => {
 });
 
 test("runStableChaosSmoke scenario details contain before and after status", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("scenario-details");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
   const staleScenario = report.scenarios.find((s) => s.scenarioId === "stale_execution_repair");
 
   assert.ok(staleScenario);
@@ -200,9 +203,9 @@ test("runStableChaosSmoke scenario details contain before and after status", asy
 });
 
 test("runStableChaosSmoke all scenarios have durationMs", async () => {
-  cleanOutputDir();
+  const outputDir = prepareOutputDir("durations");
 
-  const report = await runStableChaosSmoke({ outputDir: TEST_OUTPUT_DIR });
+  const report = await runStableChaosSmoke({ outputDir });
 
   report.scenarios.forEach((scenario) => {
     assert.ok(typeof scenario.durationMs === "number");

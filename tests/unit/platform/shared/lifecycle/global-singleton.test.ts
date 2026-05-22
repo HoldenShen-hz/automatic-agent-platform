@@ -64,3 +64,23 @@ test("getOrCreateGlobalSingletonAsync also enforces configuration drift fail-clo
     /global_singleton\.configuration_drift:async-singleton/,
   );
 });
+
+test("getOrCreateGlobalSingleton fails closed while initialization is already in progress", () => {
+  const slot = createGlobalSingletonSlot<{ id: string }>();
+  slot.initializing = true;
+
+  assert.throws(
+    () => getOrCreateGlobalSingleton(slot, () => ({ id: "unexpected" }), { name: "busy-singleton" }),
+    /global_singleton\.initialization_in_progress:busy-singleton/,
+  );
+});
+
+test("getOrCreateGlobalSingletonAsync fails closed while initialization is already in progress", async () => {
+  const slot = createGlobalSingletonSlot<{ id: string }>();
+  slot.initializing = true;
+
+  await assert.rejects(
+    () => getOrCreateGlobalSingletonAsync(slot, async () => ({ id: "unexpected" }), { name: "busy-async-singleton" }),
+    /global_singleton\.initialization_in_progress:busy-async-singleton/,
+  );
+});

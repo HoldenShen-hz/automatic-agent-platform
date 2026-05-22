@@ -15,12 +15,15 @@ import {
 } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 const TEST_DB_DIR = "/tmp/five-plane-state-evidence-integration-test";
-const TEST_DB_PATH = join(TEST_DB_DIR, "truth-integration.db");
 
-function cleanupTestDb() {
+function createTestDbPath(name: string): string {
+  return join(TEST_DB_DIR, `${name}-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.db`);
+}
+
+function cleanupTestDb(dbPath: string) {
   try {
-    if (existsSync(TEST_DB_PATH)) {
-      unlinkSync(TEST_DB_PATH);
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
     }
   } catch {
     // ignore cleanup errors
@@ -28,14 +31,15 @@ function cleanupTestDb() {
 }
 
 test("integration: SqliteDatabase full lifecycle", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-integration");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
   db.migrate();
 
   assert.equal(db.backendType, "sqlite");
-  assert.ok(existsSync(TEST_DB_PATH));
+  assert.ok(existsSync(dbPath));
 
   const status = db.getSchemaStatus();
   assert.equal(status.upToDate, true);
@@ -44,14 +48,15 @@ test("integration: SqliteDatabase full lifecycle", () => {
   db.assertSchemaCurrent();
 
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: SqliteDatabase transaction commits changes", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-transaction-commit");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
   db.migrate();
 
   let committed = false;
@@ -67,14 +72,15 @@ test("integration: SqliteDatabase transaction commits changes", () => {
   assert.equal(result.value, "test_value");
 
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: SqliteDatabase transaction rollback on error", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-transaction-rollback");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
   db.migrate();
 
   let rolledBack = false;
@@ -95,14 +101,15 @@ test("integration: SqliteDatabase transaction rollback on error", () => {
   assert.equal(result, undefined);
 
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: SqliteDatabase readTransaction works", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-read-transaction");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
   db.migrate();
 
   db.transaction(() => {
@@ -116,28 +123,30 @@ test("integration: SqliteDatabase readTransaction works", () => {
   assert.equal(result.id, 42);
 
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: SqliteDatabase health check", async () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-health");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
   db.migrate();
 
   const health = await db.healthCheck();
   assert.equal(health, true);
 
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: SqliteDatabase integrity check", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-integrity");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
   db.migrate();
 
   const issues = db.integrityCheck();
@@ -145,16 +154,17 @@ test("integration: SqliteDatabase integrity check", () => {
   assert.deepEqual(issues, ["ok"], "Fresh database should return SQLite integrity ok");
 
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: multiple connections share same database", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-shared-connections");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db1 = new SqliteDatabase(TEST_DB_PATH);
+  const db1 = new SqliteDatabase(dbPath);
   db1.migrate();
-  const db2 = new SqliteDatabase(TEST_DB_PATH);
+  const db2 = new SqliteDatabase(dbPath);
 
   db1.transaction(() => {
     db1.connection.exec("CREATE TABLE test_shared (id INTEGER PRIMARY KEY, value TEXT)");
@@ -168,25 +178,27 @@ test("integration: multiple connections share same database", () => {
 
   db1.connection.close();
   db2.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: SqliteDatabase filePath is exposed", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-filepath");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
-  assert.equal(db.filePath, TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
+  assert.equal(db.filePath, dbPath);
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });
 
 test("integration: SqliteDatabase backend type is sqlite", () => {
-  cleanupTestDb();
+  const dbPath = createTestDbPath("truth-backend-type");
+  cleanupTestDb(dbPath);
   mkdirSync(TEST_DB_DIR, { recursive: true });
 
-  const db = new SqliteDatabase(TEST_DB_PATH);
+  const db = new SqliteDatabase(dbPath);
   assert.equal(db.backendType, "sqlite");
   db.connection.close();
-  cleanupTestDb();
+  cleanupTestDb(dbPath);
 });

@@ -814,6 +814,82 @@ CREATE INDEX IF NOT EXISTS idx_data_namespaces_workspace_plane
   ON data_namespaces(workspace_id, plane, updated_at DESC);
 `);
         return true;
+      case 35:
+        this.ensureColumn(
+          "tasks",
+          "tenant_id",
+          "ALTER TABLE tasks ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.connection.exec(`
+CREATE INDEX IF NOT EXISTS idx_tasks_tenant_status_updated_at
+  ON tasks(tenant_id, status, updated_at DESC);
+`);
+        return true;
+      case 37:
+        this.ensureColumn(
+          "extension_packages",
+          "tenant_id",
+          "ALTER TABLE extension_packages ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "marketplace_reviews",
+          "tenant_id",
+          "ALTER TABLE marketplace_reviews ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "marketplace_publications",
+          "tenant_id",
+          "ALTER TABLE marketplace_publications ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "marketplace_governance_reports",
+          "tenant_id",
+          "ALTER TABLE marketplace_governance_reports ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "perception_sources",
+          "tenant_id",
+          "ALTER TABLE perception_sources ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "intel_items",
+          "tenant_id",
+          "ALTER TABLE intel_items ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "intel_briefs",
+          "tenant_id",
+          "ALTER TABLE intel_briefs ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "action_proposals",
+          "tenant_id",
+          "ALTER TABLE action_proposals ADD COLUMN tenant_id TEXT NULL;",
+        );
+        this.connection.exec(`
+DROP INDEX IF EXISTS idx_extension_packages_extension_version;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_extension_packages_tenant_extension_version
+  ON extension_packages(COALESCE(tenant_id, ''), extension_id, version);
+CREATE INDEX IF NOT EXISTS idx_extension_packages_tenant_updated_at
+  ON extension_packages(tenant_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_marketplace_reviews_tenant_submitted_at
+  ON marketplace_reviews(tenant_id, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_marketplace_publications_tenant_updated_at
+  ON marketplace_publications(tenant_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_marketplace_governance_reports_tenant_generated_at
+  ON marketplace_governance_reports(tenant_id, generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_perception_sources_tenant_enabled_priority
+  ON perception_sources(tenant_id, enabled, priority DESC, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intel_items_tenant_captured_at
+  ON intel_items(tenant_id, captured_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intel_items_tenant_importance_relevance
+  ON intel_items(tenant_id, importance DESC, relevance_score DESC, captured_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intel_briefs_tenant_generated_at
+  ON intel_briefs(tenant_id, generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_action_proposals_tenant_brief_created_at
+  ON action_proposals(tenant_id, brief_id, created_at DESC);
+`);
+        return true;
       case 44:
         this.connection.exec(migration.sql);
         this.ensureColumn(
