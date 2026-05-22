@@ -199,6 +199,32 @@ test("traverseOrgHierarchy walks up to the nearest owner when the current node h
   assert.strictEqual(target, "director-1");
 });
 
+test("traverseOrgHierarchy returns null when the current node cannot be resolved", () => {
+  const target = traverseOrgHierarchy(
+    "missing-node",
+    [{ orgNodeId: "dept-a", parentOrgNodeId: null, ownerUserIds: ["director-1"] }],
+    2,
+  );
+
+  assert.strictEqual(target, null);
+});
+
+test("traverseOrgHierarchy returns null when the owner slot is present but unset", () => {
+  const target = traverseOrgHierarchy(
+    "team-a",
+    [
+      {
+        orgNodeId: "team-a",
+        parentOrgNodeId: null,
+        ownerUserIds: [undefined] as unknown as readonly string[],
+      },
+    ],
+    1,
+  );
+
+  assert.strictEqual(target, null);
+});
+
 test("evaluateApprovalEscalation uses hierarchy fallback for SLA notification targets", () => {
   const decision = evaluateApprovalEscalation(
     createRule({
@@ -250,4 +276,88 @@ test("evaluateApprovalEscalation ignores invalid cooldown timestamps and null hi
   assert.strictEqual(decision.shouldNotifySlaBreach, false);
   assert.deepStrictEqual(decision.notificationTargetIds, []);
   assert.strictEqual(decision.reason, "eligible");
+});
+
+test("evaluateApprovalEscalation covers omitted defaults and missing notification target materialization", () => {
+  let readCount = 0;
+  const rule = {
+    ...createRule({
+      notifyOnSlaBreach: true,
+      maxEscalationDepth: undefined as unknown as number,
+      cooldownMinutes: undefined as unknown as number,
+      slaBreachNotificationTargetIds: undefined as unknown as string[],
+    }),
+    get slaBreachNotificationTargetIds() {
+      readCount += 1;
+      return readCount === 1 ? (["director-1"] as unknown as string[]) : undefined;
+    },
+  } as ApprovalEscalationRule;
+
+  const decision = evaluateApprovalEscalation(
+    rule,
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    {
+      slaBreached: true,
+      lastEscalatedAtIso: "2025-01-01T10:45:00Z",
+      orgNodeId: "team-a",
+      orgNodes: [{ orgNodeId: "team-a", parentOrgNodeId: null, ownerUserIds: [] }],
+    },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, true);
+  assert.strictEqual(decision.shouldNotifySlaBreach, false);
+  assert.deepStrictEqual(decision.notificationTargetIds, []);
+});
+
+test("evaluateApprovalEscalation uses zero cooldown when cooldownMinutes is omitted", () => {
+  const decision = evaluateApprovalEscalation(
+    {
+      ruleId: "rule-no-cooldown",
+      triggerAfterMinutes: 30,
+      escalateToApproverId: "escalation-manager",
+      appliesToRiskLevels: ["high", "critical"],
+      maxEscalationDepth: 1,
+      notifyOnSlaBreach: false,
+      slaBreachNotificationTargetIds: [],
+    },
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    {
+      lastEscalatedAtIso: "2025-01-01T10:45:00Z",
+    },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, true);
+  assert.strictEqual(decision.reason, "eligible");
+});
+
+test("evaluateApprovalEscalation treats missing notification target lists as empty", () => {
+  const rule = {
+    ruleId: "rule-no-notify-list",
+    triggerAfterMinutes: 30,
+    escalateToApproverId: "escalation-manager",
+    appliesToRiskLevels: ["high", "critical"],
+    maxEscalationDepth: 1,
+    notifyOnSlaBreach: true,
+    get slaBreachNotificationTargetIds() {
+      return undefined;
+    },
+  } as ApprovalEscalationRule;
+
+  const decision = evaluateApprovalEscalation(
+    rule,
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    {
+      slaBreached: true,
+    },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, true);
+  assert.strictEqual(decision.shouldNotifySlaBreach, true);
+  assert.deepStrictEqual(decision.notificationTargetIds, ["escalation-manager"]);
 });

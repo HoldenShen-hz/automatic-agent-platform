@@ -14,7 +14,12 @@ const missions: readonly MissionDTO[] = [{
   successCriteria: ["approved"],
   domainId: "coding",
   ownerPrincipalId: "user_001",
+  accountablePrincipalId: "user_101",
+  policyRefs: ["policy.release"],
+  riskProfileRef: "risk.release",
   budgetEnvelopeRef: "budget_001",
+  knowledgeBoundaryRef: "kb.release",
+  defaultWorkflowTemplateRefs: ["wf.release"],
   updatedAt: "2026-05-21T00:00:00.000Z",
 }, {
   missionId: "mis_002",
@@ -43,14 +48,38 @@ describe("Mission Console VM seams", () => {
     const cards = createMissionConsoleMobileCards({
       loading: false,
       ...mapMissionsToConsoleVm(missions, "mis_001"),
+      members: [{
+        membershipId: "mship_001",
+        missionId: "mis_001",
+        tenantId: "tenant_001",
+        principalType: "user",
+        principalId: "user_001",
+        role: "owner",
+        permissions: ["mission:read", "mission:execute"],
+        deniedPermissions: [],
+        status: "active",
+        grantedBy: "user_900",
+        grantedAt: "2026-05-21T00:00:00.000Z",
+        expiresAt: null,
+      }],
       tasks: [],
       runs: [],
       evidence: [{ id: "ev_001", missionId: "mis_001", type: "evidence", status: "recorded", title: "Snapshot", ref: "hash", updatedAt: "2026-05-21T00:00:00.000Z" }],
+      knowledge: [{ id: "know_001", missionId: "mis_001", type: "knowledge", status: "published", title: "Runbook", ref: "kb://release", updatedAt: "2026-05-21T00:00:00.000Z" }],
+      learning: [{ id: "learn_001", missionId: "mis_001", type: "learning", status: "pending_promotion", title: "Retrospective", ref: "learning://release", updatedAt: "2026-05-21T00:00:00.000Z" }],
       budget: null,
+      missionSettings: [],
+      knowledgeLearningSummary: [],
+      recommendedActions: [{ title: "Freeze mission", description: "Hard-stop runtime writes." }],
+      operatorNotices: [],
       selectMission() {},
     });
 
     expect(cards[0]?.evidenceCount).toBe(1);
     expect(cards[1]?.evidenceCount).toBe(0);
+    expect(cards[0]?.subtitle).toContain("members 1");
+    expect(cards[0]?.subtitle).toContain("knowledge 1");
+    expect(cards[0]?.subtitle).toContain("learning 1");
+    expect(cards[0]?.subtitle).toContain("actions 1");
   });
 });

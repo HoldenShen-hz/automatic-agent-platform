@@ -172,6 +172,10 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
             return buildJsonResponse(ctx.requestId, 200, { runs: repository.listMissionRuns(mission.missionId) });
           case "evidence":
             return buildJsonResponse(ctx.requestId, 200, { evidence: repository.listMissionEvidence(mission.missionId) });
+          case "knowledge":
+            return buildJsonResponse(ctx.requestId, 200, { knowledge: repository.listMissionKnowledge(mission.missionId) });
+          case "learning":
+            return buildJsonResponse(ctx.requestId, 200, { learning: repository.listMissionLearning(mission.missionId) });
           case "budget":
             return buildJsonResponse(ctx.requestId, 200, {
               budget: {

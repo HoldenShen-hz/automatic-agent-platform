@@ -251,15 +251,19 @@ test("E2E Service Registry: bootstrap registrars are replayed on new registry in
   assert.ok(freshRegistry !== initialRegistry, "Fresh registry should be different after reset");
 });
 
-test("E2E Service Registry: self-referencing registration currently initializes without throwing", () => {
+test("E2E Service Registry: self-referencing registration fails closed on circular dependency", () => {
   const registry = new ServiceRegistry();
   registry.register("self-referencing-service", {
     init: () => ({ name: "self-referencing-service" }),
     dependsOn: ["self-referencing-service"],
   });
 
-  const service = registry.get("self-referencing-service");
-  assert.ok(service, "Current registry implementation returns the registered service");
+  assert.throws(
+    () => registry.get("self-referencing-service"),
+    /service_registry\.circular_dependency/i,
+    "Self-referencing services must be rejected to prevent recursive bootstrap loops",
+  );
+  assert.equal(registry.isInitialized("self-referencing-service"), false);
 
   registry.reset();
 });

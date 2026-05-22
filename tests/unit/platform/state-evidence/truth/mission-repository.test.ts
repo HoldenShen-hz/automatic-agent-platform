@@ -291,6 +291,57 @@ describe("InMemoryMissionRepository", () => {
     });
   });
 
+  describe("mission linked resources", () => {
+    it("should link and list mission knowledge and learning resources", () => {
+      const mission = repository.createMission(baseInput);
+
+      repository.linkResource({
+        id: "know_001",
+        missionId: mission.missionId,
+        tenantId: mission.tenantId,
+        type: "knowledge",
+        status: "published",
+        title: "Runbook delta",
+        ref: "kb://release/runbook-delta",
+        updatedAt: "2026-05-01T00:00:00Z",
+        metadata: { source: "postmortem" },
+      });
+      repository.linkResource({
+        id: "learn_001",
+        missionId: mission.missionId,
+        tenantId: mission.tenantId,
+        type: "learning",
+        status: "pending_promotion",
+        title: "Incident learning",
+        ref: "learning://incident/001",
+        updatedAt: "2026-05-01T00:01:00Z",
+        metadata: { approval: "required" },
+      });
+
+      assert.deepStrictEqual(repository.listMissionKnowledge(mission.missionId).map((item) => item.id), ["know_001"]);
+      assert.deepStrictEqual(repository.listMissionLearning(mission.missionId).map((item) => item.id), ["learn_001"]);
+    });
+
+    it("should reject linked resources for a mismatched tenant", () => {
+      const mission = repository.createMission(baseInput);
+
+      assert.throws(
+        () => repository.linkResource({
+          id: "know_bad",
+          missionId: mission.missionId,
+          tenantId: "tenant-other",
+          type: "knowledge",
+          status: "published",
+          title: "Bad tenant",
+          ref: "kb://bad",
+          updatedAt: "2026-05-01T00:00:00Z",
+          metadata: {},
+        }),
+        { message: "mission.tenant_mismatch" },
+      );
+    });
+  });
+
   describe("createSnapshot", () => {
     it("should throw when mission not found", () => {
       assert.throws(

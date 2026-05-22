@@ -170,6 +170,7 @@ function buildNodeArgsForLayer(layerName, extraNodeArgs) {
     "--import",
     "tsx",
     "--test",
+    "--test-force-exit",
     `--test-concurrency=${LAYER_DEFINITIONS[layerName].concurrency}`,
     ...extraNodeArgs,
   ];

@@ -218,6 +218,56 @@ test("DomainPromptGovernanceService.activate throws when rollout mode is off", (
   );
 });
 
+test("DomainPromptGovernanceService.activate bumps activatedAt when createdAt matches the current tick", () => {
+  const service = new DomainPromptGovernanceService();
+  const library = createTestLibrary();
+  const originalDateNow = Date.now;
+  const fixedNow = Date.parse("2026-01-01T00:00:00.000Z");
+
+  try {
+    Date.now = () => fixedNow;
+    const release = service.proposeRelease(library, {
+      promptId: "prompt_execute",
+      owner: "admin",
+      rolloutScope: ["coding"],
+      rolloutMode: "suggest",
+      lintEvidence: ["lint_passed"],
+      evalEvidence: ["eval_passed"],
+    });
+
+    const activated = service.activate(release.releaseId);
+    assert.equal(activated.createdAt, "2026-01-01T00:00:00.000Z");
+    assert.equal(activated.activatedAt, "2026-01-01T00:00:00.001Z");
+  } finally {
+    Date.now = originalDateNow;
+  }
+});
+
+test("DomainPromptGovernanceService.activate preserves a later timestamp when the clock advances", () => {
+  const service = new DomainPromptGovernanceService();
+  const library = createTestLibrary();
+  const originalDateNow = Date.now;
+  let now = Date.parse("2026-01-01T00:00:00.000Z");
+
+  try {
+    Date.now = () => now;
+    const release = service.proposeRelease(library, {
+      promptId: "prompt_execute",
+      owner: "admin",
+      rolloutScope: ["coding"],
+      rolloutMode: "suggest",
+      lintEvidence: ["lint_passed"],
+      evalEvidence: ["eval_passed"],
+    });
+
+    now += 5_000;
+    const activated = service.activate(release.releaseId);
+    assert.equal(activated.activatedAt, "2026-01-01T00:00:05.000Z");
+  } finally {
+    Date.now = originalDateNow;
+  }
+});
+
 test("DomainPromptGovernanceService.activate sets active release for prompt", () => {
   const service = new DomainPromptGovernanceService();
   const library = createTestLibrary();
@@ -236,6 +286,17 @@ test("DomainPromptGovernanceService.activate sets active release for prompt", ()
   const active = service.getActiveRelease("prompt_execute");
   assert.ok(active);
   assert.equal(active?.releaseId, release.releaseId);
+});
+
+test("DomainPromptGovernanceService.getActiveRelease returns null for dangling active mappings", () => {
+  const service = new DomainPromptGovernanceService();
+
+  (service as unknown as { activeReleaseByPromptId: Map<string, string> }).activeReleaseByPromptId.set(
+    "prompt_execute",
+    "missing-release",
+  );
+
+  assert.equal(service.getActiveRelease("prompt_execute"), null);
 });
 
 test("DomainPromptGovernanceService.rollback marks release as rolled_back", () => {

@@ -87,3 +87,36 @@ test("run-layered-tests accepts concurrency env vars", async () => {
     rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test("run-layered-tests force exits when a test leaves an active handle behind", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
+
+  try {
+    mkdirSync(join(workspace, "tests", "unit"), { recursive: true });
+    mkdirSync(join(workspace, "src"), { recursive: true });
+    writeFileSync(join(workspace, "src", "index.ts"), "");
+    writeFileSync(
+      join(workspace, "tests", "unit", "lingering-handle.test.ts"),
+      [
+        "import test from \"node:test\";",
+        "",
+        "test(\"passes even with a lingering interval\", () => {",
+        "  setInterval(() => {}, 60_000);",
+        "});",
+        "",
+      ].join("\n"),
+    );
+
+    const result = spawnSync("node", [SCRIPT_PATH, "unit"], {
+      cwd: workspace,
+      env: { ...process.env },
+      stdio: "pipe",
+      timeout: 15_000,
+    });
+
+    assert.equal(result.status, 0);
+    assert.equal(result.signal, null);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

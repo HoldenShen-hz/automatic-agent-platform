@@ -12,6 +12,7 @@ import type {
   MarketplacePackDTO,
   MissionBudgetSummaryDTO,
   MissionDTO,
+  MissionMemberDTO,
   MissionResourceDTO,
   ModelConfigDTO,
   PackVersionDTO,
@@ -139,9 +140,12 @@ type EndpointCatalogDefinition = {
   costs: EndpointDefinition<readonly CostReportDTO[], never, never, ListQueryParams>;
   marketplace: EndpointDefinition<readonly MarketplacePackDTO[], never, never, ListQueryParams>;
   missions: EndpointDefinition<readonly MissionDTO[], never, never, ListQueryParams>;
+  missionMembers: EndpointDefinition<readonly MissionMemberDTO[], never, { missionId: string }>;
   missionTasks: EndpointDefinition<readonly MissionResourceDTO[], never, { missionId: string }>;
   missionRuns: EndpointDefinition<readonly MissionResourceDTO[], never, { missionId: string }>;
   missionEvidence: EndpointDefinition<readonly MissionResourceDTO[], never, { missionId: string }>;
+  missionKnowledge: EndpointDefinition<readonly MissionResourceDTO[], never, { missionId: string }>;
+  missionLearning: EndpointDefinition<readonly MissionResourceDTO[], never, { missionId: string }>;
   missionBudget: EndpointDefinition<MissionBudgetSummaryDTO, never, { missionId: string }>;
   knowledge: EndpointDefinition<readonly KnowledgeItemDTO[], never, never, ListQueryParams>;
   packs: EndpointDefinition<readonly MarketplacePackDTO[], never, never, ListQueryParams>;
@@ -202,9 +206,12 @@ export const endpointCatalog = {
   costs: { id: "costs.report", path: "/cost-reports", method: "GET", apiLayer: "C", planned: false },
   marketplace: { id: "marketplace.list", path: "/marketplace", method: "GET", apiLayer: "C", planned: false },
   missions: { id: "missions.list", path: "/missions", method: "GET", apiLayer: "C", planned: false },
+  missionMembers: { id: "missions.members", path: "/missions/:missionId/members", method: "GET", apiLayer: "C", planned: false },
   missionTasks: { id: "missions.tasks", path: "/missions/:missionId/tasks", method: "GET", apiLayer: "C", planned: false },
   missionRuns: { id: "missions.runs", path: "/missions/:missionId/runs", method: "GET", apiLayer: "C", planned: false },
   missionEvidence: { id: "missions.evidence", path: "/missions/:missionId/evidence", method: "GET", apiLayer: "C", planned: false },
+  missionKnowledge: { id: "missions.knowledge", path: "/missions/:missionId/knowledge", method: "GET", apiLayer: "C", planned: false },
+  missionLearning: { id: "missions.learning", path: "/missions/:missionId/learning", method: "GET", apiLayer: "C", planned: false },
   missionBudget: { id: "missions.budget", path: "/missions/:missionId/budget", method: "GET", apiLayer: "C", planned: false },
   knowledge: { id: "knowledge.list", path: "/knowledge", method: "GET", apiLayer: "C", planned: false },
   packs: { id: "packs.list", path: "/packs", method: "GET", apiLayer: "C", planned: false },
@@ -427,6 +434,13 @@ export async function fetchMissions(client: RESTClient, queryParams?: ListQueryP
   return unwrapCollectionResponse(response, ["missions"]);
 }
 
+export async function fetchMissionMembers(client: RESTClient, missionId: string): Promise<readonly MissionMemberDTO[]> {
+  const response = await client.get<readonly MissionMemberDTO[] | { members: readonly MissionMemberDTO[] }>(
+    resolvePath(endpointCatalog.missionMembers.path, { missionId }),
+  );
+  return unwrapCollectionResponse(response, ["members"]);
+}
+
 export async function fetchMissionTasks(client: RESTClient, missionId: string): Promise<readonly MissionResourceDTO[]> {
   const response = await client.get<readonly MissionResourceDTO[] | { tasks: readonly MissionResourceDTO[] }>(
     resolvePath(endpointCatalog.missionTasks.path, { missionId }),
@@ -446,6 +460,20 @@ export async function fetchMissionEvidence(client: RESTClient, missionId: string
     resolvePath(endpointCatalog.missionEvidence.path, { missionId }),
   );
   return unwrapCollectionResponse(response, ["evidence"]);
+}
+
+export async function fetchMissionKnowledge(client: RESTClient, missionId: string): Promise<readonly MissionResourceDTO[]> {
+  const response = await client.get<readonly MissionResourceDTO[] | { knowledge: readonly MissionResourceDTO[] }>(
+    resolvePath(endpointCatalog.missionKnowledge.path, { missionId }),
+  );
+  return unwrapCollectionResponse(response, ["knowledge"]);
+}
+
+export async function fetchMissionLearning(client: RESTClient, missionId: string): Promise<readonly MissionResourceDTO[]> {
+  const response = await client.get<readonly MissionResourceDTO[] | { learning: readonly MissionResourceDTO[] }>(
+    resolvePath(endpointCatalog.missionLearning.path, { missionId }),
+  );
+  return unwrapCollectionResponse(response, ["learning"]);
 }
 
 export async function fetchMissionBudget(client: RESTClient, missionId: string): Promise<MissionBudgetSummaryDTO> {

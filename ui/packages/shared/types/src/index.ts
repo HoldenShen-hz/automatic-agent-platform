@@ -168,18 +168,24 @@ export interface MissionDTO {
   readonly status: "draft" | "active" | "paused" | "frozen" | "completed" | "archived";
   readonly priority: "low" | "normal" | "high" | "critical";
   readonly title: string;
+  readonly description?: string | null;
   readonly objective: string;
   readonly successCriteria: readonly string[];
   readonly domainId: string | null;
   readonly ownerPrincipalId: string;
+  readonly accountablePrincipalId?: string | null;
+  readonly policyRefs?: readonly string[];
+  readonly riskProfileRef?: string | null;
   readonly budgetEnvelopeRef: string | null;
+  readonly knowledgeBoundaryRef?: string | null;
+  readonly defaultWorkflowTemplateRefs?: readonly string[];
   readonly updatedAt: string;
 }
 
 export interface MissionResourceDTO {
   readonly id: string;
   readonly missionId: string;
-  readonly type: "task" | "run" | "evidence";
+  readonly type: "task" | "run" | "evidence" | "knowledge" | "learning";
   readonly status: string;
   readonly title: string;
   readonly ref: string;
@@ -190,6 +196,21 @@ export interface MissionBudgetSummaryDTO {
   readonly missionId: string;
   readonly budgetEnvelopeRef: string | null;
   readonly status: "configured" | "not_configured";
+}
+
+export interface MissionMemberDTO {
+  readonly membershipId: string;
+  readonly missionId: string;
+  readonly tenantId: string;
+  readonly principalType: "user" | "service" | "agent" | "team";
+  readonly principalId: string;
+  readonly role: "owner" | "maintainer" | "operator" | "approver" | "viewer" | "observer";
+  readonly permissions: readonly string[];
+  readonly deniedPermissions: readonly string[];
+  readonly status: "active" | "revoked" | "expired";
+  readonly grantedBy: string;
+  readonly grantedAt: string;
+  readonly expiresAt: string | null;
 }
 
 export interface WorkflowStepDTO {

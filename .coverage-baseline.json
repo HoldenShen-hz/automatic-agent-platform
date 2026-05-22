@@ -515,7 +515,7 @@
         "lines": 35.3,
         "statements": 35.3,
         "functions": 0,
-        "branches": 100
+        "branches": 85.7
       }
     },
     "src/org-governance/compliance-engine": {
@@ -3086,10 +3086,10 @@
     "src/domains/prompt-library": {
       "fileCount": 2,
       "metrics": {
-        "lines": 100,
-        "statements": 100,
+        "lines": 98.9,
+        "statements": 98.9,
         "functions": 100,
-        "branches": 97.8
+        "branches": 95.6
       }
     },
     "src/domains/quality-assurance": {

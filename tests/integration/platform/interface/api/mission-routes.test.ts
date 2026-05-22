@@ -129,11 +129,37 @@ test("Mission routes expose console resources and membership lifecycle", async (
     correlationId: "corr_001",
     createdBy: "user_001",
   });
+  repository.linkResource({
+    id: "know_001",
+    missionId: created.missionId,
+    tenantId: created.tenantId,
+    type: "knowledge",
+    status: "published",
+    title: "Mission runbook",
+    ref: "kb://mission/runbook",
+    updatedAt: "2026-05-21T00:02:00.000Z",
+    metadata: { source: "operator" },
+  });
+  repository.linkResource({
+    id: "learn_001",
+    missionId: created.missionId,
+    tenantId: created.tenantId,
+    type: "learning",
+    status: "pending_promotion",
+    title: "Mission retrospective",
+    ref: "learning://mission/retro",
+    updatedAt: "2026-05-21T00:03:00.000Z",
+    metadata: { source: "review" },
+  });
 
   const tasksResponse = await invokeRoute(routes, "GET", `/v1/missions/${created.missionId}/tasks`);
   assert.equal(JSON.parse(tasksResponse.body).data.tasks[0].id, "task_001");
   const evidenceResponse = await invokeRoute(routes, "GET", `/v1/missions/${created.missionId}/evidence`);
   assert.equal(JSON.parse(evidenceResponse.body).data.evidence[0].type, "evidence");
+  const knowledgeResponse = await invokeRoute(routes, "GET", `/v1/missions/${created.missionId}/knowledge`);
+  assert.equal(JSON.parse(knowledgeResponse.body).data.knowledge[0].type, "knowledge");
+  const learningResponse = await invokeRoute(routes, "GET", `/v1/missions/${created.missionId}/learning`);
+  assert.equal(JSON.parse(learningResponse.body).data.learning[0].type, "learning");
   const budgetResponse = await invokeRoute(routes, "GET", `/v1/missions/${created.missionId}/budget`);
   assert.equal(JSON.parse(budgetResponse.body).data.budget.status, "configured");
   const runsResponse = await invokeRoute(routes, "GET", `/v1/missions/${created.missionId}/runs`);

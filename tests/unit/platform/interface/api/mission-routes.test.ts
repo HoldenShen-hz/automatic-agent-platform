@@ -49,6 +49,9 @@ test("createMissionRoutes with custom mission repository", () => {
     listMissionTasks: (missionId: string) => [],
     listMissionRuns: (missionId: string) => [],
     listMissionEvidence: (missionId: string) => [],
+    listMissionKnowledge: (missionId: string) => [],
+    listMissionLearning: (missionId: string) => [],
+    linkResource: (resource: any) => resource,
     addMembership: (membership: any) => membership,
     revokeMembershipById: (missionId: string, membershipId: string, actorId: string, traceId: string, correlationId: string) => null,
   } as unknown as MissionRepository;

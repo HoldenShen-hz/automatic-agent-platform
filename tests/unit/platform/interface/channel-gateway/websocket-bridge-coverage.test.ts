@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer } from "node:http";
-import { createServer as createNetServer } from "node:net";
+import { createServer as createNetServer, type Socket } from "node:net";
 import { WebSocket } from "ws";
 import { WebSocketBridge, type TaskWebSocketEvent, type WebSocketMessageType } from "../../../../../src/platform/five-plane-interface/channel-gateway/websocket-bridge.js";
 
@@ -34,7 +34,25 @@ function networkPathTest(name: string, body: Parameters<typeof test>[1]): void {
 }
 
 function createMockServer() {
-  return createServer();
+  const server = createServer();
+  const sockets = new Set<Socket>();
+  const originalClose = server.close.bind(server);
+
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.once("close", () => {
+      sockets.delete(socket);
+    });
+  });
+
+  server.close = ((callback?: (error?: Error) => void) => {
+    for (const socket of sockets) {
+      socket.destroy();
+    }
+    return originalClose(callback);
+  }) as typeof server.close;
+
+  return server;
 }
 
 networkPathTest("WebSocketBridge registers client on connection", (t) => {

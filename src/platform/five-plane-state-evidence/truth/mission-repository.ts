@@ -64,6 +64,9 @@ export interface MissionRepository {
   listMissionTasks(missionId: string): MissionLinkedResource[];
   listMissionRuns(missionId: string): MissionLinkedResource[];
   listMissionEvidence(missionId: string): MissionLinkedResource[];
+  listMissionKnowledge(missionId: string): MissionLinkedResource[];
+  listMissionLearning(missionId: string): MissionLinkedResource[];
+  linkResource(resource: MissionLinkedResource): MissionLinkedResource;
   createSnapshot(input: {
     missionId: string;
     taskId: string;
@@ -79,11 +82,13 @@ export interface MissionRepository {
   listEvents(missionId: string): MissionEventEnvelope[];
 }
 
+export type MissionLinkedResourceType = "task" | "run" | "evidence" | "knowledge" | "learning";
+
 export interface MissionLinkedResource {
   readonly id: string;
   readonly missionId: string;
   readonly tenantId: string;
-  readonly type: "task" | "run" | "evidence";
+  readonly type: MissionLinkedResourceType;
   readonly status: string;
   readonly title: string;
   readonly ref: string;
@@ -264,6 +269,26 @@ export class InMemoryMissionRepository implements MissionRepository {
     return this.listLinkedResources(missionId, "evidence");
   }
 
+  public listMissionKnowledge(missionId: string): MissionLinkedResource[] {
+    return this.listLinkedResources(missionId, "knowledge");
+  }
+
+  public listMissionLearning(missionId: string): MissionLinkedResource[] {
+    return this.listLinkedResources(missionId, "learning");
+  }
+
+  public linkResource(resource: MissionLinkedResource): MissionLinkedResource {
+    const mission = this.getMission(resource.missionId);
+    if (mission == null) {
+      throw new Error("mission.not_found");
+    }
+    if (mission.tenantId !== resource.tenantId) {
+      throw new Error("mission.tenant_mismatch");
+    }
+    this.upsertLinkedResource(resource);
+    return resource;
+  }
+
   public createSnapshot(input: {
     missionId: string;
     taskId: string;
@@ -378,7 +403,7 @@ export class InMemoryMissionRepository implements MissionRepository {
     this.linkedResources.set(resource.missionId, next);
   }
 
-  private listLinkedResources(missionId: string, type: MissionLinkedResource["type"]): MissionLinkedResource[] {
+  private listLinkedResources(missionId: string, type: MissionLinkedResourceType): MissionLinkedResource[] {
     return [...(this.linkedResources.get(missionId) ?? [])].filter((item) => item.type === type);
   }
 }
