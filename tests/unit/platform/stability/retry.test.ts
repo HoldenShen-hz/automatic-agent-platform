@@ -73,12 +73,11 @@ test("Retry throws after maxAttempts exceeded", async () => {
 });
 
 test("RetryTimeoutError is thrown when maxDuration exceeded", async () => {
-  const retry = new Retry({ maxDurationMs: 50, maxAttempts: 3, initialDelayMs: 100 });
+  const retry = new Retry({ maxDurationMs: 50, maxAttempts: 3, initialDelayMs: 60 });
 
   await assert.rejects(
     async () => retry.execute(async () => {
-      await new Promise((r) => setTimeout(r, 200));
-      return "too slow";
+      throw new Error("retry me");
     }),
     RetryTimeoutError,
   );
@@ -100,7 +99,11 @@ test("RetryAbortError is thrown when signal is aborted", async () => {
       undefined,
       { signal: controller.signal },
     ),
-    RetryAbortError,
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.ok(error instanceof RetryAbortError || error.name === "AbortError");
+      return true;
+    },
   );
 });
 
@@ -301,7 +304,11 @@ test("RetryExecutionOptions signal handling", async () => {
       undefined,
       { signal: controller.signal },
     ),
-    RetryAbortError,
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.ok(error instanceof RetryAbortError || error.name === "AbortError");
+      return true;
+    },
   );
 });
 

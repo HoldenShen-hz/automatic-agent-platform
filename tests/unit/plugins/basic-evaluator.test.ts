@@ -216,11 +216,11 @@ test("basic evaluator healthCheck follows initialize lifecycle", async () => {
   const plugin = createBasicEvaluatorPlugin();
 
   assert.ok(plugin.healthCheck !== undefined);
-  assert.equal(await plugin.healthCheck!(), true);
+  assert.equal(await plugin.healthCheck!(), false);
   await plugin.initialize!();
   assert.equal(await plugin.healthCheck!(), true);
   await plugin.shutdown!();
-  assert.equal(await plugin.healthCheck!(), true);
+  assert.equal(await plugin.healthCheck!(), false);
 });
 
 test("basic evaluator has shutdown method", async () => {

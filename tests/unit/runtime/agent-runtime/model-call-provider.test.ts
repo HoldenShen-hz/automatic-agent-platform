@@ -124,7 +124,7 @@ test("createCompletion throws when no provider is configured", async () => {
     },
     (error: unknown) => {
       assert.ok(error instanceof Error);
-      assert.match(String(error), /no_provider_configured/i);
+      assert.match(String(error), /no model provider configured/i);
       return true;
     },
   );
@@ -148,7 +148,7 @@ test("createStreamingCompletion throws when no provider is configured", async ()
     },
     (error: unknown) => {
       assert.ok(error instanceof Error);
-      assert.match(String(error), /no_provider_configured/i);
+      assert.match(String(error), /no model provider configured/i);
       return true;
     },
   );

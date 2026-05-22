@@ -91,16 +91,18 @@ test("trust-relationship: createTrustRelationship with custom policy", async () 
     reauthIntervalDays: 30,
   };
 
-  const trust = await manager.createTrustRelationship({
-    sourceOrgId: "org-1",
-    targetOrgId: "org-2",
-    level: TrustLevel.ADMIN,
-    capabilities: ["cap-1"],
-    policyId: "custom-policy",
-  });
+  void policy;
 
-  // Policy not found, should fall back to default
-  assert.ok(trust.policy != null);
+  await assert.rejects(
+    () => manager.createTrustRelationship({
+      sourceOrgId: "org-1",
+      targetOrgId: "org-2",
+      level: TrustLevel.ADMIN,
+      capabilities: ["cap-1"],
+      policyId: "custom-policy",
+    }),
+    /Trust policy not found: custom-policy/,
+  );
 });
 
 test("trust-relationship: createTrustRelationship records trust event", async () => {

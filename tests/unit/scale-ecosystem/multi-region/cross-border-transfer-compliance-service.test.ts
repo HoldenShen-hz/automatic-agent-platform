@@ -207,7 +207,7 @@ test("CrossBorderTransferComplianceService: creates transfer log entry for each 
 
   const log = service.getTransferLog();
   assert.equal(log.length, 2);
-  assert.ok(log[0]!.transferLogId.startsWith("transfer_log:"));
+  assert.ok(log[0]!.transferLogId.startsWith("transfer_log_"));
 });
 
 test("CrossBorderTransferComplianceService: handles regional dataResidencyPolicy (not blocked)", () => {

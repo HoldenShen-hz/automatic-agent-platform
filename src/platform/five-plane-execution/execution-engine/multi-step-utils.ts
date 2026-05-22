@@ -19,6 +19,9 @@ export function parseOptionalStringArray(value: unknown): string[] {
     return [];
   }
   return value.flatMap((item) => {
+    if (Array.isArray(item)) {
+      return parseOptionalStringArray(item);
+    }
     if (typeof item !== "string") {
       return [];
     }

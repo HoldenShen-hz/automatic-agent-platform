@@ -262,7 +262,7 @@ test("runSingleTaskExecution creates workflow record", async () => {
 
     assert.ok(result.workflow);
     assert.ok(result.workflow.workflowId);
-    assert.equal(result.workflow.status, "done");
+    assert.equal(result.workflow.status, "completed");
   } finally {
     cleanupPath(dbPath);
   }

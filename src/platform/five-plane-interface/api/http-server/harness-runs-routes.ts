@@ -24,7 +24,7 @@ import type { HarnessRun as CanonicalHarnessRun, HarnessRunStatus } from "../../
 export class HarnessRunsApiError extends Error {
   public constructor(
     public readonly statusCode: number,
-    code: string,
+    public readonly code: string,
     message: string,
   ) {
     super(message);

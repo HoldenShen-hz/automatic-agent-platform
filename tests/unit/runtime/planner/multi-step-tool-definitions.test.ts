@@ -36,8 +36,8 @@ test("MULTI_STEP_TOOL_DEFINITIONS should have valid input schemas", () => {
     );
     assert.ok(tool.inputSchema.type === "object", `tool ${tool.name} should have object type inputSchema`);
     assert.ok(
-      Array.isArray(tool.inputSchema.properties),
-      `tool ${tool.name} should have properties array`,
+      typeof tool.inputSchema.properties === "object" && tool.inputSchema.properties !== null,
+      `tool ${tool.name} should have properties object`,
     );
   }
 });

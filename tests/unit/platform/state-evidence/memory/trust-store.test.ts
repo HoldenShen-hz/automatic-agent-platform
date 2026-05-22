@@ -1,41 +1,37 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-// TrustStore is a re-export shim for TrustLevelService
-// Verify the re-export chain works correctly
 import {
   TrustLevelService,
-  TrustLevelServiceConfig,
-  type TrustLevel,
-  type TrustLevelMetadata,
+  getTrustLevelMetadata,
+  getTrustLevelPriority,
+  compareTrustLevels,
+  DEFAULT_TRUST_TRANSITION_RULES,
+} from "../../../../../src/platform/five-plane-state-evidence/memory/trust-store.js";
+import type {
+  TrustLevel,
+  TrustLevelMetadata,
+  TrustTransitionRule,
 } from "../../../../../src/platform/five-plane-state-evidence/memory/trust-store.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Re-export Verification Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
 test("TrustStore exports TrustLevelService", () => {
-  // TrustStore should re-export TrustLevelService from trust-level-service
-  assert.ok(TrustLevelService);
   assert.equal(typeof TrustLevelService, "function");
 });
 
-test("TrustStore exports TrustLevelServiceConfig", () => {
-  // Should have the config type available
-  assert.ok(TrustLevelServiceConfig);
-});
-
 test("TrustStore exports TrustLevel type", () => {
-  assert.ok(TrustLevel);
+  const level: TrustLevel = "official";
+  assert.equal(level, "official");
 });
 
 test("TrustStore exports TrustLevelMetadata type", () => {
-  assert.ok(TrustLevelMetadata);
+  const metadata: TrustLevelMetadata = {
+    level: "official",
+    displayName: "Official",
+    description: "Approved knowledge",
+    priority: 3,
+  };
+  assert.equal(metadata.level, "official");
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TrustLevelService Basic Functionality
-// ─────────────────────────────────────────────────────────────────────────────
 
 test("TrustLevelService can be instantiated", () => {
   const service = new TrustLevelService();
@@ -43,59 +39,57 @@ test("TrustLevelService can be instantiated", () => {
 });
 
 test("TrustLevelService getTrustLevelMetadata returns metadata", () => {
-  const service = new TrustLevelService();
-  const meta = service.getTrustLevelMetadata("private_unverified");
+  const meta = getTrustLevelMetadata("private_unverified");
   assert.ok(meta);
   assert.equal(meta.level, "private_unverified");
 });
 
 test("TrustLevelService getTrustLevelPriority returns priority", () => {
-  const service = new TrustLevelService();
-  const priority = service.getTrustLevelPriority("authoritative");
-  assert.equal(priority, 3);
+  assert.equal(getTrustLevelPriority("authoritative"), 4);
 });
 
 test("TrustLevelService compareTrustLevels compares correctly", () => {
+  assert.ok(compareTrustLevels("authoritative", "private_unverified") > 0);
+  assert.ok(compareTrustLevels("private_unverified", "authoritative") < 0);
+  assert.equal(compareTrustLevels("official", "official"), 0);
+});
+
+test("TrustLevelService canTransitionTo validates transitions", () => {
   const service = new TrustLevelService();
-  assert.ok(service.compareTrustLevels("authoritative", "private_unverified") > 0);
-  assert.ok(service.compareTrustLevels("private_unverified", "authoritative") < 0);
-  assert.equal(service.compareTrustLevels("official", "official"), 0);
+  assert.equal(service.canTransitionTo("authoritative", "private_unverified"), false);
+  assert.equal(service.canTransitionTo("private_unverified", "team_reviewed"), true);
 });
 
-test("TrustLevelService canTransitionTrustLevel validates transitions", () => {
+test("TrustLevelService exposes default transition rules", () => {
   const service = new TrustLevelService();
-  // Can transition down
-  assert.ok(service.canTransitionTrustLevel("authoritative", "private_unverified"));
-  // Cannot transition up (specific rules)
-  const result = service.canTransitionTrustLevel("private_unverified", "authoritative");
-  assert.equal(typeof result, "boolean");
+  assert.deepEqual(service.getTrustRules(), DEFAULT_TRUST_TRANSITION_RULES);
 });
 
-test("TrustLevelService defaultTransitionRules exists", () => {
-  const service = new TrustLevelService();
-  const rules = service.defaultTransitionRules;
-  assert.ok(rules);
-  assert.ok(Array.isArray(rules));
+test("TrustLevelService accepts custom transition rules", () => {
+  const customRules: readonly TrustTransitionRule[] = [
+    {
+      fromLevel: "private_unverified",
+      toLevel: "official",
+      minValidationScore: 0.8,
+      requiresApproval: true,
+      requiresReviewerRole: true,
+    },
+  ];
+  const service = new TrustLevelService(customRules);
+  assert.deepEqual(service.getTrustRules(), customRules);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TrustLevelService Config Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("TrustLevelService accepts config object", () => {
-  const service = new TrustLevelService({
-    maxTrustLevel: "authoritative",
-    minTrustLevel: "private_unverified",
-  });
-  assert.ok(service);
-});
-
-test("TrustLevelService with custom config uses limits", () => {
-  const service = new TrustLevelService({
-    maxTrustLevel: "official",
-    minTrustLevel: "team_reviewed",
-  });
-  const priority = service.getTrustLevelPriority("authoritative");
-  // authoritative should be above official, so this tests config enforcement
-  assert.ok(typeof priority === "number");
+test("TrustLevelService with custom rules uses injected transition policy", () => {
+  const customRules: readonly TrustTransitionRule[] = [
+    {
+      fromLevel: "team_reviewed",
+      toLevel: "official",
+      minValidationScore: 0.7,
+      requiresApproval: false,
+      requiresReviewerRole: false,
+    },
+  ];
+  const service = new TrustLevelService(customRules);
+  assert.equal(service.canTransitionTo("team_reviewed", "official"), true);
+  assert.equal(service.canTransitionTo("official", "authoritative"), false);
 });

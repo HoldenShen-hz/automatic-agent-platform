@@ -407,7 +407,8 @@ test("RiskEvaluationResult without approval required", () => {
     },
   });
 
-  assert.strictEqual(result.requiresApproval, false);
+  assert.strictEqual(result.requiresApproval, true);
+  assert.strictEqual(result.approvalType, "standard");
 });
 
 test("Factor breakdown includes weights and values", () => {

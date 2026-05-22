@@ -499,8 +499,8 @@ export class CapabilityDelegation {
         continue;
       }
 
-      // Check quota if applicable
-      const quotaCheck = this.checkQuota(params.orgId, params.capabilityId);
+      // Quotas belong to the delegating org that owns the granted capability.
+      const quotaCheck = this.checkQuota(grant.delegatingOrgId, params.capabilityId);
       if (!quotaCheck.allowed) {
         return quotaCheck;
       }
@@ -560,7 +560,8 @@ export class CapabilityDelegation {
 
     // Update quota if access was granted
     if (params.granted) {
-      this.incrementQuota(params.orgId, params.capabilityId);
+      const grant = this.findGrantForAccess(params.orgId, params.capabilityId, params.permission);
+      this.incrementQuota(grant?.delegatingOrgId ?? params.orgId, params.capabilityId);
     }
   }
 
@@ -631,6 +632,16 @@ export class CapabilityDelegation {
     if (quota) {
       quota.used++;
     }
+  }
+
+  private findGrantForAccess(
+    delegatedOrgId: string,
+    capabilityId: string,
+    permission: CapabilityPermission,
+  ): CapabilityGrant | undefined {
+    return this.getActiveGrantsForOrg(delegatedOrgId, capabilityId).find(
+      (grant) => grant.permissions.includes(permission),
+    );
   }
 
   private quotaKey(orgId: string, capabilityId: string): string {

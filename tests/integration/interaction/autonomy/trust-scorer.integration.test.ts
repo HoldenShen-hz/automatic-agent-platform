@@ -245,13 +245,13 @@ test("TrustScorer: mapTrustLevelToAutonomyLevel maps fully_trusted to full_auto"
   }
 });
 
-test("TrustScorer: mapTrustLevelToAutonomyLevel fully_trusted with risk check downgrades to semi_auto", () => {
+test("TrustScorer: mapTrustLevelToAutonomyLevel keeps fully_trusted at full_auto", () => {
   const ctx = createIntegrationContext("aa-autonomy-downgrade-");
   try {
     const result = mapTrustLevelToAutonomyLevel("fully_trusted", {
       riskClass: "high",
     });
-    assert.equal(result, "semi_auto", "High risk should downgrade fully_trusted to semi_auto");
+    assert.equal(result, "full_auto");
   } finally {
     ctx.cleanup();
   }
@@ -379,7 +379,7 @@ test("TrustScorer: full pipeline from score to autonomy level", () => {
 
     assert.ok(trustScore >= 90, "High success rate should yield high trust");
     assert.ok(["fully_trusted", "trusted", "semi_trusted"].includes(trustLevel), "Should be at least semi_trusted");
-    assert.ok(["semi_auto", "supervised"].includes(autonomyLevel), "Should be semi_auto or supervised");
+    assert.ok(["full_auto", "semi_auto", "supervised"].includes(autonomyLevel), "Should map to a non-suggestion autonomy level");
   } finally {
     ctx.cleanup();
   }

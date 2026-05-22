@@ -37,8 +37,8 @@ describe("async-repositories/index re-exports", () => {
     assert.ok(mod.AsyncWorkerRepository);
   });
 
-  it("should export AsyncBudgetRepository class", () => {
-    const { AsyncBudgetRepository } = require(
+  it("should export AsyncBudgetRepository class", async () => {
+    const { AsyncBudgetRepository } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/index.js"
     );
 

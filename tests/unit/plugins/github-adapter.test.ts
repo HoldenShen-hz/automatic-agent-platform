@@ -59,7 +59,7 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for create_issue
   assert.equal(result.action, "create_issue");
   assert.equal(result.repository, "owner/repo");
   assert.ok((result.endpoint as string).includes("/repos/owner/repo/issues"));
-  assert.equal(result.credentialFingerprint, "token:ghp_");
+  assert.match(result.credentialFingerprint as string, /^token:[a-f0-9]{12}$/);
 });
 
 test("createGithubAdapterPlugin.execute builds correct endpoint for get_file", async () => {

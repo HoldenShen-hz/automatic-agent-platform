@@ -12,11 +12,10 @@ describe("Phase1aStoreFacade re-exports", () => {
     assert.strictEqual(mod.AuthoritativeTaskStoreFacade, mod.Phase1aStoreFacade);
   });
 
-  it("should have AuthoritativeTaskStoreFacade as a function", () => {
-    const { AuthoritativeTaskStoreFacade } = require(
+  it("should have AuthoritativeTaskStoreFacade as a function", async () => {
+    const { AuthoritativeTaskStoreFacade } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/phase1a-store-facade.js"
     );
-
     assert.strictEqual(typeof AuthoritativeTaskStoreFacade, "function");
   });
 });
@@ -32,11 +31,10 @@ describe("Phase1aStore re-exports", () => {
     assert.strictEqual(mod.AuthoritativeTaskStore, mod.Phase1aStore);
   });
 
-  it("should export the core store class", () => {
-    const { AuthoritativeTaskStore } = require(
+  it("should export the core store class", async () => {
+    const { AuthoritativeTaskStore } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/phase1a-store.js"
     );
-
     assert.strictEqual(typeof AuthoritativeTaskStore, "function");
   });
 });

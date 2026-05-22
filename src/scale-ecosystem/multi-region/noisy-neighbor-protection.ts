@@ -216,7 +216,7 @@ export class NoisyNeighborProtectionService {
     let used = cost;
     let record: UsageRecord;
 
-    if (existing && new Date(existing.windowStart).getTime() > windowStart) {
+    if (existing && new Date(existing.windowEnd).getTime() > now) {
       // Within same window, accumulate
       used = existing.used + cost;
       record = {

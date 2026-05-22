@@ -275,7 +275,7 @@ test("runMultiStepOrchestration compaction result property", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration with custom admission policy", async () => {
+test("runMultiStepOrchestration with custom admission policy", async () => {
   const dbPath = createTempDbPath("test-custom-policy.db");
 
   cleanupDb(dbPath);
@@ -300,7 +300,7 @@ test.skip("runMultiStepOrchestration with custom admission policy", async () => 
   }
 });
 
-test.skip("runMultiStepOrchestration dependency edges in planned workflow", async () => {
+test("runMultiStepOrchestration dependency edges in planned workflow", async () => {
   const dbPath = createTempDbPath("test-edges.db");
 
   cleanupDb(dbPath);
@@ -321,7 +321,7 @@ test.skip("runMultiStepOrchestration dependency edges in planned workflow", asyn
   }
 });
 
-test.skip("runMultiStepOrchestration with contextBudgetTokens", async () => {
+test("runMultiStepOrchestration with contextBudgetTokens", async () => {
   const dbPath = createTempDbPath("test-context-budget.db");
 
   cleanupDb(dbPath);
@@ -525,7 +525,7 @@ test("StepFailurePlan minimal with only errorCode", () => {
   assert.equal(planMinimal.message, undefined);
 });
 
-test.skip("oapeflir plan with compensation model", async () => {
+test("oapeflir plan with compensation model", async () => {
   const dbPath = createTempDbPath("test-compensation.db");
 
   cleanupDb(dbPath);
@@ -560,7 +560,7 @@ test.skip("oapeflir plan with compensation model", async () => {
   }
 });
 
-test.skip("oapeflir plan with multiple dependencies", async () => {
+test("oapeflir plan with multiple dependencies", async () => {
   const dbPath = createTempDbPath("test-multi-deps.db");
 
   cleanupDb(dbPath);
@@ -605,7 +605,7 @@ test.skip("oapeflir plan with multiple dependencies", async () => {
   }
 });
 
-test.skip("oapeflir plan with outputSchemaPath", async () => {
+test("oapeflir plan with outputSchemaPath", async () => {
   const dbPath = createTempDbPath("test-schema-path.db");
 
   cleanupDb(dbPath);
@@ -636,7 +636,7 @@ test.skip("oapeflir plan with outputSchemaPath", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration with empty request triggers workflow planning", async () => {
+test("runMultiStepOrchestration with empty request triggers workflow planning", async () => {
   const dbPath = createTempDbPath("test-empty-request.db");
 
   cleanupDb(dbPath);
@@ -657,7 +657,7 @@ test.skip("runMultiStepOrchestration with empty request triggers workflow planni
   }
 });
 
-test.skip("runMultiStepOrchestration normalizes input request", async () => {
+test("runMultiStepOrchestration normalizes input request", async () => {
   const dbPath = createTempDbPath("test-normalize.db");
 
   cleanupDb(dbPath);
@@ -679,7 +679,7 @@ test.skip("runMultiStepOrchestration normalizes input request", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration with high priority task", async () => {
+test("runMultiStepOrchestration with high priority task", async () => {
   const dbPath = createTempDbPath("test-priority.db");
 
   cleanupDb(dbPath);
@@ -700,7 +700,7 @@ test.skip("runMultiStepOrchestration with high priority task", async () => {
   }
 });
 
-test.skip("runMultiStepOrchestration workflow execution produces events", async () => {
+test("runMultiStepOrchestration workflow execution produces events", async () => {
   const dbPath = createTempDbPath("test-events.db");
 
   cleanupDb(dbPath);

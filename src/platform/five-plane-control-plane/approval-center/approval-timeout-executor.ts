@@ -48,7 +48,10 @@ export interface ApprovalTimeoutExecutionResult {
   respondedAt: string;
 }
 
-function isApprovalRepositoryLike(value: unknown): value is Pick<ApprovalRepository, "listApprovalsByStatus" | "getApproval"> {
+type ApprovalTimeoutExecutorApprovalService = Pick<ApprovalService, "applyDecision">;
+type ApprovalTimeoutExecutorApprovalRepository = Pick<ApprovalRepository, "listApprovalsByStatus" | "getApproval">;
+
+function isApprovalRepositoryLike(value: unknown): value is ApprovalTimeoutExecutorApprovalRepository {
   if (value == null || typeof value !== "object") {
     return false;
   }
@@ -57,7 +60,7 @@ function isApprovalRepositoryLike(value: unknown): value is Pick<ApprovalReposit
     && typeof candidate.getApproval === "function";
 }
 
-function isApprovalServiceLike(value: unknown): value is Pick<ApprovalService, "applyDecision"> {
+function isApprovalServiceLike(value: unknown): value is ApprovalTimeoutExecutorApprovalService {
   if (value == null || typeof value !== "object") {
     return false;
   }
@@ -78,9 +81,9 @@ export class ApprovalTimeoutExecutor {
   private readonly logger = new StructuredLogger({ retentionLimit: 50 });
   private readonly defaultTimeoutMs: number;
 
-  private readonly approvalService: ApprovalService;
+  private readonly approvalService: ApprovalTimeoutExecutorApprovalService;
   private readonly store: AuthoritativeTaskStore;
-  private readonly approvalRepo: ApprovalRepository;
+  private readonly approvalRepo: ApprovalTimeoutExecutorApprovalRepository;
 
   public constructor(
     approvalServiceOrDb: ApprovalService | AuthoritativeSqlDatabase,

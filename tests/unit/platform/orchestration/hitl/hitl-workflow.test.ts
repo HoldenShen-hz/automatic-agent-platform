@@ -293,26 +293,21 @@ test("validateHitlModeRequest rejects force_terminate for low risk", () => {
 });
 
 test("HitlMode type accepts all valid mode strings", () => {
-  const modes: HitlMode[] = [
-    "single_approval",
-    "multi_party_approval",
-    "delegated_approval",
-    "iterative_feedback",
-    "collaborative_edit",
-    "informed_confirmation",
-    "circuit_breaker_human",
-    "modify_and_approve",
-    "override_decision",
-    "force_terminate",
+  const requests: Array<Parameters<typeof validateHitlModeRequest>[0]> = [
+    { mode: "single_approval", options: [{ optionId: "approve" }], riskLevel: "low", timeoutPolicy: "remain_pending" },
+    { mode: "multi_party_approval", options: [{ optionId: "approve" }], riskLevel: "medium", timeoutPolicy: "remain_pending", context: { requiredApprovals: 2 } },
+    { mode: "delegated_approval", options: [{ optionId: "delegate" }], riskLevel: "medium", timeoutPolicy: "remain_pending", context: { delegationTarget: "reviewer@example.com" } },
+    { mode: "iterative_feedback", options: [{ optionId: "approve" }, { optionId: "revise" }], riskLevel: "medium", timeoutPolicy: "remain_pending" },
+    { mode: "collaborative_edit", options: [{ optionId: "approve" }], riskLevel: "medium", timeoutPolicy: "remain_pending", context: { sharedArtifactRef: "artifact:shared" } },
+    { mode: "informed_confirmation", options: [{ optionId: "confirm" }], riskLevel: "low", timeoutPolicy: "remain_pending" },
+    { mode: "circuit_breaker_human", options: [{ optionId: "approve" }], riskLevel: "high", timeoutPolicy: "reject" },
+    { mode: "modify_and_approve", options: [{ optionId: "approve" }], riskLevel: "high", timeoutPolicy: "remain_pending" },
+    { mode: "override_decision", options: [{ optionId: "override" }], riskLevel: "critical", timeoutPolicy: "remain_pending" },
+    { mode: "force_terminate", options: [{ optionId: "terminate" }], riskLevel: "high", timeoutPolicy: "reject" },
   ];
-  for (const mode of modes) {
-    const result = validateHitlModeRequest({
-      mode,
-      options: [{ optionId: "test" }],
-      riskLevel: "high",
-      timeoutPolicy: "remain_pending",
-    });
-    assert.ok(result.mode === mode);
+  for (const request of requests) {
+    const result = validateHitlModeRequest(request);
+    assert.equal(result.mode, request.mode);
   }
 });
 

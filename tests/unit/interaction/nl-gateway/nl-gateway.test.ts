@@ -215,8 +215,8 @@ test("NlEntryService.parseDetailed detects prompt injection patterns", async () 
   });
 
   assert.ok(result.securityFindings.length > 0, "Should detect prompt injection");
-  assert.equal(result.securityFindings[0]?.blocked, true);
-  assert.equal(result.securityFindings[0]?.severity, "high");
+  assert.equal(result.securityFindings.some((finding) => finding.blocked), true);
+  assert.equal(result.securityFindings.some((finding) => finding.severity === "high"), true);
 });
 
 test("NlEntryService.parseDetailed blocks request on prompt injection", async () => {

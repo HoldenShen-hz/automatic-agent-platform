@@ -572,3 +572,32 @@ export function getMfaStats(): {
     lockedAccounts: locked,
   };
 }
+
+export function __dangerousResetMfaStateForTests(): void {
+  principalCredentials.clear();
+  enrollmentSessions.clear();
+  verificationChallenges.clear();
+  challengeCreationTimestamps.clear();
+}
+
+export function __dangerousExpireEnrollmentSessionForTests(enrollmentId: string): void {
+  const stored = enrollmentSessions.get(enrollmentId);
+  if (!stored) {
+    return;
+  }
+  enrollmentSessions.set(enrollmentId, {
+    ...stored,
+    expiresAt: Date.now() - 1,
+  });
+}
+
+export function __dangerousExpireVerificationChallengeForTests(challengeId: string): void {
+  const stored = verificationChallenges.get(challengeId);
+  if (!stored) {
+    return;
+  }
+  verificationChallenges.set(challengeId, {
+    ...stored,
+    expiresAt: Date.now() - 1,
+  });
+}

@@ -301,7 +301,8 @@ describe("CheckpointRefValidator", () => {
       } catch (error) {
         assert.ok(error instanceof ValidationError);
         const validationError = error as ValidationError;
-        assert.ok(validationError.message.includes("checkpoint.ref_invalid"));
+        assert.equal(validationError.code, "checkpoint.ref_invalid");
+        assert.ok(validationError.message.includes("Invalid CheckpointRef"));
       }
     });
   });

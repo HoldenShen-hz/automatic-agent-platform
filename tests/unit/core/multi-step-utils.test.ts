@@ -72,8 +72,8 @@ test("parseOptionalStringArray filters non-string items in arrays", () => {
   // Non-string items (including nested arrays) are filtered out
   assert.deepStrictEqual(parseOptionalStringArray(["a", 123, "b"]), ["a", "b"]);
   assert.deepStrictEqual(parseOptionalStringArray([1, 2, 3]), []);
-  // Nested arrays: their items are not strings so they get filtered
-  assert.deepStrictEqual(parseOptionalStringArray(["a", ["b", "c"], "d"]), ["a", "d"]);
+  // Nested arrays are flattened recursively and still filter out non-string items.
+  assert.deepStrictEqual(parseOptionalStringArray(["a", ["b", "c"], "d"]), ["a", "b", "c", "d"]);
 });
 
 test("safeParseToolResult parses valid JSON", () => {

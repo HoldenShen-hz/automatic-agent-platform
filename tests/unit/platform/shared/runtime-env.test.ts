@@ -53,12 +53,13 @@ test("resolveConfigEnvironment trims whitespace from explicit environment", () =
   assert.strictEqual(result, "staging");
 });
 
-test("resolveConfigEnvironment returns null for empty explicit environment", () => {
+test("resolveConfigEnvironment falls back when explicit environment is empty", () => {
   const options: RuntimeConfigEnvOptions = {
     environment: "",
+    env: { AA_CONFIG_ENV: "staging" },
   };
   const result = resolveConfigEnvironment(options);
-  assert.strictEqual(result, null);
+  assert.strictEqual(result, "staging");
 });
 
 test("resolveConfigEnvironment falls back to AA_CONFIG_ENV", () => {

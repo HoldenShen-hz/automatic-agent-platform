@@ -189,7 +189,7 @@ test("quorum calculator: validateVote throws for empty approverId", () => {
     votedAt: nowIso(),
   };
 
-  assert.throws(() => validateVote(invalidVote), /approverId/);
+  assert.throws(() => validateVote(invalidVote), /invalid_approver_id/);
 });
 
 test("quorum calculator: validateVote throws for invalid vote type", () => {
@@ -199,7 +199,7 @@ test("quorum calculator: validateVote throws for invalid vote type", () => {
     votedAt: nowIso(),
   };
 
-  assert.throws(() => validateVote(invalidVote), /vote type/);
+  assert.throws(() => validateVote(invalidVote), /invalid_vote_type/);
 });
 
 test("quorum calculator: countEffectiveVotes excludes abstentions", () => {

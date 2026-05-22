@@ -11,7 +11,7 @@ export interface MultiStepToolDefinition {
   inputSchema: Record<string, unknown>;
 }
 
-export const MULTI_STEP_TOOL_DEFINITIONS: readonly MultiStepToolDefinition[] = [
+export const MULTI_STEP_TOOL_DEFINITIONS: readonly MultiStepToolDefinition[] = Object.freeze([
   {
     name: "todo_write",
     description: "Create, update, delete, list, or fetch structured todos for the current task.",
@@ -245,7 +245,10 @@ export const MULTI_STEP_TOOL_DEFINITIONS: readonly MultiStepToolDefinition[] = [
       additionalProperties: true,
     },
   },
-];
+].map((tool) => Object.freeze({
+  ...tool,
+  inputSchema: Object.freeze(tool.inputSchema),
+})));
 
 export function getMultiStepToolDefinitions(toolNames: readonly string[]): MultiStepToolDefinition[] {
   const allowed = new Set(toolNames);

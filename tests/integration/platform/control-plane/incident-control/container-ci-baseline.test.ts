@@ -22,8 +22,7 @@ test("ci workflow runs install typecheck tests and stable validation", () => {
 
   assert.match(workflow, /uses: actions\/checkout@v4/);
   assert.match(workflow, /uses: actions\/setup-node@v4/);
-  assert.match(workflow, /node-version: \[20,\s*22\]/);
-  assert.match(workflow, /\${{ matrix\.node-version }}/);
+  assert.match(workflow, /node-version: 22/);
   assert.match(workflow, /run: npm ci/);
   assert.match(workflow, /run: npm run lint/);
   assert.match(workflow, /npm audit --audit-level=high --omit=dev --json/);
@@ -32,7 +31,7 @@ test("ci workflow runs install typecheck tests and stable validation", () => {
   assert.match(workflow, /run: npm run test:raw/);
   assert.match(workflow, /name: Coverage Gate/);
   assert.match(workflow, /run: npm run coverage:gate/);
-  assert.match(workflow, /AA_VALIDATION_ITERATIONS=2 npm run validate:stable/);
+  assert.match(workflow, /AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled/);
 });
 
 test("docker compose includes postgres service for production-like local validation", () => {
@@ -61,7 +60,7 @@ test("publish and deploy workflows require secret refs and environment-scoped se
   const deployWorkflow = readFileSync(join(REPO_ROOT, ".github", "workflows", "deploy-environment.yml"), "utf8");
 
   assert.match(publishWorkflow, /registry_secret_ref:/);
-  assert.match(publishWorkflow, /environment:\s*\$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.environment \|\| 'prod' \}\}/);
+  assert.match(publishWorkflow, /environment:\s*\$\{\{\s*needs\.preflight\.outputs\.deploy_environment\s*\|\|\s*'prod'\s*\}\}/);
   // publish-image.yml uses GITHUB_TOKEN for container registry auth
   assert.match(publishWorkflow, /secrets\.GITHUB_TOKEN/);
   assert.match(publishWorkflow, /docker login "\$\{REGISTRY_HOST\}"/);

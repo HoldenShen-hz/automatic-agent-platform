@@ -428,7 +428,7 @@ test("All presenters shutdown returns undefined", async () => {
   }
 });
 
-test("All presenters healthCheck returns true", async () => {
+test("All presenters healthCheck follows initialize lifecycle", async () => {
   const presenters = [
     createCodingPresenterPlugin(),
     createGrowthPresenterPlugin(),
@@ -436,7 +436,8 @@ test("All presenters healthCheck returns true", async () => {
   ];
 
   for (const presenter of presenters) {
-    const result = await presenter.healthCheck();
-    assert.equal(result, true);
+    assert.equal(await presenter.healthCheck(), false);
+    await presenter.initialize();
+    assert.equal(await presenter.healthCheck(), true);
   }
 });

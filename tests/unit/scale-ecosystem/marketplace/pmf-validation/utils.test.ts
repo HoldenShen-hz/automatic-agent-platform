@@ -48,7 +48,7 @@ test("subtractDaysIso handles single day", () => {
 
 test("subtractDaysIso handles large number of days", () => {
   const result = subtractDaysIso("2026-05-21T00:00:00.000Z", 365);
-  assert.ok(result.includes("2025-05-22"));
+  assert.ok(result.includes("2025-05-21"));
 });
 
 test("subtractDaysIso rejects invalid timestamp", () => {
@@ -100,7 +100,7 @@ test("calculatePercentile bounds percentile to valid range", () => {
 
 test("safeDividePercent returns percentage", () => {
   assert.equal(safeDividePercent(50, 100), 50);
-  assert.equal(safeDividePercent(1, 3), null);
+  assert.equal(safeDividePercent(1, 3), 33.33);
 });
 
 test("safeDividePercent returns null when denominator is zero", () => {

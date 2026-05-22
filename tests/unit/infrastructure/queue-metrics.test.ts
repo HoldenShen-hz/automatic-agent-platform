@@ -150,7 +150,7 @@ describe("QueueMetricCollector", () => {
     it("handles zero enqueued for rates", () => {
       const snapshot = collector.snapshot();
       assert.equal(snapshot.failureRate, 0);
-      assert.equal(snapshot.successRate, 0);
+      assert.equal(snapshot.successRate, 1);
     });
   });
 

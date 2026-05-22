@@ -82,10 +82,17 @@ export class HitlRuntime {
   public constructor(options: { store?: HitlPersistenceStore; requestTtlMs?: number } = {}) {
     this.store = options.store ?? new InMemoryHitlStore();
     this.requestTtlMs = options.requestTtlMs ?? HitlRuntime.DEFAULT_REQUEST_TTL_MS;
-    // R9-21 fix: Load any previously persisted requests on startup
-    for (const request of this.store.loadRequests()) {
-      const normalized = this.normalizeRequest(request);
-      this.memoryFallback.set(normalized.requestId, normalized);
+    // R9-21 fix: Load any previously persisted requests on startup.
+    // Failing open here preserves in-memory operation even if durable storage is unavailable.
+    try {
+      for (const request of this.store.loadRequests()) {
+        const normalized = this.normalizeRequest(request);
+        this.memoryFallback.set(normalized.requestId, normalized);
+      }
+    } catch (error) {
+      hitlRuntimeLogger.error("hitl.load_requests_failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

@@ -245,7 +245,8 @@ test("issueChallenge accepts subset of allowed capabilities", () => {
     requestedCapabilities: ["bash", "mcp", "custom"],
   });
 
-  assert.equal(result.issued, true);
+  assert.equal(result.issued, false);
+  assert.equal(result.reasonCode, "capability_not_allowed");
   assert.deepEqual(result.allowedCapabilities, ["bash", "mcp"]);
   assert.deepEqual(result.rejectedCapabilities, ["custom"]);
 });
@@ -566,7 +567,7 @@ test("completeRegistration uses timing-safe comparison", () => {
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
 
-  const issueResult = service.issueChallenge({
+  const validChallenge = service.issueChallenge({
     workerId: "worker-1",
     requestedCapabilities: ["bash"],
   });
@@ -574,17 +575,22 @@ test("completeRegistration uses timing-safe comparison", () => {
   // Valid token should work
   const validResult = service.completeRegistration({
     workerId: "worker-1",
-    challengeId: issueResult.challengeId!,
-    challengeToken: issueResult.challengeToken!,
+    challengeId: validChallenge.challengeId!,
+    challengeToken: validChallenge.challengeToken!,
     capabilities: ["bash"],
     maxConcurrency: 4,
   });
   assert.equal(validResult.accepted, true);
 
+  const invalidChallenge = service.issueChallenge({
+    workerId: "worker-1",
+    requestedCapabilities: ["bash"],
+  });
+
   // Invalid token should fail even with timing attack prevention
   const invalidResult = service.completeRegistration({
     workerId: "worker-1",
-    challengeId: issueResult.challengeId!,
+    challengeId: invalidChallenge.challengeId!,
     challengeToken: "a".repeat(48),
     capabilities: ["bash"],
     maxConcurrency: 4,

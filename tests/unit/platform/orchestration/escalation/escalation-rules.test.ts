@@ -8,6 +8,7 @@ import {
   EscalationStage,
   EscalationDecisionType,
 } from "../../../../../src/platform/five-plane-orchestration/escalation/index.js";
+import { PlatformPanicService } from "../../../../../src/platform/ops-maturity/platform-panic/index.js";
 
 function createRequest(overrides: Partial<EscalationRequest> = {}): EscalationRequest {
   return {
@@ -119,16 +120,16 @@ test("riskLevel 'critical' with production impact returns decision 'panic_stop'"
 });
 
 test("riskLevel 'critical' with production impact returns decision 'panic_activate' when panic service is configured", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const request = createRequest({ riskLevel: "critical", affectsProduction: true });
   const decision = service.decide(request);
 
-  // With panic service configured, returns panic_activate
   assert.ok(
     decision.decision === "panic_stop" || decision.decision === "panic_activate",
     `Expected panic_stop or panic_activate, got ${decision.decision}`,
   );
   assert.equal(decision.blocksExecution, true);
+  assert.ok(decision.panicActivation !== undefined);
 });
 
 test("riskLevel 'critical' takes priority over high risk + execute for production", () => {
@@ -312,8 +313,8 @@ test("decision 'none' has requiresOperatorAction false", () => {
   assert.equal(decision.decision, "none");
   assert.equal(decision.requiresOperatorAction, false);
   assert.equal(decision.blocksExecution, false);
-  assert.strictEqual(decision.approvalRequestId, null);
-  assert.strictEqual(decision.operatorNotificationId, null);
+  assert.strictEqual(decision.approvalRequestId, undefined);
+  assert.strictEqual(decision.operatorNotificationId, undefined);
 });
 
 test("decision 'approval' has requiresOperatorAction true", () => {

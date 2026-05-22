@@ -28,11 +28,12 @@ test("AssetProductionRetriever.initialize is no-op", async () => {
   await plugin.initialize();
 });
 
-test("AssetProductionRetriever.healthCheck returns true", async () => {
+test("AssetProductionRetriever.healthCheck reflects lifecycle state", async () => {
   const plugin = createAssetProductionRetrieverPlugin();
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("AssetProductionRetriever.shutdown returns undefined", async () => {

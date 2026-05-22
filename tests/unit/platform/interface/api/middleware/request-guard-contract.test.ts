@@ -15,7 +15,7 @@ test("buildRequestGuardPlan includes rate-limit for GET beforeRouting", () => {
   const plan = buildRequestGuardPlan(input);
 
   assert.deepEqual(plan.beforeRouting, ["rate-limit"]);
-  assert.deepEqual(plan.beforeDispatch, []);
+  assert.deepEqual(plan.beforeDispatch, ["idempotency-key"]);
 });
 
 test("buildRequestGuardPlan includes rate-limit for POST beforeRouting", () => {

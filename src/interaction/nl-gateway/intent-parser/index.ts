@@ -113,11 +113,11 @@ function matchIntentSignal(message: string): IntentSignal | null {
 }
 
 export function detectInputLanguage(message: string): string {
-  if (/[\u4e00-\u9fff]/.test(message)) {
-    return "zh-CN";
-  }
   if (/[\u3040-\u30ff]/.test(message)) {
     return "ja-JP";
+  }
+  if (/[\u4e00-\u9fff]/.test(message)) {
+    return "zh-CN";
   }
   if (/[äöüß]/i.test(message)) {
     return "de-DE";
@@ -252,7 +252,15 @@ export class LlmIntentParser {
     }
 
     try {
-      const localeLabel = resolvedLocale === "zh-CN" ? "中文" : resolvedLocale === "en-US" ? "English" : resolvedLocale;
+      const localeLabel = resolvedLocale === "zh-CN"
+        ? "中文"
+        : resolvedLocale === "en-US"
+          ? "English"
+          : resolvedLocale === "ja-JP"
+            ? "Japanese"
+            : resolvedLocale === "de-DE"
+              ? "German"
+              : resolvedLocale;
       const prompt = [
         "Return strict JSON only: {\"intentType\": string, \"confidence\": number, \"reasoning\"?: string, \"language\"?: string}.",
         "intentType must be one of: task_create, task_query, task_modify, status_inquiry, approval_action, why.",

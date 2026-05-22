@@ -265,7 +265,7 @@ export class FederationAudit {
     const expired: string[] = [];
 
     for (const [id, record] of this.records) {
-      if (record.timestamp < cutoff) {
+      if (record.timestamp <= cutoff) {
         expired.push(id);
       }
     }

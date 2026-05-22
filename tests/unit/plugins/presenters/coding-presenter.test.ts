@@ -24,11 +24,12 @@ test("CodingPresenter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("CodingPresenter.healthCheck returns true", async () => {
+test("CodingPresenter.healthCheck reflects lifecycle state", async () => {
   const plugin = createCodingPresenterPlugin();
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("CodingPresenter.shutdown returns undefined", async () => {

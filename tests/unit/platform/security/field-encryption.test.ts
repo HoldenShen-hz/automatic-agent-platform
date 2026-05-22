@@ -2,8 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { FieldEncryptionService, type FieldProtectionRule } from "../../../../src/platform/compliance/encryption/index.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 const KEY_REF = "test-key-ref-12345";
+
+function expectValidationErrorCode(error: unknown, code: string): boolean {
+  assert.ok(error instanceof ValidationError);
+  assert.equal(error.code, code);
+  return true;
+}
 
 test("FieldEncryptionService protectRecord encrypts specified fields", (t) => {
   const service = new FieldEncryptionService();
@@ -69,11 +76,11 @@ test("FieldEncryptionService protectRecord throws on empty keyRef", (t) => {
 
   assert.throws(
     () => service.protectRecord({ record, rules, keyRef: "" }),
-    /missing_key_ref/,
+    (error) => expectValidationErrorCode(error, "field_encryption.missing_key_ref"),
   );
   assert.throws(
     () => service.protectRecord({ record, rules, keyRef: "   " }),
-    /missing_key_ref/,
+    (error) => expectValidationErrorCode(error, "field_encryption.missing_key_ref"),
   );
 });
 
@@ -106,19 +113,28 @@ test("FieldEncryptionService revealField throws on wrong keyRef", (t) => {
 
   assert.throws(
     () => service.revealField({ ciphertext: protectedFields[0].ciphertext, keyRef: "wrong-key" }),
-    /key_mismatch/,
+    (error) => expectValidationErrorCode(error, "field_encryption.key_mismatch"),
   );
 });
 
 test("FieldEncryptionService revealField throws on malformed ciphertext", (t) => {
   const service = new FieldEncryptionService();
 
-  assert.throws(() => service.revealField({ ciphertext: "not-formatted", keyRef: KEY_REF }), /invalid_ciphertext/);
-  assert.throws(() => service.revealField({ ciphertext: "no-colons-here", keyRef: KEY_REF }), /invalid_ciphertext/);
-  assert.throws(() => service.revealField({ ciphertext: "enc:bad", keyRef: KEY_REF }), /invalid_ciphertext/);
+  assert.throws(
+    () => service.revealField({ ciphertext: "not-formatted", keyRef: KEY_REF }),
+    (error) => expectValidationErrorCode(error, "field_encryption.invalid_ciphertext"),
+  );
+  assert.throws(
+    () => service.revealField({ ciphertext: "no-colons-here", keyRef: KEY_REF }),
+    (error) => expectValidationErrorCode(error, "field_encryption.invalid_ciphertext"),
+  );
+  assert.throws(
+    () => service.revealField({ ciphertext: "enc:bad", keyRef: KEY_REF }),
+    (error) => expectValidationErrorCode(error, "field_encryption.invalid_ciphertext"),
+  );
   assert.throws(
     () => service.revealField({ ciphertext: "enc:abcd:iv:tag:data", keyRef: KEY_REF }),
-    /key_mismatch/,
+    (error) => expectValidationErrorCode(error, "field_encryption.key_mismatch"),
   );
 });
 

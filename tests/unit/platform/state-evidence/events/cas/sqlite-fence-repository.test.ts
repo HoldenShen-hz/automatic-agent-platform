@@ -45,6 +45,18 @@ function createMockConnection(): {
             return { changes: 1 };
           }
           if (sql.includes("DELETE")) {
+            if (sql.includes("expires_at IS NOT NULL")) {
+              const now = params[0] as string;
+              let removed = 0;
+              for (const [key, row] of fenceStorage.entries()) {
+                const expiresAt = (row as Record<string, unknown>).expires_at;
+                if (typeof expiresAt === "string" && expiresAt <= now) {
+                  fenceStorage.delete(key);
+                  removed++;
+                }
+              }
+              return { changes: removed };
+            }
             const key = params[0] as string;
             const existed = fenceStorage.has(key);
             fenceStorage.delete(key);

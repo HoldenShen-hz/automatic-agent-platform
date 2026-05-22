@@ -109,7 +109,7 @@ test("excerpt truncates long content", () => {
   const longContent = "This is a very long piece of content that should be truncated when it exceeds the maximum length limit";
   const result = excerpt(longContent, 40);
   assert.equal(result.length, 40);
-  assert.equal(result, "This is a very long piece of content that sho");
+  assert.equal(result, "This is a very long piece of content tha");
 });
 
 test("excerpt normalizes whitespace", () => {

@@ -105,10 +105,11 @@ test("PluginHarness: invokeAdapterAuthenticate sets up adapter credentials", asy
     },
   });
 
-  await registry.ensureActive("plugin.shared.github_adapter");
   await registry.invokeAdapterAuthenticate("plugin.shared.github_adapter", {
     credentials: { token: "ghp_test_token_harness" },
   });
+
+  await registry.ensureActive("plugin.shared.github_adapter");
 
   // Authentication should not throw
   assert.ok(true);
@@ -145,10 +146,11 @@ test("PluginHarness: invokeAdapterExecute performs adapter action", async () => 
     },
   });
 
-  await registry.ensureActive("plugin.shared.github_adapter");
   await registry.invokeAdapterAuthenticate("plugin.shared.github_adapter", {
     credentials: { token: "ghp_test_token" },
   });
+
+  await registry.ensureActive("plugin.shared.github_adapter");
 
   const result = await registry.invokeAdapterExecute("plugin.shared.github_adapter", {
     action: "create_issue",

@@ -357,15 +357,16 @@ export class PluginSpiRegistry {
       };
     },
   ): Promise<readonly RetrieverKnowledgeResult[]> {
-    const plugin = await this.ensureActive(pluginId, input);
     const record = this.requireRecord(pluginId);
-    const context = buildContext(record, input);
-    if (plugin.spiType !== "retriever") {
+    if (record.plugin.spiType !== "retriever") {
       throw new ValidationError("plugin_spi.invalid_operation", `Plugin ${pluginId} is not a retriever.`, {
         category: "validation",
         source: "internal",
       });
     }
+    await this.ensureActive(pluginId, input);
+    const plugin = record.plugin;
+    const context = buildContext(record, input);
     this.assertNamespaceAllowed(record.manifest.sandbox, input.namespace ?? null, pluginId);
     return this.executeInvocation(record, context, "retrieve", async () => {
       if (this.isProcessIsolatedRuntime(record)) {
@@ -383,15 +384,16 @@ export class PluginSpiRegistry {
       audience: "end_user" | "developer" | "reviewer" | "operator";
     },
   ): Promise<HumanOutput> {
-    const plugin = await this.ensureActive(pluginId, input);
     const record = this.requireRecord(pluginId);
-    const context = buildContext(record, input);
-    if (plugin.spiType !== "presenter") {
+    if (record.plugin.spiType !== "presenter") {
       throw new ValidationError("plugin_spi.invalid_operation", `Plugin ${pluginId} is not a presenter.`, {
         category: "validation",
         source: "internal",
       });
     }
+    await this.ensureActive(pluginId, input);
+    const plugin = record.plugin;
+    const context = buildContext(record, input);
     return this.executeInvocation(record, context, "present", async () => {
       const presenterInput = {
         machineOutputs: input.machineOutputs,
@@ -411,15 +413,15 @@ export class PluginSpiRegistry {
       credentials: Record<string, unknown>;
     },
   ): Promise<void> {
-    const plugin = await this.ensureActive(pluginId, input);
     const record = this.requireRecord(pluginId);
-    const context = buildContext(record, input);
-    if (plugin.spiType !== "adapter") {
+    if (record.plugin.spiType !== "adapter") {
       throw new ValidationError("plugin_spi.invalid_operation", `Plugin ${pluginId} is not an adapter.`, {
         category: "validation",
         source: "internal",
       });
     }
+    const plugin = record.plugin;
+    const context = buildContext(record, input);
     this.assertNetworkAllowed(record.manifest.sandbox, pluginId, "authenticate");
     await this.executeInvocation(record, context, "authenticate", async () => {
       if (this.isProcessIsolatedRuntime(record)) {
@@ -437,15 +439,16 @@ export class PluginSpiRegistry {
       params: Record<string, unknown>;
     },
   ): Promise<Record<string, unknown>> {
-    const plugin = await this.ensureActive(pluginId, input);
     const record = this.requireRecord(pluginId);
-    const context = buildContext(record, input);
-    if (plugin.spiType !== "adapter") {
+    if (record.plugin.spiType !== "adapter") {
       throw new ValidationError("plugin_spi.invalid_operation", `Plugin ${pluginId} is not an adapter.`, {
         category: "validation",
         source: "internal",
       });
     }
+    await this.ensureActive(pluginId, input);
+    const plugin = record.plugin;
+    const context = buildContext(record, input);
     this.assertNetworkAllowed(record.manifest.sandbox, pluginId, "execute");
     return this.executeInvocation(record, context, "execute", async () => {
       if (this.isProcessIsolatedRuntime(record)) {

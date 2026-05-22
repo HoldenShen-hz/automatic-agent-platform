@@ -6,6 +6,80 @@ import { BudgetRepository } from "../../../../../../../src/platform/five-plane-s
 import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
 
+function seedHarnessRunFixture(
+  db: SqliteDatabase,
+  input: {
+    confirmedTaskSpecId: string;
+    requestId: string;
+    harnessRunId: string;
+    budgetLedgerId: string;
+    tenantId: string;
+    traceId: string;
+    now: string;
+  },
+): void {
+  db.connection.prepare(
+    `INSERT INTO confirmed_task_specs (
+      confirmed_task_spec_id, task_draft_id, tenant_id, goal, inputs_json,
+      constraint_pack_ref, risk_class, idempotency_key, trace_id, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    input.confirmedTaskSpecId,
+    "task-draft-budget-test",
+    input.tenantId,
+    "Budget repository integration fixture",
+    "{}",
+    "constraint-pack-budget-test",
+    "medium",
+    `idem:${input.confirmedTaskSpecId}`,
+    input.traceId,
+    input.now,
+  );
+
+  db.connection.prepare(
+    `INSERT INTO request_envelopes (
+      request_id, confirmed_task_spec_id, tenant_id, trace_id,
+      idempotency_key, request_hash, submitted_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    input.requestId,
+    input.confirmedTaskSpecId,
+    input.tenantId,
+    input.traceId,
+    `idem:${input.requestId}`,
+    "hash-budget-test",
+    input.now,
+  );
+
+  db.connection.prepare(
+    `INSERT INTO harness_runs (
+      harness_run_id, tenant_id, org_id, trace_id, goal, risk_level, domain_id,
+      confirmed_task_spec_id, request_envelope_id, request_hash, status,
+      constraint_pack_ref, version_lock_id, budget_ledger_id, current_seq,
+      created_at, fencing_token, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    input.harnessRunId,
+    input.tenantId,
+    "org-budget-test",
+    input.traceId,
+    "Budget repository integration fixture",
+    "medium",
+    "platform",
+    input.confirmedTaskSpecId,
+    input.requestId,
+    "hash-budget-test",
+    "running",
+    "constraint-pack-budget-test",
+    "version-lock-budget-test",
+    input.budgetLedgerId,
+    0,
+    input.now,
+    "fence-budget-test",
+    input.now,
+  );
+}
+
 test("BudgetRepository can be instantiated with mock connection", () => {
   const mockConn = {
     prepare: () => ({
@@ -345,6 +419,15 @@ test("BudgetRepository integration - full ledger lifecycle", () => {
     const repo = new BudgetRepository(db.connection);
 
     const now = "2026-04-27T10:00:00.000Z";
+    seedHarnessRunFixture(db, {
+      confirmedTaskSpecId: "ctspec-budget-integration",
+      requestId: "req-budget-integration",
+      harnessRunId: "run-integration",
+      budgetLedgerId: "ledger-integration-1",
+      tenantId: "tenant-integration",
+      traceId: "trace-budget-integration",
+      now,
+    });
 
     // Insert a ledger
     const ledger: Parameters<typeof repo.insertLedger>[0] = {

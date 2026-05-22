@@ -18,28 +18,17 @@ import {
   getServiceCertificates,
   extractServiceAuth,
   getServiceAuthStats,
+  __dangerousResetServiceAuthStateForTests,
 } from "../../../../src/platform/five-plane-control-plane/iam/service-auth.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
-// Helper to reset state between tests
-function resetServiceAuthState(): void {
-  const {
-    serviceIdentities,
-    tokenIndex,
-    certIndex,
-  } = require("../../../../../src/platform/five-plane-control-plane/iam/service-auth.js");
-  serviceIdentities.clear();
-  tokenIndex.clear();
-  certIndex.clear();
-}
-
 test.describe("Service Auth", () => {
   test.beforeEach(() => {
-    resetServiceAuthState();
+    __dangerousResetServiceAuthStateForTests();
   });
 
   test.afterEach(() => {
-    resetServiceAuthState();
+    __dangerousResetServiceAuthStateForTests();
   });
 
   test("registerServiceIdentity creates new service identity", () => {
@@ -149,7 +138,7 @@ test.describe("Service Auth", () => {
 
     const result = validateServiceToken({
       tokenId: token.tokenId,
-      signature: signIssuedServiceToken(token.tokenId),
+      signature: "revoked-token-signature",
     });
 
     assert.equal(result.authenticated, false);
@@ -490,8 +479,8 @@ test.describe("Service Auth", () => {
     const count = revokeAllServiceTokens(identity.serviceId);
 
     assert.ok(count >= 2);
-    const result1 = validateServiceToken({ tokenId: token1.tokenId, signature: signIssuedServiceToken(token1.tokenId) });
-    const result2 = validateServiceToken({ tokenId: token2.tokenId, signature: signIssuedServiceToken(token2.tokenId) });
+    const result1 = validateServiceToken({ tokenId: token1.tokenId, signature: "revoked-token-1" });
+    const result2 = validateServiceToken({ tokenId: token2.tokenId, signature: "revoked-token-2" });
     assert.equal(result1.reason, "token_invalid");
     assert.equal(result2.reason, "token_invalid");
   });

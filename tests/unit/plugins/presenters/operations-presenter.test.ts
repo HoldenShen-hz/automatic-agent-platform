@@ -29,11 +29,12 @@ test("OperationsPresenter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("OperationsPresenter.healthCheck returns true", async () => {
+test("OperationsPresenter.healthCheck reflects lifecycle state", async () => {
   const plugin = createOperationsPresenterPlugin();
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("OperationsPresenter.shutdown returns undefined", async () => {

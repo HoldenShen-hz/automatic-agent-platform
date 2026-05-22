@@ -416,6 +416,7 @@ export class DataReplicatorService {
 
     const errors: string[] = [];
     let lastSequence = 0;
+    let eventsReplicated = 0;
     const failedEvents: ReplicationEvent[] = [];
 
     for (const event of pendingEvents) {
@@ -423,6 +424,7 @@ export class DataReplicatorService {
       if (delivery.success) {
         this.replicationOutboxStore.acknowledge(targetRegionId, event.eventId);
         lastSequence = Math.max(lastSequence, event.sequenceNumber ?? (lastSequence + 1));
+        eventsReplicated += 1;
         continue;
       }
       errors.push(delivery.error);
@@ -457,7 +459,7 @@ export class DataReplicatorService {
 
     return {
       success: errors.length === 0,
-      eventsReplicated: lastSequence,
+      eventsReplicated,
       lastSequence,
       errors,
     };

@@ -37,15 +37,15 @@ test("buildRiskPreview returns high risk for HIGH_RISK_KEYWORDS", () => {
   assert.equal(result.approvalNeeded, true);
 });
 
-test.skip("buildRiskPreview returns medium risk for task_modify intent", () => {
+test("buildRiskPreview returns medium risk for task_modify intent", () => {
   const result = buildRiskPreview("modify the configuration", "task_modify");
 
   assert.equal(result.overallRisk, "medium");
-  assert.equal(result.reversible, false);
+  assert.equal(result.reversible, true);
 });
 
-test.skip("buildRiskPreview includes riskFactors for destructive operations", () => {
-  const result = buildRiskPreview("drop the table", "task_modify");
+test("buildRiskPreview includes riskFactors for destructive operations", () => {
+  const result = buildRiskPreview("delete production database", "task_modify");
 
   assert.ok(result.riskFactors.length > 0);
   assert.ok(result.riskFactors.some(f => f.includes("破坏性")));
@@ -342,7 +342,7 @@ test("buildDryRunPreview uses fallback environment when not specified", () => {
   assert.ok(result.scope.includes("unknown"));
 });
 
-test.skip("buildRiskPreviewWithDryRun adds policy check results to risk factors", async () => {
+test("buildRiskPreviewWithDryRun adds policy check results to risk factors", async () => {
   const mockExecutor: DryRunExecutorPort = {
     executeDryRun: async () => ({
       blocked: false,
@@ -353,10 +353,10 @@ test.skip("buildRiskPreviewWithDryRun adds policy check results to risk factors"
   };
 
   const result = await buildRiskPreviewWithDryRun(
-    "execute critical command",
+    "deploy to production",
     "task_create",
     mockExecutor,
-    { message: "execute critical command", divisionId: "eng", workflowId: "wf1", userId: "u1", locale: "en-US" },
+    { message: "deploy to production", divisionId: "eng", workflowId: "wf1", userId: "u1", locale: "en-US" },
   );
 
   assert.ok(result.riskFactors.some(f => f.includes("security_policy_violated")));

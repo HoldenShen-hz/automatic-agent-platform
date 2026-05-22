@@ -10,15 +10,19 @@ export interface RuntimePlanExecutionInput {
 
 export const RuntimePlanExecutionInput = "RuntimePlanExecutionInput";
 
+export interface RuntimePlanExecutionResult extends MultiStepOrchestrationResult {
+  taskId: string;
+}
+
 export type RuntimePlanExecutor = (
   input: RuntimePlanExecutionInput,
-) => Promise<MultiStepOrchestrationResult>;
+) => Promise<RuntimePlanExecutionResult>;
 
 export const RuntimePlanExecutor = "RuntimePlanExecutor";
 
 export async function executeOapeflirRuntimePlan(
   input: RuntimePlanExecutionInput,
-): Promise<MultiStepOrchestrationResult> {
+): Promise<RuntimePlanExecutionResult> {
   const result = await runMultiStepOrchestration({
     dbPath: input.dbPath,
     taskId: input.planGraphBundle.planGraphBundleId,

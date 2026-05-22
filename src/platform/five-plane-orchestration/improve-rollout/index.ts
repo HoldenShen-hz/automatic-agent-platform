@@ -8,6 +8,7 @@ export * from "./canary-traffic-router.js";
 export * from "./rollout/rollout-state-machine.js";
 export * from "./rollout/rollout-scheduler.js";
 export * from "./release-policy.js";
+export { ImprovementCandidateSchema } from "../oapeflir/types/improvement-candidate.js";
 
 export const StrategyVersion = "StrategyVersion";
 export const AutonomyTarget = "AutonomyTarget";

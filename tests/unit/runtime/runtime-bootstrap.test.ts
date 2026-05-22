@@ -13,7 +13,7 @@ test("runtime index re-exports AdmissionController", async () => {
 
 test("runtime index re-exports ComplexityRouter", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("ComplexityRouter" in runtime, "should export ComplexityRouter");
+  assert.ok("routeComplexity" in runtime, "should export routeComplexity");
 });
 
 test("runtime index re-exports ContextCompactionService", async () => {
@@ -43,12 +43,12 @@ test("runtime index re-exports GracefulShutdown", async () => {
 
 test("runtime index re-exports LoopDetection", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("LoopDetection" in runtime, "should export LoopDetection");
+  assert.ok("LoopDetectionState" in runtime, "should export LoopDetectionState");
 });
 
 test("runtime index re-exports orchestrator module", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("MultiStepOrchestration" in runtime || runtime.orchestrator != null, "should export orchestrator");
+  assert.ok("runMultiStepOrchestration" in runtime, "should export runMultiStepOrchestration");
 });
 
 test("runtime index re-exports OutputContinuationService", async () => {
@@ -58,12 +58,12 @@ test("runtime index re-exports OutputContinuationService", async () => {
 
 test("runtime index re-exports RuntimeContext", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("RuntimeContext" in runtime, "should export RuntimeContext");
+  assert.ok("getContext" in runtime, "should export runtime context helpers");
 });
 
 test("runtime index re-exports RuntimeFactory", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("RuntimeFactory" in runtime, "should export RuntimeFactory");
+  assert.ok("createRuntimeServices" in runtime, "should export createRuntimeServices");
 });
 
 test("runtime index re-exports StateTransitionMachine", async () => {

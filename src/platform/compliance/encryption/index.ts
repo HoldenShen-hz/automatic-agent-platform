@@ -93,23 +93,81 @@ function deriveEncryptionKey(keyRef: string): Buffer {
 }
 
 function readField(record: Record<string, unknown>, path: string): unknown {
-  return path.split(".").reduce<unknown>((cursor, segment) => {
+  let cursor: unknown = record;
+  for (const token of tokenizeFieldPath(path)) {
+    if (typeof token === "number") {
+      if (!Array.isArray(cursor)) {
+        return undefined;
+      }
+      cursor = cursor[token];
+      continue;
+    }
     if (cursor == null || typeof cursor !== "object") {
       return undefined;
     }
-    return (cursor as Record<string, unknown>)[segment];
-  }, record);
+    cursor = (cursor as Record<string, unknown>)[token];
+  }
+  return cursor;
 }
 
 function writeField(record: Record<string, unknown>, path: string, value: unknown): void {
-  const segments = path.split(".");
-  let cursor: Record<string, unknown> = record;
-  for (const segment of segments.slice(0, -1)) {
-    const next = cursor[segment];
-    if (next == null || typeof next !== "object" || Array.isArray(next)) {
-      cursor[segment] = {};
+  const tokens = tokenizeFieldPath(path);
+  let cursor: unknown = record;
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const token = tokens[index]!;
+    const nextToken = tokens[index + 1]!;
+    if (typeof token === "number") {
+      if (!Array.isArray(cursor)) {
+        return;
+      }
+      const nextValue = cursor[token];
+      if (nextValue == null || typeof nextValue !== "object") {
+        cursor[token] = typeof nextToken === "number" ? [] : {};
+      }
+      cursor = cursor[token];
+      continue;
     }
-    cursor = cursor[segment] as Record<string, unknown>;
+
+    if (cursor == null || typeof cursor !== "object") {
+      return;
+    }
+    const objectCursor = cursor as Record<string, unknown>;
+    const nextValue = objectCursor[token];
+    if (nextValue == null || typeof nextValue !== "object") {
+      objectCursor[token] = typeof nextToken === "number" ? [] : {};
+    }
+    cursor = objectCursor[token];
   }
-  cursor[segments.at(-1)!] = value;
+
+  const lastToken = tokens.at(-1);
+  if (lastToken == null) {
+    return;
+  }
+  if (typeof lastToken === "number") {
+    if (!Array.isArray(cursor)) {
+      return;
+    }
+    cursor[lastToken] = value;
+    return;
+  }
+  if (cursor == null || typeof cursor !== "object") {
+    return;
+  }
+  (cursor as Record<string, unknown>)[lastToken] = value;
+}
+
+function tokenizeFieldPath(path: string): Array<string | number> {
+  const tokens: Array<string | number> = [];
+  for (const segment of path.split(".")) {
+    for (const match of segment.matchAll(/([^[\]]+)|\[(\d+)\]/g)) {
+      if (match[1] != null) {
+        tokens.push(match[1]);
+        continue;
+      }
+      if (match[2] != null) {
+        tokens.push(Number.parseInt(match[2], 10));
+      }
+    }
+  }
+  return tokens;
 }

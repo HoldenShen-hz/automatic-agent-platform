@@ -19,7 +19,7 @@ test("detectInputLanguage returns zh-CN for Chinese text", () => {
   assert.equal(detectInputLanguage("这是测试"), "zh-CN");
 });
 
-test.skip("detectInputLanguage returns ja-JP for Japanese text", () => {
+test("detectInputLanguage returns ja-JP for Japanese text", () => {
   assert.equal(detectInputLanguage("レポートを作成"), "ja-JP");
   assert.equal(detectInputLanguage("テストです"), "ja-JP");
 });
@@ -94,7 +94,7 @@ test("LlmIntentParser.parseWithLlm preserves model confidence when response is v
   assert.equal(result.confidence, 0.4);
 });
 
-test.skip("LlmIntentParser.parseWithLlm extracts intent from text response when JSON parse fails", async () => {
+test("LlmIntentParser.parseWithLlm extracts intent from text response when JSON parse fails", async () => {
   const mockGateway: IntentParserModelGateway = {
     complete: async () => "The user wants to create a task",
   };
@@ -102,8 +102,7 @@ test.skip("LlmIntentParser.parseWithLlm extracts intent from text response when 
 
   const result = await parser.parseWithLlm("create task please");
 
-  // Should use text parsing fallback
-  assert.equal(result.intentType, "task_query");
+  assert.equal(result.intentType, "task_create");
 });
 
 test("LlmIntentParser.parseWithLlm handles model exception gracefully", async () => {
@@ -245,7 +244,7 @@ test("parseIntentTokensWithModel accepts locale option", async () => {
   });
 });
 
-test.skip("LlmIntentParser uses detected input language", async () => {
+test("LlmIntentParser uses detected input language", async () => {
   const mockGateway: IntentParserModelGateway = {
     complete: async (prompt: string) => {
       // Verify the prompt contains locale information

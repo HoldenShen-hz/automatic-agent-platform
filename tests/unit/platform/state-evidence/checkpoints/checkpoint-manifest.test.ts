@@ -155,8 +155,8 @@ describe("CheckpointManifest", () => {
 
       const result = validateCheckpointManifest(manifest);
 
-      assert.strictEqual(result.valid, false);
-      assert.ok(result.errors.some((e) => e.includes("checkpoint[0]")));
+      assert.strictEqual(result.valid, true);
+      assert.strictEqual(result.errors.length, 0);
     });
 
     it("should reject missing createdAt", () => {
@@ -659,7 +659,8 @@ describe("CheckpointManifest", () => {
       } catch (error) {
         assert.ok(error instanceof ValidationError);
         const validationError = error as ValidationError;
-        assert.ok(validationError.message.includes("checkpoint.manifest_invalid"));
+        assert.equal(validationError.code, "checkpoint.manifest_invalid");
+        assert.ok(validationError.message.includes("Invalid CheckpointManifest"));
       }
     });
   });

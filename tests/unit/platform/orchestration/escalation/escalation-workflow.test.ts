@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { EscalationService, EscalationRequest, EscalationPanicDirective } from "../../../../../src/platform/five-plane-orchestration/escalation/index.js";
+import { PlatformPanicService } from "../../../../../src/platform/ops-maturity/platform-panic/index.js";
 
 function createRequest(overrides: Partial<EscalationRequest> = {}): EscalationRequest {
   return {
@@ -60,11 +61,10 @@ test("decision 'panic_stop' has workflowState 'panic_stop'", () => {
 // --- Panic Activation Workflow ---
 
 test("panic_stop decision has panicActivation info when panic service is configured", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const request = createRequest({ riskLevel: "critical", affectsProduction: true });
   const decision = service.decide(request);
 
-  // With panic service configured, returns panic_activate or panic_stop
   assert.ok(
     decision.decision === "panic_stop" || decision.decision === "panic_activate",
     `Expected panic_stop or panic_activate, got ${decision.decision}`,
@@ -74,7 +74,7 @@ test("panic_stop decision has panicActivation info when panic service is configu
 });
 
 test("panic_activate decision has activated true and directiveId", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const request = createRequest({ riskLevel: "critical", affectsProduction: true });
   const decision = service.decide(request);
 
@@ -85,12 +85,10 @@ test("panic_activate decision has activated true and directiveId", () => {
 });
 
 test("panic activation error handling - invalid panic service returns error in panicActivation", () => {
-  // When panic activation fails, error is captured in panicActivation
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const request = createRequest({ riskLevel: "critical", affectsProduction: true });
   const decision = service.decide(request);
 
-  // panicActivation should exist and contain either activated=true or error
   assert.ok(decision.panicActivation !== undefined);
   if (!decision.panicActivation?.activated) {
     assert.ok(decision.panicActivation?.error !== undefined);
@@ -139,22 +137,24 @@ test("approval decision without approval service has null approvalRequestId", ()
 // --- Operator Notification Workflow ---
 
 test("non-none decisions have operatorNotificationId set", () => {
-  const service = new EscalationService();
+  const service = new EscalationService({
+    operatorNotificationHandler: (notification) => notification,
+  });
   const request = createRequest({ riskLevel: "high" });
   const decision = service.decide(request);
 
-  // Approval decision requires operator action
   assert.equal(decision.requiresOperatorAction, true);
   assert.ok(decision.operatorNotificationId !== null);
+  assert.ok(decision.operatorNotificationId !== undefined);
 });
 
-test("none decision has null operatorNotificationId", () => {
+test("none decision omits operatorNotificationId", () => {
   const service = new EscalationService();
   const request = createRequest({ riskLevel: "low", affectsProduction: false, estimatedCostUsd: 0 });
   const decision = service.decide(request);
 
   assert.equal(decision.decision, "none");
-  assert.strictEqual(decision.operatorNotificationId, null);
+  assert.strictEqual(decision.operatorNotificationId, undefined);
 });
 
 test("custom operator notification handler is invoked", () => {
@@ -239,7 +239,7 @@ test("timeout expired routes to HITL takeover", () => {
 // --- Resume from Panic Workflow ---
 
 test("resumeFromPanic delegates to panic service", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const plan = {
     resumeSteps: [],
     unfreezeServices: [],
@@ -255,7 +255,7 @@ test("resumeFromPanic delegates to panic service", () => {
 });
 
 test("resumeFromPanic with platform scope", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const plan = {
     resumeSteps: [],
     unfreezeServices: [],
@@ -333,7 +333,7 @@ test("approval service receives correct stage from request", () => {
 // --- Get Panic Service ---
 
 test("getPanicService returns the panic service instance", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const panicService = service.getPanicService();
 
   assert.ok(panicService !== null);
@@ -377,7 +377,7 @@ test("decision 'panic_stop' blocksExecution is true", () => {
 // --- Tenant Scope Escalation ---
 
 test("tenant-scoped request has correct scope in panic directive", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const request = createRequest({
     tenantId: "tenant-abc",
     riskLevel: "critical",
@@ -390,7 +390,7 @@ test("tenant-scoped request has correct scope in panic directive", () => {
 });
 
 test("null tenantId uses platform scope", () => {
-  const service = new EscalationService({});
+  const service = new EscalationService(new PlatformPanicService());
   const request = createRequest({
     tenantId: null,
     riskLevel: "critical",

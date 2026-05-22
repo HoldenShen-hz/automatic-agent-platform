@@ -80,7 +80,7 @@ test("Timeout does not propagate error when configured", async () => {
   assert.equal(timeout.getState(), TimeoutState.TIMED_OUT);
 });
 
-test("Timeout.cancel stops the operation when running", async () => {
+test("Timeout.cancel marks the timeout as cancelled while the operation is running", async () => {
   const timeout = new Timeout({ timeoutMs: 5000 });
 
   let innerCompleted = false;
@@ -97,8 +97,10 @@ test("Timeout.cancel stops the operation when running", async () => {
   timeout.cancel();
   assert.equal(timeout.getState(), TimeoutState.CANCELLED);
 
-  await wrapPromise.catch(() => {});
-  assert.equal(innerCompleted, false);
+  const result = await wrapPromise;
+  assert.equal(result, "result");
+  assert.equal(innerCompleted, true);
+  assert.notEqual(timeout.getState(), TimeoutState.RUNNING);
 });
 
 test("Timeout.getState returns current state", () => {

@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DekManager, DekStore, type DekMetadata, type EncryptWithDekResult } from "../../../../src/platform/compliance/crypto-shredding/dek-manager.js";
+import { AppError } from "../../../../src/platform/contracts/errors.js";
+
+function assertAppErrorCode(error: unknown, code: string): boolean {
+  return error instanceof AppError && error.code === code;
+}
 
 test("DekStore.create creates a new DEK", async (t) => {
   const store = new DekStore();
@@ -14,12 +19,13 @@ test("DekStore.create creates a new DEK", async (t) => {
   assert.equal(result.key.length, 32);
 });
 
-test("DekStore.create increments version when active DEK exists", async (t) => {
+test("DekStore.create rejects creating a second active DEK without replacesDekId", async (t) => {
   const store = new DekStore();
   await store.create({ subjectId: "user-2" });
-  const result = await store.create({ subjectId: "user-2" });
-
-  assert.equal(result.metadata.version, 2);
+  await assert.rejects(
+    () => store.create({ subjectId: "user-2" }),
+    (error) => assertAppErrorCode(error, "dek.active_exists"),
+  );
 });
 
 test("DekStore.create allows creating second DEK with explicit replacesDekId", async (t) => {
@@ -36,7 +42,7 @@ test("DekStore.create throws when active DEK exists and replacesDekId differs", 
   const first = await store.create({ subjectId: "user-4" });
   await assert.rejects(
     () => store.create({ subjectId: "user-4", replacesDekId: "wrong-id" }),
-    /active_exists/,
+    (error) => assertAppErrorCode(error, "dek.active_exists"),
   );
 });
 
@@ -109,14 +115,14 @@ test("DekStore.markRotated updates status and metadata", async (t) => {
 
 test("DekStore.markRotated throws when DEK not found", async (t) => {
   const store = new DekStore();
-  await assert.rejects(() => store.markRotated("not-found", "replacement"), /not_found/);
+  await assert.rejects(() => store.markRotated("not-found", "replacement"), (error) => assertAppErrorCode(error, "dek.not_found"));
 });
 
 test("DekStore.markRotated throws when DEK not active", async (t) => {
   const store = new DekStore();
   const { metadata } = await store.create({ subjectId: "user-10" });
   await store.markRotated(metadata.dekId, "new-id");
-  await assert.rejects(() => store.markRotated(metadata.dekId, "new-id-2"), /not_active/);
+  await assert.rejects(() => store.markRotated(metadata.dekId, "new-id-2"), (error) => assertAppErrorCode(error, "dek.not_active"));
 });
 
 test("DekStore.destroy marks DEK as destroyed and wipes key", async (t) => {
@@ -128,7 +134,7 @@ test("DekStore.destroy marks DEK as destroyed and wipes key", async (t) => {
   const found = await store.getMetadata(metadata.dekId);
   assert.equal(found?.status, "destroyed");
   assert.ok(found?.destroyedAt);
-  assert.equal(store.getKey(metadata.dekId), null); // key was wiped
+  assert.equal(await store.getKey(metadata.dekId), null);
 });
 
 test("DekStore.destroy is idempotent", async (t) => {
@@ -141,13 +147,13 @@ test("DekStore.destroy is idempotent", async (t) => {
 
 test("DekStore.destroy throws when DEK not found", async (t) => {
   const store = new DekStore();
-  await assert.rejects(() => store.destroy("not-found"), /not_found/);
+  await assert.rejects(() => store.destroy("not-found"), (error) => assertAppErrorCode(error, "dek.not_found"));
 });
 
 test("DekStore.getAllForSubject returns all DEK versions", async (t) => {
   const store = new DekStore();
-  await store.create({ subjectId: "user-13" });
-  await store.create({ subjectId: "user-13" });
+  const first = await store.create({ subjectId: "user-13" });
+  await store.create({ subjectId: "user-13", replacesDekId: first.metadata.dekId });
   const all = await store.getAllForSubject("user-13");
 
   assert.equal(all.length, 2);
@@ -176,8 +182,8 @@ test("DekManager.createForSubject creates DEK for subject", async (t) => {
 
 test("DekManager.createForSubject throws on empty subjectId", async (t) => {
   const manager = new DekManager();
-  await assert.rejects(() => manager.createForSubject(""), /missing_subject/);
-  await assert.rejects(() => manager.createForSubject("   "), /missing_subject/);
+  await assert.rejects(() => manager.createForSubject(""), (error) => error instanceof AppError && error.code === "dek.missing_subject");
+  await assert.rejects(() => manager.createForSubject("   "), (error) => error instanceof AppError && error.code === "dek.missing_subject");
 });
 
 test("DekManager.getActiveDek returns active DEK", async (t) => {
@@ -217,6 +223,7 @@ test("DekManager.rotate handles first-time creation (no active DEK)", async (t) 
 
 test("DekManager.destroyForSubject destroys active DEK", async (t) => {
   const manager = new DekManager();
+  await manager.createForSubject("subject-4");
   const { destroyedDekId } = await manager.destroyForSubject("subject-4");
   const active = await manager.getActiveDek("subject-4");
 
@@ -245,7 +252,7 @@ test("DekManager.encryptForSubject throws when no active DEK", async (t) => {
   const manager = new DekManager();
   await assert.rejects(
     () => manager.encryptForSubject("no-dek-subject", "data"),
-    /not_found/,
+    (error) => assertAppErrorCode(error, "dek.not_found"),
   );
 });
 
@@ -262,7 +269,7 @@ test("DekManager.decrypt throws when DEK not found", async (t) => {
   const manager = new DekManager();
   await assert.rejects(
     () => manager.decrypt("unknown-dek", "ciphertext"),
-    /not_found/,
+    (error) => assertAppErrorCode(error, "dek.not_found"),
   );
 });
 
@@ -272,7 +279,7 @@ test("DekManager.decrypt throws when DEK destroyed", async (t) => {
   const { destroyedDekId } = await manager.destroyForSubject("subject-7");
   await assert.rejects(
     () => manager.decrypt(destroyedDekId!, "ciphertext"),
-    /destroyed/,
+    (error) => assertAppErrorCode(error, "dek.destroyed"),
   );
 });
 
@@ -281,7 +288,7 @@ test("DekManager.decrypt throws on malformed ciphertext", async (t) => {
   const { metadata } = await manager.createForSubject("subject-8");
   await assert.rejects(
     () => manager.decrypt(metadata.dekId, "not-three-parts"),
-    /invalid_ciphertext/,
+    (error) => assertAppErrorCode(error, "dek.invalid_ciphertext"),
   );
 });
 

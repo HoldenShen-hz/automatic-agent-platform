@@ -212,7 +212,7 @@ test("DefaultSbomScanner rejects non-file protocols with message", async () => {
   const result = await scanner.scan("https://example.com/sbom.json");
 
   assert.equal(result.valid, false);
-  assert.ok(result.scanErrors.includes("Remote SBOM scanning requires a supplied SBOM fetcher"));
+  assert.ok(result.scanErrors.some((error) => error.includes("Remote SBOM scanning requires a supplied SBOM fetcher")));
 });
 
 test("DefaultSbomScanner scans valid CycloneDX SBOM", async () => {
@@ -428,17 +428,19 @@ test("definePlugin with SBOM that has critical vulnerabilities throws", async ()
   writeFileSync(TEMP_SBOM_FILE, sbom);
 
   try {
-    assert.throws(
-      () =>
-        definePlugin({
-          pluginId: "sbom-critical-test",
-          name: "SBOM Critical Test",
-          version: "1.0.0",
-          type: "tool",
-          capabilities: [{ name: "execute", description: "Test", inputSchema: {}, outputSchema: {} }],
-          sbomRef: `file://${TEMP_SBOM_FILE}`,
-        }),
-      /high or critical vulnerabilities/i,
+    await assert.rejects(
+      definePlugin({
+        pluginId: "sbom-critical-test",
+        name: "SBOM Critical Test",
+        version: "1.0.0",
+        type: "tool",
+        capabilities: [{ name: "execute", description: "Test", inputSchema: {}, outputSchema: {} }],
+        sbomRef: `file://${TEMP_SBOM_FILE}`,
+      }),
+      (error: unknown) =>
+        error instanceof Error
+        && "code" in error
+        && error.code === "plugin_sdk.sbom_critical_vulnerabilities",
     );
   } finally {
     unlinkSync(TEMP_SBOM_FILE);

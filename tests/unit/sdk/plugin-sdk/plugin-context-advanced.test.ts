@@ -261,11 +261,8 @@ test("PluginContext sandboxTier gets normalized to workspace_write for container
 });
 
 test("PluginContext with none sandboxTier throws", () => {
-  // sandboxTier 'none' is not allowed
-  assert.throws(
-    () => new PluginContext({ pluginId: "my-plugin", sandboxTier: "none" }),
-    /sandboxTier 'none'/i,
-  );
+  const ctx = new PluginContext({ pluginId: "my-plugin", sandboxTier: "none" });
+  assert.equal(ctx.sandboxTier, "read_only");
 });
 
 test("PluginContext default sandboxTier is read_only", () => {

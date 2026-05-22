@@ -12,9 +12,14 @@ import type { FenceMode } from "../../../../../../src/platform/five-plane-state-
 // Mock AsyncSqlDatabase
 interface MockFenceRecord {
   fence_key: string;
+  executionId: string;
+  ownerNodeId: string;
+  mode: "shared" | "exclusive";
+  fenceToken: string;
+  acquiredAt: string;
+  expiresAt: string | null;
   execution_id: string;
   owner_node_id: string;
-  mode: "shared" | "exclusive";
   fence_token: string;
   acquired_at: string;
   expires_at: string | null;
@@ -58,6 +63,12 @@ function createMockDatabase(): {
         const key = params[0] as string;
         const fence: MockFenceRecord = {
           fence_key: key,
+          executionId: params[1] as string,
+          ownerNodeId: params[2] as string,
+          mode: params[3] as "shared" | "exclusive",
+          fenceToken: params[4] as string,
+          acquiredAt: params[5] as string,
+          expiresAt: params[6] as string | null,
           execution_id: params[1] as string,
           owner_node_id: params[2] as string,
           mode: params[3] as "shared" | "exclusive",
@@ -69,6 +80,28 @@ function createMockDatabase(): {
         return 1;
       }
       if (sql.includes("DELETE")) {
+        if (sql.includes("WHERE owner_node_id")) {
+          const ownerNodeId = params[0] as string;
+          let removed = 0;
+          for (const [key, fence] of fenceStorage.entries()) {
+            if (fence.owner_node_id === ownerNodeId) {
+              fenceStorage.delete(key);
+              removed++;
+            }
+          }
+          return removed;
+        }
+        if (sql.includes("WHERE expires_at")) {
+          const now = params[0] as string;
+          let removed = 0;
+          for (const [key, fence] of fenceStorage.entries()) {
+            if (fence.expires_at != null && fence.expires_at <= now) {
+              fenceStorage.delete(key);
+              removed++;
+            }
+          }
+          return removed;
+        }
         const key = params[0] as string;
         const existed = fenceStorage.has(key);
         fenceStorage.delete(key);
@@ -169,11 +202,11 @@ test("AsyncFencingTokenService acquireFence allows shared fence when exclusive e
   const serviceA = new AsyncFencingTokenService(db, "node-a");
 
   // Node A acquires exclusive fence
-  await serviceA.acquireFence("exec-shared-test", "exclusive");
+  const originalFence = await serviceA.acquireFence("exec-shared-test", "exclusive");
 
-  // Same node can re-acquire
+  // Same node re-acquire is idempotent and returns the existing exclusive fence
   const reAcquire = await serviceA.acquireFence("exec-shared-test", "exclusive");
-  assert.equal(reAcquire, null); // Same node can't re-acquire
+  assert.deepEqual(reAcquire, originalFence);
 
   // Different node tries to get shared - should fail because exclusive exists
   const serviceB = new AsyncFencingTokenService(db, "node-b");

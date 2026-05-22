@@ -22,7 +22,7 @@ export const SLOT_CONFIDENCE_THRESHOLD = 0.85;
 export const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
 export const DEFAULT_MAX_ACTIVE_CONVERSATION_CONTEXTS = 1000;
 const DEFAULT_PROMPT_INJECTION_PATTERNS = [
-  /ignore (all|any|previous|prior) instructions/i,
+  /ignore (?:(?:all|any)\s+)?(?:(?:previous|prior)\s+)?instructions/i,
   /reveal (the )?(system|developer) prompt/i,
   /show me (the )?(hidden|internal) instructions/i,
   /bypass (the )?(guardrails|safety|policy)/i,
@@ -96,7 +96,7 @@ export const IRREVERSIBLE_KEYWORDS = [
 ] as const;
 
 export const DATE_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g;
-export const PERCENT_PATTERN = /\b\d+(?:\.\d+)?%\b/g;
+export const PERCENT_PATTERN = /\d+(?:\.\d+)?%/g;
 export const CURRENCY_PATTERN = /(?:¥|\$|￥)\s?\d+(?:\.\d+)?/g;
 export const ENV_PATTERN = /\b(prod|production|staging|stage|dev|test)\b|线上|生产环境|测试环境/gi;
 export const CHANNEL_PATTERN = /\b(slack|telegram|webhook|email|api)\b/gi;
@@ -202,11 +202,11 @@ export function hasGenericAmbiguityPattern(
 }
 
 export function detectInputLocale(message: string): string | null {
-  if (/[\u4e00-\u9fff]/.test(message)) {
-    return "zh-CN";
-  }
   if (/[\u3040-\u30ff]/.test(message)) {
     return "ja-JP";
+  }
+  if (/[\u4e00-\u9fff]/.test(message)) {
+    return "zh-CN";
   }
   if (/[äöüß]/i.test(message)) {
     return "de-DE";

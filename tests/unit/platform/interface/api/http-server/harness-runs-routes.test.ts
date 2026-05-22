@@ -11,6 +11,12 @@ function createMockAuthService(): ApiAuthService {
   } as unknown as ApiAuthService;
 }
 
+function createMockAuthServiceAdmin(): ApiAuthService {
+  return {
+    requireRole: () => ({ actorId: "admin-1", roles: ["admin"], authMethod: "api_key", tenantId: "tenant:local" }),
+  } as unknown as ApiAuthService;
+}
+
 function createMockAuthServiceViewer(): ApiAuthService {
   return {
     requireRole: () => ({ actorId: "viewer-1", roles: ["viewer"], authMethod: "api_key", tenantId: "tenant:local" }),
@@ -44,6 +50,10 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext, method = 
   return null;
 }
 
+function parseResponseData(result: ApiResponsePayload): any {
+  return JSON.parse(result.body).data;
+}
+
 test("createHarnessRunsRoutes - GET /v1/harness-runs returns empty list initially", async () => {
   const routes = createHarnessRunsRoutes({ authService: createMockAuthServiceViewer() });
   const ctx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"]);
@@ -51,7 +61,7 @@ test("createHarnessRunsRoutes - GET /v1/harness-runs returns empty list initiall
 
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 200);
-  const body = JSON.parse(result.body);
+  const body = parseResponseData(result);
   assert.deepStrictEqual(body.harnessRuns, []);
   assert.strictEqual(body.total, 0);
   assert.strictEqual(body.hasMore, false);
@@ -69,7 +79,7 @@ test("createHarnessRunsRoutes - POST /v1/harness-runs creates a new harness run"
 
   assert.ok(result != null);
   assert.strictEqual(result.statusCode, 201);
-  const body = JSON.parse(result.body);
+  const body = parseResponseData(result);
   assert.ok(body.harnessRunId.startsWith("hrun_"));
   assert.strictEqual(body.tenantId, "tenant:test");
   assert.strictEqual(body.domainId, "test-domain");
@@ -89,7 +99,7 @@ test("createHarnessRunsRoutes - POST /v1/harness-runs with invalid JSON throws e
 
 test("createHarnessRunsRoutes - GET /v1/harness-runs/:id returns 404 for non-existent run", async () => {
   const routes = createHarnessRunsRoutes({ authService: createMockAuthServiceViewer() });
-  const ctx = createMockContext("/v1/harness-runs", ["v1", "harness-runs", "hrun_nonexistent"], ["v1", "harness-runs", "hrun_nonexistent"]);
+  const ctx = createMockContext("/v1/harness-runs/hrun_nonexistent", ["v1", "harness-runs", "hrun_nonexistent"]);
 
   await assert.rejects(
     async () => callRoute(routes, ctx),
@@ -104,20 +114,21 @@ test("createHarnessRunsRoutes - GET /v1/harness-runs/:id returns created run", a
   // First create a run
   const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({
     tenantId: "tenant:create-test",
+    domainId: "domain:create-test",
     riskLevel: "medium",
   }));
   const createResult = await callRoute(routes, createCtx, "POST");
   assert.ok(createResult != null);
-  const created = JSON.parse(createResult.body);
+  const created = parseResponseData(createResult);
   const harnessRunId = created.harnessRunId;
 
   // Now fetch it
-  const getCtx = createMockContext(`/v1/harness-runs/${harnessRunId}`, ["v1", "harness-runs", harnessRunId], ["v1", "harness-runs", harnessRunId]);
+  const getCtx = createMockContext(`/v1/harness-runs/${harnessRunId}`, ["v1", "harness-runs", harnessRunId]);
   const getResult = await callRoute(routes, getCtx);
 
   assert.ok(getResult != null);
   assert.strictEqual(getResult.statusCode, 200);
-  const body = JSON.parse(getResult.body);
+  const body = parseResponseData(getResult);
   assert.strictEqual(body.harnessRunId, harnessRunId);
   assert.strictEqual(body.tenantId, "tenant:create-test");
 });
@@ -127,9 +138,9 @@ test("createHarnessRunsRoutes - PATCH /v1/harness-runs/:id updates run status", 
   const routes = createHarnessRunsRoutes({ authService });
 
   // Create a run first
-  const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({ riskLevel: "high" }));
+  const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({ domainId: "domain:patch-test", riskLevel: "high" }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const harnessRunId = JSON.parse(createResult!.body).harnessRunId;
+  const harnessRunId = parseResponseData(createResult!).harnessRunId;
 
   // Update it
   const patchCtx = createMockContext(
@@ -142,7 +153,7 @@ test("createHarnessRunsRoutes - PATCH /v1/harness-runs/:id updates run status", 
 
   assert.ok(patchResult != null);
   assert.strictEqual(patchResult.statusCode, 200);
-  const body = JSON.parse(patchResult.body);
+  const body = parseResponseData(patchResult);
   assert.strictEqual(body.status, "running");
 });
 
@@ -162,28 +173,28 @@ test("createHarnessRunsRoutes - PATCH /v1/harness-runs/:id returns 404 for non-e
 });
 
 test("createHarnessRunsRoutes - DELETE /v1/harness-runs/:id deletes run", async () => {
-  const authService = createMockAuthService();
+  const authService = createMockAuthServiceAdmin();
   const routes = createHarnessRunsRoutes({ authService });
 
   // Create a run
-  const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({}));
+  const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({ domainId: "domain:delete-test" }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const harnessRunId = JSON.parse(createResult!.body).harnessRunId;
+  const harnessRunId = parseResponseData(createResult!).harnessRunId;
 
   // Delete it
-  const deleteCtx = createMockContext(`/v1/harness-runs/${harnessRunId}`, ["v1", "harness-runs", harnessRunId], ["v1", "harness-runs", harnessRunId]);
+  const deleteCtx = createMockContext(`/v1/harness-runs/${harnessRunId}`, ["v1", "harness-runs", harnessRunId]);
   const deleteResult = await callRoute(routes, deleteCtx, "DELETE");
 
   assert.ok(deleteResult != null);
   assert.strictEqual(deleteResult.statusCode, 200);
-  const body = JSON.parse(deleteResult.body);
+  const body = parseResponseData(deleteResult);
   assert.strictEqual(body.harnessRunId, harnessRunId);
   assert.strictEqual(body.status, "deleted");
 
   // Verify it's gone
   await assert.rejects(
     async () => {
-      const getCtx = createMockContext(`/v1/harness-runs/${harnessRunId}`, ["v1", "harness-runs", harnessRunId], ["v1", "harness-runs", harnessRunId]);
+      const getCtx = createMockContext(`/v1/harness-runs/${harnessRunId}`, ["v1", "harness-runs", harnessRunId]);
       return callRoute(routes, getCtx);
     },
     (err: unknown) => err instanceof HarnessRunsApiError && err.statusCode === 404
@@ -195,21 +206,20 @@ test("createHarnessRunsRoutes - GET /v1/harness-runs/:id/events returns events a
   const routes = createHarnessRunsRoutes({ authService });
 
   // Create a run
-  const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({}));
+  const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({ domainId: "domain:events-test" }));
   const createResult = await callRoute(routes, createCtx, "POST");
-  const harnessRunId = JSON.parse(createResult!.body).harnessRunId;
+  const harnessRunId = parseResponseData(createResult!).harnessRunId;
 
   // Get events
   const eventsCtx = createMockContext(
     `/v1/harness-runs/${harnessRunId}/events`,
-    ["v1", "harness-runs", harnessRunId, "events"],
     ["v1", "harness-runs", harnessRunId, "events"]
   );
   const eventsResult = await callRoute(routes, eventsCtx);
 
   assert.ok(eventsResult != null);
   assert.strictEqual(eventsResult.statusCode, 200);
-  const body = JSON.parse(eventsResult.body);
+  const body = parseResponseData(eventsResult);
   assert.deepStrictEqual(body.harnessRunId, harnessRunId);
   assert.deepStrictEqual(body.events, []);
 });
@@ -219,7 +229,12 @@ test("createHarnessRunsRoutes - pagination with cursor", async () => {
 
   // Create multiple runs
   for (let i = 0; i < 5; i++) {
-    const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({ tenantId: `tenant:pagination-${i}` }));
+    const createCtx = createMockContext(
+      "/v1/harness-runs",
+      ["v1", "harness-runs"],
+      {},
+      JSON.stringify({ tenantId: `tenant:pagination-${i}`, domainId: `domain:pagination-${i}` }),
+    );
     await callRoute(routes, createCtx, "POST");
   }
 
@@ -228,7 +243,7 @@ test("createHarnessRunsRoutes - pagination with cursor", async () => {
   const firstResult = await callRoute(routes, firstCtx);
 
   assert.ok(firstResult != null);
-  const firstBody = JSON.parse(firstResult.body);
+  const firstBody = parseResponseData(firstResult);
   assert.strictEqual(firstBody.harnessRuns.length, 2);
   assert.strictEqual(firstBody.hasMore, true);
   assert.ok(firstBody.nextCursor != null);
@@ -238,20 +253,20 @@ test("createHarnessRunsRoutes - pagination with cursor", async () => {
   const secondResult = await callRoute(routes, secondCtx);
 
   assert.ok(secondResult != null);
-  const secondBody = JSON.parse(secondResult.body);
+  const secondBody = parseResponseData(secondResult);
   assert.strictEqual(secondBody.harnessRuns.length, 2);
 });
 
 test("createHarnessRunsRoutes - uses default values when optional fields not provided", async () => {
   const routes = createHarnessRunsRoutes({ authService: createMockAuthService() });
-  const ctx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({}));
+  const ctx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({ domainId: "default-domain" }));
 
   const result = await callRoute(routes, ctx, "POST");
 
   assert.ok(result != null);
-  const body = JSON.parse(result.body);
+  const body = parseResponseData(result);
   assert.strictEqual(body.tenantId, "tenant:local");
-  assert.strictEqual(body.domainId, "default");
+  assert.strictEqual(body.domainId, "default-domain");
   assert.strictEqual(body.riskLevel, "medium");
   assert.ok(body.harnessRunId.startsWith("hrun_"));
 });

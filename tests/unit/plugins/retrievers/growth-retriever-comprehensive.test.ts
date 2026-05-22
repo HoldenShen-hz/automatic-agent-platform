@@ -33,6 +33,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
 
   test("healthCheck returns true", async () => {
     const plugin = createGrowthRetrieverPlugin();
+    await plugin.initialize();
     const result = await plugin.healthCheck();
     assert.equal(result, true);
   });

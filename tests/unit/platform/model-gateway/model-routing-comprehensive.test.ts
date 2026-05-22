@@ -7,12 +7,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ModelRoutingService } from "../../../../src/platform/model-gateway/provider-registry/model-routing-service.js";
+import {
+  ModelRoutingService,
+  classifyModelRoutingFailure,
+} from "../../../../src/platform/model-gateway/provider-registry/model-routing-service.js";
 import {
   DEFAULT_MODEL_METADATA_REGISTRY,
   type ModelMetadataRegistry,
   type ModelProfileMetadata,
 } from "../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
+import { AppError } from "../../../../src/platform/contracts/errors.js";
 import type { ProviderHealthSummary } from "../../../../src/shared/observability/provider-health-tracker.js";
 
 function buildRegistry(): ModelMetadataRegistry {
@@ -138,7 +142,10 @@ test("ModelRoutingService.route issues fallback lease on provider health fallbac
 });
 
 test("ModelRoutingService.route uses turn-scoped fallback lease when provided", () => {
-  const registry = buildRegistry();
+  const registry = buildRegistryWithProfiles({
+    "balanced-4": buildMinimalProfile({ modelId: "balanced-4", tier: "balanced" }),
+    "reasoning-3": buildMinimalProfile({ modelId: "reasoning-3", tier: "reasoning" }),
+  });
   const service = new ModelRoutingService({ registry });
 
   const result = service.route({
@@ -296,14 +303,11 @@ test("ModelRoutingService route filters duplicate requiredCapabilities", () => {
 });
 
 test("ModelRoutingService classifyModelRoutingFailure returns capability code for capability errors", () => {
-  const { classifyModelRoutingFailure } = ModelRoutingService as unknown as { classifyModelRoutingFailure: (err: unknown) => string | null };
-  const error = new Error("capability not supported");
-  (error as any).code = "model_route.capability_mismatch";
+  const error = new AppError("model_route.capability_mismatch", "capability not supported");
   assert.equal(classifyModelRoutingFailure(error), "route.capability_mismatch");
 });
 
 test("ModelRoutingService classifyModelRoutingFailure returns null for unknown errors", () => {
-  const { classifyModelRoutingFailure } = ModelRoutingService as unknown as { classifyModelRoutingFailure: (err: unknown) => string | null };
   const error = new Error("some other error");
   assert.equal(classifyModelRoutingFailure(error), null);
 });

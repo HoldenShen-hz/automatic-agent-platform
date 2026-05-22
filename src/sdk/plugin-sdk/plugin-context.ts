@@ -87,6 +87,13 @@ export class PluginContext {
   }
 
   /**
+   * Get the current pack ID.
+   */
+  get packId(): string {
+    return this.config.packId;
+  }
+
+  /**
    * Get the current execution ID.
    */
   get executionId(): string {

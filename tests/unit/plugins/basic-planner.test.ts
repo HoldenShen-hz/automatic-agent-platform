@@ -190,8 +190,9 @@ test("basic planner has healthCheck method", async () => {
   const plugin = createBasicPlannerPlugin();
 
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck!();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck!(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck!(), true);
 });
 
 test("basic planner has shutdown method", async () => {

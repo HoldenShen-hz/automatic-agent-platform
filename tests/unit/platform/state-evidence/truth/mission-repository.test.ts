@@ -1,6 +1,11 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
-import { InMemoryMissionRepository, type CreateMissionRecordInput, type AppendMissionEventInput } from "../../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
+import {
+  InMemoryMissionRepository,
+  missionPrincipalFromApi,
+  type CreateMissionRecordInput,
+  type AppendMissionEventInput,
+} from "../../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
 
 describe("InMemoryMissionRepository", () => {
   let repository: InMemoryMissionRepository;
@@ -30,14 +35,14 @@ describe("InMemoryMissionRepository", () => {
       assert.strictEqual(mission.priority, "normal");
       assert.strictEqual(mission.type, "formal");
       assert.strictEqual(mission.version, 0);
-      assert.ok(mission.missionId.startsWith("mis-"));
+      assert.ok(mission.missionId.startsWith("mis_"));
       assert.ok(mission.etag.includes(mission.missionId));
     });
 
     it("should create mission with custom optional fields", () => {
       const input: CreateMissionRecordInput = {
         ...baseInput,
-        type: "adhoc",
+        type: "ad_hoc",
         priority: "high",
         description: "A description",
         orgId: "org-1",
@@ -45,7 +50,7 @@ describe("InMemoryMissionRepository", () => {
 
       const mission = repository.createMission(input);
 
-      assert.strictEqual(mission.type, "adhoc");
+      assert.strictEqual(mission.type, "ad_hoc");
       assert.strictEqual(mission.priority, "high");
       assert.strictEqual(mission.description, "A description");
       assert.strictEqual(mission.orgId, "org-1");
@@ -80,9 +85,10 @@ describe("InMemoryMissionRepository", () => {
       const mission = repository.createMission(baseInput);
       const events = repository.listEvents(mission.missionId);
 
-      assert.strictEqual(events.length, 1);
+      assert.strictEqual(events.length, 2);
       assert.strictEqual(events[0].eventType, "platform.mission.created");
       assert.strictEqual(events[0].payload.missionId, mission.missionId);
+      assert.strictEqual(events[1].eventType, "platform.mission.membership_granted");
     });
   });
 
@@ -122,10 +128,9 @@ describe("InMemoryMissionRepository", () => {
 
   describe("updateMission", () => {
     it("should throw when mission not found", () => {
-      const mission = repository.createMission(baseInput);
       const event: AppendMissionEventInput = {
         eventType: "platform.mission.updated",
-        missionId: mission.missionId,
+        missionId: "mis_missing",
         tenantId: "tenant-1",
         traceId: "trace-1",
         correlationId: "corr-1",
@@ -133,7 +138,11 @@ describe("InMemoryMissionRepository", () => {
       };
 
       assert.throws(
-        () => repository.updateMission({ ...mission, version: 99 }, event),
+        () => repository.updateMission({
+          ...repository.createMission(baseInput),
+          missionId: "mis_missing",
+          version: 99,
+        }, event),
         { message: "mission.not_found" },
       );
     });
@@ -172,7 +181,7 @@ describe("InMemoryMissionRepository", () => {
       assert.strictEqual(updated.version, 1);
 
       const events = repository.listEvents(mission.missionId);
-      assert.strictEqual(events.length, 2); // creation + update
+      assert.strictEqual(events.length, 3); // creation + membership + update
     });
   });
 
@@ -186,7 +195,7 @@ describe("InMemoryMissionRepository", () => {
         tenantId: "tenant-1",
         principalType: "user",
         principalId: "user-2",
-        role: "contributor",
+        role: "operator",
         permissions: ["mission:read", "mission:execute"],
         deniedPermissions: [],
         status: "active",
@@ -197,7 +206,7 @@ describe("InMemoryMissionRepository", () => {
       });
 
       assert.strictEqual(membership.principalId, "user-2");
-      assert.strictEqual(membership.role, "contributor");
+      assert.strictEqual(membership.role, "operator");
       assert.strictEqual(membership.version, 0);
 
       const events = repository.listEvents(mission.missionId);
@@ -309,7 +318,7 @@ describe("InMemoryMissionRepository", () => {
         createdBy: "user-1",
       });
 
-      assert.ok(snapshot.missionSnapshotId.startsWith("msnap-"));
+      assert.ok(snapshot.missionSnapshotId.startsWith("msnap_"));
       assert.strictEqual(snapshot.missionId, mission.missionId);
       assert.strictEqual(snapshot.taskId, "task-1");
       assert.ok(snapshot.payloadHash);
@@ -366,7 +375,7 @@ describe("InMemoryMissionRepository", () => {
       const mission = repository.createMission(baseInput);
 
       const event = repository.appendEvent({
-        eventType: "platform.mission.custom_event",
+        eventType: "platform.mission.status_changed",
         missionId: mission.missionId,
         tenantId: "tenant-1",
         traceId: "trace-2",
@@ -374,17 +383,17 @@ describe("InMemoryMissionRepository", () => {
         payload: { custom: "data" },
       });
 
-      assert.ok(event.eventId.startsWith("mevt-"));
+      assert.ok(event.eventId.startsWith("mevt_"));
       assert.strictEqual(event.aggregateType, "mission");
       assert.strictEqual(event.aggregateId, mission.missionId);
-      assert.strictEqual(event.aggregateSeq, 2); // after creation event
+      assert.strictEqual(event.aggregateSeq, 3); // after creation + owner membership events
     });
 
     it("should use provided eventId if specified", () => {
       const mission = repository.createMission(baseInput);
 
       const event = repository.appendEvent({
-        eventType: "platform.mission.custom_event",
+        eventType: "platform.mission.outcome_measured",
         missionId: mission.missionId,
         tenantId: "tenant-1",
         traceId: "trace-2",
@@ -411,7 +420,7 @@ describe("InMemoryMissionRepository", () => {
       const mission = repository.createMission(baseInput);
 
       repository.appendEvent({
-        eventType: "platform.mission.event_1",
+        eventType: "platform.mission.status_changed",
         missionId: mission.missionId,
         tenantId: "tenant-1",
         traceId: "trace-1",
@@ -420,7 +429,7 @@ describe("InMemoryMissionRepository", () => {
       });
 
       repository.appendEvent({
-        eventType: "platform.mission.event_2",
+        eventType: "platform.mission.outcome_measured",
         missionId: mission.missionId,
         tenantId: "tenant-1",
         traceId: "trace-2",
@@ -431,14 +440,14 @@ describe("InMemoryMissionRepository", () => {
       const events = repository.listEvents(mission.missionId);
 
       assert.strictEqual(events.length, 4);
-      assert.strictEqual(events[2].eventType, "platform.mission.event_1");
-      assert.strictEqual(events[3].eventType, "platform.mission.event_2");
+      assert.strictEqual(events[2].eventType, "platform.mission.status_changed");
+      assert.strictEqual(events[3].eventType, "platform.mission.outcome_measured");
     });
   });
 
   describe("missionPrincipalFromApi", () => {
     it("should extract principalId from PrincipalRef", () => {
-      const result = repository.missionPrincipalFromApi({
+      const result = missionPrincipalFromApi({
         principalId: "user-123",
         principalType: "user",
       });

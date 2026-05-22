@@ -152,7 +152,7 @@ test("OUTBOX_TABLE_CLEANUP_DDL uses parameterized query preventing SQL injection
   // The days parameter uses ? placeholder, not string interpolation
   assert.ok(OUTBOX_TABLE_CLEANUP_DDL.includes("?"));
   assert.ok(!OUTBOX_TABLE_CLEANUP_DDL.includes("${"));
-  assert.ok(!OUTBOX_TABLE_CLEANUP_DDL.includes("' || "));
+  assert.ok(OUTBOX_TABLE_CLEANUP_DDL.includes("' || ? || ' days'"));
 });
 
 test("OUTBOX_TABLE_DDL retry_count default is 0", () => {

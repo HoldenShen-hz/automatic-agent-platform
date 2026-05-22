@@ -32,7 +32,7 @@ test("R32-14/R32-16/R32-17/R32-18/R32-20/R32-21/R32-22/R32-23/R32-24/R32-26/R32-
 
   assert.match(webFetchSource, /const parsedContentLength =/);
   assert.match(webFetchSource, /\^\\d\+\$/);
-  assert.match(sanitizerSource, /new RegExp\(definition\.source, definition\.flags\)/);
+  assert.match(sanitizerSource, /new RegExp\(pattern\.source, pattern\.flags\)/);
   assert.ok(!sanitizerSource.includes("pattern.lastIndex = 0"));
   assert.match(credentialPoolSource, /signal\.statusCode === 401 \|\| signal\.statusCode === 403 \|\| signal\.statusCode === 408/);
   assert.match(anthropicSource, /Object\.assign\(accumulatedUsage, parsed\.usage\)/);
@@ -135,7 +135,7 @@ test("R32-28/R32-39: UnifiedChatPlanGenerator rejects invalid LLM task cost/shap
         constraints: [],
         priority: "normal",
       }),
-    /goal_decomposer\.invalid_llm_plan_estimated_cost:0/,
+    /goal_decomposer\.llm_plan_invalid_estimated_cost:0/,
   );
 });
 

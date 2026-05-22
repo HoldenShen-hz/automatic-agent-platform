@@ -564,3 +564,9 @@ export function getServiceAuthStats(): {
     activeCertificates,
   };
 }
+
+export function __dangerousResetServiceAuthStateForTests(): void {
+  serviceIdentities.clear();
+  tokenIndex.clear();
+  certIndex.clear();
+}

@@ -221,6 +221,8 @@ test("CronJobConfig calculates interval from cron expression", () => {
       interval = parseInt(parts[0].substring(2), 10);
     } else if (parts[0] === "*") {
       interval = 1;
+    } else if (parts[0] === "0" && parts[1] === "*") {
+      interval = 60;
     }
 
     assert.equal(interval, expectedIntervalMinutes);
@@ -390,12 +392,13 @@ test("Next run calculation - simple hourly schedule", () => {
   // Simplified: extract minute from cron (0) and calculate next hour
   const minute = 0;
   const nextRun = new Date(lastRun);
-  nextRun.setHours(nextRun.getHours() + 1);
-  nextRun.setMinutes(minute);
-  nextRun.setSeconds(0);
+  nextRun.setUTCHours(nextRun.getUTCHours() + 1);
+  nextRun.setUTCMinutes(minute);
+  nextRun.setUTCSeconds(0);
+  nextRun.setUTCMilliseconds(0);
 
-  assert.equal(nextRun.getHours(), 10);
-  assert.equal(nextRun.getMinutes(), 0);
+  assert.equal(nextRun.getUTCHours(), 10);
+  assert.equal(nextRun.getUTCMinutes(), 0);
 });
 
 test("Next run calculation - daily schedule", () => {
@@ -404,11 +407,11 @@ test("Next run calculation - daily schedule", () => {
 
   // Next run should be next day at 9 AM
   const nextRun = new Date(lastRun);
-  nextRun.setDate(nextRun.getDate() + 1);
+  nextRun.setUTCDate(nextRun.getUTCDate() + 1);
 
-  assert.equal(nextRun.getDate(), 2);
-  assert.equal(nextRun.getHours(), 9);
-  assert.equal(nextRun.getMinutes(), 0);
+  assert.equal(nextRun.getUTCDate(), 2);
+  assert.equal(nextRun.getUTCHours(), 9);
+  assert.equal(nextRun.getUTCMinutes(), 0);
 });
 
 test("Overdue job detection", () => {
@@ -559,7 +562,7 @@ test("Backfill missed cron runs on restart", () => {
   const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / (60 * 60 * 1000);
 
   // Should backfill runs for hours: 7, 8, 9, 10, 11 (5 runs)
-  const missedRuns = Math.floor(hoursSinceLastRun);
+  const missedRuns = Math.max(0, Math.floor(hoursSinceLastRun) - 1);
   assert.ok(missedRuns >= 5);
 
   const backfillTasks: ScheduledTask[] = [];

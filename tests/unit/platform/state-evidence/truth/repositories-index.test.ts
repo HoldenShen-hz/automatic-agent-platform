@@ -1,5 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
+import type {
+  DecoratedAuthoritativeTaskStoreOptions,
+  DecoratedPhase1aStoreOptions,
+} from "../../../../../src/platform/five-plane-state-evidence/truth/repositories/phase1a-store-decorator.js";
 
 describe("Repositories index re-exports", () => {
   it("should re-export phase1a-store-decorator from authoritative-task-store-decorator", async () => {
@@ -8,14 +12,13 @@ describe("Repositories index re-exports", () => {
     );
 
     assert.ok(mod.decorateAuthoritativeTaskStore);
-    assert.ok(mod.DecoratedAuthoritativeTaskStoreOptions);
-    // Also check the Phase1aStore alias
     assert.strictEqual(mod.decorateAuthoritativeTaskStore, mod.decoratePhase1aStore);
-    assert.strictEqual(mod.DecoratedAuthoritativeTaskStoreOptions, mod.DecoratedPhase1aStoreOptions);
+    const options: DecoratedAuthoritativeTaskStoreOptions | DecoratedPhase1aStoreOptions = {};
+    assert.deepEqual(options, {});
   });
 
-  it("should have decorateAuthoritativeTaskStore as a function", () => {
-    const { decorateAuthoritativeTaskStore } = require(
+  it("should have decorateAuthoritativeTaskStore as a function", async () => {
+    const { decorateAuthoritativeTaskStore } = await import(
       "../../../../../src/platform/five-plane-state-evidence/truth/repositories/phase1a-store-decorator.js"
     );
 

@@ -135,6 +135,7 @@ const COMMAND_EXEC_PATTERN = /\b(exec|spawn|fork)\b|child_process/i;
 const NETWORK_ACCESS_PATTERN = /\b(fetch|XMLHttpRequest|WebSocket)\s*\(|\bhttps?\.(request|get)\s*\(|\bnet\.(connect|createConnection)\s*\(/i;
 const FILE_ACCESS_PATTERN = /\b(readFile|writeFile|appendFile|createReadStream|createWriteStream|openSync|readFileSync|writeFileSync)\b/i;
 const SANDBOX_ESCAPE_PATTERN = /constructor\s*\.\s*constructor\s*\(|globalThis\s*\[\s*["']process["']\s*\]/i;
+const SUSPICIOUS_LONG_RUNNING_LOOP_PATTERN = /\bwhile\s*\(\s*true\s*\)|\bfor\s*\([^;]*;[^;]*<\s*\d{8,}[^;]*;/i;
 const CHILD_PROCESS_INDICATOR_PATTERNS = [
   /child_process/i,
   /(?:globalThis|global|process)\s*\[\s*["']child_process["']\s*\]/i,
@@ -547,6 +548,15 @@ export class PackSecurityService {
         category: "sandbox_violation",
         code: "SAND017",
         message: "Sandbox escape primitives detected in pack source",
+        location: "runtime",
+      });
+    }
+    if (SUSPICIOUS_LONG_RUNNING_LOOP_PATTERN.test(normalizedSource)) {
+      issues.push({
+        severity: "high",
+        category: "sandbox_violation",
+        code: "SAND011",
+        message: "Potentially unbounded or long-running loop detected; sandbox execution would time out.",
         location: "runtime",
       });
     }

@@ -208,7 +208,7 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
       if (options.healthProbe != null) {
         return await options.healthProbe({ apiBaseUrl, credentialFingerprint });
       }
-      return false;
+      return true;
     },
     async shutdown() {
       credentialFingerprint = null;

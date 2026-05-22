@@ -35,6 +35,12 @@ function createMockAlertEvent(overrides?: Partial<AlertEvent>): AlertEvent {
   };
 }
 
+function getAlertDeliveryFailureCount(channel: AlertChannelKind): number {
+  return runtimeMetricsRegistry
+    .getCounters("alert_delivery_failures_total")
+    .find((series) => series.labels.channel === channel)?.value ?? 0;
+}
+
 // LogAlertChannel tests
 test("LogAlertChannel delivers event and returns success", () => {
   const channel = new LogAlertChannel();
@@ -588,11 +594,12 @@ test("recordAlertDeliveryFailure increments failure counter", () => {
   const alertId = "alert_failure_test";
   const error = new Error("network error");
 
-  const initialCount = runtimeMetricsRegistry.getCounterValue("alert_delivery_failures_total", { channel });
+  runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
+  const initialCount = getAlertDeliveryFailureCount(channel);
 
   recordAlertDeliveryFailure(channel, alertId, error);
 
-  const updatedCount = runtimeMetricsRegistry.getCounterValue("alert_delivery_failures_total", { channel });
+  const updatedCount = getAlertDeliveryFailureCount(channel);
   assert.equal(updatedCount, initialCount + 1);
 });
 
@@ -600,12 +607,13 @@ test("recordAlertDeliveryFailure handles non-Error objects", () => {
   const channel: AlertChannelKind = "slack";
   const alertId = "alert_non_error";
   const error = "string error";
+  runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
 
   assert.doesNotThrow(() => {
     recordAlertDeliveryFailure(channel, alertId, error);
   });
 
-  const updatedCount = runtimeMetricsRegistry.getCounterValue("alert_delivery_failures_total", { channel });
+  const updatedCount = getAlertDeliveryFailureCount(channel);
   assert.ok(updatedCount >= 1);
 });
 

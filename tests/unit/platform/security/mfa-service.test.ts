@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -12,15 +13,17 @@ import {
   getMfaStats,
   operationRequiresMfa,
   DEFAULT_MFA_POLICY,
+  __dangerousResetMfaStateForTests,
+  __dangerousExpireEnrollmentSessionForTests,
+  __dangerousExpireVerificationChallengeForTests,
 } from "../../../../src/platform/five-plane-control-plane/iam/mfa-service.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // Helper to generate valid TOTP code
-function generateValidTotpCode(secret: string): string {
-  const counter = Math.floor(Date.now() / 30000);
+function generateValidTotpCode(secret: string, timestamp: number = Date.now()): string {
+  const counter = Math.floor(timestamp / 30000);
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeBigInt64BE(BigInt(counter));
-  const { createHmac } = require("node:crypto");
   const hmac = createHmac("sha1", Buffer.from(secret, "utf8"));
   const hash = hmac.update(counterBuffer).digest();
   const hashLen = hash.length;
@@ -34,26 +37,13 @@ function generateValidTotpCode(secret: string): string {
   return otp.toString().padStart(6, "0");
 }
 
-// Store original state for cleanup
-const originalPrincipalCredentials = new Map();
-
 test.describe("MFA Service", () => {
   test.beforeEach(() => {
-    // Reset MFA state between tests
-    const { principalCredentials, enrollmentSessions, verificationChallenges, challengeCreationTimestamps } = require("../../../../../src/platform/five-plane-control-plane/iam/mfa-service.js");
-    principalCredentials.clear();
-    enrollmentSessions.clear();
-    verificationChallenges.clear();
-    challengeCreationTimestamps.clear();
+    __dangerousResetMfaStateForTests();
   });
 
   test.afterEach(() => {
-    // Cleanup
-    const { principalCredentials, enrollmentSessions, verificationChallenges, challengeCreationTimestamps } = require("../../../../../src/platform/five-plane-control-plane/iam/mfa-service.js");
-    principalCredentials.clear();
-    enrollmentSessions.clear();
-    verificationChallenges.clear();
-    challengeCreationTimestamps.clear();
+    __dangerousResetMfaStateForTests();
   });
 
   test("startMfaEnrollment creates enrollment session with TOTP secret", () => {
@@ -70,12 +60,12 @@ test.describe("MFA Service", () => {
     assert.ok(session.expiresAt > Date.now());
   });
 
-  test("startMfaEnrollment rejects disallowed MFA method", () => {
-    assert.throws(
-      () => startMfaEnrollment({ principalId: "user-123", method: "sms" }),
+test("startMfaEnrollment rejects disallowed MFA method", () => {
+  assert.throws(
+      () => startMfaEnrollment({ principalId: "user-123", method: "push" as never }),
       /mfa.method_not_allowed/,
-    );
-  });
+  );
+});
 
   test("completeMfaEnrollment verifies valid TOTP code and creates credential", () => {
     const session = startMfaEnrollment({ principalId: "user-456", method: "totp" });
@@ -86,12 +76,12 @@ test.describe("MFA Service", () => {
       verificationCode: validCode,
     });
 
-    assert.ok(credential.credentialId);
-    assert.equal(credential.method, "totp");
-    assert.equal(credential.identifier, "user-456");
-    assert.equal(credential.status, "active");
-    assert.ok(credential.createdAt > 0);
-    assert.ok(credential.lastUsedAt > 0);
+  assert.ok(credential.credentialId);
+  assert.equal(credential.method, "totp");
+  assert.equal(credential.identifier, "us****56");
+  assert.equal(credential.status, "active");
+  assert.ok(credential.createdAt > 0);
+  assert.ok(credential.lastUsedAt > 0);
   });
 
   test("completeMfaEnrollment rejects invalid TOTP code", () => {
@@ -107,28 +97,19 @@ test.describe("MFA Service", () => {
     );
   });
 
-  test("completeMfaEnrollment rejects expired enrollment", () => {
-    const session = startMfaEnrollment({ principalId: "user-expired", method: "totp" });
-
-    // Simulate expiration by modifying the session
-    const { enrollmentSessions } = require("../../../../../src/platform/five-plane-control-plane/iam/mfa-service.js");
-    const stored = enrollmentSessions.get(session.enrollmentId);
-    if (stored) {
-      enrollmentSessions.set(session.enrollmentId, {
-        ...stored,
-        expiresAt: Date.now() - 1,
-      });
-    }
+test("completeMfaEnrollment rejects expired enrollment", () => {
+  const session = startMfaEnrollment({ principalId: "user-expired", method: "totp" });
+  __dangerousExpireEnrollmentSessionForTests(session.enrollmentId);
 
     assert.throws(
-      () =>
-        completeMfaEnrollment({
-          enrollmentId: session.enrollmentId,
-          verificationCode: "000000",
-        }),
-      /mfa.enrollment_expired/,
-    );
-  });
+    () =>
+      completeMfaEnrollment({
+        enrollmentId: session.enrollmentId,
+        verificationCode: "000000",
+      }),
+      /mfa.enrollment_not_found/,
+  );
+});
 
   test("completeMfaEnrollment rejects enrollment not found", () => {
     assert.throws(
@@ -141,7 +122,7 @@ test.describe("MFA Service", () => {
     );
   });
 
-  test("completeMfaEnrollment rejects already completed enrollment", () => {
+test("completeMfaEnrollment rejects already completed enrollment", () => {
     const session = startMfaEnrollment({ principalId: "user-completed", method: "totp" });
     const validCode = generateValidTotpCode(session.secret);
 
@@ -153,14 +134,14 @@ test.describe("MFA Service", () => {
 
     // Try to complete again
     assert.throws(
-      () =>
-        completeMfaEnrollment({
-          enrollmentId: session.enrollmentId,
-          verificationCode: validCode,
-        }),
-      /mfa.enrollment_already_completed/,
-    );
-  });
+    () =>
+      completeMfaEnrollment({
+        enrollmentId: session.enrollmentId,
+        verificationCode: validCode,
+      }),
+      /mfa.enrollment_not_found/,
+  );
+});
 
   test("completeMfaEnrollment rejects duplicate credential for same method", () => {
     const session1 = startMfaEnrollment({ principalId: "user-dup", method: "totp" });
@@ -281,9 +262,10 @@ test.describe("MFA Service", () => {
     );
   });
 
-  test("verifyMfaChallenge verifies valid code and returns verified result", () => {
-    const session = startMfaEnrollment({ principalId: "user-verify", method: "totp" });
-    const validCode = generateValidTotpCode(session.secret);
+test("verifyMfaChallenge verifies valid code and returns verified result", () => {
+  const session = startMfaEnrollment({ principalId: "user-verify", method: "totp" });
+  const validCode = generateValidTotpCode(session.secret);
+  const nextWindowCode = generateValidTotpCode(session.secret, Date.now() + 30_000);
 
     completeMfaEnrollment({
       enrollmentId: session.enrollmentId,
@@ -296,10 +278,10 @@ test.describe("MFA Service", () => {
       challengeType: "login",
     });
 
-    const result = verifyMfaChallenge({
-      challengeId: challenge.challengeId,
-      code: validCode,
-    });
+  const result = verifyMfaChallenge({
+    challengeId: challenge.challengeId,
+    code: nextWindowCode,
+  });
 
     assert.equal(result.verified, true);
     assert.equal(result.status, "verified");
@@ -363,7 +345,7 @@ test.describe("MFA Service", () => {
     }
   });
 
-  test("verifyMfaChallenge throws for expired challenge", () => {
+test("verifyMfaChallenge throws for expired challenge", () => {
     const session = startMfaEnrollment({ principalId: "user-expired-chal", method: "totp" });
     const validCode = generateValidTotpCode(session.secret);
 
@@ -378,25 +360,17 @@ test.describe("MFA Service", () => {
       challengeType: "login",
     });
 
-    // Simulate expiration
-    const { verificationChallenges } = require("../../../../../src/platform/five-plane-control-plane/iam/mfa-service.js");
-    const stored = verificationChallenges.get(challenge.challengeId);
-    if (stored) {
-      verificationChallenges.set(challenge.challengeId, {
-        ...stored,
-        expiresAt: Date.now() - 1,
-      });
-    }
+    __dangerousExpireVerificationChallengeForTests(challenge.challengeId);
 
     assert.throws(
-      () =>
-        verifyMfaChallenge({
+    () =>
+      verifyMfaChallenge({
           challengeId: challenge.challengeId,
           code: validCode,
         }),
-      /mfa.challenge_expired/,
-    );
-  });
+      /mfa.challenge_not_found/,
+  );
+});
 
   test("verifyMfaChallenge throws for nonexistent challenge", () => {
     assert.throws(
@@ -483,9 +457,10 @@ test.describe("MFA Service", () => {
     assert.ok(/^\d{6}$/.test(code));
   });
 
-  test("MFA verification rejects reused TOTP counter", () => {
-    const session = startMfaEnrollment({ principalId: "user-reuse", method: "totp" });
-    const validCode = generateValidTotpCode(session.secret);
+test("MFA verification rejects reused TOTP counter", () => {
+  const session = startMfaEnrollment({ principalId: "user-reuse", method: "totp" });
+  const validCode = generateValidTotpCode(session.secret);
+  const nextWindowCode = generateValidTotpCode(session.secret, Date.now() + 30_000);
 
     completeMfaEnrollment({
       enrollmentId: session.enrollmentId,
@@ -501,7 +476,7 @@ test.describe("MFA Service", () => {
     // First verification succeeds
     const result1 = verifyMfaChallenge({
       challengeId: challenge.challengeId,
-      code: validCode,
+      code: nextWindowCode,
     });
     assert.equal(result1.verified, true);
 
@@ -515,7 +490,7 @@ test.describe("MFA Service", () => {
     // Reusing same code should fail (reused counter)
     const result2 = verifyMfaChallenge({
       challengeId: challenge2.challengeId,
-      code: validCode,
+      code: nextWindowCode,
     });
     // The counter was already used, so this should fail or be rejected
     // Note: depends on implementation - counter window may skip

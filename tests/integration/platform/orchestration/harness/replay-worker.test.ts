@@ -107,7 +107,7 @@ test("ReplayWorker integration: isolated_sandbox without sandboxId fails", async
         cadence: { intervalMs: 300_000 },
         replayPolicy: { mode: "isolated_sandbox", sandboxId: "", allowRealSideEffects: false },
       }),
-    /sandboxId/i,
+    /sandbox_id_required/i,
   );
 });
 

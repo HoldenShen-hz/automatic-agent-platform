@@ -15,9 +15,15 @@ import { createCodingPresenterPlugin } from "../../../src/plugins/presenters/cod
 import { createBasicEvaluatorPlugin } from "../../../src/plugins/validators/basic-evaluator.js";
 import type { PluginManifest } from "../../../src/domains/registry/plugin-spi.js";
 
+function createHealthyGithubAdapterPlugin() {
+  return createGithubAdapterPlugin({
+    healthProbe: () => true,
+  });
+}
+
 test("PluginSpiRegistry registers a plugin successfully", () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   const record = registry.register(adapter);
 
@@ -30,7 +36,7 @@ test("PluginSpiRegistry registers a plugin successfully", () => {
 
 test("PluginSpiRegistry.get returns registered plugin", () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -51,7 +57,7 @@ test("PluginSpiRegistry.get returns null for unregistered plugin", () => {
 test("PluginSpiRegistry.list returns all registered plugins", () => {
   const registry = new PluginSpiRegistry();
 
-  registry.register(createGithubAdapterPlugin());
+  registry.register(createHealthyGithubAdapterPlugin());
   registry.register(createCrmAdapterPlugin());
 
   const plugins = registry.list();
@@ -62,7 +68,7 @@ test("PluginSpiRegistry.list returns all registered plugins", () => {
 test("PluginSpiRegistry.listByDomain filters by domain", () => {
   const registry = new PluginSpiRegistry();
 
-  registry.register(createGithubAdapterPlugin());
+  registry.register(createHealthyGithubAdapterPlugin());
   registry.register(createCrmAdapterPlugin());
 
   const growthPlugins = registry.listByDomain("growth");
@@ -75,7 +81,7 @@ test("PluginSpiRegistry.listByDomain filters by domain", () => {
 test("PluginSpiRegistry.listByDomain filters by spiType", () => {
   const registry = new PluginSpiRegistry();
 
-  registry.register(createGithubAdapterPlugin());
+  registry.register(createHealthyGithubAdapterPlugin());
   registry.register(createCodingPresenterPlugin());
   registry.register(createBasicEvaluatorPlugin());
 
@@ -90,7 +96,7 @@ test("PluginSpiRegistry.listByDomain filters by spiType", () => {
 
 test("PluginSpiRegistry.resolve returns plugin instance", () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -102,7 +108,7 @@ test("PluginSpiRegistry.resolve returns plugin instance", () => {
 
 test("PluginSpiRegistry.register accepts custom manifest", () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   const customManifest: PluginManifest = {
     pluginId: "custom.plugin",
@@ -126,7 +132,7 @@ test("PluginSpiRegistry.register accepts custom manifest", () => {
 
 test("PluginSpiRegistry.ensureActive activates registered plugin", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });
@@ -149,7 +155,7 @@ test("PluginSpiRegistry.ensureActive throws for unregistered plugin", async () =
 
 test("PluginSpiRegistry.ensureActive throws for disabled plugin", async () => {
   const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 1 });
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });
@@ -167,7 +173,7 @@ test("PluginSpiRegistry.ensureActive throws for disabled plugin", async () => {
 
 test("PluginSpiRegistry.deactivate deactivates active plugin", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });
@@ -181,7 +187,7 @@ test("PluginSpiRegistry.deactivate deactivates active plugin", async () => {
 
 test("PluginSpiRegistry.deactivate does nothing for inactive plugin", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });
@@ -197,7 +203,7 @@ test("PluginSpiRegistry.deactivate does nothing for inactive plugin", async () =
 
 test("PluginSpiRegistry.unload unloads plugin completely", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });
@@ -211,7 +217,7 @@ test("PluginSpiRegistry.unload unloads plugin completely", async () => {
 
 test("PluginSpiRegistry.suspend suspends active plugin", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });
@@ -244,7 +250,7 @@ test("PluginSpiRegistry.invokeRetriever calls retriever plugin", async () => {
 
 test("PluginSpiRegistry.invokeRetriever throws for non-retriever plugin", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -288,7 +294,7 @@ test("PluginSpiRegistry.invokePresenter calls presenter plugin", async () => {
 
 test("PluginSpiRegistry.invokePresenter throws for non-presenter plugin", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -305,7 +311,7 @@ test("PluginSpiRegistry.invokePresenter throws for non-presenter plugin", async 
 
 test("PluginSpiRegistry.invokeAdapterAuthenticate authenticates adapter", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -333,7 +339,7 @@ test("PluginSpiRegistry.invokeAdapterAuthenticate throws for non-adapter plugin"
 
 test("PluginSpiRegistry.invokeAdapterExecute executes adapter action", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -372,7 +378,7 @@ test("PluginSpiRegistry.invokeAdapterExecute throws for non-adapter plugin", asy
 
 test("PluginSpiRegistry tracks invocation counts", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -398,7 +404,7 @@ test("PluginSpiRegistry handles plugin with no domainId", () => {
 test("PluginSpiRegistry registers multiple plugins of same type", () => {
   const registry = new PluginSpiRegistry();
 
-  registry.register(createGithubAdapterPlugin());
+  registry.register(createHealthyGithubAdapterPlugin());
   registry.register(createCrmAdapterPlugin());
 
   const adapters = registry.listByDomain("coding", "adapter");
@@ -410,7 +416,7 @@ test("PluginSpiRegistry registers multiple plugins of same type", () => {
 
 test("PluginSpiRegistry.validateContract rejects mismatched spiType", () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
 
@@ -421,7 +427,7 @@ test("PluginSpiRegistry.validateContract rejects mismatched spiType", () => {
 
 test("PluginSpiRegistry tracks lastHealthCheckAt after activation", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });
@@ -439,7 +445,7 @@ test("PluginSpiRegistry tracks lastHealthCheckAt after activation", async () => 
 
 test("PluginSpiRegistry handles concurrent activations", async () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createHealthyGithubAdapterPlugin();
 
   registry.register(adapter);
   await adapter.authenticate({ token: "test_token" });

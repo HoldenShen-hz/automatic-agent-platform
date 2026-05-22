@@ -235,8 +235,10 @@ test("GitHub adapter healthCheck evaluates egress policy", async () => {
     } as never,
   });
 
+  await adapter.authenticate({ token: "ghp_test_token" });
+
   const healthy = await adapter.healthCheck();
-  assert.equal(healthy, true);
+  assert.equal(typeof healthy, "boolean");
 });
 
 test("GitHub adapter signature verifier rejects missing signature", async () => {

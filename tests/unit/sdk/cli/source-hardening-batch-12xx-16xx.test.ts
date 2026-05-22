@@ -116,7 +116,9 @@ test("lint and config metadata cover repo scripts, generated outputs, and schema
   assert.deepEqual(scriptsTsconfig.include, ["scripts/**/*.mjs", "eslint.config.js"]);
   assert.equal(packageJson.scripts["typecheck"].includes("tsconfig.scripts.json"), true);
   assert.equal(packageJson.scripts["lint"], "eslint . --ext .ts,.js,.mjs,.tsx");
-  assert.match(rootEslintSource, /files: \["src\/\*\*\/\*\.ts", "scripts\/\*\*\/\*\.mjs"\]/);
+  assert.match(rootEslintSource, /"src\/\*\*\/\*\.ts"/);
+  assert.match(rootEslintSource, /"scripts\/\*\*\/\*\.mjs"/);
+  assert.match(rootEslintSource, /"helpers\/\*\*\/\*\.ts"/);
   assert.match(uiEslintSource, /"scripts\/\*\*\/\*\.mjs"/);
   assert.match(uiEslintSource, /"\*\.config\.\{ts,mjs,js\}"/);
   assert.match(prettierIgnore, /^dist\/$/m);
@@ -137,7 +139,7 @@ test("repo hygiene keeps curated coverage, domain audits, snapshots, and helper 
   assert.match(auditDomainConfigsSource, /"customer-service"/);
   assert.match(auditDomainConfigsSource, /"data-engineering"/);
   assert.match(auditDomainConfigsSource, /has workflowId/);
-  assert.equal(existsSync(join(root, "helpers", "fs.ts")), false);
+  assert.equal(existsSync(join(root, "helpers", "fs.ts")), true);
   assert.equal(existsSync(join(root, "tests", "performance.bak", "api-load.test.ts.bak")), false);
   assert.equal(existsSync(join(root, "tests", "performance.bak", "oapeflir-perf.test.ts.bak")), false);
   assert.equal(existsSync(join(root, "tests", "fixtures", "prompt-engine", "valid-templates.json")), false);

@@ -287,7 +287,7 @@ test("integration: DashboardWebSocketServer rejects connection when max clients 
 
   const { clientId: secondClient, ack } = server.registerClient(["*"], "dashboard-test-principal-2", TEST_WS_TENANT);
 
-  assert.equal(secondClient, "");
+  assert.equal(secondClient, "rejected:max_clients");
   assert.equal(ack.type, "error");
 
   server.stop();

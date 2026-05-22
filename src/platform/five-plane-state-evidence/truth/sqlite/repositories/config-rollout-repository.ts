@@ -10,6 +10,8 @@
  * R15-79: Provides durable storage for ConfigRolloutService via ConfigRolloutStore interface.
  */
 
+import type { SQLInputValue } from "node:sqlite";
+
 import type { SqliteConnection } from "../query-helper.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
 import type {
@@ -18,6 +20,22 @@ import type {
   RolloutStage,
 } from "../sqlite-repository-support.js";
 import { stableStringify } from "../sqlite-repository-support.js";
+
+function buildNullableSourceIdFilter(
+  columnName: string,
+  sourceId: string | null,
+): { clause: string; params: SQLInputValue[] } {
+  if (sourceId == null) {
+    return {
+      clause: `${columnName} IS NULL`,
+      params: [],
+    };
+  }
+  return {
+    clause: `${columnName} = ?`,
+    params: [sourceId],
+  };
+}
 
 /**
  * Represents a config version snapshot stored in the database.
@@ -122,6 +140,7 @@ export class ConfigVersionSnapshotRepository {
     layer: string,
     sourceId: string | null,
   ): ConfigVersionSnapshotRecord[] {
+    const sourceFilter = buildNullableSourceIdFilter("source_id", sourceId);
     return queryAll<ConfigVersionSnapshotRecord>(
       this.conn,
       `SELECT
@@ -129,11 +148,11 @@ export class ConfigVersionSnapshotRepository {
         source_id AS sourceId, content_json AS contentJson, content_hash AS contentHash,
         created_at AS createdAt, created_by AS createdBy, reason, parent_version_id AS parentVersionId
        FROM config_version_snapshots
-       WHERE config_path = ? AND layer = ? AND source_id = ?
+       WHERE config_path = ? AND layer = ? AND ${sourceFilter.clause}
        ORDER BY created_at ASC`,
       configPath,
       layer,
-      sourceId,
+      ...sourceFilter.params,
     );
   }
 
@@ -158,17 +177,18 @@ export class ConfigVersionSnapshotRepository {
     sourceId: string | null,
     maxCount: number,
   ): number {
+    const sourceFilter = buildNullableSourceIdFilter("source_id", sourceId);
     // Get IDs of snapshots to keep (newest maxCount)
     const toKeep = queryAll<{ versionId: string }>(
       this.conn,
       `SELECT version_id AS versionId
        FROM config_version_snapshots
-       WHERE config_path = ? AND layer = ? AND source_id = ?
+       WHERE config_path = ? AND layer = ? AND ${sourceFilter.clause}
        ORDER BY created_at DESC
        LIMIT ?`,
       configPath,
       layer,
-      sourceId,
+      ...sourceFilter.params,
       maxCount,
     );
 
@@ -180,11 +200,11 @@ export class ConfigVersionSnapshotRepository {
     return execute(
       this.conn,
       `DELETE FROM config_version_snapshots
-       WHERE config_path = ? AND layer = ? AND source_id = ?
+       WHERE config_path = ? AND layer = ? AND ${sourceFilter.clause}
        AND version_id NOT IN (${idsToDelete.map(() => "?").join(",")})`,
       configPath,
       layer,
-      sourceId,
+      ...sourceFilter.params,
       ...idsToDelete,
     );
   }

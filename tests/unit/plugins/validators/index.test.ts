@@ -41,11 +41,12 @@ test("ValidatorsIndex basic-evaluator initialize returns undefined", async () =>
   assert.equal(result, undefined);
 });
 
-test("ValidatorsIndex basic-evaluator healthCheck returns true", async () => {
+test("ValidatorsIndex basic-evaluator healthCheck reflects lifecycle state", async () => {
   const plugin = ValidatorsIndex.createBasicEvaluatorPlugin();
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("ValidatorsIndex basic-evaluator shutdown returns undefined", async () => {

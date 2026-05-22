@@ -135,6 +135,11 @@ export class PerTenantEncryptionService {
    * Decrypt data for a tenant
    */
   public decrypt(tenantId: string, record: EncryptedRecord): Buffer {
+    const tenantKey = this.getTenantKeys(tenantId).find((keyInfo) => keyInfo.keyId === record.keyId);
+    if (!tenantKey) {
+      throw new Error(`tenant_encryption.key_not_found:${record.keyId}`);
+    }
+
     const key = this.keyStorage.get(record.keyId);
     if (!key) {
       throw new Error(`tenant_encryption.key_not_found:${record.keyId}`);

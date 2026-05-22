@@ -224,7 +224,7 @@ describe("AsyncBudgetRepository", () => {
       await repository.insertLedger(sampleLedger);
 
       const executeCall = mockConnection.execute.mock.calls[0];
-      assert.strictEqual(executeCall.arguments[0], expect.stringContaining("INSERT INTO budget_ledgers"));
+      assert.ok(String(executeCall.arguments[0]).includes("INSERT INTO budget_ledgers"));
     });
   });
 
@@ -240,7 +240,7 @@ describe("AsyncBudgetRepository", () => {
       await repository.insertReservation(reservationWithoutNodeRunId);
 
       const executeCall = mockConnection.execute.mock.calls[0];
-      assert.strictEqual(executeCall.arguments[0], expect.stringContaining("INSERT INTO budget_reservations"));
+      assert.ok(String(executeCall.arguments[0]).includes("INSERT INTO budget_reservations"));
     });
   });
 });

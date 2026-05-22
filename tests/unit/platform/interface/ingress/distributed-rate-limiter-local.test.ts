@@ -139,7 +139,7 @@ test("DistributedRateLimiter local mode windowMs of 0 behavior", async () => {
 test("DistributedRateLimiter local mode very short window", async () => {
   const limiter = new DistributedRateLimiter({
     maxCalls: 3,
-    windowMs: 5,
+    windowMs: 20,
   });
 
   for (let i = 0; i < 3; i++) {
@@ -149,6 +149,9 @@ test("DistributedRateLimiter local mode very short window", async () => {
 
   const rejected = await limiter.checkAndConsume("short-window");
   assert.equal(rejected.allowed, false);
+  assert.ok(rejected.retryAfterMs !== undefined);
+  assert.ok(rejected.retryAfterMs > 0);
+  assert.ok(rejected.retryAfterMs <= 20);
 });
 
 test("DistributedRateLimiter local mode remaining never negative", async () => {

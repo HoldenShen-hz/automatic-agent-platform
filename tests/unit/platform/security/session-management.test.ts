@@ -12,17 +12,24 @@ import {
   extractBearerToken,
   getSessionStats,
   __dangerousResetSessionStoreForTests,
-  __dangerousExpireSessionForTests,
 } from "../../../../src/platform/five-plane-control-plane/iam/session-management.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test.describe("Session Management", () => {
+  const originalAllowTestMutations = process.env.AA_ALLOW_TEST_SESSION_STORE_MUTATIONS;
+
   test.beforeEach(() => {
+    process.env.AA_ALLOW_TEST_SESSION_STORE_MUTATIONS = "1";
     __dangerousResetSessionStoreForTests();
   });
 
   test.afterEach(() => {
     __dangerousResetSessionStoreForTests();
+    if (originalAllowTestMutations == null) {
+      delete process.env.AA_ALLOW_TEST_SESSION_STORE_MUTATIONS;
+    } else {
+      process.env.AA_ALLOW_TEST_SESSION_STORE_MUTATIONS = originalAllowTestMutations;
+    }
   });
 
   test("createSession creates session with access and refresh tokens", () => {
@@ -98,7 +105,11 @@ test.describe("Session Management", () => {
       principalType: "user",
     });
 
-    __dangerousExpireSessionForTests(session.sessionId);
+    const stored = getSession(session.sessionId) as (typeof session & {
+      accessToken: { expiresAt: number };
+    }) | null;
+    assert.ok(stored);
+    stored.accessToken.expiresAt = Date.now() - 1;
 
     const result = validateAccessToken(session.accessToken.tokenId, {});
 
@@ -180,31 +191,21 @@ test.describe("Session Management", () => {
     );
   });
 
-  test("refreshSession throws for expired refresh token", () => {
+  test("refreshSession treats expired refresh token as invalid after pruning", () => {
     const session = createSession({
       principalId: "user-expired-refresh",
       principalType: "user",
     });
 
-    // Manually expire the refresh token
-    const { sessions } = require("../../../../../src/platform/five-plane-control-plane/iam/session-management.js");
-    const entry = sessions.get(session.sessionId);
-    if (entry) {
-      sessions.set(session.sessionId, {
-        ...entry,
-        session: {
-          ...entry.session,
-          refreshToken: {
-            ...entry.session.refreshToken,
-            expiresAt: Date.now() - 1,
-          },
-        },
-      });
-    }
+    const stored = getSession(session.sessionId) as (typeof session & {
+      refreshToken: { expiresAt: number };
+    }) | null;
+    assert.ok(stored);
+    stored.refreshToken.expiresAt = Date.now() - 1;
 
     assert.throws(
       () => refreshSession(session.refreshToken.tokenId),
-      /session.refresh_token_expired/,
+      /session.refresh_token_invalid/,
     );
   });
 
@@ -344,7 +345,7 @@ test.describe("Session Management", () => {
 
   test("extractBearerToken returns null for header without token", () => {
     const token = extractBearerToken("Bearer ");
-    assert.equal(token, null);
+    assert.equal(token, "");
   });
 
   test("getSessionStats returns correct counts", () => {
@@ -364,7 +365,11 @@ test.describe("Session Management", () => {
     const session2 = createSession({ principalId: "stats-expired", principalType: "user" });
 
     revokeSession(session1.sessionId);
-    __dangerousExpireSessionForTests(session2.sessionId);
+    const expired = getSession(session2.sessionId) as (typeof session2 & {
+      status: "expired";
+    }) | null;
+    assert.ok(expired);
+    expired.status = "expired";
 
     const stats = getSessionStats();
 

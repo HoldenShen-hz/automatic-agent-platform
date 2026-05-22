@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type {
+  ProcessOwner,
+  TrackedProcess,
+  TrackedProcessState,
+} from "../../../src/core/runtime/process-tracker.js";
 
 /**
  * Tests for src/core/runtime/process-tracker.ts
@@ -11,19 +16,29 @@ test("process-tracker re-exports ProcessTracker class", async () => {
   assert.ok("ProcessTracker" in mod, "should export ProcessTracker class");
 });
 
-test("process-tracker exports ProcessOwner type", async () => {
-  const mod = await import("../../../src/core/runtime/process-tracker.js");
-  assert.ok("ProcessOwner" in mod, "should export ProcessOwner type");
+test("process-tracker exports ProcessOwner type", () => {
+  const owner: ProcessOwner = "bash-tool";
+  assert.equal(owner, "bash-tool");
 });
 
-test("process-tracker exports TrackedProcessState type", async () => {
-  const mod = await import("../../../src/core/runtime/process-tracker.js");
-  assert.ok("TrackedProcessState" in mod, "should export TrackedProcessState type");
+test("process-tracker exports TrackedProcessState type", () => {
+  const state: TrackedProcessState = "running";
+  assert.equal(state, "running");
 });
 
-test("process-tracker exports TrackedProcess interface", async () => {
-  const mod = await import("../../../src/core/runtime/process-tracker.js");
-  assert.ok("TrackedProcess" in mod, "should export TrackedProcess interface");
+test("process-tracker exports TrackedProcess interface", () => {
+  const tracked: TrackedProcess = {
+    pid: 1,
+    command: "node",
+    args: ["script.js"],
+    spawnedAt: Date.now(),
+    owner: "unknown",
+    pgid: undefined,
+    state: "running",
+    killRequestedAt: undefined,
+    lastSignal: undefined,
+  };
+  assert.equal(tracked.command, "node");
 });
 
 test("process-tracker exports getProcessTracker function", async () => {

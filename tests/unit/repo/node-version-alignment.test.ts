@@ -9,8 +9,8 @@ test("repo keeps engines, Dockerfile, and CI node versions aligned", () => {
   const dockerfile = readFileSync("Dockerfile", "utf8");
   const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 
-  assert.equal(packageJson.engines?.node, ">=20 <23");
+  assert.equal(packageJson.engines?.node, ">=22 <23");
   assert.match(dockerfile, /FROM node:22-bookworm-slim AS build/);
   assert.match(dockerfile, /FROM node:22-bookworm-slim AS runtime/);
-  assert.match(workflow, /node-version: \[20, 22\]/);
+  assert.match(workflow, /node-version: 22/);
 });

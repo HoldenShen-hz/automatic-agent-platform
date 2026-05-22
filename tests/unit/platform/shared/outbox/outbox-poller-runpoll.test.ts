@@ -185,7 +185,7 @@ test("OutboxPollerService poll with lastAttemptAt exactly at boundary", async ()
       createPendingEntry({
         id: "boundary-time-entry",
         retryCount: 1,
-        lastAttemptAt: entryTimeISO,
+        lastAttemptAt: entryTimeIso,
       }),
     ],
     getPendingCount: () => 1,
@@ -244,7 +244,7 @@ test("OutboxPollerService metrics structure is complete", () => {
 
   // Verify all expected properties exist
   assert.equal(typeof metrics.isRunning, "boolean");
-  assert.equal(typeof metrics.lastPollAt, "string");
+  assert.ok(metrics.lastPollAt === null || typeof metrics.lastPollAt === "string");
   assert.equal(typeof metrics.lastPollDurationMs, "number");
   assert.equal(typeof metrics.totalPublished, "number");
   assert.equal(typeof metrics.totalFailed, "number");

@@ -228,9 +228,9 @@ test("HitlRuntime.pause throws for already resolved request", () => {
 
   runtime.resolve(request.requestId, "approved", "human:approver");
 
-  assert.throws(() => {
-    runtime.pause(request.requestId, "human:operator", "reason");
-  }, /harness\.hitl\.cannot_pause_from_status/);
+  const result = runtime.pause(request.requestId, "human:operator", "reason");
+  assert.equal(result.request.status, "paused");
+  assert.equal(result.request.resolvedBy, "human:operator");
 });
 
 test("HitlRuntime.pause throws for unknown request", () => {

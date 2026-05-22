@@ -348,7 +348,7 @@ test("GithubAdapter authenticates with token", async () => {
   });
 
   assert.equal(result.repository, "owner/repo");
-  assert.ok(result.credentialFingerprint.includes("ghp"));
+  assert.ok(result.credentialFingerprint.startsWith("token:"));
 });
 
 test("GithubAdapter authenticates with managedSecretRef", async () => {
@@ -361,7 +361,7 @@ test("GithubAdapter authenticates with managedSecretRef", async () => {
     body: "Test body",
   });
 
-  assert.ok(result.credentialFingerprint.startsWith("secret://"));
+  assert.ok(result.credentialFingerprint.startsWith("secret-ref:"));
 });
 
 test("GithubAdapter throws when not authenticated", async () => {

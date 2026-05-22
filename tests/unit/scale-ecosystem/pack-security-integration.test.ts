@@ -174,7 +174,7 @@ test("PluginTrustStore blocks unverified artifacts", () => {
   // Register trust root
   store.registerTrustRoot({
     publisherId: "publisher-xyz",
-    rootFingerprint: "fingerprint-xyz",
+    rootFingerprint: "fingerprint-xyz-123456",
     source: "sigstore://publisher-xyz",
     supportedArtifactTypes: ["pack"],
   });
@@ -202,7 +202,7 @@ test("PluginTrustStore revocation blocks artifacts", () => {
 
   store.registerTrustRoot({
     publisherId: "revoked-publisher",
-    rootFingerprint: "fingerprint-revoked",
+    rootFingerprint: "fingerprint-revoked-123456",
     source: "sigstore://revoked-publisher",
     supportedArtifactTypes: ["pack"],
   });

@@ -250,14 +250,14 @@ test("summarizeWorkerLoadSkew dominant worker is selected by lease count then lo
 
 test("summarizeWorkerLoadSkew dominant worker is determined by workerId when counts are equal", () => {
   // Both workers have same lease count and same load score
-  // The one with alphabetically first workerId should be selected
+  // Without alternative capacity the summary intentionally does not report a dominant worker.
   const signals = [
     makeSignal({ workerId: "worker-b", activeLeaseCount: 5, runningExecutionCount: 5, maxConcurrency: 4, availableSlots: 0 }),
     makeSignal({ workerId: "worker-a", activeLeaseCount: 5, runningExecutionCount: 5, maxConcurrency: 4, availableSlots: 0 }),
   ];
   const result = summarizeWorkerLoadSkew(signals);
-  // worker-a comes first alphabetically, so it should be dominant
-  assert.equal(result.dominantWorkerId, "worker-a");
+  assert.equal(result.detected, false);
+  assert.equal(result.dominantWorkerId, null);
 });
 
 test("summarizeWorkerLoadSkew detects skew at exact threshold when alternative capacity exists", () => {

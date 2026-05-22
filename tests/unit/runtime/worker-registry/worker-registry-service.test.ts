@@ -11,6 +11,7 @@ import type { WorkerSnapshotRecord } from "../../../../src/platform/contracts/ty
 
 function createMockStore(workers: Map<string, WorkerSnapshotRecord> = new Map()): AuthoritativeTaskStore {
   return {
+    listStaleWorkerSnapshots: (_cutoff: string) => [...workers.values()],
     worker: {
       getWorkerSnapshot: (workerId: string) => workers.get(workerId) ?? null,
       listWorkerSnapshots: () => [...workers.values()],
@@ -853,8 +854,9 @@ test("WorkerRegistryService listEligibleWorkers allows workers without queue aff
 
   const eligible = service.listEligibleWorkers({ queueAffinity: "queue-a" });
 
-  assert.equal(eligible.length, 1);
-  assert.equal(eligible[0]!.workerId, "worker-2");
+  assert.equal(eligible.length, 2);
+  assert.ok(eligible.some((worker) => worker.workerId === "worker-1"));
+  assert.ok(eligible.some((worker) => worker.workerId === "worker-2"));
 });
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,11 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, unlinkSync } from "node:fs";
+import type {
+  MultiStepOrchestrationResult,
+  MultiStepToolExecutionInput,
+  StepFailurePlan,
+} from "../../../../src/core/runtime/orchestrator/index.js";
 
 /**
  * Unit Tests: orchestrator index.ts re-exports and runtime orchestration
@@ -13,6 +18,7 @@ import { existsSync, unlinkSync } from "node:fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const orchestratorModulePath = "../../../../src/core/runtime/orchestrator/index.js";
 
 function createTestDbPath(name: string): string {
   return join(__dirname, `test-orchestrator-${name}.db`);
@@ -33,18 +39,18 @@ function cleanupDb(dbPath: string): void {
 // =============================================================================
 
 test("orchestrator index exports runMultiStepOrchestration", async () => {
-  const orchestrator = await import("../../../src/core/runtime/orchestrator/index.js");
+  const orchestrator = await import(orchestratorModulePath);
   assert.ok("runMultiStepOrchestration" in orchestrator, "should export runMultiStepOrchestration");
   assert.strictEqual(typeof orchestrator.runMultiStepOrchestration, "function");
 });
 
 test("orchestrator index exports executeMultiStepToolCallForTests", async () => {
-  const orchestrator = await import("../../../src/core/runtime/orchestrator/index.js");
+  const orchestrator = await import(orchestratorModulePath);
   assert.ok("executeMultiStepToolCallForTests" in orchestrator, "should export executeMultiStepToolCallForTests");
 });
 
 test("orchestrator index exports resetMultiStepToolRegistryForTests", async () => {
-  const orchestrator = await import("../../../src/core/runtime/orchestrator/index.js");
+  const orchestrator = await import(orchestratorModulePath);
   assert.ok("resetMultiStepToolRegistryForTests" in orchestrator, "should export resetMultiStepToolRegistryForTests");
 });
 
@@ -52,19 +58,19 @@ test("orchestrator index exports resetMultiStepToolRegistryForTests", async () =
 // Type Re-export Tests
 // =============================================================================
 
-test("orchestrator index re-exports MultiStepOrchestrationResult type", async () => {
-  const orchestrator = await import("../../../src/core/runtime/orchestrator/index.js");
-  assert.ok("MultiStepOrchestrationResult" in orchestrator, "should export MultiStepOrchestrationResult type");
+test("orchestrator index re-exports MultiStepOrchestrationResult type", () => {
+  const result = {} as MultiStepOrchestrationResult;
+  assert.equal(typeof result, "object");
 });
 
-test("orchestrator index re-exports MultiStepToolExecutionInput type", async () => {
-  const orchestrator = await import("../../../src/core/runtime/orchestrator/index.js");
-  assert.ok("MultiStepToolExecutionInput" in orchestrator, "should export MultiStepToolExecutionInput type");
+test("orchestrator index re-exports MultiStepToolExecutionInput type", () => {
+  const input = {} as MultiStepToolExecutionInput;
+  assert.equal(typeof input, "object");
 });
 
-test("orchestrator index re-exports StepFailurePlan type", async () => {
-  const orchestrator = await import("../../../src/core/runtime/orchestrator/index.js");
-  assert.ok("StepFailurePlan" in orchestrator, "should export StepFailurePlan type");
+test("orchestrator index re-exports StepFailurePlan type", () => {
+  const plan = {} as StepFailurePlan;
+  assert.equal(typeof plan, "object");
 });
 
 // =============================================================================
@@ -76,7 +82,7 @@ test("runMultiStepOrchestration creates task in storage", async () => {
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -98,7 +104,7 @@ test("runMultiStepOrchestration accepts custom taskId for deterministic testing"
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const customTaskId = "task:test-deterministic-123";
 
@@ -120,7 +126,7 @@ test("runMultiStepOrchestration returns routing information", async () => {
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -142,7 +148,7 @@ test("runMultiStepOrchestration returns planned workflow", async () => {
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -164,7 +170,7 @@ test("runMultiStepOrchestration includes harnessRunId when not provided", async 
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -184,7 +190,7 @@ test("runMultiStepOrchestration accepts tenantId for multi-tenant scenarios", as
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -204,7 +210,7 @@ test("runMultiStepOrchestration accepts pre-allocated budgetLedgerId", async () 
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -224,7 +230,7 @@ test("runMultiStepOrchestration returns streamFrames array", async () => {
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -243,7 +249,7 @@ test("runMultiStepOrchestration returns null compaction initially", async () => 
   cleanupDb(dbPath);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../src/core/runtime/orchestrator/index.js");
+    const { runMultiStepOrchestration } = await import(orchestratorModulePath);
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -259,14 +265,14 @@ test("runMultiStepOrchestration returns null compaction initially", async () => 
 });
 
 test("orchestrator index can be imported as ES module", async () => {
-  const orchestrator = await import("../../../src/core/runtime/orchestrator/index.js");
+  const orchestrator = await import(orchestratorModulePath);
   assert.ok(orchestrator, "orchestrator module should be importable");
   assert.ok(typeof orchestrator.runMultiStepOrchestration === "function", "runMultiStepOrchestration should be a function");
 });
 
 test("orchestrator index re-exports are stable across multiple imports", async () => {
-  const orchestrator1 = await import("../../../src/core/runtime/orchestrator/index.js");
-  const orchestrator2 = await import("../../../src/core/runtime/orchestrator/index.js");
+  const orchestrator1 = await import(orchestratorModulePath);
+  const orchestrator2 = await import(orchestratorModulePath);
 
   assert.strictEqual(
     orchestrator1.runMultiStepOrchestration,

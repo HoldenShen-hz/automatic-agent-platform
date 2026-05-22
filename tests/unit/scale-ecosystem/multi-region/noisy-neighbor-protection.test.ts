@@ -54,7 +54,7 @@ test("NoisyNeighborProtectionService: assigns new quota IDs", () => {
   service.registerQuotas("tenant-1", quotas);
 
   const tenantQuotas = service.getTenantQuotas("tenant-1");
-  assert.ok(tenantQuotas[0]!.quotaId.startsWith("quota:"));
+  assert.ok(tenantQuotas[0]!.quotaId.startsWith("quota_"));
 });
 
 test("NoisyNeighborProtectionService: allows request when no quota is set", () => {

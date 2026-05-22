@@ -31,10 +31,11 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
     assert.equal(initialized, true);
   });
 
-  test("healthCheck returns true", async () => {
+  test("healthCheck reflects lifecycle state", async () => {
     const plugin = createAssetProductionRetrieverPlugin();
-    const result = await plugin.healthCheck();
-    assert.equal(result, true);
+    assert.equal(await plugin.healthCheck(), false);
+    await plugin.initialize();
+    assert.equal(await plugin.healthCheck(), true);
   });
 
   test("shutdown returns undefined", async () => {

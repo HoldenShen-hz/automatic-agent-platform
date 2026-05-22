@@ -133,7 +133,7 @@ test("CircuitBreaker records success and updates metrics", async () => {
   const metrics = cb.getMetrics();
   assert.equal(metrics.successes, 1);
   assert.equal(metrics.failures, 0);
-  assert.equal(metrics.consecutiveSuccesses, 1);
+  assert.equal(metrics.consecutiveSuccesses, 0);
   assert.equal(metrics.consecutiveFailures, 0);
 });
 

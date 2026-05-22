@@ -265,7 +265,7 @@ test("expired timeout with high risk in execute triggers takeover (not approval)
 
 // --- Edge Cases ---
 
-test("exact boundary: timeoutMs = 60000 triggers neither approval nor takeover", () => {
+test("exact boundary: timeoutMs = 60000 triggers approval", () => {
   const service = new EscalationService();
   const request = createRequest({
     timeoutMs: 60_000,
@@ -274,9 +274,8 @@ test("exact boundary: timeoutMs = 60000 triggers neither approval nor takeover",
   });
   const decision = service.decide(request);
 
-  // 60_000ms is not <= 60_000 (imminent) and not <= 0 (expired)
-  // It should not trigger imminent timeout approval
-  assert.notEqual(decision.decision, "approval");
+  assert.equal(decision.decision, "approval");
+  assert.equal(decision.reasonCode, "escalation.timeout_imminent_approval_required");
 });
 
 test("exact boundary: timeoutMs = 60001 triggers no escalation", () => {
