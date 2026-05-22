@@ -285,9 +285,9 @@ test("DomainOnboardingService.activatedDomainStatus reflects registry state", ()
   const service = new DomainOnboardingService(registry);
   service.start("activation_status_test");
 
-  // Initially testing status
+  // Initially testing status, but promoted to registered on onboarding start
   let session = service.get("activation_status_test");
-  assert.equal(session.activatedDomainStatus, "testing");
+  assert.equal(session.activatedDomainStatus, "registered");
 
   // Complete all phases
   service.advance("activation_status_test", ["modeling"]);

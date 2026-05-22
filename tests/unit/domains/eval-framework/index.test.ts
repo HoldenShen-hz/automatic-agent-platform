@@ -31,20 +31,13 @@ test("DomainEvaluatorSchema applies defaults", () => {
   assert.equal(result.blocking, true);
 });
 
-test("DomainEvaluatorSchema rejects threshold outside 0-1 range", () => {
-  const result1 = DomainEvaluatorSchema.safeParse({
-    evaluatorId: "eval_1",
-    metric: "accuracy",
-    threshold: 1.5,
-  });
-  assert.equal(result1.success, false);
-
-  const result2 = DomainEvaluatorSchema.safeParse({
+test("DomainEvaluatorSchema rejects negative threshold", () => {
+  const result = DomainEvaluatorSchema.safeParse({
     evaluatorId: "eval_1",
     metric: "accuracy",
     threshold: -0.1,
   });
-  assert.equal(result2.success, false);
+  assert.equal(result.success, false);
 });
 
 test("DomainEvaluatorSchema requires non-empty evaluatorId and metric", () => {

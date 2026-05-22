@@ -69,7 +69,7 @@ describe("ApprovalPolicyEngine", () => {
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "write_file",
+        action: "delete_resource",
         riskCategory: "destructive" as const,
         mode: "supervised" as const,
         stage: "execute",
