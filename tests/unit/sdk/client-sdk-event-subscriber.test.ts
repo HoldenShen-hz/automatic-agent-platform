@@ -686,7 +686,7 @@ test("TypedEventSubscriber handlers receive parsed payload", () => {
   assert.deepEqual(receivedPayload, { nested: { value: 42 } });
 });
 
-test("TypedEventSubscriber handles malformed JSON in pending events gracefully", () => {
+test("TypedEventSubscriber surfaces malformed JSON metadata in pending events", () => {
   const eventBus = createMockEventBus();
   const subscriber = createEventSubscriber(eventBus);
 
@@ -695,11 +695,15 @@ test("TypedEventSubscriber handles malformed JSON in pending events gracefully",
     { eventType: "event.1", payloadJson: "not-valid-json{{{" },
   ]);
 
-  // Should not throw, should return event with empty object payload
+  // Should not throw, should return a diagnostic payload instead of silently discarding the parse failure.
   const pending = subscriber.getPendingEvents("consumer-1");
 
   assert.equal(pending.length, 1);
-  assert.deepEqual((pending[0] as PlatformFactEvent).payload, {});
+  assert.deepEqual((pending[0] as PlatformFactEvent).payload, {
+    errorCode: "client_sdk.event_payload_invalid",
+    message: "Unexpected token 'o', \"not-valid-json{{{\" is not valid JSON",
+    rawPayload: "not-valid-json{{{",
+  });
 });
 
 test("TypedEventSubscriber subscribeToRunLifecycle handles multiple run lifecyle events", () => {

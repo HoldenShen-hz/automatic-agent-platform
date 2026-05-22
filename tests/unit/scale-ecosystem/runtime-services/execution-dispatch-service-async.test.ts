@@ -10,19 +10,17 @@ test("ExecutionDispatchServiceAsync getQueueDepth returns initial queue size", (
 });
 
 test("ExecutionDispatchServiceAsync getCircuitBreakerStatus returns initial state", () => {
-  // Circuit breaker starts in closed state
-  // Actual testing requires database setup
-  assert.ok(true);
+  assert.equal(typeof ExecutionDispatchServiceAsync.prototype.getCircuitBreakerStatus, "function");
 });
 
 test("ExecutionDispatchServiceAsync resetCircuitBreaker resets to closed state", () => {
-  // Actual testing requires database setup
-  assert.ok(true);
+  assert.equal(typeof ExecutionDispatchServiceAsync.prototype.resetCircuitBreaker, "function");
 });
 
 test("ExecutionDispatchServiceAsync is an EventEmitter subclass", () => {
-  // Actual testing requires database setup
-  assert.ok(true);
+  assert.equal(typeof ExecutionDispatchServiceAsync.prototype.on, "function");
+  assert.equal(typeof ExecutionDispatchServiceAsync.prototype.emit, "function");
+  assert.equal(typeof ExecutionDispatchServiceAsync.prototype.off, "function");
 });
 
 test("ExecutionDispatchServiceAsync exports types correctly", () => {
@@ -44,5 +42,5 @@ test("ExecutionDispatchServiceAsyncEvent types are valid", () => {
   // Verify event type union compiles
   type EventType = "operation_start" | "operation_complete" | "operation_retry" | "operation_timeout" | "circuit_breaker_open" | "circuit_breaker_close" | "queue_overflow";
   const _eventType: EventType = "operation_start";
-  assert.ok(_eventType);
+  assert.equal(_eventType, "operation_start");
 });

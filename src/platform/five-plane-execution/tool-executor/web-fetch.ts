@@ -58,6 +58,7 @@ export interface WebFetchResult {
 
 const DEFAULT_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_RESPONSE_CHUNKS = 10_000;
 
 /**
  * Checks if a hostname is blocked (internal/private IP or localhost).
@@ -296,15 +297,27 @@ export function createWebFetchTool(options: WebFetchToolOptions = {}) {
 
           const chunks: Uint8Array[] = [];
           let totalSize = 0;
+          let chunkCount = 0;
 
           // Stream and accumulate chunks with size limit
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+            chunkCount += 1;
+            if (chunkCount > MAX_RESPONSE_CHUNKS) {
+              await reader.cancel("response exceeded chunk limit");
+              return {
+                success: false,
+                status: "failed",
+                error: `Response exceeded streaming chunk limit (${MAX_RESPONSE_CHUNKS})`,
+                errorCode: "RESPONSE_STREAM_LIMIT_EXCEEDED",
+                durationMs: Date.now() - startTime,
+              };
+            }
 
             totalSize += value.length;
             if (totalSize > maxSizeBytes) {
-              reader.cancel();
+              void reader.cancel("response exceeded byte limit");
               bodyTruncated = true;
               const excess = totalSize - maxSizeBytes;
               const allowedLength = value.length - excess;

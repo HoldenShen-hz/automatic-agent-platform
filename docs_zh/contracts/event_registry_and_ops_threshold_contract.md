@@ -51,6 +51,11 @@
 | `approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
 | `execution:status_changed` | `tier1` | runtime | supervisor, recovery scan, observability | 是 | 是 |
 | `cost:limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
+| `secret:rotation_scheduled_initial` | `tier2` | secret rotation scheduler | observability, audit projection | 否 | 建议 |
+| `secret:rotation_scheduled` | `tier2` | secret rotation scheduler | observability, audit projection | 否 | 建议 |
+| `secret:rotation_initial_check_error` | `tier2` | secret rotation scheduler | observability, operator alerts | 否 | 建议 |
+| `secret:rotation_scheduler_error` | `tier2` | secret rotation scheduler | observability, operator alerts | 否 | 建议 |
+| `secret:rotation_scheduler_overlap` | `tier2` | secret rotation scheduler | observability, operator alerts | 否 | 建议 |
 | `oapeflir.view.run_lifecycle` | `tier2` | oapeflir loop service | oapeflir projection, inspect projection | 否 | 建议 |
 | `feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
 | `learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |

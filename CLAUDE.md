@@ -20,7 +20,7 @@ npm run test:golden
 Single-test flow:
 
 ```bash
-npm run build && node --test dist/tests/unit/platform/execution/execution-engine/index.test.js
+npm run build && ./node_modules/.bin/tsx --test tests/unit/platform/execution/execution-engine/index.test.ts
 ```
 
 ## Runtime Structure

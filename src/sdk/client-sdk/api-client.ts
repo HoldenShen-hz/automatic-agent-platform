@@ -268,6 +268,8 @@ export class RetryableApiClient {
   ): EventSubscription<TEvent> {
     let closed = false;
     let abortController: AbortController | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let reconnectAttempt = 0;
 
     const buildSseUrl = () => {
       const url = new URL(`${this.config.baseUrl.replace(/\/+$/, "")}/${normalizeApiVersionSegment(this.config.apiVersion)}${path}`);
@@ -327,16 +329,29 @@ export class RetryableApiClient {
               try {
                 const event = JSON.parse(line.slice(6)) as TEvent;
                 await callback(event);
-              } catch {
-                // Skip malformed event data
+                reconnectAttempt = 0;
+              } catch (error) {
+                if (error instanceof SyntaxError) {
+                  await callback({
+                    errorCode: "client_sdk.sse_invalid_event_payload",
+                    rawPayload: line.slice(6),
+                  } as TEvent);
+                  continue;
+                }
+                throw error;
               }
             }
           }
         }
       } catch (error) {
         if (!closed && !(error instanceof Error && error.name === "AbortError")) {
-          // Reconnect on error after delay
-          setTimeout(connect, 1000);
+          reconnectAttempt += 1;
+          const retryAfter = Math.min(1000 * (2 ** Math.min(reconnectAttempt - 1, 4)), 10000);
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            void connect();
+          }, retryAfter);
+          reconnectTimer.unref?.();
         }
       }
     };
@@ -347,6 +362,10 @@ export class RetryableApiClient {
     return {
       unsubscribe() {
         closed = true;
+        if (reconnectTimer != null) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
         abortController?.abort();
       },
       get closed() {
@@ -804,8 +823,12 @@ function isPendingEvent(event: unknown): event is { eventType: string; payloadJs
 function parseEventPayload(payloadJson: string): unknown {
   try {
     return JSON.parse(payloadJson) as unknown;
-  } catch {
-    return {};
+  } catch (error) {
+    return {
+      errorCode: "client_sdk.event_payload_invalid",
+      message: error instanceof Error ? error.message : String(error),
+      rawPayload: payloadJson,
+    };
   }
 }
 
@@ -894,7 +917,10 @@ export function parseCursor(cursor: string | null | undefined): PaginationSpec |
       ...(typeof record.cursor === "string" ? { cursor: record.cursor } : {}),
       ...(typeof record.limit === "number" ? { limit: record.limit } : {}),
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof SyntaxError || error instanceof TypeError) {
+      return undefined;
+    }
     return undefined;
   }
 }

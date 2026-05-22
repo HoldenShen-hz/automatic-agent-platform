@@ -16,7 +16,7 @@
  */
 
 import { ArtifactStore, type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
-import type { ArtifactRef } from "../../contracts/types/domain.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { StalledExecutionEscalationPackage } from "../../five-plane-execution/recovery/stalled-execution-escalation-service.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";

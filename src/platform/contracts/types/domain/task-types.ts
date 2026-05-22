@@ -19,6 +19,7 @@ import type {
   TaskStatus,
   WorkflowStatus,
 } from "../status.js";
+import type { ArtifactRef as CanonicalArtifactRef } from "../../executable-contracts/index.js";
 
 export type { TaskPriority, TaskSource, BudgetScope, MemoryLayer, MemorySourceTrustLevel, Timestamp };
 
@@ -41,8 +42,8 @@ export type LegacyArtifactRef = {
   createdAt: Timestamp;
 };
 
-// Re-export canonical ArtifactRef from executable-contracts for type compatibility
-export type { ArtifactRef } from "../../executable-contracts/index.js";
+// Keep a local alias so contracts/types does not reverse re-export executable contracts.
+export type ArtifactRef = CanonicalArtifactRef;
 
 export interface ArtifactRecord {
   artifactId: string;

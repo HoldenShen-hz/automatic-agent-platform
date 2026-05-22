@@ -5,6 +5,8 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 // ---------------------------------------------------------------------------
@@ -12,15 +14,13 @@ import test from "node:test";
 // ---------------------------------------------------------------------------
 
 test("api-server main function is async", () => {
-  // The api-server.ts main function is async
-  // This is a structural test
-  assert.ok(true);
+  const source = readFileSync(join(process.cwd(), "src", "sdk", "cli", "api-server.ts"), "utf8");
+  assert.match(source, /async function main\(\): Promise<void>/);
 });
 
 test("api-server uses requireValidStartupEnv validation", () => {
-  // The api-server.ts calls requireValidStartupEnv() before any other initialization
-  // GAP-V2-06: Validate startup environment variables
-  assert.ok(true);
+  const source = readFileSync(join(process.cwd(), "src", "sdk", "cli", "api-server.ts"), "utf8");
+  assert.match(source, /requireValidStartupEnv\(\);/);
 });
 
 test("api-server config includes otel settings", () => {

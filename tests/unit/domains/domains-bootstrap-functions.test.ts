@@ -14,7 +14,7 @@ import {
 test("buildDomainPhaseBootstrap creates phase bootstrap for 9a", () => {
   const result = buildDomainPhaseBootstrap("9a");
 
-  assert.ok(result);
+  assert.equal(result.phase, "9a");
   assert.equal(result.phase, "9a");
   assert.ok(Array.isArray(result.baselines));
   assert.ok(result.baselines.length > 0);
@@ -24,35 +24,30 @@ test("buildDomainPhaseBootstrap creates phase bootstrap for 9a", () => {
 test("buildDomainPhaseBootstrap creates phase bootstrap for 9b", () => {
   const result = buildDomainPhaseBootstrap("9b");
 
-  assert.ok(result);
   assert.equal(result.phase, "9b");
 });
 
 test("buildDomainPhaseBootstrap creates phase bootstrap for 9c", () => {
   const result = buildDomainPhaseBootstrap("9c");
 
-  assert.ok(result);
   assert.equal(result.phase, "9c");
 });
 
 test("buildDomainPhaseBootstrap creates phase bootstrap for 9d", () => {
   const result = buildDomainPhaseBootstrap("9d");
 
-  assert.ok(result);
   assert.equal(result.phase, "9d");
 });
 
 test("buildDomainPhaseBootstrap creates phase bootstrap for 9e", () => {
   const result = buildDomainPhaseBootstrap("9e");
 
-  assert.ok(result);
   assert.equal(result.phase, "9e");
 });
 
 test("buildDomainPhaseBootstrap creates phase bootstrap for 9f", () => {
   const result = buildDomainPhaseBootstrap("9f");
 
-  assert.ok(result);
   assert.equal(result.phase, "9f");
 });
 
@@ -72,7 +67,6 @@ test("buildDomainPhaseBootstrap returns non-empty baselines array", () => {
 test("buildDomainsBootstrap creates full bootstrap structure", () => {
   const result = buildDomainsBootstrap();
 
-  assert.ok(result);
   assert.equal(result.capabilityGroupId, "domains");
   assert.ok(Array.isArray(result.catalog));
   assert.ok(Array.isArray(result.phases));

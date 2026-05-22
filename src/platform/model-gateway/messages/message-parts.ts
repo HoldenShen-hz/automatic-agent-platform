@@ -7,7 +7,8 @@
  * and retry records.
  */
 
-import type { ArtifactRef, MessagePart, MessagePartType, MessageRecord } from "../../contracts/types/domain.js";
+import type { MessagePart, MessagePartType, MessageRecord } from "../../contracts/types/domain.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 export type { MessagePart } from "../../contracts/types/domain.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 

@@ -76,7 +76,7 @@ test("CostAlertService emits warning when approaching limit", () => {
     };
     const service = new CostAlertService(mockDb, mockStore, config);
     const events = [];
-    service.on("cost.threshold.exceeded", (event) => {
+    service.on("cost:limit_reached", (event) => {
         events.push(event);
     });
     // Record cost in stages to trigger threshold crossing

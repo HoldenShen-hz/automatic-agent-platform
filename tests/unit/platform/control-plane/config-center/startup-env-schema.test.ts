@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  assertValidStartupEnv,
   validateStartupEnv,
   requireValidStartupEnv,
   StartupEnvSchema,
@@ -219,6 +220,13 @@ test("requireValidStartupEnv does not exit for valid env", () => {
   }
 
   assert.equal(exitCalled, false, "process.exit should NOT have been called for valid env");
+});
+
+test("assertValidStartupEnv throws typed validation error instead of exiting", () => {
+  assert.throws(
+    () => assertValidStartupEnv({ AA_DB_PATH: "" }),
+    /FATAL: Startup environment validation failed/,
+  );
 });
 
 test("StartupEnvSchema.parse returns inferred types", () => {

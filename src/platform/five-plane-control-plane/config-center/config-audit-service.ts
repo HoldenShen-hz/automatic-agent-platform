@@ -21,6 +21,8 @@ import {
 import type { SqliteConnection } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
 import { queryAllOrEmpty, queryOne, execute } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
 
+const DEFAULT_AUDIT_ENTRY_LIMIT = 1000;
+
 /**
  * Audit action types for configuration changes.
  */
@@ -225,7 +227,8 @@ export class ConfigAuditService {
 
     const rows = queryAllOrEmpty<AuditRow>(
       this.sqliteDb,
-      `SELECT * FROM config_audit_entries ORDER BY timestamp DESC`,
+      `SELECT * FROM config_audit_entries ORDER BY timestamp DESC LIMIT ?`,
+      DEFAULT_AUDIT_ENTRY_LIMIT,
     );
 
     return rows.map((row) => ({

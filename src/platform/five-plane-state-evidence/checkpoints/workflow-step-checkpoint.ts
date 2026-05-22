@@ -21,7 +21,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
-import type { ArtifactRecord, ArtifactRef, StepOutputRecord } from "../../contracts/types/domain.js";
+import type { ArtifactRecord, StepOutputRecord } from "../../contracts/types/domain.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import type { CompensationModel } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 

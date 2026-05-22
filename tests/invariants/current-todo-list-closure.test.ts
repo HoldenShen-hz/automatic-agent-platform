@@ -1,8 +1,9 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { resolveRepoPath } from "../helpers/repo-root.js";
 
-const TODO_PATH = "docs_zh/operations/current_todo_list.md";
+const TODO_PATH = resolveRepoPath("docs_zh", "operations", "current_todo_list.md");
 
 test("current todo list has no active unchecked tasks", () => {
   const todo = readFileSync(TODO_PATH, "utf8");

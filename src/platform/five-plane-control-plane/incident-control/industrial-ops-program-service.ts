@@ -11,7 +11,8 @@
  */
 
 import { ArtifactStore, type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
-import type { ArtifactRef, EnvironmentName } from "../../contracts/types/domain.js";
+import type { EnvironmentName } from "../../contracts/types/domain.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { OperationsGovernanceService, type OperationsGovernanceReport, type RunbookSeverity } from "./operations-governance-service.js";
 

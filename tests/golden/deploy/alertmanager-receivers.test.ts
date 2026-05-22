@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import test from "node:test";
 import { parse as parseYaml } from "yaml";
-
-const REPO_ROOT = "/Users/holden/Project/automatic_agent/automatic_agent_platform";
+import { resolveRepoPath } from "../../helpers/repo-root.js";
 
 function loadReceivers(): Map<string, {
   webhook_configs?: Array<{ url?: string }>;
@@ -12,7 +10,7 @@ function loadReceivers(): Map<string, {
   slack_configs?: Array<{ url?: string }>;
 }> {
   const config = parseYaml(
-    readFileSync(join(REPO_ROOT, "deploy/prometheus/alertmanager.yml"), "utf8"),
+    readFileSync(resolveRepoPath("deploy", "prometheus", "alertmanager.yml"), "utf8"),
   ) as {
     receivers: Array<{
       name: string;
@@ -25,9 +23,10 @@ function loadReceivers(): Map<string, {
   return new Map(config.receivers.map((receiver) => [receiver.name, receiver]));
 }
 
-test("[SYS-OBS-5.3] alertmanager keeps internal webhook fallback", () => {
+test("[SYS-OBS-5.3] alertmanager keeps an explicit null/default receiver", () => {
   const receivers = loadReceivers();
-  assert.match(receivers.get("default-warning")?.webhook_configs?.[0]?.url ?? "", /api-server:3000\/v1\/alerts\/webhook/);
+  assert.equal(receivers.has("ops-null"), true);
+  assert.equal(receivers.get("ops-null")?.webhook_configs?.length ?? 0, 0);
 });
 
 test("[SYS-OBS-5.3] alertmanager slack and pagerduty routes have external transports", () => {

@@ -162,7 +162,7 @@ test("CostEvaluationResult with null remaining budget for unlimited", () => {
 test("CostThresholdExceededEvent interface structure is correct", () => {
   const now = new Date().toISOString();
   const event: CostThresholdExceededEvent = {
-    eventType: "cost.threshold.exceeded",
+    eventType: "cost:limit_reached",
     eventTier: "tier_2",
     scope: "tenant",
     scopeId: "tenant-123",
@@ -181,7 +181,7 @@ test("CostThresholdExceededEvent interface structure is correct", () => {
     stepId: "step-001",
   };
 
-  assert.equal(event.eventType, "cost.threshold.exceeded");
+  assert.equal(event.eventType, "cost:limit_reached");
   assert.equal(event.eventTier, "tier_2");
   assert.equal(event.scope, "tenant");
   assert.equal(event.alertLevel, "critical");
@@ -193,7 +193,7 @@ test("CostThresholdExceededEvent interface structure is correct", () => {
 test("CostThresholdExceededEvent with null optional fields", () => {
   const now = new Date().toISOString();
   const event: CostThresholdExceededEvent = {
-    eventType: "cost.threshold.exceeded",
+    eventType: "cost:limit_reached",
     eventTier: "tier_3",
     scope: "platform",
     scopeId: "platform-main",

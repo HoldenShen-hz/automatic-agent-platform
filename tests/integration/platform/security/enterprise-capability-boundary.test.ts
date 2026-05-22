@@ -70,11 +70,6 @@ test("enterprise capability CLI fail-closes on invalid component identifiers", (
   }
 });
 
-// TODO: fix - Storage backend factory rejects the shadow SQLite path as "outside allowed roots".
-// The test uses join(workspace, "shadow.db") where workspace is a temp directory,
-// but the storage validation may not recognize temp directories as allowed.
-// This is an infrastructure/test environment issue, not a code bug.
-// Fix: either use a path within allowed roots, or mock the storage backend.
 test("enterprise capability service factory routes postgres dual-run sync access through shadow sqlite", () => {
   const workspace = createTempWorkspace("aa-enterprise-security-");
   const dbPath = join(workspace, "enterprise-security-factory.db");

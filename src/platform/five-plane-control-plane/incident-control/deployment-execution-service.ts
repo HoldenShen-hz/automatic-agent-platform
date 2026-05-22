@@ -156,26 +156,27 @@ export interface DeploymentCommandRunner {
   run(request: DeploymentCommandRequest): Promise<DeploymentCommandResult>;
 }
 
+const MAX_DEPLOYMENT_COMMAND_OUTPUT_BYTES = 64 * 1024;
+const ALLOWED_DEPLOYMENT_COMMANDS: Readonly<Record<DeploymentCommandRequest["step"], readonly string[]>> = {
+  publish: ["gh"],
+  deploy: ["gh"],
+};
+
 /**
  * Default command runner that executes commands locally via spawn.
  */
 class LocalDeploymentCommandRunner implements DeploymentCommandRunner {
   public async run(request: DeploymentCommandRequest): Promise<DeploymentCommandResult> {
+    assertAllowedDeploymentCommand(request);
     const startedAt = Date.now();
     const child = spawn(request.command, request.args, {
       cwd: request.cwd,
       stdio: ["ignore", "pipe", "pipe"] as const,
     });
-    const stdoutPromise = new Promise<string>((resolve) => {
-      let data = "";
-      child.stdout?.on("data", (chunk) => { data += chunk; });
-      child.stdout?.on("end", () => resolve(data));
-    });
-    const stderrPromise = new Promise<string>((resolve) => {
-      let data = "";
-      child.stderr?.on("data", (chunk) => { data += chunk; });
-      child.stderr?.on("end", () => resolve(data));
-    });
+    const stdoutBuffer = createBoundedDeploymentOutputBuffer();
+    const stderrBuffer = createBoundedDeploymentOutputBuffer();
+    child.stdout?.on("data", (chunk) => { stdoutBuffer.push(chunk); });
+    child.stderr?.on("data", (chunk) => { stderrBuffer.push(chunk); });
     const exitCodePromise = new Promise<number>((resolve, reject) => {
       const timeout = setTimeout(() => {
         child.kill("SIGTERM");
@@ -194,18 +195,73 @@ class LocalDeploymentCommandRunner implements DeploymentCommandRunner {
         resolve(code ?? 1);
       });
     });
-    const [stdout, stderr, exitCode] = await Promise.all([stdoutPromise, stderrPromise, exitCodePromise]);
+    const exitCode = await exitCodePromise;
     return {
       step: request.step,
       command: request.command,
       args: [...request.args],
       executed: true,
       exitCode,
-      stdout,
-      stderr,
+      stdout: stdoutBuffer.toString(),
+      stderr: stderrBuffer.toString(),
       durationMs: Date.now() - startedAt,
     };
   }
+}
+
+function assertAllowedDeploymentCommand(request: DeploymentCommandRequest): void {
+  const allowedCommands = ALLOWED_DEPLOYMENT_COMMANDS[request.step];
+  if (allowedCommands.includes(request.command)) {
+    return;
+  }
+  throw new ValidationError(
+    `deployment_execution.command_not_allowed:${request.step}:${request.command}`,
+    `deployment_execution.command_not_allowed:${request.step}:${request.command}`,
+    {
+      details: {
+        step: request.step,
+        command: request.command,
+        allowedCommands,
+      },
+      retryable: false,
+    },
+  );
+}
+
+function createBoundedDeploymentOutputBuffer(maxBytes = MAX_DEPLOYMENT_COMMAND_OUTPUT_BYTES): {
+  push(chunk: unknown): void;
+  toString(): string;
+} {
+  let totalBytes = 0;
+  let truncated = false;
+  const chunks: string[] = [];
+  return {
+    push(chunk: unknown): void {
+      if (truncated) {
+        return;
+      }
+      const value = String(chunk);
+      const chunkBytes = Buffer.byteLength(value, "utf8");
+      const remaining = maxBytes - totalBytes;
+      if (remaining <= 0) {
+        truncated = true;
+        chunks.push("\n[truncated]\n");
+        return;
+      }
+      if (chunkBytes <= remaining) {
+        chunks.push(value);
+        totalBytes += chunkBytes;
+        return;
+      }
+      chunks.push(Buffer.from(value, "utf8").subarray(0, remaining).toString("utf8"));
+      chunks.push("\n[truncated]\n");
+      totalBytes = maxBytes;
+      truncated = true;
+    },
+    toString(): string {
+      return chunks.join("");
+    },
+  };
 }
 
 /**

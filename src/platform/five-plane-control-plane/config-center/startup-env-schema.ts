@@ -9,6 +9,7 @@
  */
 
 import { z } from "zod";
+import { ValidationError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
@@ -507,10 +508,10 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
  * Validates startup env vars and exits process if validation fails.
  * Designed to be called at the top of main() in CLI entry points.
  */
-export function requireValidStartupEnv(env: NodeJS.ProcessEnv = process.env): void {
+export function assertValidStartupEnv(env: NodeJS.ProcessEnv = process.env): StartupEnv {
   const result = validateStartupEnv(env);
   if (result.success) {
-    return;
+    return result.parsed!;
   }
 
   const lines = [
@@ -527,5 +528,23 @@ export function requireValidStartupEnv(env: NodeJS.ProcessEnv = process.env): vo
     messageLines: lines,
     docsPath: "docs_zh/operations/environment-variables.md",
   });
-  process.exit(1);
+  throw new ValidationError(
+    "startup_env.validation_failed",
+    lines.join("\n"),
+    {
+      retryable: false,
+      details: { errors: result.errors },
+    },
+  );
+}
+
+export function requireValidStartupEnv(env: NodeJS.ProcessEnv = process.env): void {
+  try {
+    assertValidStartupEnv(env);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      process.exit(1);
+    }
+    throw error;
+  }
 }

@@ -4,7 +4,7 @@
  * Provides real-time cost alerting when usage thresholds are exceeded.
  * Supports platform-level, tenant-level, pack-level, and step-level budget enforcement.
  *
- * Emits `cost.threshold.exceeded` events when thresholds are crossed, enabling
+ * Emits `cost:limit_reached` events when thresholds are crossed, enabling
  * automated responses like workflow degradation, pausing, or alerting.
  *
  * @see docs_zh/architecture/00-platform-architecture.md §18
@@ -44,13 +44,13 @@ const DEFAULT_CRITICAL_THRESHOLD = 0.95; // 95% of limit triggers critical alert
  * Service for evaluating cost against budget policies and emitting alerts.
  *
  * Tracks accumulated costs per scope and evaluates against configured limits.
- * Emits `cost.threshold.exceeded` events when thresholds are crossed.
+ * Emits `cost:limit_reached` events when thresholds are crossed.
  *
  * Usage:
  * 1. Create service with database access
  * 2. Call evaluateCost() before each billable action
  * 3. Call recordCost() after each LLM call to update accumulators
- * 4. Listen for `cost.threshold.exceeded` events to trigger automated responses
+ * 4. Listen for `cost:limit_reached` events to trigger automated responses
  */
 export class CostAlertService extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly accumulators: Map<string, CostAccumulator> = new Map();
@@ -492,7 +492,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
   }
 
   /**
-   * Emits a cost.threshold.exceeded event.
+   * Emits a cost:limit_reached event.
    */
   private emitThresholdExceeded(input: {
     scope: BudgetScope;
@@ -516,7 +516,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
       return;
     }
     const event: CostThresholdExceededEvent = {
-      eventType: "cost.threshold.exceeded",
+      eventType: "cost:limit_reached",
       eventTier: this.getEventTier(input.alertLevel),
       scope: input.scope,
       scopeId: input.scopeId,
@@ -537,7 +537,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     };
 
     // Emit on the service for listeners
-    this.emit("cost.threshold.exceeded", event);
+    this.emit("cost:limit_reached", event);
 
     // Also persist the event to the event store
     this.persistCostEvent(event);

@@ -67,7 +67,7 @@ test("QueueMetricsService tracks depth changes through adapter operations", () =
 
     // Dequeue a job
     const result = adapter.dequeue("tasks");
-    assert.ok(result);
+    assert.equal(result?.job.queueName, "tasks");
     result.ack();
 
     stats = adapter.stats("tasks");
@@ -88,7 +88,7 @@ test("QueueMetricsService tracks failed jobs from adapter", () => {
     // Enqueue and fail a job
     adapter.enqueue({ queueName: "tasks", payload: { taskId: "t1" }, maxAttempts: 1 });
     const result = adapter.dequeue("tasks");
-    assert.ok(result);
+    assert.equal(result?.job.queueName, "tasks");
 
     // Simulate failure by moving to dead letter
     adapter.moveToDeadLetter(result.job.id, "max_attempts_exceeded");
@@ -145,7 +145,7 @@ test("QueueMetricsService wait time tracking with timestamp correlation", () => 
 
     // Dequeue and measure wait time
     const result = adapter.dequeue("tasks");
-    assert.ok(result);
+    assert.equal(result?.job.queueName, "tasks");
 
     const waitTime = Date.now() - beforeDequeue;
     metricsService.recordWaitTime("tasks", waitTime);
@@ -173,7 +173,7 @@ test("QueueMetricsService derives complete metrics from adapter stats", () => {
 
     // Dequeue and complete one
     const result = adapter.dequeue("tasks");
-    assert.ok(result);
+    assert.equal(result?.job.queueName, "tasks");
     result.ack();
 
     const stats = adapter.stats("tasks");

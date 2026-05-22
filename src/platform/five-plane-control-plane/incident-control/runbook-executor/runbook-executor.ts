@@ -260,7 +260,10 @@ export class RunbookExecutor {
     simulatedResult?: { success: boolean; output?: string },
   ): Promise<{ success: boolean; output?: string }> {
     // Simulate async execution delay
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 10);
+      timer.unref?.();
+    });
 
     if (simulatedResult) {
       return simulatedResult;

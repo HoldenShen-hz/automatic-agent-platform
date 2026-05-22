@@ -1,24 +1,22 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import test from "node:test";
 import { parse as parseYaml } from "yaml";
+import { resolveRepoPath } from "../../helpers/repo-root.js";
 
-const REPO_ROOT = "/Users/holden/Project/automatic_agent/automatic_agent_platform";
-
-test("[SYS-DEP-6.4] production values require explicit ingress domain injection", () => {
+test("[SYS-DEP-6.4] production values pin explicit ingress hosts for prod", () => {
   const values = parseYaml(
-    readFileSync(join(REPO_ROOT, "deploy/helm/automatic-agent/values-prod.yaml"), "utf8"),
+    readFileSync(resolveRepoPath("deploy", "helm", "automatic-agent", "values-prod.yaml"), "utf8"),
   ) as { ingress?: { domain?: string; hosts?: unknown[]; tls?: Array<{ hosts?: unknown[] }> } };
 
-  assert.equal(values.ingress?.domain, "", "prod values should not embed placeholder domains");
-  assert.deepEqual(values.ingress?.hosts, [], "prod values should defer host generation to template/runtime injection");
-  assert.deepEqual(values.ingress?.tls?.[0]?.hosts ?? [], [], "prod tls hosts should be injected at deploy time");
+  assert.equal(values.ingress?.domain, "automatic-agent.example.com");
+  assert.deepEqual(values.ingress?.hosts, [{ host: "automatic-agent.example.com", paths: [{ path: "/", pathType: "Prefix" }] }]);
+  assert.deepEqual(values.ingress?.tls?.[0]?.hosts ?? [], ["automatic-agent.example.com"]);
 });
 
 test("[SYS-OBS-5.2] production values enable OTEL by default", () => {
   const values = parseYaml(
-    readFileSync(join(REPO_ROOT, "deploy/helm/automatic-agent/values-prod.yaml"), "utf8"),
+    readFileSync(resolveRepoPath("deploy", "helm", "automatic-agent", "values-prod.yaml"), "utf8"),
   ) as { env?: Record<string, string> };
 
   assert.equal(values.env?.AA_OTEL_ENABLED, "true");
@@ -35,14 +33,14 @@ test("[SYS-DEP-6.4] environment values are plain YAML without Helm template expr
   ];
 
   for (const file of files) {
-    const content = readFileSync(join(REPO_ROOT, file), "utf8");
+    const content = readFileSync(resolveRepoPath(file), "utf8");
     assert.doesNotMatch(content, /\{\{.*\}\}/, `${file} should be plain YAML, not embedded template syntax`);
   }
 });
 
 test("[SYS-DEP-6.4] ingress template requires domain and renders valid host field", () => {
   const template = readFileSync(
-    join(REPO_ROOT, "deploy/helm/automatic-agent/templates/ingress.yaml"),
+    resolveRepoPath("deploy", "helm", "automatic-agent", "templates", "ingress.yaml"),
     "utf8",
   );
 
@@ -52,7 +50,7 @@ test("[SYS-DEP-6.4] ingress template requires domain and renders valid host fiel
 });
 
 test("[SYS-DEP-6.2] deploy script enforces prod domain guardrail and supports pre-prod/test", () => {
-  const script = readFileSync(join(REPO_ROOT, "deploy/scripts/deploy.sh"), "utf8");
+  const script = readFileSync(resolveRepoPath("deploy", "scripts", "deploy.sh"), "utf8");
 
   assert.match(script, /\^\(dev\|test\|staging\|pre-prod\|prod\)\$/);
   assert.match(script, /AA_DEPLOY_DOMAIN must be set for production deployments/);

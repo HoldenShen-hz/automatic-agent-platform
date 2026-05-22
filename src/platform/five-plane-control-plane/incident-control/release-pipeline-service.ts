@@ -11,7 +11,8 @@ import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifac
 import { PolicyDeniedError, StorageError, ToolExecutionError, ValidationError } from "../../contracts/errors.js";
 import { SecretManagementService } from "../iam/secret-management-service.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { ArtifactRef, EnvironmentName, ReleaseBundleRecord, ReleaseExecutionReportRecord, SecretLeaseRecord } from "../../contracts/types/domain.js";
+import type { EnvironmentName, ReleaseBundleRecord, ReleaseExecutionReportRecord, SecretLeaseRecord } from "../../contracts/types/domain.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {
   DEFAULT_CONFIG_ROOT,

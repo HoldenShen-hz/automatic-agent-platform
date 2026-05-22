@@ -113,7 +113,7 @@ export type CostAlertReasonCode =
  * Used for real-time alerting and automated response.
  */
 export interface CostThresholdExceededEvent {
-  eventType: "cost.threshold.exceeded";
+  eventType: "cost:limit_reached";
   eventTier: "tier_1" | "tier_2" | "tier_3";
   scope: BudgetScope;
   scopeId: string;

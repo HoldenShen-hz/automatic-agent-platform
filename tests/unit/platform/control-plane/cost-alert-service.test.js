@@ -191,7 +191,7 @@ test("cost-alert-service recordCost emits event when threshold crossed", () => {
   });
 
   let eventFired = false;
-  service.on("cost.threshold.exceeded", () => {
+  service.on("cost:limit_reached", () => {
     eventFired = true;
   });
 

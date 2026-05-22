@@ -9,9 +9,9 @@ import {
   DEFAULT_REDACTION_POLICY,
   type ConstraintPack,
   type HarnessRunRuntimeState,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/harness/index.js";
-import { AsyncHarnessService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/harness/async-harness-service.js";
-import { mapHarnessStepToOapeflirPhase } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/harness/oapeflir-harness-mapping.js";
+} from "../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { AsyncHarnessService } from "../../../../src/platform/five-plane-orchestration/harness/async-harness-service.js";
+import { mapHarnessStepToOapeflirPhase } from "../../../../src/platform/five-plane-orchestration/harness/oapeflir-harness-mapping.js";
 
 function makeConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

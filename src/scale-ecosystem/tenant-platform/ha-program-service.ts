@@ -17,7 +17,8 @@
 
 import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
 import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { ArtifactRef, EnvironmentName } from "../../platform/contracts/types/domain.js";
+import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
+import type { ArtifactRef } from "../../platform/contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 /** Input options for building an HA program report */

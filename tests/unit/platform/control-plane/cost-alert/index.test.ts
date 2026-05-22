@@ -515,7 +515,7 @@ test("CostAlertService recordCost emits exceeded event when budget exceeded", ()
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost.threshold.exceeded", (event: CostThresholdExceededEvent) => {
+  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
     events.push(event);
   });
 
@@ -532,7 +532,7 @@ test("CostAlertService recordCost emits exceeded event when budget exceeded", ()
   assert.equal(events.length, 1);
   assert.equal(events[0]!.alertLevel, "exceeded");
   assert.equal(events[0]!.reasonCode, "cost.exceeded");
-  assert.equal(events[0]!.eventType, "cost.threshold.exceeded");
+  assert.equal(events[0]!.eventType, "cost:limit_reached");
   assert.equal(events[0]!.scope, "tenant");
   assert.equal(events[0]!.scopeId, "tenant-1");
   assert.equal(events[0]!.tenantId, "tenant-1");
@@ -559,7 +559,7 @@ test("CostAlertService recordCost emits critical event when entering critical zo
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost.threshold.exceeded", (event: CostThresholdExceededEvent) => {
+  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
     events.push(event);
   });
 
@@ -962,7 +962,7 @@ test("CostAlertService emits event with correct eventTier for exceeded", () => {
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost.threshold.exceeded", (event: CostThresholdExceededEvent) => {
+  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
     events.push(event);
   });
 
@@ -997,7 +997,7 @@ test("CostAlertService emits event with correct eventTier for critical", () => {
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost.threshold.exceeded", (event: CostThresholdExceededEvent) => {
+  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
     events.push(event);
   });
 

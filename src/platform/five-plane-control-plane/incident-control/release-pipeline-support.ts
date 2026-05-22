@@ -201,6 +201,11 @@ function resolveDefaultRepoRoot(): string {
 
 export const DEFAULT_REPO_ROOT = resolveDefaultRepoRoot();
 export const DEFAULT_CONFIG_ROOT = join(DEFAULT_REPO_ROOT, "config", "environments");
+const MAX_CAPTURED_COMMAND_OUTPUT_BYTES = 64 * 1024;
+const ALLOWED_RELEASE_PIPELINE_COMMANDS: Readonly<Record<ReleasePipelineCommandRequest["step"], readonly string[]>> = {
+  build_image: ["docker"],
+  publish_workflow: ["gh"],
+};
 
 // Environments where secret rotation must be completed before deployment
 export const ROTATION_GUARDED_ENVIRONMENTS = new Set<EnvironmentName>(["staging", "pre-prod", "prod"]);
@@ -211,15 +216,16 @@ export const ROTATION_GUARDED_ENVIRONMENTS = new Set<EnvironmentName>(["staging"
  */
 export class LocalReleasePipelineCommandRunner implements ReleasePipelineCommandRunner {
   public async run(request: ReleasePipelineCommandRequest): Promise<ReleasePipelineCommandResult> {
+    assertAllowedReleasePipelineCommand(request);
     const startedAt = Date.now();
     const child = spawn(request.command, request.args, {
       cwd: request.cwd,
       stdio: ["ignore", "pipe", "pipe"] as const,
     });
-    const stdoutChunks: string[] = [];
-    const stderrChunks: string[] = [];
-    child.stdout?.on("data", (chunk) => { stdoutChunks.push(String(chunk)); });
-    child.stderr?.on("data", (chunk) => { stderrChunks.push(String(chunk)); });
+    const stdout = createBoundedOutputBuffer();
+    const stderr = createBoundedOutputBuffer();
+    child.stdout?.on("data", (chunk) => { stdout.push(chunk); });
+    child.stderr?.on("data", (chunk) => { stderr.push(chunk); });
 
     const timeoutMs = request.timeoutMs ?? 5 * 60 * 1000;
     let timeoutHandle: NodeJS.Timeout | null = setTimeout(() => {
@@ -242,11 +248,66 @@ export class LocalReleasePipelineCommandRunner implements ReleasePipelineCommand
       args: [...request.args],
       executed: true,
       exitCode,
-      stdout: stdoutChunks.join(""),
-      stderr: stderrChunks.join(""),
+      stdout: stdout.toString(),
+      stderr: stderr.toString(),
       durationMs: Date.now() - startedAt,
     };
   }
+}
+
+function assertAllowedReleasePipelineCommand(request: ReleasePipelineCommandRequest): void {
+  const allowedCommands = ALLOWED_RELEASE_PIPELINE_COMMANDS[request.step];
+  if (allowedCommands.includes(request.command)) {
+    return;
+  }
+  throw new ValidationError(
+    `release.command_not_allowed:${request.step}:${request.command}`,
+    `release.command_not_allowed:${request.step}:${request.command}`,
+    {
+      details: {
+        step: request.step,
+        command: request.command,
+        allowedCommands,
+      },
+      retryable: false,
+    },
+  );
+}
+
+function createBoundedOutputBuffer(maxBytes = MAX_CAPTURED_COMMAND_OUTPUT_BYTES): {
+  push(chunk: unknown): void;
+  toString(): string;
+} {
+  let totalBytes = 0;
+  let truncated = false;
+  const chunks: string[] = [];
+  return {
+    push(chunk: unknown): void {
+      if (truncated) {
+        return;
+      }
+      const value = String(chunk);
+      const chunkBytes = Buffer.byteLength(value, "utf8");
+      const remaining = maxBytes - totalBytes;
+      if (remaining <= 0) {
+        truncated = true;
+        chunks.push("\n[truncated]\n");
+        return;
+      }
+      if (chunkBytes <= remaining) {
+        chunks.push(value);
+        totalBytes += chunkBytes;
+        return;
+      }
+      chunks.push(Buffer.from(value, "utf8").subarray(0, remaining).toString("utf8"));
+      chunks.push("\n[truncated]\n");
+      totalBytes = maxBytes;
+      truncated = true;
+    },
+    toString(): string {
+      return chunks.join("");
+    },
+  };
 }
 
 /**

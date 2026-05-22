@@ -53,7 +53,7 @@ import {
 class SecretResolutionRateLimiter {
   private readonly windowMs: number;
   private readonly maxRequests: number;
-  private readonly requests: Map<string, number[]> = new Map();
+  private readonly requests: Map<string, { timestamps: number[]; lastSeenAt: number }> = new Map();
 
   constructor(windowMs = 60_000, maxRequests = 100) {
     this.windowMs = windowMs;
@@ -67,17 +67,32 @@ class SecretResolutionRateLimiter {
   check(callerId: string): boolean {
     const now = Date.now();
     const windowStart = now - this.windowMs;
-    const timestamps = this.requests.get(callerId) ?? [];
-    const validTimestamps = timestamps.filter((t) => t > windowStart);
+    this.pruneExpiredCallers(windowStart);
+    const state = this.requests.get(callerId) ?? { timestamps: [], lastSeenAt: now };
+    const validTimestamps = state.timestamps.filter((t) => t > windowStart);
 
     if (validTimestamps.length >= this.maxRequests) {
-      this.requests.set(callerId, validTimestamps);
+      this.requests.set(callerId, {
+        timestamps: validTimestamps,
+        lastSeenAt: now,
+      });
       return false;
     }
 
     validTimestamps.push(now);
-    this.requests.set(callerId, validTimestamps);
+    this.requests.set(callerId, {
+      timestamps: validTimestamps,
+      lastSeenAt: now,
+    });
     return true;
+  }
+
+  private pruneExpiredCallers(windowStart: number): void {
+    for (const [callerId, state] of this.requests.entries()) {
+      if (state.lastSeenAt <= windowStart && state.timestamps.every((timestamp) => timestamp <= windowStart)) {
+        this.requests.delete(callerId);
+      }
+    }
   }
 }
 
@@ -129,6 +144,7 @@ export class SecretManagementService {
   private readonly providers: Record<SecretProviderKind, ManagedSecretProvider>;
   private readonly rateLimiter = new SecretResolutionRateLimiter();
   private readonly activeRotationSchedulers = new Set<NodeJS.Timeout>();
+  private rotationSweepInFlight = false;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -711,12 +727,17 @@ export class SecretManagementService {
    */
   public startDailyRotationScheduler(intervalMs: number = 24 * 60 * 60 * 1000): NodeJS.Timeout {
     const runRotationSweep = (phase: RotationSchedulerPhase, timer?: NodeJS.Timeout): void => {
+      if (this.rotationSweepInFlight) {
+        logger.warn("secret:rotation_scheduler_overlap", { phase });
+        return;
+      }
+      this.rotationSweepInFlight = true;
       try {
         const asOf = nowIso();
         const rotated = this.requestDueRotations(asOf, "system.rotation.scheduler");
         if (rotated.length > 0) {
           const summary = buildSchedulerSummary(rotated);
-          logger.info(phase === "initial" ? "secret.rotation.scheduled_initial" : "secret.rotation.scheduled", {
+          logger.info(phase === "initial" ? "secret:rotation_scheduled_initial" : "secret:rotation_scheduled", {
             ...summary,
             asOf,
             requestedBy: "system.rotation.scheduler",
@@ -728,7 +749,7 @@ export class SecretManagementService {
           this.activeRotationSchedulers.delete(timer);
         }
         const errorMessage = err instanceof Error ? err.message : String(err);
-        logger.error(phase === "initial" ? "secret.rotation.initial_check_error" : "secret.rotation.scheduler_error", {
+        logger.error(phase === "initial" ? "secret:rotation_initial_check_error" : "secret:rotation_scheduler_error", {
           err: errorMessage,
           phase,
           schedulerStopped: phase === "interval",
@@ -736,6 +757,8 @@ export class SecretManagementService {
         if (phase === "initial") {
           throw err;
         }
+      } finally {
+        this.rotationSweepInFlight = false;
       }
     };
 

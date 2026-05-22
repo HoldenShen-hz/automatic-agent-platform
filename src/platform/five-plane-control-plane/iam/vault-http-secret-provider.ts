@@ -57,6 +57,8 @@ interface VaultLoginResponse {
   };
 }
 
+const MINIMUM_VAULT_TOKEN_CACHE_TTL_MS = 30_000;
+
 /**
  * Response from Vault KV read endpoint.
  */
@@ -178,7 +180,11 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
         const loginData = (await loginResp.json()) as VaultLoginResponse;
         if (loginData.auth?.client_token) {
           this._cachedToken = loginData.auth.client_token;
-          this._tokenExpiry = Date.now() + (loginData.auth.lease_duration ?? 3600) * 1000;
+          const leaseDurationMs = Math.max(
+            (loginData.auth.lease_duration ?? 3600) * 1000,
+            MINIMUM_VAULT_TOKEN_CACHE_TTL_MS,
+          );
+          this._tokenExpiry = Date.now() + leaseDurationMs;
           return this._cachedToken;
         }
       }

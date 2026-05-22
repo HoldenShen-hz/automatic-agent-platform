@@ -145,9 +145,8 @@ test("cleanupPath removes directory recursively", () => {
 
 test("cleanupPath handles non-existent path gracefully", () => {
   const nonExistentPath = "/tmp/non-existent-path-test-12345";
-  // Should not throw
   cleanupPath(nonExistentPath);
-  assert.ok(true, "cleanupPath should not throw for non-existent path");
+  assert.equal(existsSync(nonExistentPath), false, "cleanupPath should leave non-existent path absent");
 });
 
 test("cleanupPath with force option removes already deleted path", () => {
@@ -158,5 +157,6 @@ test("cleanupPath with force option removes already deleted path", () => {
   // Should not throw when cleaning up already deleted file
   cleanupPath(filePath);
   cleanupPath(workspace);
-  assert.ok(true);
+  assert.equal(existsSync(filePath), false);
+  assert.equal(existsSync(workspace), false);
 });

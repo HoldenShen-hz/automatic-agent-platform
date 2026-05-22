@@ -171,7 +171,7 @@ test("CostAlertReasonCode union type", () => {
 test("CostThresholdExceededEvent interface structure", () => {
     const now = new Date().toISOString();
     const event = {
-        eventType: "cost.threshold.exceeded",
+        eventType: "cost:limit_reached",
         eventTier: "tier_2",
         scope: "tenant",
         scopeId: "tenant-xyz",
@@ -189,7 +189,7 @@ test("CostThresholdExceededEvent interface structure", () => {
         executionId: "exec-456",
         stepId: "step-789",
     };
-    assert.equal(event.eventType, "cost.threshold.exceeded");
+    assert.equal(event.eventType, "cost:limit_reached");
     assert.equal(event.eventTier, "tier_2");
     assert.equal(event.scope, "tenant");
     assert.equal(event.scopeId, "tenant-xyz");
@@ -202,7 +202,7 @@ test("CostThresholdExceededEvent eventTier values", () => {
     const tiers = ["tier_1", "tier_2", "tier_3"];
     for (const tier of tiers) {
         const event = {
-            eventType: "cost.threshold.exceeded",
+            eventType: "cost:limit_reached",
             eventTier: tier,
             scope: "platform",
             scopeId: "platform",

@@ -46,6 +46,31 @@ interface TokenResponse {
   refresh_token?: string;
 }
 
+function assertTokenResponse(payload: unknown): TokenResponse {
+  if (payload == null || typeof payload !== "object") {
+    throw new ValidationError("oauth.invalid_token_response", "oauth.invalid_token_response");
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.access_token !== "string" || record.access_token.trim().length === 0) {
+    throw new ValidationError("oauth.invalid_token_response", "oauth.invalid_token_response");
+  }
+  if (typeof record.token_type !== "string" || record.token_type.trim().length === 0) {
+    throw new ValidationError("oauth.invalid_token_response", "oauth.invalid_token_response");
+  }
+  if (!Number.isFinite(record.expires_in) || Number(record.expires_in) <= 0) {
+    throw new ValidationError("oauth.invalid_token_response", "oauth.invalid_token_response");
+  }
+  if (record.refresh_token !== undefined && typeof record.refresh_token !== "string") {
+    throw new ValidationError("oauth.invalid_token_response", "oauth.invalid_token_response");
+  }
+  return {
+    access_token: record.access_token,
+    token_type: record.token_type,
+    expires_in: Number(record.expires_in),
+    ...(typeof record.refresh_token === "string" ? { refresh_token: record.refresh_token } : {}),
+  };
+}
+
 async function exchangeCodeForTokens(config: OAuthPkceConfig, code: string, verifier: string): Promise<TokenResponse> {
   const params = new URLSearchParams({
     grant_type: "authorization_code",
@@ -68,7 +93,7 @@ async function exchangeCodeForTokens(config: OAuthPkceConfig, code: string, veri
     );
   }
 
-  return response.json() as Promise<TokenResponse>;
+  return assertTokenResponse(await response.json());
 }
 
 function resolveSecureCliHome(env: NodeJS.ProcessEnv = process.env): string {
@@ -97,6 +122,12 @@ function saveOAuthTokens(tokens: {
       "oauth.credentials_encryption_key_required",
     );
   }
+  if (encryptionKey.length < MINIMUM_CREDENTIALS_ENCRYPTION_KEY_LENGTH) {
+    throw new ValidationError(
+      "oauth.credentials_encryption_key_too_short",
+      "oauth.credentials_encryption_key_too_short",
+    );
+  }
 
   const salt = randomBytes(16);
   const iv = randomBytes(12);
@@ -121,6 +152,8 @@ interface LoginStateRecord {
   createdAt: string;
 }
 
+const MINIMUM_CREDENTIALS_ENCRYPTION_KEY_LENGTH = 32;
+
 export interface LoginStartResult {
   mode: "start";
   authorizationUrl: string;
@@ -134,6 +167,34 @@ export interface LoginFinishResult {
   credentialsPath: string;
   tokenType: string;
   expiresIn: number;
+}
+
+function resolveAuthorizationCode(env: NodeJS.ProcessEnv = process.env): string {
+  const codeFile = readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE_FILE");
+  if (codeFile != null) {
+    const code = readFileSync(codeFile, "utf8").trim();
+    if (code.length === 0) {
+      throw new ValidationError("oauth.auth_code_required", "oauth.auth_code_required");
+    }
+    return code;
+  }
+  return requireEnv("AA_OAUTH_AUTH_CODE", env);
+}
+
+function hasAuthorizationCodeInput(env: NodeJS.ProcessEnv = process.env): boolean {
+  return readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE_FILE") != null || readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE") != null;
+}
+
+function resolveReturnedState(env: NodeJS.ProcessEnv = process.env): string {
+  const stateFile = readTrimmedEnv(env, "AA_OAUTH_CALLBACK_STATE_FILE");
+  if (stateFile != null) {
+    const state = readFileSync(stateFile, "utf8").trim();
+    if (state.length === 0) {
+      throw new ValidationError("oauth.callback_state_required", "oauth.callback_state_required");
+    }
+    return state;
+  }
+  return requireEnv("AA_OAUTH_CALLBACK_STATE", env);
 }
 
 function requireEnv(name: string, env: NodeJS.ProcessEnv = process.env): string {
@@ -191,7 +252,7 @@ export function startOAuthLogin(
   config: OAuthPkceConfig = loadOAuthPkceConfig(env),
 ): LoginStartResult {
   const pkce = generatePkcePair();
-  const state = env.AA_OAUTH_STATE ?? randomUUID();
+  const state = randomUUID();
   const authorizationUrl = buildAuthorizationUrl(config, pkce, state);
   const statePath = resolveOAuthLoginStatePath(env);
 
@@ -214,28 +275,43 @@ export async function finishOAuthLogin(
   env: NodeJS.ProcessEnv = process.env,
   config: OAuthPkceConfig = loadOAuthPkceConfig(env),
 ): Promise<LoginFinishResult> {
-  const code = requireEnv("AA_OAUTH_AUTH_CODE", env);
+  const code = resolveAuthorizationCode(env);
+  const returnedState = resolveReturnedState(env);
   const statePath = resolveOAuthLoginStatePath(env);
   const pending = readLoginState(statePath);
-  const tokens = await exchangeCodeForTokens(config, code, pending.verifier);
-  const credentialsPath = saveOAuthTokens({
-    accessToken: tokens.access_token,
-    tokenType: tokens.token_type,
-    expiresIn: tokens.expires_in,
-    ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
-  }, env);
-  unlinkSync(statePath);
-  return {
-    mode: "finish",
-    credentialsPath,
-    tokenType: tokens.token_type,
-    expiresIn: tokens.expires_in,
-  };
+  try {
+    if (returnedState !== pending.state) {
+      throw new ValidationError("oauth.state_mismatch", "oauth.state_mismatch");
+    }
+    const tokens = await exchangeCodeForTokens(config, code, pending.verifier);
+    const credentialsPath = saveOAuthTokens({
+      accessToken: tokens.access_token,
+      tokenType: tokens.token_type,
+      expiresIn: tokens.expires_in,
+      ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
+    }, env);
+    return {
+      mode: "finish",
+      credentialsPath,
+      tokenType: tokens.token_type,
+      expiresIn: tokens.expires_in,
+    };
+  } finally {
+    try {
+      unlinkSync(statePath);
+    } catch (error) {
+      if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT") {
+        // State is already absent; token exchange result should still be returned.
+      } else {
+        throw error;
+      }
+    }
+  }
 }
 
 export async function main(): Promise<void> {
   const env = process.env;
-  const result = readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE") == null
+  const result = !hasAuthorizationCodeInput(env)
     ? startOAuthLogin(env)
     : await finishOAuthLogin(env);
 

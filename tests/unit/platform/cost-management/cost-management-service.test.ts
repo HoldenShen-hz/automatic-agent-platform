@@ -398,7 +398,7 @@ test("CostAlertService emits event when threshold exceeded", () => {
   const service = new CostAlertService(db, store, config);
 
   let eventEmitted = false;
-  service.on("cost.threshold.exceeded", () => {
+  service.on("cost:limit_reached", () => {
     eventEmitted = true;
   });
 

@@ -153,7 +153,7 @@ test("CostEvaluationResult has correct structure for exceeded result", () => {
 // =============================================================================
 test("CostThresholdExceededEvent has correct structure", () => {
     const event = {
-        eventType: "cost.threshold.exceeded",
+        eventType: "cost:limit_reached",
         eventTier: "tier_1",
         scope: "tenant",
         scopeId: "tenant-1",
@@ -171,7 +171,7 @@ test("CostThresholdExceededEvent has correct structure", () => {
         executionId: "exec-1",
         stepId: null,
     };
-    assert.equal(event.eventType, "cost.threshold.exceeded");
+    assert.equal(event.eventType, "cost:limit_reached");
     assert.equal(event.eventTier, "tier_1");
     assert.equal(event.scope, "tenant");
     assert.equal(event.currentCostUsd, 105);
@@ -331,7 +331,7 @@ test("CostAlertService emits warning event via EventEmitter", () => {
     };
     const service = new CostAlertService(mockDb, mockStore, config);
     const events = [];
-    service.on("cost.threshold.exceeded", (event) => {
+    service.on("cost:limit_reached", (event) => {
         events.push(event);
     });
     // Record cost to cross the warning threshold (80%)
@@ -347,10 +347,10 @@ test("CostAlertService emits warning event via EventEmitter", () => {
 test("CostAlertService can remove event listeners", () => {
     const service = new CostAlertService(mockDb, mockStore, { enabled: true });
     const handler = () => { };
-    service.on("cost.threshold.exceeded", handler);
-    service.off("cost.threshold.exceeded", handler);
+    service.on("cost:limit_reached", handler);
+    service.off("cost:limit_reached", handler);
     // Verify handler was removed by checking listener count
-    assert.equal(service.listenerCount("cost.threshold.exceeded"), 0);
+    assert.equal(service.listenerCount("cost:limit_reached"), 0);
 });
 // =============================================================================
 // Multiple policy resolution tests

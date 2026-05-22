@@ -721,7 +721,8 @@ test("runMultiStepOrchestration with null backpressure snapshot", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }
@@ -753,7 +754,8 @@ test("runMultiStepOrchestration handles high queue backlog", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }
@@ -775,7 +777,8 @@ test("runMultiStepOrchestration handles request with newlines", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }
@@ -793,7 +796,8 @@ test("runMultiStepOrchestration handles request with tabs", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }
@@ -811,7 +815,8 @@ test("runMultiStepOrchestration handles very long title", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }
@@ -829,7 +834,8 @@ test("runMultiStepOrchestration handles title with special characters", async ()
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }
@@ -851,7 +857,8 @@ test("runMultiStepOrchestration handles path with spaces", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }
@@ -869,7 +876,8 @@ test("runMultiStepOrchestration handles path with unicode characters", async () 
 
   try {
     const result = await runMultiStepOrchestration(input);
-    assert.ok(result);
+    assert.equal(typeof result.snapshot.task.id, "string");
+    assert.equal(result.snapshot.task.title, input.title);
   } finally {
     cleanupDb(dbPath);
   }

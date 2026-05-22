@@ -50,6 +50,11 @@ This document answers 3 questions:
 | `execution.succeeded` | `tier1` | runtime | transition service, observability | Yes | Yes |
 | `execution.failed` | `tier1` | runtime | supervisor, recovery scan | Yes | Yes |
 | `cost.limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | Yes | Yes |
+| `secret:rotation_scheduled_initial` | `tier2` | secret rotation scheduler | observability, audit projection | No | Recommended |
+| `secret:rotation_scheduled` | `tier2` | secret rotation scheduler | observability, audit projection | No | Recommended |
+| `secret:rotation_initial_check_error` | `tier2` | secret rotation scheduler | observability, operator alerts | No | Recommended |
+| `secret:rotation_scheduler_error` | `tier2` | secret rotation scheduler | observability, operator alerts | No | Recommended |
+| `secret:rotation_scheduler_overlap` | `tier2` | secret rotation scheduler | observability, operator alerts | No | Recommended |
 | `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | No | Recommended |
 | `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | No | Recommended |
 | `oapeflir.view.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | No | Recommended |

@@ -28,15 +28,14 @@ test("createGithubAdapterPlugin.shutdown returns undefined", async () => {
 
 test("createGithubAdapterPlugin.authenticate stores token fingerprint", async () => {
   const plugin = createGithubAdapterPlugin();
-  await plugin.authenticate({ token: "ghp_testtoken123" });
-  // Should not throw
-  assert.ok(true);
+  const result = await plugin.authenticate({ token: "ghp_testtoken123" });
+  assert.equal(result, undefined);
 });
 
 test("createGithubAdapterPlugin.authenticate accepts managedSecretRef", async () => {
   const plugin = createGithubAdapterPlugin();
-  await plugin.authenticate({ managedSecretRef: "secret://github/token" });
-  assert.ok(true);
+  const result = await plugin.authenticate({ managedSecretRef: "secret://github/token" });
+  assert.equal(result, undefined);
 });
 
 test("createGithubAdapterPlugin.execute throws when not authenticated", async () => {

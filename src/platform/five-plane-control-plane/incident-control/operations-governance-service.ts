@@ -19,7 +19,8 @@ import {
 import { MetricsService, type RuntimeMetricsSummary } from "../../shared/observability/metrics-service.js";
 import { DoctorService, type DoctorReport } from "./doctor-service.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
-import type { ArtifactRef, EnvironmentName } from "../../contracts/types/domain.js";
+import type { EnvironmentName } from "../../contracts/types/domain.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {
   diagnosticSeverityToUnifiedSeverity,
