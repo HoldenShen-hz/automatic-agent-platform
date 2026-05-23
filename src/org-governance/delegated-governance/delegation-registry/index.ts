@@ -47,7 +47,13 @@ export const GuardrailSchema = z.object({
   overridable: z.literal(false).default(false as const),
 });
 
-export type Guardrail = z.infer<typeof GuardrailSchema>;
+export interface Guardrail {
+  readonly guardrailId: string;
+  readonly type: GuardrailType;
+  readonly value?: unknown;
+  readonly setBy?: "platform_team";
+  readonly overridable?: false;
+}
 
 /**
  * Governance delegation - assigns permissions to a grantee within an org node.
@@ -70,14 +76,52 @@ export const GovernanceDelegationSchema = z.object({
   guardrails: z.array(GuardrailSchema).default([]),
   expiresAt: z.string().min(1),
   revocable: z.boolean().default(true),
-  status: z.enum(["active", "revoked", "expired"]).default("active"),
+  status: z.enum(["active", "revoked", "expired", "inactive"]).default("active").transform((status) =>
+    status === "inactive" ? "revoked" : status
+  ),
 });
 
-export type GovernanceDelegation = z.infer<typeof GovernanceDelegationSchema>;
+export interface GovernanceDelegation {
+  readonly delegationId: string;
+  readonly grantorId: string;
+  readonly granteeId: string;
+  readonly level?: GovernanceDelegationLevel;
+  readonly delegatable?: boolean;
+  readonly orgNodeIds?: readonly string[];
+  readonly domainIds?: readonly string[];
+  readonly derivedDelegationIds?: readonly string[];
+  readonly permissions?: readonly string[];
+  readonly guardrails?: readonly Guardrail[];
+  readonly expiresAt: string;
+  readonly revocable?: boolean;
+  readonly status?: "active" | "revoked" | "expired" | "inactive";
+}
+export interface NormalizedGovernanceDelegation {
+  readonly delegationId: string;
+  readonly grantorId: string;
+  readonly granteeId: string;
+  readonly level: GovernanceDelegationLevel;
+  readonly delegatable: boolean;
+  readonly orgNodeIds: readonly string[];
+  readonly domainIds: readonly string[];
+  readonly derivedDelegationIds: readonly string[];
+  readonly permissions: readonly GovernancePermission[];
+  readonly guardrails: readonly Guardrail[];
+  readonly expiresAt: string;
+  readonly revocable: boolean;
+  readonly status: "active" | "revoked" | "expired";
+}
+export type GovernanceDelegationInput = GovernanceDelegation;
+
+export function normalizeGovernanceDelegation(input: GovernanceDelegationInput): NormalizedGovernanceDelegation {
+  return GovernanceDelegationSchema.parse(input);
+}
 
 export function listActiveGovernanceDelegations(
-  delegations: readonly GovernanceDelegation[],
+  delegations: readonly GovernanceDelegationInput[],
   nowIso: string,
-): GovernanceDelegation[] {
-  return delegations.filter((item) => item.status === "active" && item.expiresAt >= nowIso);
+): NormalizedGovernanceDelegation[] {
+  return delegations
+    .map((item) => normalizeGovernanceDelegation(item))
+    .filter((item) => item.status === "active" && item.expiresAt >= nowIso);
 }

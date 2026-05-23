@@ -22,14 +22,10 @@ import {
   createPlatformFactEvent,
 } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 
-import type {
-  EventAppendCommand,
-  AuditAppendCommand,
-  ArtifactWriteCommand,
-} from "../../../../../src/platform/contracts/executable-contracts/index.js";
-
 import {
   createControlDirective,
+  createDecisionDirective,
+  createOperationalDirective,
 } from "../../../../../src/platform/contracts/control-directive/index.js";
 
 import { createExecutionPlan } from "../../../../../src/platform/contracts/execution-plan/index.js";
@@ -540,34 +536,34 @@ test("R4-14: NoOpControlPlaneDirectiveSink implements directive emission", () =>
   assert.ok(sink instanceof NoOpControlPlaneDirectiveSink, "Should create NoOp directive sink");
 
   // Verify the sink implements the interface without throwing
-  const opDir: OperationalDirective = {
+  const opDir: OperationalDirective = createOperationalDirective({
     operationalDirectiveId: "opdir-1",
     type: "pause",
-    scope: {},
-    issuedBy: { principalId: "user-1", tenantId: "tenant-1", roles: [] },
+    scope: { tenantId: "tenant-1" },
+    issuedBy: { principalId: "user-1", tenantId: "tenant-1", roles: ["operator"] },
     reason: "test",
     params: {},
     createdAt: "2026-01-01T00:00:00.000Z",
-  };
+  });
   sink.emitOperationalDirective(opDir);
 
-  const decDir: DecisionDirective = {
+  const decDir: DecisionDirective = createDecisionDirective({
     decisionDirectiveId: "dec-1",
     type: "approve",
-    scope: {},
-    issuedBy: { principalId: "user-1", tenantId: "tenant-1", roles: [] },
+    scope: { tenantId: "tenant-1" },
+    issuedBy: { principalId: "user-1", tenantId: "tenant-1", roles: ["operator"] },
     targetRef: "task-1",
     payload: {},
     reason: "test",
     riskAcknowledged: false,
     createdAt: "2026-01-01T00:00:00.000Z",
-  };
+  });
   sink.emitDecisionDirective(decDir);
 });
 
 test("R4-14: OperationalDirective and DecisionDirective types are available", () => {
   // Verify the types exist and can be used
-  const opDir: OperationalDirective = {
+  const opDir: OperationalDirective = createOperationalDirective({
     operationalDirectiveId: "opdir-1",
     type: "kill",
     scope: { tenantId: "tenant-1" },
@@ -575,20 +571,20 @@ test("R4-14: OperationalDirective and DecisionDirective types are available", ()
     reason: "critical failure",
     params: { force: true },
     createdAt: "2026-01-01T00:00:00.000Z",
-  };
+  });
   assert.ok(opDir.type === "kill", "OperationalDirective type is available");
 
-  const decDir: DecisionDirective = {
+  const decDir: DecisionDirective = createDecisionDirective({
     decisionDirectiveId: "dec-1",
     type: "deny",
-    scope: {},
+    scope: { tenantId: "tenant-1" },
     issuedBy: { principalId: "user-1", tenantId: "tenant-1", roles: ["operator"] },
     targetRef: "task-1",
     payload: {},
     reason: "policy violation",
     riskAcknowledged: true,
     createdAt: "2026-01-01T00:00:00.000Z",
-  };
+  });
   assert.ok(decDir.type === "deny", "DecisionDirective type is available");
 });
 

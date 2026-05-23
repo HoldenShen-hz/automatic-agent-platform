@@ -3,12 +3,28 @@ import assert from "node:assert/strict";
 import { resolveCompliancePolicyForNode } from "../../../../src/org-governance/compliance-engine/policy-resolver/index.js";
 import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
 
+function createNode(overrides: Partial<OrgNode> & { orgNodeId: string; nodeType: OrgNode["nodeType"] }): OrgNode {
+  return {
+    ...overrides,
+    orgNodeId: overrides.orgNodeId,
+    nodeType: overrides.nodeType,
+    displayName: overrides.displayName ?? overrides.orgNodeId,
+    parentOrgNodeId: overrides.parentOrgNodeId ?? null,
+    ownerUserIds: overrides.ownerUserIds ?? [],
+    active: overrides.active ?? true,
+    costCenter: overrides.costCenter ?? "",
+    metadata: overrides.metadata ?? {},
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? "active",
+  };
+}
+
 test("resolveCompliancePolicyForNode returns merged policy for a leaf node", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "dept", nodeType: "department", displayName: "Engineering", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "team", nodeType: "team", displayName: "Backend", parentOrgNodeId: "dept", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "member", nodeType: "member", displayName: "Alice", parentOrgNodeId: "team", ownerUserIds: ["user-1"], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
+    createNode({ orgNodeId: "dept", nodeType: "department", displayName: "Engineering", parentOrgNodeId: "root" }),
+    createNode({ orgNodeId: "team", nodeType: "team", displayName: "Backend", parentOrgNodeId: "dept" }),
+    createNode({ orgNodeId: "member", nodeType: "seat", displayName: "Alice", parentOrgNodeId: "team", ownerUserIds: ["user-1"] }),
   ];
 
   const policiesByNodeId = {
@@ -27,7 +43,7 @@ test("resolveCompliancePolicyForNode returns merged policy for a leaf node", () 
 
 test("resolveCompliancePolicyForNode returns company-level policy for company node", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
   ];
 
   const policiesByNodeId = {
@@ -41,8 +57,8 @@ test("resolveCompliancePolicyForNode returns company-level policy for company no
 
 test("resolveCompliancePolicyForNode returns merged policy for intermediate node", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "dept", nodeType: "department", displayName: "Sales", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
+    createNode({ orgNodeId: "dept", nodeType: "department", displayName: "Sales", parentOrgNodeId: "root" }),
   ];
 
   const policiesByNodeId = {
@@ -57,8 +73,8 @@ test("resolveCompliancePolicyForNode returns merged policy for intermediate node
 
 test("resolveCompliancePolicyForNode returns empty object when node has no policies in lineage", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
+    createNode({ orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root" }),
   ];
 
   const policiesByNodeId = {};
@@ -71,7 +87,7 @@ test("resolveCompliancePolicyForNode returns empty object when node has no polic
 
 test("resolveCompliancePolicyForNode handles node with no parent", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "member", nodeType: "member", displayName: "Bob", parentOrgNodeId: null, ownerUserIds: ["user-2"], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "member", nodeType: "seat", displayName: "Bob", ownerUserIds: ["user-2"] }),
   ];
 
   const policiesByNodeId = {
@@ -85,7 +101,7 @@ test("resolveCompliancePolicyForNode handles node with no parent", () => {
 
 test("resolveCompliancePolicyForNode returns multiple policies from single node", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
   ];
 
   const policiesByNodeId = {
@@ -103,8 +119,8 @@ test("resolveCompliancePolicyForNode returns multiple policies from single node"
 
 test("resolveCompliancePolicyForNode returns denyByDefault=false when policies exist in lineage", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "dept", nodeType: "department", displayName: "Engineering", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
+    createNode({ orgNodeId: "dept", nodeType: "department", displayName: "Engineering", parentOrgNodeId: "root" }),
   ];
 
   const policiesByNodeId = {
@@ -119,8 +135,8 @@ test("resolveCompliancePolicyForNode returns denyByDefault=false when policies e
 
 test("resolveCompliancePolicyForNode returns denyByDefault=true when no policies exist in lineage", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
+    createNode({ orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root" }),
   ];
 
   const policiesByNodeId = {};
@@ -133,8 +149,8 @@ test("resolveCompliancePolicyForNode returns denyByDefault=true when no policies
 
 test("resolveCompliancePolicyForNode returns denyByDefault=true for node with empty policy array", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    createNode({ orgNodeId: "root", nodeType: "company", displayName: "Acme Corp" }),
+    createNode({ orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root" }),
   ];
 
   const policiesByNodeId = {

@@ -53,7 +53,7 @@ test("[ARCH-P0-1] AnomalyEventClass enum defines all 6 categories", () => {
   );
 
   // Assert type correctly narrows to the 6 known values
-  const categories: AnomalyEventClass[] = ANOMALY_EVENT_CLASSES;
+  const categories: AnomalyEventClass[] = [...ANOMALY_EVENT_CLASSES];
   assert.equal(categories.length, 6);
 });
 
@@ -238,7 +238,10 @@ test("[ARCH-P0-1] classifyAnomalyEvent maps E2_EXECUTION signals", () => {
 });
 
 test("[ARCH-P0-1] classifyAnomalyEvent defaults to E1_BUSINESS for unknown signals", () => {
-  const unknownSignals = [
+  const unknownSignals: Array<{
+    metricName: string;
+    legacySeverity: "info" | "warning" | "critical";
+  }> = [
     { metricName: "checkout_conversion_drop", legacySeverity: "info" },
     { metricName: "random_metric_total", legacySeverity: "warning" },
     { metricName: "foobarbaz_quux", legacySeverity: "critical" },

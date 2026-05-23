@@ -307,7 +307,7 @@ test("ApiKeyService.validateApiKey returns correct scopes", () => {
   const result = service.validateApiKey(rawKey);
 
   assert.equal(result.valid, true);
-  assert.deepEqual(result.scopes.sort(), ["delete", "read", "write"]);
+  assert.deepEqual([...result.scopes].sort(), ["delete", "read", "write"]);
 });
 
 test("ApiKeyService.rotateApiKey preserves scopes", () => {
@@ -323,7 +323,7 @@ test("ApiKeyService.rotateApiKey preserves scopes", () => {
   const result = service.rotateApiKey(record.keyId, "rotator");
 
   assert.ok(result.record !== null);
-  assert.deepEqual(result.record.scopes.sort(), ["admin", "superuser"]);
+  assert.deepEqual([...(result.record?.scopes ?? [])].sort(), ["admin", "superuser"]);
 });
 
 test("ApiKeyService.rotateApiKey preserves name", () => {
@@ -441,7 +441,6 @@ test("CreateApiKeyInput allows optional scopes", () => {
     name: "No Scopes Key",
     ownerId: "owner-1",
     createdBy: "admin",
-    scopes: undefined,
   };
 
   assert.ok(input.scopes === undefined);

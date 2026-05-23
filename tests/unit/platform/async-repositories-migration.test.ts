@@ -69,7 +69,7 @@ test("R31-31: authoritative task store decorator leaves nested repository namesp
 
   const decorated = decorateAuthoritativeTaskStore(
     store as unknown as Parameters<typeof decorateAuthoritativeTaskStore>[0],
-  ) as typeof store;
+  ) as unknown as typeof store;
 
   assert.equal(decorated.namespace, nestedNamespace);
   assert.equal(decorated.namespace.describe(), "nested-ok");

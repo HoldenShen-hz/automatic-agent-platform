@@ -52,7 +52,18 @@ test("inheritPolicyLayers works via exported function", () => {
 
 test("resolveCompliancePolicyForNode works via exported function", () => {
   const nodes = [
-    { orgNodeId: "root", nodeType: "company" as const, displayName: "Acme", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    {
+      orgNodeId: "root",
+      nodeType: "company" as const,
+      displayName: "Acme",
+      parentOrgNodeId: null,
+      ownerUserIds: [],
+      active: true,
+      costCenter: "",
+      metadata: {},
+      effectivePolicies: {},
+      status: "active" as const,
+    },
   ];
 
   const policiesByNodeId = {

@@ -294,7 +294,7 @@ test("R21-15 and R21-16 edge runtime enforces risk gate and performs actual merg
   assert.throws(
     () => service.executeOffline(
       profile,
-      [{ modelId: "model-a", modalities: ["text"], maxTokens: 4096 }],
+      [{ modelId: "model-a", modalities: ["text"] }],
       {
         edgeNodeId: "edge-node-1",
         taskId: "task-risk",

@@ -12,6 +12,8 @@ import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/
 import type { ApprovalDelegation } from "../../../../src/org-governance/approval-routing/delegation/index.js";
 import type { ApprovalEscalationRule } from "../../../../src/org-governance/approval-routing/escalation/index.js";
 
+type ApprovalRouteInput = Parameters<ApprovalRoutingService["route"]>[0];
+
 // Helper to create org nodes
 function createOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
@@ -23,6 +25,8 @@ function createOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
     active: overrides.active ?? true,
     costCenter: overrides.costCenter ?? "",
     metadata: overrides.metadata ?? {},
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? (overrides.active ?? true ? "active" : "inactive"),
   };
 }
 
@@ -32,7 +36,10 @@ function createDelegation(overrides: Partial<ApprovalDelegation> = {}): Approval
     delegationId: overrides.delegationId ?? "del-1",
     approverId: overrides.approverId ?? "approver-1",
     delegateApproverId: overrides.delegateApproverId ?? "delegate-1",
+    delegationType: overrides.delegationType ?? "temporary_cover",
     scopeNodeIds: overrides.scopeNodeIds ?? [],
+    conflictOfInterestApproverIds: overrides.conflictOfInterestApproverIds ?? [],
+    coiReviewStatus: overrides.coiReviewStatus ?? "pending",
     startsAt: overrides.startsAt ?? "2026-04-01T00:00:00.000Z",
     expiresAt: overrides.expiresAt ?? "2026-12-31T23:59:59.999Z",
     active: overrides.active ?? true,
@@ -46,6 +53,10 @@ function createEscalationRule(overrides: Partial<ApprovalEscalationRule> = {}): 
     triggerAfterMinutes: overrides.triggerAfterMinutes ?? 30,
     escalateToApproverId: overrides.escalateToApproverId ?? "escalation-approver",
     appliesToRiskLevels: overrides.appliesToRiskLevels ?? ["high", "critical"],
+    maxEscalationDepth: overrides.maxEscalationDepth ?? 1,
+    cooldownMinutes: overrides.cooldownMinutes ?? 0,
+    notifyOnSlaBreach: overrides.notifyOnSlaBreach ?? false,
+    slaBreachNotificationTargetIds: overrides.slaBreachNotificationTargetIds ?? [],
   };
 }
 
@@ -480,7 +491,7 @@ test("ApprovalRoutingService finds owner at department level in hierarchy", () =
     createOrgNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company", ownerUserIds: ["vp"] }),
     createOrgNode({ orgNodeId: "dept", nodeType: "department", parentOrgNodeId: "division", ownerUserIds: ["director"] }),
     createOrgNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "dept", ownerUserIds: ["manager"] }),
-    createOrgNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["employee"] }),
+    createOrgNode({ orgNodeId: "member", nodeType: "seat", parentOrgNodeId: "team", ownerUserIds: ["employee"] }),
   ];
   const service = new ApprovalRoutingService({ orgNodes: nodes });
   const result = service.route(
@@ -538,7 +549,7 @@ test("ApprovalRoutingService builds parallel and conditional chain plans", () =>
 test("ApprovalRoutingService generates unique audit recordIds for same requester+node", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const service = new ApprovalRoutingService({ orgNodes: nodes });
-  const request = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
+  const request: ApprovalRouteInput = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
 
   const result1 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
   const result2 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
@@ -553,7 +564,7 @@ test("ApprovalRoutingService generates unique audit recordIds for same requester
 test("ApprovalRoutingService audit recordId contains timestamp component", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const service = new ApprovalRoutingService({ orgNodes: nodes });
-  const request = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
+  const request: ApprovalRouteInput = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
 
   const before = Date.now();
   const result = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
@@ -564,14 +575,14 @@ test("ApprovalRoutingService audit recordId contains timestamp component", () =>
   const idParts = recordId.split("_");
   // Format: approval_route_audit_{requesterId}_{orgNodeId}_{timestamp}_{uuid}
   // timestamp should be a number >= before and <= after
-  const timestampPart = parseInt(idParts[5], 10);
+  const timestampPart = parseInt(idParts[5] ?? "", 10);
   assert.ok(timestampPart >= before && timestampPart <= after, `Timestamp ${timestampPart} should be between ${before} and ${after}`);
 });
 
 test("ApprovalRoutingService audit recordId contains random component for entropy", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const service = new ApprovalRoutingService({ orgNodes: nodes });
-  const request = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
+  const request: ApprovalRouteInput = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
 
   const result1 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
   const result2 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");

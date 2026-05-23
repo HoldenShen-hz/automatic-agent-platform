@@ -30,17 +30,60 @@ export const KnowledgeBoundarySchema = z.object({
   share_policy: KnowledgeBoundarySharePolicySchema.optional(),
 });
 
-export type KnowledgeBoundary = z.infer<typeof KnowledgeBoundarySchema>;
+export interface KnowledgeBoundaryInput {
+  readonly boundaryId: string;
+  readonly tenantId?: string | null;
+  readonly ownerOrgNodeId: string;
+  readonly namespaceIds?: readonly string[];
+  readonly accessPolicy?: "strict" | "controlled";
+  readonly defaultVisibility?: "private" | "shared" | "public";
+  readonly auditOnAccess?: boolean;
+  readonly allowedOrgNodeIds?: readonly string[];
+  readonly fieldAllowlist?: readonly string[];
+  readonly classificationRules?: readonly KnowledgeBoundaryClassificationRule[];
+  readonly sharePolicy?: KnowledgeBoundarySharePolicy;
+  readonly classification_rules?: readonly KnowledgeBoundaryClassificationRule[];
+  readonly share_policy?: KnowledgeBoundarySharePolicy;
+}
+export interface KnowledgeBoundary {
+  readonly boundaryId: string;
+  readonly tenantId?: string | null;
+  readonly ownerOrgNodeId: string;
+  readonly namespaceIds?: readonly string[];
+  readonly accessPolicy?: "strict" | "controlled";
+  readonly defaultVisibility?: "private" | "shared" | "public";
+  readonly auditOnAccess?: boolean;
+  readonly allowedOrgNodeIds?: readonly string[];
+  readonly fieldAllowlist?: readonly string[];
+  readonly classificationRules?: readonly KnowledgeBoundaryClassificationRule[];
+  readonly sharePolicy?: KnowledgeBoundarySharePolicy;
+  readonly classification_rules?: readonly KnowledgeBoundaryClassificationRule[];
+  readonly share_policy?: KnowledgeBoundarySharePolicy;
+}
 export type KnowledgeBoundaryClassificationRule = z.infer<typeof KnowledgeBoundaryClassificationRuleSchema>;
 export type KnowledgeBoundarySharePolicy = z.infer<typeof KnowledgeBoundarySharePolicySchema>;
 
-export function canAccessKnowledgeBoundary(boundary: KnowledgeBoundary, requesterOrgNodeId: string): boolean {
-  const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
+function normalizeKnowledgeBoundary(boundary: KnowledgeBoundaryInput): z.infer<typeof KnowledgeBoundarySchema> {
+  return KnowledgeBoundarySchema.parse({
+    ...boundary,
+    namespaceIds: boundary.namespaceIds == null ? undefined : [...boundary.namespaceIds],
+    allowedOrgNodeIds: boundary.allowedOrgNodeIds == null ? undefined : [...boundary.allowedOrgNodeIds],
+    fieldAllowlist: boundary.fieldAllowlist == null ? undefined : [...boundary.fieldAllowlist],
+    classificationRules: boundary.classificationRules == null ? undefined : [...boundary.classificationRules],
+    classification_rules: boundary.classification_rules == null ? undefined : [...boundary.classification_rules],
+    sharePolicy: boundary.sharePolicy,
+    share_policy: boundary.share_policy,
+  });
+}
+
+export function canAccessKnowledgeBoundary(boundary: KnowledgeBoundaryInput, requesterOrgNodeId: string): boolean {
+  const normalizedBoundary = normalizeKnowledgeBoundary(boundary);
+  const allowedOrgNodeIds = normalizedBoundary.allowedOrgNodeIds ?? [];
   const effectiveSharePolicy = resolveKnowledgeSharePolicy(boundary);
-  if (boundary.defaultVisibility === "public") {
+  if (normalizedBoundary.defaultVisibility === "public") {
     return true;
   }
-  if (boundary.ownerOrgNodeId === requesterOrgNodeId) {
+  if (normalizedBoundary.ownerOrgNodeId === requesterOrgNodeId) {
     return true;
   }
   if (effectiveSharePolicy.mode === "org_allowlist" && effectiveSharePolicy.allowOrgNodeIds.includes(requesterOrgNodeId)) {
@@ -52,23 +95,26 @@ export function canAccessKnowledgeBoundary(boundary: KnowledgeBoundary, requeste
   return false;
 }
 
-export function resolveKnowledgeAccessPolicy(boundary: KnowledgeBoundary): "strict" | "controlled" {
-  if (boundary.accessPolicy != null) {
-    return boundary.accessPolicy;
+export function resolveKnowledgeAccessPolicy(boundary: KnowledgeBoundaryInput): "strict" | "controlled" {
+  const normalizedBoundary = normalizeKnowledgeBoundary(boundary);
+  if (normalizedBoundary.accessPolicy != null) {
+    return normalizedBoundary.accessPolicy;
   }
-  return boundary.defaultVisibility === "private" || boundary.defaultVisibility == null
+  return normalizedBoundary.defaultVisibility === "private" || normalizedBoundary.defaultVisibility == null
     ? "strict"
     : "controlled";
 }
 
 export function resolveKnowledgeClassificationRules(
-  boundary: KnowledgeBoundary,
+  boundary: KnowledgeBoundaryInput,
 ): readonly KnowledgeBoundaryClassificationRule[] {
-  return boundary.classificationRules.length > 0
-    ? boundary.classificationRules
-    : boundary.classification_rules ?? [];
+  const normalizedBoundary = normalizeKnowledgeBoundary(boundary);
+  return normalizedBoundary.classificationRules.length > 0
+    ? normalizedBoundary.classificationRules
+    : normalizedBoundary.classification_rules ?? [];
 }
 
-export function resolveKnowledgeSharePolicy(boundary: KnowledgeBoundary): KnowledgeBoundarySharePolicy {
-  return boundary.sharePolicy ?? boundary.share_policy ?? KnowledgeBoundarySharePolicySchema.parse({});
+export function resolveKnowledgeSharePolicy(boundary: KnowledgeBoundaryInput): KnowledgeBoundarySharePolicy {
+  const normalizedBoundary = normalizeKnowledgeBoundary(boundary);
+  return normalizedBoundary.sharePolicy ?? normalizedBoundary.share_policy ?? KnowledgeBoundarySharePolicySchema.parse({});
 }

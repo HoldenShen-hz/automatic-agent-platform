@@ -25,8 +25,8 @@ test("FieldEncryptionService protectRecord encrypts specified field", () => {
   assert.equal(result.protectedRecord.name, "John Doe");
   assert.equal(result.protectedRecord.status, "active");
   assert.equal(result.protectedFields.length, 1);
-  assert.equal(result.protectedFields[0].fieldPath, "email");
-  assert.equal(result.protectedFields[0].keyRef, "key_123");
+  assert.equal(result.protectedFields[0]?.fieldPath, "email");
+  assert.equal(result.protectedFields[0]?.keyRef, "key_123");
 });
 
 test("FieldEncryptionService protectRecord handles nested fields", () => {
@@ -160,7 +160,7 @@ test("FieldEncryptionService protectRecord encrypts with correct classification"
     keyRef: "key_123",
   });
 
-  assert.equal(result.protectedFields[0].classification, "restricted");
+  assert.equal(result.protectedFields[0]?.classification, "restricted");
 });
 
 test("FieldEncryptionService protectRecord handles multiple rules", () => {

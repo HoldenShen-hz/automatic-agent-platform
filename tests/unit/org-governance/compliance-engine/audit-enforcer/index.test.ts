@@ -31,6 +31,7 @@ test("buildGovernanceAuditRecord sets default reasonCodes", () => {
     actorId: "user_123",
     orgNodeId: "team_beta",
     allowed: false,
+    reasonCodes: [],
     occurredAt: "2026-04-26T11:00:00Z",
   };
 

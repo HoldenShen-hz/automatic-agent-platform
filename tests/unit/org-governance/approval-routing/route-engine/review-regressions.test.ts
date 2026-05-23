@@ -19,6 +19,8 @@ function createOrgNode(overrides: Partial<OrgNode> & { orgNodeId: string; nodeTy
     active: overrides.active ?? true,
     costCenter: overrides.costCenter ?? "cc-1",
     metadata: overrides.metadata ?? {},
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? "active",
     legalEntityBoundary: overrides.legalEntityBoundary ?? null,
   };
 }

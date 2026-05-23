@@ -11,7 +11,7 @@ import {
   type DelegationMetrics,
   ContextIsolator,
   createContextIsolator,
-  type IsolationLevel,
+  IsolationLevel,
   type IsolatedContext,
   TopologyValidator,
   createTopologyValidator,
@@ -93,28 +93,39 @@ test("DelegationCycleDetectedError is exported as error class", () => {
 
 test("DelegationExpirationConfig type works correctly", () => {
   const config: DelegationExpirationConfig = {
-    maxAgeMs: 3600000,
-    scanIntervalMs: 60000,
+    checkIntervalMs: 60000,
+    batchSize: 100,
   };
-  assert.equal(config.maxAgeMs, 3600000);
+  assert.equal(config.checkIntervalMs, 60000);
 });
 
 test("ExpirationScanResult type works correctly", () => {
   const result: ExpirationScanResult = {
-    scannedCount: 100,
-    expiredCount: 5,
-    cleanedUpCount: 5,
+    scanned: 100,
+    expired: 5,
+    errors: [],
   };
-  assert.equal(result.scannedCount, 100);
-  assert.equal(result.expiredCount, 5);
+  assert.equal(result.scanned, 100);
+  assert.equal(result.expired, 5);
 });
 
 test("DelegationTreeNode type works correctly", () => {
   const node: DelegationTreeNode = {
     delegationId: "del-001",
+    agentId: "agent-001",
+    agentType: "agent",
     depth: 1,
+    status: "pending",
     children: [],
     createdAt: "2024-01-15T10:00:00Z",
+    metrics: {
+      totalDelegations: 1,
+      maxDepth: 1,
+      activeCount: 1,
+      completedCount: 0,
+      failedCount: 0,
+      averageDurationMs: 0,
+    },
   };
   assert.equal(node.delegationId, "del-001");
   assert.equal(node.depth, 1);
@@ -122,73 +133,93 @@ test("DelegationTreeNode type works correctly", () => {
 
 test("DelegationMetrics type works correctly", () => {
   const metrics: DelegationMetrics = {
-    activeDelegations: 10,
     totalDelegations: 100,
-    averageDepth: 2.5,
+    maxDepth: 3,
+    activeCount: 10,
+    completedCount: 80,
+    failedCount: 10,
+    averageDurationMs: 2500,
   };
-  assert.equal(metrics.activeDelegations, 10);
+  assert.equal(metrics.activeCount, 10);
 });
 
 test("IsolationLevel type works correctly", () => {
-  const level: IsolationLevel = "full";
-  assert.equal(level, "full");
+  const level: IsolationLevel = IsolationLevel.FULL;
+  assert.equal(level, IsolationLevel.FULL);
 });
 
 test("IsolatedContext type works correctly", () => {
   const context: IsolatedContext = {
-    delegationId: "del-001",
-    agentId: "agent-001",
-    permissions: {},
-    createdAt: "2024-01-15T10:00:00Z",
+    context: {
+      agentId: "agent-001",
+      agentType: "agent",
+      packId: "pack-001",
+      delegationDepth: 1,
+      activeDelegations: [],
+      permissions: { resources: [], actions: [], constraints: {} },
+      sandboxTier: "read_only",
+      correlationId: "corr-001",
+      tenantId: "tenant-001",
+    },
+    inheritedPermissions: { resources: ["resource-1"], actions: ["action-1"], constraints: {} },
+    narrowedPermissions: { resources: ["resource-1"], actions: ["action-1"], constraints: {} },
+    isolationLevel: IsolationLevel.MINIMAL,
   };
-  assert.equal(context.delegationId, "del-001");
+  assert.equal(context.context.agentId, "agent-001");
 });
 
 test("TopologyValidatorConfig type works correctly", () => {
   const config: TopologyValidatorConfig = {
     maxDepth: 5,
     maxFanout: 10,
-    allowCycles: false,
+    allowedPackIds: ["pack-a", "pack-b"],
   };
   assert.equal(config.maxDepth, 5);
-  assert.equal(config.allowCycles, false);
+  assert.deepEqual(config.allowedPackIds, ["pack-a", "pack-b"]);
 });
 
 test("AgentContext type works correctly", () => {
   const context: AgentContext = {
     agentId: "agent-001",
-    workspaceId: "ws-001",
-    permissions: {},
+    agentType: "agent",
+    packId: "pack-001",
+    delegationDepth: 0,
+    activeDelegations: [],
+    permissions: { resources: [], actions: [], constraints: {} },
+    sandboxTier: "read_only",
+    correlationId: "corr-001",
+    tenantId: "tenant-001",
   };
   assert.equal(context.agentId, "agent-001");
 });
 
 test("PermissionSet type works correctly", () => {
   const perms: PermissionSet = {
-    canDelegate: true,
-    canExecute: true,
-    canRead: true,
+    resources: ["workspace:/repo"],
+    actions: ["read", "write"],
+    constraints: {},
   };
-  assert.equal(perms.canDelegate, true);
+  assert.deepEqual(perms.actions, ["read", "write"]);
 });
 
 test("PermissionConstraints type works correctly", () => {
   const constraints: PermissionConstraints = {
-    maxDepth: 3,
-    allowedTargets: ["worker", "agent"],
+    maxDurationMs: 30000,
+    allowedDomains: ["worker", "agent"],
   };
-  assert.equal(constraints.maxDepth, 3);
+  assert.equal(constraints.maxDurationMs, 30000);
 });
 
 test("DelegationSpec type works correctly", () => {
   const spec: DelegationSpec = {
-    sourceAgentId: "agent-001",
     targetAgentId: "agent-002",
-    permissions: { canDelegate: true, canExecute: true, canRead: true },
-    constraints: { maxDepth: 3, allowedTargets: ["worker"] },
+    targetAgentType: "worker",
+    targetPackId: "pack-worker",
+    requiredPermissions: { resources: ["workspace:/repo"], actions: ["read"], constraints: {} },
+    timeout: 30000,
   };
-  assert.equal(spec.sourceAgentId, "agent-001");
   assert.equal(spec.targetAgentId, "agent-002");
+  assert.equal(spec.targetPackId, "pack-worker");
 });
 
 test("DelegationStatus type works correctly", () => {
@@ -199,6 +230,11 @@ test("DelegationStatus type works correctly", () => {
 test("DelegationHandle type works correctly", () => {
   const handle: DelegationHandle = {
     delegationId: "del-001",
+    parentAgentId: "agent-000",
+    childAgentId: "agent-001",
+    depth: 1,
+    createdAt: "2024-01-15T10:00:00Z",
+    timeout: 30000,
     correlationId: "corr-001",
     status: "active",
   };
@@ -207,59 +243,68 @@ test("DelegationHandle type works correctly", () => {
 
 test("DelegationChainNode type works correctly", () => {
   const node: DelegationChainNode = {
+    delegationId: "del-001",
     agentId: "agent-001",
-    delegatedAt: "2024-01-15T10:00:00Z",
-    permissions: { canDelegate: true, canExecute: true, canRead: true },
+    agentType: "agent",
+    depth: 1,
+    createdAt: "2024-01-15T10:00:00Z",
+    parentDelegationId: null,
   };
   assert.equal(node.agentId, "agent-001");
 });
 
 test("DelegationChain type works correctly", () => {
   const chain: DelegationChain = {
-    chainId: "chain-001",
+    rootAgentId: "agent-root",
     nodes: [],
-    createdAt: "2024-01-15T10:00:00Z",
+    maxDepthReached: 0,
+    totalDelegations: 0,
   };
-  assert.equal(chain.chainId, "chain-001");
+  assert.equal(chain.rootAgentId, "agent-root");
 });
 
 test("DelegationCreatedEvent type works correctly", () => {
   const event: DelegationCreatedEvent = {
-    type: "delegation.created",
+    eventType: "delegation.created",
     delegationId: "del-001",
+    parentAgentId: "agent-parent",
+    childAgentId: "agent-child",
+    depth: 1,
     timestamp: "2024-01-15T10:00:00Z",
+    correlationId: "corr-001",
   };
-  assert.equal(event.type, "delegation.created");
+  assert.equal(event.eventType, "delegation.created");
 });
 
 test("DelegationCompletedEvent type works correctly", () => {
   const event: DelegationCompletedEvent = {
-    type: "delegation.completed",
+    eventType: "delegation.completed",
     delegationId: "del-001",
+    durationMs: 1000,
     timestamp: "2024-01-15T10:00:00Z",
   };
-  assert.equal(event.type, "delegation.completed");
+  assert.equal(event.eventType, "delegation.completed");
 });
 
 test("DelegationFailedEvent type works correctly", () => {
   const event: DelegationFailedEvent = {
-    type: "delegation.failed",
+    eventType: "delegation.failed",
     delegationId: "del-001",
-    reason: "timeout",
+    error: "timeout",
     timestamp: "2024-01-15T10:00:00Z",
   };
-  assert.equal(event.type, "delegation.failed");
-  assert.equal(event.reason, "timeout");
+  assert.equal(event.eventType, "delegation.failed");
+  assert.equal(event.error, "timeout");
 });
 
 test("DelegationOptions type works correctly", () => {
   const options: DelegationOptions = {
-    timeoutMs: 30000,
-    retryOnFailure: true,
-    maxRetries: 3,
+    maxDepth: 3,
+    maxFanout: 5,
+    defaultTimeout: 30000,
   };
-  assert.equal(options.timeoutMs, 30000);
-  assert.equal(options.retryOnFailure, true);
+  assert.equal(options.defaultTimeout, 30000);
+  assert.equal(options.maxFanout, 5);
 });
 
 test("createDelegationManager is exported as function", () => {

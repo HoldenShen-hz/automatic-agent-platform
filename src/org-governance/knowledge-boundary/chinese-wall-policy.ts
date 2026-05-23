@@ -1,6 +1,6 @@
 export interface ChineseWallPolicy {
   readonly policyId: string;
-  readonly conflictGroups: Readonly<Record<string, readonly string[]>>;
+  readonly conflictGroups?: Readonly<Record<string, readonly string[]>>;
   readonly blockedOrgNodeIds?: readonly string[];
   readonly wallExpiryPolicy?: "never" | "expires_at";
   readonly expiresAt?: string | null;

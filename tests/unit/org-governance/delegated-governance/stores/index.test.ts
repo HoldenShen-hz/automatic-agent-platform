@@ -100,7 +100,7 @@ test("InMemoryDelegationStore lists by grantee", () => {
 
   const byGrantee = store.listByGrantee("grantee_target");
   assert.equal(byGrantee.length, 1);
-  assert.equal(byGrantee[0].delegationId, "del_1");
+  assert.equal(byGrantee[0]?.delegationId, "del_1");
 });
 
 test("InMemoryDelegationStore lists by org node", () => {
@@ -132,7 +132,7 @@ test("InMemoryDelegationStore lists by org node", () => {
 
   const byOrgNode = store.listByOrgNode("node_target");
   assert.equal(byOrgNode.length, 1);
-  assert.equal(byOrgNode[0].delegationId, "del_1");
+  assert.equal(byOrgNode[0]?.delegationId, "del_1");
 });
 
 test("InMemoryDelegationStore returns delegations with empty orgNodeIds for any org node", () => {
@@ -152,13 +152,13 @@ test("InMemoryDelegationStore returns delegations with empty orgNodeIds for any 
 
   const byOrgNode = store.listByOrgNode("any_node");
   assert.equal(byOrgNode.length, 1);
-  assert.equal(byOrgNode[0].delegationId, "del_all");
+  assert.equal(byOrgNode[0]?.delegationId, "del_all");
 });
 
 test("InMemoryAuditLogStore appends and lists entries", () => {
   const store = new InMemoryAuditLogStore();
   const entry = {
-    action: "delegate_created" as const,
+    action: "delegate" as const,
     actorId: "actor_123",
     delegationId: "del_456",
     timestamp: "2026-04-14T12:00:00.000Z",
@@ -169,21 +169,21 @@ test("InMemoryAuditLogStore appends and lists entries", () => {
   const all = store.list();
 
   assert.equal(all.length, 1);
-  assert.equal(all[0].action, "delegate_created");
-  assert.equal(all[0].actorId, "actor_123");
+  assert.equal(all[0]?.action, "delegate");
+  assert.equal(all[0]?.actorId, "actor_123");
 });
 
 test("InMemoryAuditLogStore lists by delegation id", () => {
   const store = new InMemoryAuditLogStore();
   store.append({
-    action: "action_1",
+    action: "review",
     actorId: "actor_1",
     delegationId: "del_target",
     timestamp: "2026-04-14T12:00:00.000Z",
     details: {},
   });
   store.append({
-    action: "action_2",
+    action: "revoke",
     actorId: "actor_2",
     delegationId: "del_other",
     timestamp: "2026-04-14T12:01:00.000Z",
@@ -192,7 +192,7 @@ test("InMemoryAuditLogStore lists by delegation id", () => {
 
   const byDel = store.listByDelegationId("del_target");
   assert.equal(byDel.length, 1);
-  assert.equal(byDel[0].action, "action_1");
+  assert.equal(byDel[0]?.action, "review");
 });
 
 test("SqliteDelegationStore saves and retrieves delegation", () => {
@@ -284,7 +284,7 @@ test("SqliteAuditLogStore appends and lists entries", () => {
   const store = new SqliteAuditLogStore(db);
 
   const entry = {
-    action: "test_action" as const,
+    action: "review" as const,
     actorId: "actor_sqlite",
     delegationId: "del_sqlite",
     timestamp: "2026-04-14T12:00:00.000Z",
@@ -295,8 +295,8 @@ test("SqliteAuditLogStore appends and lists entries", () => {
   const all = store.list();
 
   assert.equal(all.length, 1);
-  assert.equal(all[0].action, "test_action");
-  assert.equal(all[0].actorId, "actor_sqlite");
+  assert.equal(all[0]?.action, "review");
+  assert.equal(all[0]?.actorId, "actor_sqlite");
 });
 
 test("SqliteAuditLogStore lists by delegation id", () => {
@@ -304,14 +304,14 @@ test("SqliteAuditLogStore lists by delegation id", () => {
   const store = new SqliteAuditLogStore(db);
 
   store.append({
-    action: "action_target",
+    action: "delegate",
     actorId: "actor_1",
     delegationId: "del_for_query",
     timestamp: "2026-04-14T12:00:00.000Z",
     details: {},
   });
   store.append({
-    action: "action_other",
+    action: "revoke",
     actorId: "actor_2",
     delegationId: "del_other",
     timestamp: "2026-04-14T12:01:00.000Z",
@@ -320,7 +320,7 @@ test("SqliteAuditLogStore lists by delegation id", () => {
 
   const byDel = store.listByDelegationId("del_for_query");
   assert.equal(byDel.length, 1);
-  assert.equal(byDel[0].action, "action_target");
+  assert.equal(byDel[0]?.action, "delegate");
 });
 
 test("SqliteDelegationStore fails closed on malformed delegation json", () => {

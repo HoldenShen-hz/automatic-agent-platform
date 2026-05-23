@@ -136,7 +136,7 @@ test("contract range T has correct count (T-1 to T-56 = 56 records)", () => {
 
 test("expandAuditClosureRecords with custom ranges works", () => {
   const customRanges = [{
-    prefix: "X" as const,
+    prefix: "C" as const,
     from: 1,
     to: 3,
     category: "code_runtime" as const,
@@ -145,6 +145,6 @@ test("expandAuditClosureRecords with custom ranges works", () => {
   }];
   const records = expandAuditClosureRecords(customRanges);
   assert.equal(records.length, 3);
-  assert.equal(records[0].issueId, "X-1");
-  assert.equal(records[2].issueId, "X-3");
+  assert.equal(records[0]?.issueId, "C-1");
+  assert.equal(records[2]?.issueId, "C-3");
 });

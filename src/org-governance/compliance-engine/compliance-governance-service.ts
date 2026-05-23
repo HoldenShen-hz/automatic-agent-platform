@@ -12,10 +12,11 @@ import {
 import {
   ComplianceEvidenceCollector,
   type ComplianceEvidenceCollectorOptions,
+  type ComplianceEvidenceCollectInput,
   type ComplianceEvidenceRecord,
 } from "./evidence-collector.js";
 import type { PolicyLayer } from "./inheritance/index.js";
-import { resolveCompliancePolicyForNode, type PolicyResolutionResult } from "./policy-resolver/index.js";
+import { resolveCompliancePolicyForNode, type PolicyResolutionResult, type PolicyResolverOrgNode } from "./policy-resolver/index.js";
 
 export interface ComplianceEvaluationInput {
   readonly actorId: string;
@@ -62,6 +63,14 @@ export interface ComplianceGovernanceServiceOptions {
   readonly evidenceStoragePath?: string | null;
 }
 
+export interface DepartmentComplianceBindingInput {
+  readonly bindingId?: string;
+  readonly orgNodeId: string;
+  readonly frameworkIds?: readonly string[];
+  readonly attachedAt?: string;
+  readonly attachedBy?: string;
+}
+
 export class ComplianceGovernanceService {
   private readonly frameworks = new Map<string, ComplianceFramework>();
   private readonly bindings = new Map<string, DepartmentComplianceBinding[]>();
@@ -70,10 +79,10 @@ export class ComplianceGovernanceService {
   private readonly exceptionWorkflows = new Map<string, ComplianceExceptionWorkflow>();
 
   public constructor(
-    private readonly nodes: readonly OrgNode[],
+    private readonly nodes: readonly PolicyResolverOrgNode[],
     private readonly policiesByNodeId: Readonly<Record<string, PolicyLayer[]>>,
     frameworks: readonly ComplianceFramework[] = DEFAULT_COMPLIANCE_FRAMEWORKS,
-    bindings: readonly DepartmentComplianceBinding[] = [],
+    bindings: readonly DepartmentComplianceBindingInput[] = [],
     options: ComplianceGovernanceServiceOptions = {},
   ) {
     const collectorOptions: ComplianceEvidenceCollectorOptions = {
@@ -94,14 +103,22 @@ export class ComplianceGovernanceService {
     return framework;
   }
 
-  public attachFrameworks(binding: DepartmentComplianceBinding): DepartmentComplianceBinding {
-    this.bindings.set(binding.orgNodeId, [...(this.bindings.get(binding.orgNodeId) ?? []), binding]);
-    return binding;
+  public attachFrameworks(binding: DepartmentComplianceBindingInput): DepartmentComplianceBinding {
+    const normalizedBinding: DepartmentComplianceBinding = {
+      bindingId: binding.bindingId ?? `compliance_binding:${binding.orgNodeId}:${(binding.frameworkIds ?? []).join(",") || "none"}`,
+      orgNodeId: binding.orgNodeId,
+      frameworkIds: [...(binding.frameworkIds ?? [])],
+      attachedAt: binding.attachedAt ?? nowIso(),
+      attachedBy: binding.attachedBy ?? "system",
+    };
+    this.bindings.set(normalizedBinding.orgNodeId, [
+      ...(this.bindings.get(normalizedBinding.orgNodeId) ?? []),
+      normalizedBinding,
+    ]);
+    return normalizedBinding;
   }
 
-  public collectEvidence(
-    input: Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt"> & { collectedAt?: string },
-  ): ComplianceEvidenceRecord {
+  public collectEvidence(input: ComplianceEvidenceCollectInput): ComplianceEvidenceRecord {
     return this.evidenceCollector.collect(input);
   }
 

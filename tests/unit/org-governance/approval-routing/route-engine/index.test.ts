@@ -13,6 +13,23 @@ import {
   type AmountThresholdRule,
   type RoutingStrategy,
 } from "../../../../../src/org-governance/approval-routing/route-engine/index.js";
+import type { OrgNode } from "../../../../../src/org-governance/org-model/org-node/index.js";
+
+function createOrgNode(overrides: Partial<OrgNode> & { orgNodeId: string; nodeType: OrgNode["nodeType"] }): OrgNode {
+  return {
+    orgNodeId: overrides.orgNodeId,
+    nodeType: overrides.nodeType,
+    displayName: overrides.displayName ?? overrides.orgNodeId,
+    parentOrgNodeId: overrides.parentOrgNodeId ?? null,
+    ownerUserIds: overrides.ownerUserIds ?? [],
+    active: overrides.active ?? true,
+    costCenter: overrides.costCenter ?? "",
+    metadata: overrides.metadata ?? {},
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? (overrides.active ?? true ? "active" : "inactive"),
+    ...(overrides.legalEntityBoundary !== undefined ? { legalEntityBoundary: overrides.legalEntityBoundary } : {}),
+  };
+}
 
 test("ApprovalRouteRequestSchema parses valid request", () => {
   const request = ApprovalRouteRequestSchema.parse({
@@ -47,7 +64,7 @@ test("ApprovalRouteRequestSchema rejects invalid riskLevel", () => {
 test("OrgChartRoutingStrategy selects active node", () => {
   const strategy = new OrgChartRoutingStrategy();
   const nodes = [
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["owner1"] }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -62,7 +79,7 @@ test("OrgChartRoutingStrategy selects active node", () => {
 test("OrgChartRoutingStrategy returns null when no matching org node exists", () => {
   const strategy = new OrgChartRoutingStrategy();
   const nodes = [
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["owner1"] }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -80,8 +97,8 @@ test("AmountBasedRoutingStrategy uses threshold rules", () => {
   ];
   const strategy = new AmountBasedRoutingStrategy(rules);
   const nodes = [
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
-    { orgNodeId: "n2", nodeType: "department" as const, active: true, ownerUserIds: ["owner2"] },
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["owner1"] }),
+    createOrgNode({ orgNodeId: "n2", nodeType: "department", ownerUserIds: ["owner2"] }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -102,8 +119,8 @@ test("AmountBasedRoutingStrategy handles exact threshold boundary correctly", ()
   ];
   const strategy = new AmountBasedRoutingStrategy(rules);
   const nodes = [
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
-    { orgNodeId: "n2", nodeType: "department" as const, active: true, ownerUserIds: ["owner2"] },
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["owner1"] }),
+    createOrgNode({ orgNodeId: "n2", nodeType: "department", ownerUserIds: ["owner2"] }),
   ];
   // Exact boundary: amount equals 1000 (the team threshold)
   const request = ApprovalRouteRequestSchema.parse({
@@ -122,8 +139,8 @@ test("resolveAmountRoute returns company node when no rules match", () => {
     { maxAmountCny: 100, targetNodeTypes: ["team"] },
   ];
   const nodes = [
-    { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["admin"] },
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
+    createOrgNode({ orgNodeId: "company", nodeType: "company", ownerUserIds: ["admin"] }),
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["owner1"] }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -138,7 +155,7 @@ test("resolveAmountRoute returns company node when no rules match", () => {
 
 test("applySodPolicy filters initiator from approvers", () => {
   const nodes = [
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["user-1", "user-2"] },
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["user-1", "user-2"] }),
   ];
   const approvers = ["user-1", "user-2", "user-3"];
   const filtered = applySodPolicy(ApprovalRouteRequestSchema.parse({
@@ -155,7 +172,7 @@ test("applySodPolicy filters initiator from approvers", () => {
 
 test("resolveApprovalRoute creates decision with org_chart strategy", () => {
   const nodes = [
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["owner1"] }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -172,7 +189,7 @@ test("resolveApprovalRoute creates decision with org_chart strategy", () => {
 
 test("resolveApprovalRoute includes delegation mapping", () => {
   const nodes = [
-    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
+    createOrgNode({ orgNodeId: "n1", nodeType: "team", ownerUserIds: ["owner1"] }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -195,6 +212,7 @@ test("ApprovalRouteDecision type is usable", () => {
     routeSnapshot: {
       snapshotId: "snapshot-1",
       createdAt: "1970-01-01T00:00:00.000Z",
+      expiresAt: "1970-01-02T00:00:00.000Z",
       orgVersion: "org-chart/v2",
       policyVersion: "approval-routing/v2",
       requesterId: "requester-1",
@@ -241,7 +259,20 @@ test("RoutingStrategy type is usable", () => {
 
 test("resolveApprovalRoute freezes FX and evidence snapshot", () => {
   const nodes = [
-    { orgNodeId: "team-1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"], legalEntityBoundary: { boundaryId: "le-1", legalEntityId: "entity-1", jurisdictionCountry: "CN", dataResidencyRegion: "cn-sh", crossBorderTransferPolicy: "approval_required", crossEntityApprovalRoles: ["legal_reviewer"], restrictedDataClasses: [] } },
+    createOrgNode({
+      orgNodeId: "team-1",
+      nodeType: "team",
+      ownerUserIds: ["owner1"],
+      legalEntityBoundary: {
+        boundaryId: "le-1",
+        legalEntityId: "entity-1",
+        jurisdictionCountry: "CN",
+        dataResidencyRegion: "cn-sh",
+        crossBorderTransferPolicy: "approval_required",
+        crossEntityApprovalRoles: ["legal_reviewer"],
+        restrictedDataClasses: [],
+      },
+    }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -269,7 +300,7 @@ test("resolveApprovalRoute freezes FX and evidence snapshot", () => {
 
 test("revalidateApprovalRoute invalidates expired and changed routes", () => {
   const nodes = [
-    { orgNodeId: "team-1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
+    createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["owner1"] }),
   ];
   const request = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -282,7 +313,7 @@ test("revalidateApprovalRoute invalidates expired and changed routes", () => {
   assert.equal(expired.valid, false);
 
   const changed = revalidateApprovalRoute(
-    [{ orgNodeId: "team-1", nodeType: "team" as const, active: true, ownerUserIds: ["owner2"] }],
+    [createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["owner2"] })],
     ApprovalRouteRequestSchema.parse({ ...request, orgVersion: "org-chart/v3" }),
     decision,
     "submitted",

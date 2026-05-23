@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ValidationError } from "../../../platform/contracts/errors.js";
-import type { OrgNode, OrgChart } from "../org-node/index.js";
+import type { OrgChart } from "../org-node/index.js";
 
 export const OrgSyncRecordSchema = z.object({
   syncId: z.string().min(1),
@@ -12,7 +12,22 @@ export const OrgSyncRecordSchema = z.object({
 
 export type OrgSyncRecord = z.infer<typeof OrgSyncRecordSchema>;
 
-export function mergeOrgNodes(existing: readonly OrgNode[], incoming: readonly OrgNode[]): OrgNode[] {
+export interface OrgChartNodeInput {
+  readonly orgNodeId: string;
+  readonly displayName: string;
+  readonly parentOrgNodeId: string | null;
+  readonly ownerUserIds: readonly string[];
+  readonly active: boolean;
+}
+
+export interface OrgChartInput {
+  readonly root: OrgChartNodeInput;
+  readonly nodes: readonly OrgChartNodeInput[];
+  readonly syncSource: OrgChart["syncSource"];
+  readonly lastSyncedAt: string;
+}
+
+export function mergeOrgNodes<T extends OrgChartNodeInput>(existing: readonly T[], incoming: readonly T[]): T[] {
   const byId = new Map(existing.map((item) => [item.orgNodeId, item]));
   for (const node of incoming) {
     byId.set(node.orgNodeId, node);
@@ -24,9 +39,9 @@ export function mergeOrgNodes(existing: readonly OrgNode[], incoming: readonly O
  * Builds an OrgChart from a collection of nodes.
  */
 export function buildOrgChart(
-  nodes: readonly OrgNode[],
+  nodes: readonly OrgChartNodeInput[],
   syncSource: OrgChart["syncSource"],
-): OrgChart {
+): OrgChartInput {
   const root = nodes.find((n) => n.parentOrgNodeId === null);
   if (!root) {
     throw new ValidationError("org_chart.root_node_missing", "Cannot build OrgChart: no root node found");
@@ -42,7 +57,7 @@ export function buildOrgChart(
 /**
  * Diff two org charts and return changed node IDs.
  */
-export function diffOrgCharts(before: OrgChart, after: OrgChart): string[] {
+export function diffOrgCharts(before: OrgChartInput, after: OrgChartInput): string[] {
   const beforeById = new Map(before.nodes.map((n) => [n.orgNodeId, n]));
   const changed: string[] = [];
 

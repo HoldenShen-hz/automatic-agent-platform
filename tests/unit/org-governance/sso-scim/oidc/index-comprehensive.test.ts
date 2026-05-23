@@ -345,10 +345,7 @@ test("OidcProviderConfig allows optional fields to be undefined", () => {
     issuer: "https://idp.example.com",
     clientId: "client-optional",
     redirectUri: "https://app.example.com/callback",
-    clientSecret: undefined,
-    authorizationEndpoint: undefined,
-    tokenEndpoint: undefined,
-    userInfoEndpoint: undefined,
+    scopes: ["openid", "profile", "email"],
   };
 
   const result = OidcProviderConfigSchema.safeParse(config);

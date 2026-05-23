@@ -4,6 +4,20 @@ import { inheritPolicyLayers, type PolicyLayer } from "../inheritance/index.js";
 export interface PolicyResolutionResult {
   readonly policy: Record<string, unknown>;
   readonly denyByDefault: boolean;
+  readonly [key: string]: unknown;
+}
+
+export interface PolicyResolverOrgNode {
+  readonly orgNodeId: string;
+  readonly parentOrgNodeId: string | null;
+  readonly nodeType?: OrgNode["nodeType"] | string;
+  readonly displayName?: string;
+  readonly ownerUserIds?: readonly string[];
+  readonly active?: boolean;
+  readonly costCenter?: string;
+  readonly metadata?: Readonly<Record<string, string>>;
+  readonly effectivePolicies?: Readonly<Record<string, unknown>>;
+  readonly status?: OrgNode["status"];
 }
 
 function buildCompatibilityResult(
@@ -37,11 +51,11 @@ function buildCompatibilityResult(
 }
 
 export function resolveCompliancePolicyForNode(
-  nodes: readonly OrgNode[],
+  nodes: readonly PolicyResolverOrgNode[],
   targetNodeId: string,
   policiesByNodeId: Readonly<Record<string, PolicyLayer[]>>,
-): PolicyResolutionResult {
-  const lineage: OrgNode[] = [];
+): PolicyResolutionResult & Record<string, unknown> {
+  const lineage: PolicyResolverOrgNode[] = [];
   let current = nodes.find((item) => item.orgNodeId === targetNodeId) ?? null;
   while (current != null) {
     lineage.unshift(current);

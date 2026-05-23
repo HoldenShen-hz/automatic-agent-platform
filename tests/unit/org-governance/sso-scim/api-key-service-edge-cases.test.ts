@@ -169,8 +169,8 @@ test("ApiKeyService.rotateApiKey preserves scopes and name", () => {
   const rotationResult = service.rotateApiKey(oldRecord.keyId, "rotator");
 
   assert.ok(rotationResult !== null);
-  assert.equal(rotationResult!.record.name, "Rotating Key");
-  assert.deepEqual(rotationResult!.record.scopes, ["read", "write"]);
+  assert.equal(rotationResult.record?.name, "Rotating Key");
+  assert.deepEqual(rotationResult.record?.scopes, ["read", "write"]);
 });
 
 test("ApiKeyService.rotateApiKey with already expired key", () => {
@@ -335,14 +335,14 @@ test("ApiKeyService multiple rotations in sequence", () => {
   assert.ok(rotated1 !== null);
 
   // Second rotation
-  const rotated2 = service.rotateApiKey(rotated1!.record.keyId, "rotator_2");
+  const rotated2 = service.rotateApiKey(rotated1.record?.keyId ?? "", "rotator_2");
   assert.ok(rotated2 !== null);
 
   // Third rotation
-  const rotated3 = service.rotateApiKey(rotated2!.record.keyId, "rotator_3");
+  const rotated3 = service.rotateApiKey(rotated2.record?.keyId ?? "", "rotator_3");
   assert.ok(rotated3 !== null);
 
   // All should have same name and scopes
-  assert.equal(rotated3!.record.name, "Multi Rotate Key");
-  assert.deepEqual(rotated3!.record.scopes, ["read"]);
+  assert.equal(rotated3.record?.name, "Multi Rotate Key");
+  assert.deepEqual(rotated3.record?.scopes, ["read"]);
 });

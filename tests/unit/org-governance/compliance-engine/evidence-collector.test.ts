@@ -169,6 +169,7 @@ test("ComplianceEvidenceCollector.verifyChain detects tampered persisted evidenc
     const snapshot = JSON.parse(readFileSync(storagePath, "utf8")) as {
       records: Record<string, Array<Record<string, unknown>>>;
     };
+    assert.ok(snapshot.records.SOC2 != null);
     snapshot.records.SOC2[1]!.artifactRef = "tampered-artifact";
     writeFileSync(storagePath, JSON.stringify(snapshot, null, 2), "utf8");
 

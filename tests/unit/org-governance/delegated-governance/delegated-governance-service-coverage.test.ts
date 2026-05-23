@@ -79,7 +79,7 @@ test("DelegatedGovernanceService checkOperation denies role not allowed by role 
 
   const result = service.checkOperation(
     createMockContext({ actorRole: "team_lead" }),
-    "manage_platform_settings",
+    "modify_global_guardrails",
   );
 
   assert.equal(result.allowed, false);

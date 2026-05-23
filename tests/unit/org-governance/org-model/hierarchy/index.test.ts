@@ -103,11 +103,11 @@ test("getNodesAtLevel returns nodes at specified depth", () => {
   ];
   const level0 = getNodesAtLevel(nodes, 0);
   assert.equal(level0.length, 1);
-  assert.equal(level0[0].orgNodeId, "company");
+  assert.equal(level0[0]?.orgNodeId, "company");
 
   const level1 = getNodesAtLevel(nodes, 1);
   assert.equal(level1.length, 1);
-  assert.equal(level1[0].orgNodeId, "dept1");
+  assert.equal(level1[0]?.orgNodeId, "dept1");
 });
 
 test("getNodeDepth returns correct depth", () => {

@@ -161,7 +161,7 @@ test("getNodeDepth calculates correct depth", () => {
 test("buildReportingChain builds chain from member to ancestors", () => {
   const nodes = [tenantNode, divisionNode, deptNode, teamNode];
   const assignments: OrgPrincipalAssignment[] = [
-    { userId: "employee_1", homeNodeId: "team_1", managerUserId: "team_lead", active: true },
+    { principalId: "principal-1", userId: "employee_1", homeNodeId: "team_1", managerUserId: "team_lead", active: true },
   ];
 
   const chain = buildReportingChain(nodes, "employee_1", "team_1");
@@ -173,7 +173,7 @@ test("buildReportingChain builds chain from member to ancestors", () => {
 test("buildReportingChain excludes the employee themselves", () => {
   const nodes = [tenantNode, divisionNode, deptNode, teamNode];
   const assignments: OrgPrincipalAssignment[] = [
-    { userId: "employee_1", homeNodeId: "team_1", managerUserId: "team_lead", active: true },
+    { principalId: "principal-1", userId: "employee_1", homeNodeId: "team_1", managerUserId: "team_lead", active: true },
   ];
 
   const chain = buildReportingChain(nodes, "employee_1", "team_1");

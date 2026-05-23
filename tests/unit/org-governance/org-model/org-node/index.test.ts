@@ -188,7 +188,7 @@ test("validateHierarchyDepth returns invalid for depth > 4", () => {
       orgNodeId: `node-${i + 2}`,
       nodeType: "team",
       displayName: `Node ${i + 2}`,
-      parentOrgNodeId: deepNodes[deepNodes.length - 1].orgNodeId,
+      parentOrgNodeId: deepNodes[deepNodes.length - 1]?.orgNodeId ?? null,
       ownerUserIds: [],
       active: true,
       costCenter: "",
@@ -326,7 +326,7 @@ test("requiresLegalEntityApproval detects cross-entity access", () => {
         crossEntityApprovalRoles: ["compliance_officer"],
         restrictedDataClasses: [],
       },
-    ).sort(),
+    ).slice().sort(),
     ["compliance_officer", "legal_reviewer"],
   );
 });

@@ -215,7 +215,6 @@ test("evaluateChineseWallPolicy requires compliance officer for reset when confi
   };
   const decision = evaluateChineseWallPolicy(policy, "team-eng", "team-ops", {
     nowIso: "2025-01-01T00:00:00.000Z",
-    approvedByRole: "regular_user",
   });
   assert.equal(decision.allowed, false);
   assert.equal(decision.blockedGroupId, "reset_requires_compliance_officer");

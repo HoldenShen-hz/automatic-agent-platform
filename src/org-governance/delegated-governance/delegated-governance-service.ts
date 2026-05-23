@@ -2,7 +2,9 @@ import { nowIso } from "../../platform/contracts/types/ids.js";
 import {
   listActiveGovernanceDelegations,
   type GovernanceDelegation,
+  type GovernanceDelegationInput,
   type Guardrail,
+  normalizeGovernanceDelegation,
 } from "./delegation-registry/index.js";
 import {
   evaluateGuardrail,
@@ -59,8 +61,8 @@ export function intersectPermissions(
 export class DelegatedGovernanceService {
   private readonly delegations: readonly GovernanceDelegation[];
 
-  public constructor(delegations: readonly GovernanceDelegation[]) {
-    this.delegations = delegations;
+  public constructor(delegations: readonly GovernanceDelegationInput[]) {
+    this.delegations = delegations.map((delegation) => normalizeGovernanceDelegation(delegation));
   }
 
   /**

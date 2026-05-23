@@ -70,6 +70,7 @@ test("OidcProviderConfigSchema accepts optional clientSecret", () => {
     clientId: "client-id",
     clientSecret: "secret-value",
     redirectUri: "https://app.example.com/callback",
+    scopes: ["openid", "profile", "email"],
   };
 
   const result = OidcProviderConfigSchema.safeParse(configWithSecret);
@@ -84,6 +85,7 @@ test("OidcProviderConfigSchema accepts optional authorizationEndpoint", () => {
     clientId: "client-id",
     redirectUri: "https://app.example.com/callback",
     authorizationEndpoint: "https://custom.idp.example.com/authorize",
+    scopes: ["openid", "profile", "email"],
   };
 
   const result = OidcProviderConfigSchema.safeParse(configWithAuthzEndpoint);
@@ -98,6 +100,7 @@ test("OidcProviderConfigSchema accepts optional tokenEndpoint", () => {
     clientId: "client-id",
     redirectUri: "https://app.example.com/callback",
     tokenEndpoint: "https://custom.idp.example.com/token",
+    scopes: ["openid", "profile", "email"],
   };
 
   const result = OidcProviderConfigSchema.safeParse(configWithTokenEndpoint);
@@ -112,6 +115,7 @@ test("OidcProviderConfigSchema accepts optional userInfoEndpoint", () => {
     clientId: "client-id",
     redirectUri: "https://app.example.com/callback",
     userInfoEndpoint: "https://custom.idp.example.com/userinfo",
+    scopes: ["openid", "profile", "email"],
   };
 
   const result = OidcProviderConfigSchema.safeParse(configWithUserInfoEndpoint);

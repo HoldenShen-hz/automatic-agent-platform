@@ -101,6 +101,7 @@ test("ControlCoverageAnalyzer: generates report with partial coverage when quali
   assert.equal(report.summary.partialControls, 1);
   assert.ok(report.gaps.length > 0);
   const partialGap = report.gaps[0];
+  assert.ok(partialGap != null);
   assert.equal(partialGap.gapSeverity, "medium");
   assert.ok(partialGap.description.includes("quality below threshold"));
 });
@@ -155,6 +156,7 @@ test("ControlCoverageAnalyzer: handles controls with no evidence", () => {
   assert.equal(report.summary.coveredControls, 0);
   assert.equal(report.summary.uncoveredControls, 1);
   assert.ok(report.gaps.length === 1);
+  assert.ok(report.gaps[0] != null);
   assert.equal(report.gaps[0].controlId, "network_security");
   assert.equal(report.gaps[0].gapSeverity, "high");
   assert.ok(report.gaps[0].estimatedEffortHours === 4);
@@ -191,6 +193,7 @@ test("ControlCoverageAnalyzer: returns correct last evidence collected timestamp
   });
 
   const controlDetail = report.controls[0];
+  assert.ok(controlDetail != null);
   assert.equal(controlDetail.lastEvidenceCollectedAt, "2026-03-01T00:00:00Z");
 });
 
@@ -263,6 +266,7 @@ test("ControlCoverageAnalyzer: filters evidence by framework correctly", () => {
   });
 
   const controlDetail = report.controls[0];
+  assert.ok(controlDetail != null);
   assert.equal(controlDetail.evidenceIds.length, 1);
   assert.equal(controlDetail.evidenceIds[0], "ev_1");
 });
@@ -330,6 +334,7 @@ test("ControlCoverageAnalyzer: control detail contains all required fields", () 
   });
 
   const detail = report.controls[0];
+  assert.ok(detail != null);
   assert.equal(detail.controlId, "A.5.1.1");
   assert.equal(detail.controlName, "Policies for information security");
   assert.equal(detail.category, "organizational");

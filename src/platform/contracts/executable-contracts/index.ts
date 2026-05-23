@@ -343,7 +343,7 @@ export function createNodeAttemptReceipt(input: {
   receiptKind: NodeAttemptReceipt["receiptKind"];
   status: NodeAttemptReceipt["status"];
   duration: number;
-  errorDetail: string;
+  errorDetail?: string;
   nodeAttemptReceiptId?: string;
   outputRef?: ArtifactRef;
   error?: AppErrorRef;
@@ -364,7 +364,9 @@ export function createNodeAttemptReceipt(input: {
     duration: input.duration,
     ...(input.outputRef != null ? { outputRef: input.outputRef } : {}),
     ...(input.error != null ? { error: input.error } : {}),
-    errorDetail: input.errorDetail,
+    errorDetail: input.errorDetail
+      ?? input.error?.message
+      ?? (input.status === "failed" ? "node_attempt.failed" : "node_attempt.no_error_detail"),
     sideEffectRefs: input.sideEffectRefs ?? [],
     budgetSettlementRefs: input.budgetSettlementRefs ?? [],
     evidenceRefs: input.evidenceRefs ?? [],
@@ -386,7 +388,7 @@ export function createSideEffectRecord(input: {
   fencingToken?: string;
   approvalRef?: string;
   externalRef?: string;
-  deadline: string;
+  deadline?: string;
   /** R13-35: rollback handler with timeout in milliseconds */
   rollbackHandler?: {
     handler: string;
@@ -412,7 +414,7 @@ export function createSideEffectRecord(input: {
     ...(input.approvalRef != null ? { approvalRef: input.approvalRef } : {}),
     preCommitPolicyProofRef: input.preCommitPolicyProofRef,
     ...(input.externalRef != null ? { externalRef: input.externalRef } : {}),
-    deadline: input.deadline,
+    deadline: input.deadline ?? new Date(Date.parse(timestamp) + 5 * 60_000).toISOString(),
     ...(input.rollbackHandler != null ? { rollbackHandler: input.rollbackHandler } : {}),
     ...(input.compensationPlan != null ? { compensationPlan: input.compensationPlan } : {}),
     createdAt: timestamp,
@@ -797,7 +799,7 @@ export function createPlatformFactEvent<TPayload extends JsonValue>(input: {
   aggregateId: string;
   aggregateSeq: number;
   tenantId: string;
-  runId: string;
+  runId?: string;
   traceId: string;
   payload: TPayload;
   source?: string;
@@ -814,7 +816,7 @@ export function createPlatformFactEvent<TPayload extends JsonValue>(input: {
   assertPlatformEventType(input.eventType);
   return {
     eventId: input.eventId ?? newId("evt"),
-    runId: input.runId,
+    runId: input.runId ?? input.aggregateId,
     eventType: input.eventType,
     schemaVersion: input.schemaVersion ?? 1,
     aggregateType: input.aggregateType,
@@ -823,7 +825,7 @@ export function createPlatformFactEvent<TPayload extends JsonValue>(input: {
     tenantId: input.tenantId,
     traceId: input.traceId,
     ...(input.causationId != null ? { causationId: input.causationId } : {}),
-    correlationId: input.correlationId ?? input.runId,
+    correlationId: input.correlationId ?? input.runId ?? input.aggregateId,
     payloadHash: input.payloadHash ?? newId("payloadhash"),
     payload: input.payload,
     replayBehavior: input.replayBehavior ?? "replay_as_fact",
@@ -841,7 +843,7 @@ export function createOapeflirViewEvent<TPayload extends JsonValue>(input: {
   aggregateId: string;
   aggregateSeq: number;
   tenantId: string;
-  runId: string;
+  runId?: string;
   traceId: string;
   payload: TPayload;
   derivedFromEventIds: readonly string[];
@@ -864,7 +866,7 @@ export function createOapeflirViewEvent<TPayload extends JsonValue>(input: {
   }
   return {
     eventId: input.eventId ?? newId("evt"),
-    runId: input.runId,
+    runId: input.runId ?? input.aggregateId,
     eventType: input.eventType,
     schemaVersion: input.schemaVersion ?? 1,
     aggregateType: input.aggregateType,
@@ -873,7 +875,7 @@ export function createOapeflirViewEvent<TPayload extends JsonValue>(input: {
     tenantId: input.tenantId,
     traceId: input.traceId,
     ...(input.causationId != null ? { causationId: input.causationId } : {}),
-    ...(input.correlationId != null ? { correlationId: input.correlationId } : {}),
+    correlationId: input.correlationId ?? input.runId ?? input.aggregateId,
     payloadHash: input.payloadHash ?? newId("payloadhash"),
     payload: input.payload,
     replayBehavior: input.replayBehavior ?? "simulate",

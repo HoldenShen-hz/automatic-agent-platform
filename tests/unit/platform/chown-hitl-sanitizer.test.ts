@@ -22,11 +22,17 @@ import { SyncBackedAsyncService } from "../../../src/platform/shared/async/sync-
 
 function makeConstraintPack(maxSteps = 9) {
   return {
+    policyIds: ["policy-default"],
+    approvalMode: "none",
+    autonomyMode: "supervised",
+    tool_policy: { allowedTools: [] },
     budgetEnvelope: {
       maxSteps,
       maxCost: 100,
       maxDurationMs: 60_000,
     },
+    sandboxRequirement: { sandboxMode: "none", timeoutMs: 60_000 },
+    approvalRequirement: { requiredForRiskClass: [], approverRoles: [], escalationTimeoutMs: 0 },
   } as const;
 }
 

@@ -292,6 +292,8 @@ describe("resolveCompliancePolicyForNode", () => {
       active: true,
       costCenter: "",
       metadata: {},
+      effectivePolicies: {},
+      status: "active",
       ...overrides,
     };
   }
@@ -305,7 +307,7 @@ describe("resolveCompliancePolicyForNode", () => {
     const result = resolveCompliancePolicyForNode(nodes, "leaf-node", policiesByNodeId);
 
     // Default should be deny
-    assert.strictEqual(result.allow?.result ?? undefined, undefined); // Explicit checks not needed - empty means deny
+    assert.strictEqual(result.allow, undefined); // Explicit checks not needed - empty means deny
   });
 
   it("should inherit policies from parent nodes", () => {
@@ -427,6 +429,8 @@ describe("Deny-by-Default Behavior", () => {
       active: true,
       costCenter: "",
       metadata: {},
+      effectivePolicies: {},
+      status: "active",
       ...overrides,
     };
   }

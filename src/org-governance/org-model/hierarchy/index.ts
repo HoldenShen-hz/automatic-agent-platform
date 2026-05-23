@@ -5,6 +5,18 @@ import type {
 } from "../org-node/index.js";
 import { validateHierarchyDepth } from "../org-node/index.js";
 
+export interface OrgHierarchyNodeInput {
+  readonly orgNodeId: string;
+  readonly nodeType: OrgNode["nodeType"];
+  readonly parentOrgNodeId: string | null;
+  readonly ownerUserIds: readonly string[];
+  readonly active: boolean;
+  readonly displayName?: string;
+  readonly costCenter?: string;
+  readonly metadata?: Readonly<Record<string, string>>;
+  readonly legalEntityBoundary?: { readonly boundaryId: string; readonly [key: string]: unknown } | null;
+}
+
 export interface OrgMergeConflictReport {
   readonly reportId: string;
   readonly sourceDeptId: string;
@@ -43,7 +55,7 @@ export interface OrgChangeImpactArtifacts {
   readonly identityDeprovisioningReports: readonly IdentityDeprovisioningReport[];
 }
 
-export function validateOrgHierarchy(nodes: readonly OrgNode[]): string[] {
+export function validateOrgHierarchy(nodes: readonly OrgHierarchyNodeInput[]): string[] {
   const findings: string[] = [];
   const ids = new Set(nodes.map((item) => item.orgNodeId));
   const roots = nodes.filter((node) => node.parentOrgNodeId === null);
@@ -70,7 +82,7 @@ export function validateOrgHierarchy(nodes: readonly OrgNode[]): string[] {
   return findings;
 }
 
-export function listAncestorNodeIds(nodes: readonly OrgNode[], nodeId: string): string[] {
+export function listAncestorNodeIds(nodes: readonly OrgHierarchyNodeInput[], nodeId: string): string[] {
   const ancestors: string[] = [];
   const visited = new Set<string>();
   let current = nodes.find((item) => item.orgNodeId === nodeId) ?? null;
@@ -88,7 +100,7 @@ export function listAncestorNodeIds(nodes: readonly OrgNode[], nodeId: string): 
 /**
  * Lists all descendant node IDs of a given node.
  */
-export function listDescendantNodeIds(nodes: readonly OrgNode[], nodeId: string): string[] {
+export function listDescendantNodeIds(nodes: readonly OrgHierarchyNodeInput[], nodeId: string): string[] {
   const descendants: string[] = [];
   const stack = [nodeId];
 
@@ -107,14 +119,14 @@ export function listDescendantNodeIds(nodes: readonly OrgNode[], nodeId: string)
 /**
  * Finds the root node (company level) in the org chart.
  */
-export function findRootNode(nodes: readonly OrgNode[]): OrgNode | null {
+export function findRootNode(nodes: readonly OrgHierarchyNodeInput[]): OrgHierarchyNodeInput | null {
   return nodes.find((node) => node.parentOrgNodeId === null) ?? null;
 }
 
 /**
  * Gets all nodes at a specific level in the hierarchy.
  */
-export function getNodesAtLevel(nodes: readonly OrgNode[], level: number): OrgNode[] {
+export function getNodesAtLevel(nodes: readonly OrgHierarchyNodeInput[], level: number): OrgHierarchyNodeInput[] {
   return nodes.filter((node) => {
     const depth = getNodeDepth(nodes, node.orgNodeId);
     return depth === level;
@@ -124,7 +136,7 @@ export function getNodesAtLevel(nodes: readonly OrgNode[], level: number): OrgNo
 /**
  * Calculates the depth of a node in the hierarchy (root = 0).
  */
-export function getNodeDepth(nodes: readonly OrgNode[], nodeId: string): number {
+export function getNodeDepth(nodes: readonly OrgHierarchyNodeInput[], nodeId: string): number {
   const ancestors = listAncestorNodeIds(nodes, nodeId);
   return ancestors.length;
 }
@@ -133,7 +145,7 @@ export function getNodeDepth(nodes: readonly OrgNode[], nodeId: string): number 
  * Finds the lowest common ancestor of two nodes.
  */
 export function findLowestCommonAncestor(
-  nodes: readonly OrgNode[],
+  nodes: readonly OrgHierarchyNodeInput[],
   nodeId1: string,
   nodeId2: string,
 ): string | null {
@@ -155,7 +167,7 @@ export function findLowestCommonAncestor(
  * Builds a reporting chain for an employee.
  */
 export function buildReportingChain(
-  nodes: readonly OrgNode[],
+  nodes: readonly OrgHierarchyNodeInput[],
   employeeId: string,
   memberNodeId: string,
 ): string[] {
@@ -188,8 +200,8 @@ export function buildReportingChain(
  * Determines the org change events that would result from a proposed restructure.
  */
 export function detectOrgChangeEvents(
-  before: readonly OrgNode[],
-  after: readonly OrgNode[],
+  before: readonly OrgHierarchyNodeInput[],
+  after: readonly OrgHierarchyNodeInput[],
   principalAssignments: readonly OrgPrincipalAssignment[] = [],
 ): OrgChangeEvent[] {
   const events: OrgChangeEvent[] = [];
@@ -269,8 +281,8 @@ export function detectOrgChangeEvents(
 }
 
 export function buildOrgChangeImpactArtifacts(
-  before: readonly OrgNode[],
-  after: readonly OrgNode[],
+  before: readonly OrgHierarchyNodeInput[],
+  after: readonly OrgHierarchyNodeInput[],
   principalAssignments: readonly OrgPrincipalAssignment[] = [],
 ): OrgChangeImpactArtifacts {
   const events = detectOrgChangeEvents(before, after, principalAssignments);

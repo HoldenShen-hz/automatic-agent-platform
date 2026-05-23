@@ -161,8 +161,10 @@ test("DataLineageService listEdges returns a copy", () => {
   const edges1 = service.listEdges();
   const edges2 = service.listEdges();
 
-  edges1[0].sourceRef = "modified";
-  assert.notEqual(edges1[0].sourceRef, edges2[0].sourceRef);
+  if (edges1[0] != null) {
+    edges1[0].sourceRef = "modified";
+  }
+  assert.notEqual(edges1[0]?.sourceRef, edges2[0]?.sourceRef);
 });
 
 test("DataLineageService supports all lineage edge kinds", () => {

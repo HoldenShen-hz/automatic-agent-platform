@@ -45,16 +45,16 @@ test("FieldEncryptionService uses AES-256-GCM encryption format", () => {
   assert.equal(parts.length, 5, "AES-256-GCM format should have 5 parts: fingerprint:iv:authTag:ciphertext");
 
   // Fingerprint defaults to a 32-hex-character prefix of the keyRef digest.
-  assert.equal(parts[1].length, 32, "fingerprint should be 32 hex chars");
+  assert.equal(parts[1]?.length, 32, "fingerprint should be 32 hex chars");
 
   // IV should be 24 hex chars (96 bits / 4 = 24)
-  assert.equal(parts[2].length, 24, "IV should be 24 hex chars for 96-bit GCM IV");
+  assert.equal(parts[2]?.length, 24, "IV should be 24 hex chars for 96-bit GCM IV");
 
   // Auth tag should be 32 hex chars (128 bits / 4 = 32)
-  assert.equal(parts[3].length, 32, "authTag should be 32 hex chars for 128-bit GCM tag");
+  assert.equal(parts[3]?.length, 32, "authTag should be 32 hex chars for 128-bit GCM tag");
 
   // Ciphertext should not be empty
-  assert.ok(parts[4].length > 0, "ciphertext should not be empty");
+  assert.ok((parts[4]?.length ?? 0) > 0, "ciphertext should not be empty");
 });
 
 test("FieldEncryptionService ciphertext is hex-encoded, not base64url", () => {
@@ -78,11 +78,11 @@ test("FieldEncryptionService ciphertext is hex-encoded, not base64url", () => {
   const encryptedHex = parts[4];
 
   // Verify it's valid hex (only contains 0-9, a-f)
-  assert.ok(/^[0-9a-f]+$/i.test(encryptedHex), "ciphertext should be hex encoded, not base64url");
+  assert.ok(/^[0-9a-f]+$/i.test(encryptedHex ?? ""), "ciphertext should be hex encoded, not base64url");
 
   // base64url would contain A-Z, a-z, 0-9, -, _  characters
   // hex only contains 0-9, a-f
-  const hasBase64Chars = /[A-Z+\/=]/.test(encryptedHex);
+  const hasBase64Chars = /[A-Z+\/=]/.test(encryptedHex ?? "");
   assert.ok(!hasBase64Chars, "ciphertext should NOT contain base64url characters like +, /, =");
 });
 

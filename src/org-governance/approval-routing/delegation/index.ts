@@ -14,30 +14,32 @@ export const ApprovalDelegationSchema = z.object({
 });
 
 export type ApprovalDelegation = z.infer<typeof ApprovalDelegationSchema>;
+export type ApprovalDelegationInput = z.input<typeof ApprovalDelegationSchema>;
 
 export function resolveDelegatedApprover(
-  delegations: readonly ApprovalDelegation[],
+  delegations: readonly ApprovalDelegationInput[],
   approverId: string,
   orgNodeId: string,
   nowIso: string,
 ): string {
   const nowMs = Date.parse(nowIso);
   const match = delegations.find((item) => {
-    const startsAtMs = Date.parse(item.startsAt);
-    const expiresAtMs = Date.parse(item.expiresAt);
-    return item.active
-      && item.approverId === approverId
+    const normalized = ApprovalDelegationSchema.parse(item);
+    const startsAtMs = Date.parse(normalized.startsAt);
+    const expiresAtMs = Date.parse(normalized.expiresAt);
+    return normalized.active
+      && normalized.approverId === approverId
       && Number.isFinite(nowMs)
       && Number.isFinite(startsAtMs)
       && Number.isFinite(expiresAtMs)
       && startsAtMs <= nowMs
       && expiresAtMs >= nowMs
-      && (item.scopeNodeIds.length === 0 || item.scopeNodeIds.includes(orgNodeId))
+      && (normalized.scopeNodeIds.length === 0 || normalized.scopeNodeIds.includes(orgNodeId))
       && (
-        item.delegationType !== "peer_cover"
-        || (item.coiReviewStatus === "passed"
-          && !item.conflictOfInterestApproverIds.includes(item.delegateApproverId))
+        normalized.delegationType !== "peer_cover"
+        || (normalized.coiReviewStatus === "passed"
+          && !normalized.conflictOfInterestApproverIds.includes(normalized.delegateApproverId))
       );
   });
-  return match?.delegateApproverId ?? approverId;
+  return match == null ? approverId : ApprovalDelegationSchema.parse(match).delegateApproverId;
 }

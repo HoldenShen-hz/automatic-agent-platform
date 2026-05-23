@@ -158,7 +158,7 @@ test("listActiveGovernanceDelegations returns only active and non-expired delega
   const now = "2026-04-14T12:00:00.000Z";
   const result = listActiveGovernanceDelegations(delegations, now);
   assert.equal(result.length, 1);
-  assert.equal(result[0].delegationId, "del_active");
+  assert.equal(result[0]?.delegationId, "del_active");
 });
 
 test("listActiveGovernanceDelegations returns empty array when no delegations", () => {

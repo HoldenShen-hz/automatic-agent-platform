@@ -80,7 +80,7 @@ test("ApiKeyService revokeApiKey marks key as revoked", () => {
     createdBy: "admin",
   });
 
-  service.revokeApiKey(record.keyId);
+  service.revokeApiKey(record.keyId, "admin");
   const result = service.validateApiKey(rawKey);
 
   assert.strictEqual(result.valid, false);

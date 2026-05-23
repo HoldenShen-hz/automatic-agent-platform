@@ -230,7 +230,7 @@ test("detectOrgChangeEvents detects transfer", () => {
 
 test("detectOrgChangeEvents returns empty for no changes", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["user-1"] }),
+    createNode({ orgNodeId: "member", nodeType: "seat", parentOrgNodeId: "team", ownerUserIds: ["user-1"] }),
   ];
 
   const events = detectOrgChangeEvents(nodes, nodes);

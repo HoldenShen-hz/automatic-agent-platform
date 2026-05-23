@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 
-import type { GovernanceDelegation } from "../delegation-registry/index.js";
+import type { GovernanceDelegation, NormalizedGovernanceDelegation } from "../delegation-registry/index.js";
+import { normalizeGovernanceDelegation } from "../delegation-registry/index.js";
 import type { GovernanceConsoleAuditEntry } from "../governance-console-service.js";
 
 export interface DelegationStore {
@@ -38,7 +39,7 @@ export class InMemoryDelegationStore implements DelegationStore {
 
   public listByOrgNode(orgNodeId: string): GovernanceDelegation[] {
     return this.list().filter(
-      (delegation) => delegation.orgNodeIds.length === 0 || delegation.orgNodeIds.includes(orgNodeId),
+      (delegation) => (delegation.orgNodeIds?.length ?? 0) === 0 || delegation.orgNodeIds?.includes(orgNodeId) === true,
     );
   }
 }
@@ -138,7 +139,7 @@ export class SqliteDelegationStore implements DelegationStore {
 
   public listByOrgNode(orgNodeId: string): GovernanceDelegation[] {
     return this.list().filter(
-      (delegation) => delegation.orgNodeIds.length === 0 || delegation.orgNodeIds.includes(orgNodeId),
+      (delegation) => (delegation.orgNodeIds?.length ?? 0) === 0 || delegation.orgNodeIds?.includes(orgNodeId) === true,
     );
   }
 
@@ -147,31 +148,22 @@ export class SqliteDelegationStore implements DelegationStore {
       delegationId: String(row.delegation_id),
       grantorId: String(row.grantor_id),
       granteeId: String(row.grantee_id),
-      level: String(row.level) as GovernanceDelegation["level"],
+      level: String(row.level ?? "view") as NormalizedGovernanceDelegation["level"],
       delegatable: Number(row.delegatable) === 1,
       orgNodeIds: safeJsonStringArrayParse(row.org_node_ids_json, "delegated_governance.invalid_org_node_ids_json"),
       domainIds: safeJsonStringArrayParse(row.domain_ids_json, "delegated_governance.invalid_domain_ids_json"),
       derivedDelegationIds: safeJsonStringArrayParse(row.derived_delegation_ids_json, "delegated_governance.invalid_derived_delegation_ids_json"),
-      permissions: safeJsonArrayParse(row.permissions_json, "delegated_governance.invalid_permissions_json") as GovernanceDelegation["permissions"],
-      guardrails: safeJsonArrayParse(row.guardrails_json, "delegated_governance.invalid_guardrails_json") as GovernanceDelegation["guardrails"],
+      permissions: safeJsonArrayParse(row.permissions_json, "delegated_governance.invalid_permissions_json") as NormalizedGovernanceDelegation["permissions"],
+      guardrails: safeJsonArrayParse(row.guardrails_json, "delegated_governance.invalid_guardrails_json") as NormalizedGovernanceDelegation["guardrails"],
       expiresAt: String(row.expires_at),
       revocable: Number(row.revocable) === 1,
-      status: String(row.status) as GovernanceDelegation["status"],
+      status: String(row.status) as NormalizedGovernanceDelegation["status"],
     };
   }
 }
 
-function normalizeDelegationForPersistence(delegation: GovernanceDelegation): GovernanceDelegation {
-  return {
-    ...delegation,
-    level: delegation.level ?? "delegated",
-    delegatable: delegation.delegatable ?? false,
-    orgNodeIds: delegation.orgNodeIds ?? [],
-    domainIds: delegation.domainIds ?? [],
-    derivedDelegationIds: delegation.derivedDelegationIds ?? [],
-    permissions: delegation.permissions ?? [],
-    guardrails: delegation.guardrails ?? [],
-  };
+function normalizeDelegationForPersistence(delegation: GovernanceDelegation): NormalizedGovernanceDelegation {
+  return normalizeGovernanceDelegation(delegation);
 }
 
 export class SqliteAuditLogStore implements AuditLogStore {

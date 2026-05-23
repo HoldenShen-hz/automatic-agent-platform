@@ -43,14 +43,24 @@ export interface ExecutionReceipt {
   createdAt: string;
 }
 
+type LegacyExecutionReceiptInput = Pick<ExecutionReceipt, "planId" | "status" | "taskId"> &
+  Partial<
+    Pick<
+      ExecutionReceipt,
+      "harnessRunId" | "planGraphId" | "nodeRunId" | "attemptId" | "stepId" | "workerId" | "tenantId" | "resultRef" | "errorCode"
+    >
+  > & {
+    receiptId?: string;
+    createdAt?: string;
+    durationMs?: number;
+    errorDetail?: string;
+  };
+
 /**
  * @deprecated createExecutionReceipt is deprecated per §4.5.
  * Use NodeAttemptReceipt from executable-contracts instead.
  */
-export function createExecutionReceipt(input: Omit<ExecutionReceipt, "receiptId" | "createdAt"> & {
-  receiptId?: string;
-  createdAt?: string;
-}): ExecutionReceipt {
+export function createExecutionReceipt(input: LegacyExecutionReceiptInput): ExecutionReceipt {
   void input;
   void normalizeNullable;
   void newId;

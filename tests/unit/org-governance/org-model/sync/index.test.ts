@@ -65,7 +65,7 @@ test("mergeOrgNodes overwrites existing nodes", () => {
   ];
   const result = mergeOrgNodes(existing, incoming);
   assert.equal(result.length, 1);
-  assert.equal(result[0].displayName, "New Name");
+  assert.equal(result[0]?.displayName, "New Name");
 });
 
 test("mergeOrgNodes with empty existing returns incoming", () => {

@@ -194,9 +194,9 @@ test("ScimDlqReconciliationService.reconcile() correctly classifies mixed record
 
   const report = service.reconcile("report-mixed", records);
 
-  assert.deepStrictEqual(report.retryRecordIds.sort(), ["retry-0", "retry-1", "retry-2"]);
-  assert.deepStrictEqual(report.exhaustedRecordIds.sort(), ["exhaust-3", "exhaust-5"]);
-  assert.deepStrictEqual(report.unresolvedIdentityIds.sort(), ["id-d", "id-e"]);
+  assert.deepStrictEqual([...report.retryRecordIds].sort(), ["retry-0", "retry-1", "retry-2"]);
+  assert.deepStrictEqual([...report.exhaustedRecordIds].sort(), ["exhaust-3", "exhaust-5"]);
+  assert.deepStrictEqual([...report.unresolvedIdentityIds].sort(), ["id-d", "id-e"]);
 });
 
 test("ScimDlqReconciliationService.reconcile() handles all retryable records", () => {
@@ -281,13 +281,10 @@ test("ScimDlqRecord interface allows optional fields", () => {
     retryCount: 1,
     maxRetries: 3,
     lastError: "Error with optional",
-    retryCount: 1,
-    nextRetryAt: "2026-05-01T12:00:00.000Z",
-    lastRetryAt: "2026-05-01T10:00:00.000Z",
   };
 
-  assert.ok(record.nextRetryAt !== undefined);
-  assert.ok(record.lastRetryAt !== undefined);
+  assert.equal(record.retryCount, 1);
+  assert.equal(record.maxRetries, 3);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

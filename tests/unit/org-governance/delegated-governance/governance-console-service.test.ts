@@ -183,7 +183,7 @@ test("SelfServiceGovernanceConsole.listDelegationsForGrantee excludes revoked de
 
   console.revokeDelegation(delegation.delegationId, { actorId: "grantor-1", role: "platform_team" });
 
-  const delegations = console.listDelegationsForGrantee("grantee-1", { actorId: "grantor-1", role: "platform_team" });
+  const delegations = console.listDelegationsForGrantee("grantee-1");
 
   assert.strictEqual(delegations.length, 0);
 });
@@ -205,7 +205,7 @@ test("SelfServiceGovernanceConsole.listDelegationsForOrgNode returns delegations
   const delegations = console.listDelegationsForOrgNode("org-node-1");
 
   assert.strictEqual(delegations.length, 1);
-  assert.strictEqual(delegations[0]?.orgNodeIds[0], "org-node-1");
+  assert.strictEqual(delegations[0]?.orgNodeIds?.[0], "org-node-1");
 });
 
 test("SelfServiceGovernanceConsole.exportAuditLog returns all entries without filters", () => {
@@ -306,7 +306,7 @@ test("SelfServiceGovernanceConsole.reviewDelegation returns delegation and logs 
   });
 
   const beforeCount = auditLogStore.list().length;
-  const result = console.reviewDelegation(delegation.delegationId, { actorId: "reviewer-1", role: "platform_team" });
+  const result = console.reviewDelegation(delegation.delegationId, "reviewer-1");
   const afterCount = auditLogStore.list().length;
 
   assert.ok(result !== null);

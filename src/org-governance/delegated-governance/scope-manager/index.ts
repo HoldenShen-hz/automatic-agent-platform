@@ -1,8 +1,10 @@
 import type {
   GovernanceDelegation,
+  GovernanceDelegationInput,
   GovernancePermission,
   Guardrail,
 } from "../delegation-registry/index.js";
+import { normalizeGovernanceDelegation } from "../delegation-registry/index.js";
 
 export interface GovernanceActionScope {
   readonly orgNodeId: string;
@@ -24,12 +26,13 @@ export interface GovernanceOperationContext {
  * Validates if a governance scope matches a delegation.
  */
 export function matchesGovernanceScope(
-  delegation: GovernanceDelegation,
+  delegation: GovernanceDelegationInput,
   scope: GovernanceActionScope,
 ): boolean {
-  const orgNodeIds = delegation.orgNodeIds ?? [];
-  const domainIds = delegation.domainIds ?? [];
-  const permissions = delegation.permissions ?? [];
+  const normalizedDelegation: GovernanceDelegation = normalizeGovernanceDelegation(delegation);
+  const orgNodeIds = normalizedDelegation.orgNodeIds ?? [];
+  const domainIds = normalizedDelegation.domainIds ?? [];
+  const permissions = normalizedDelegation.permissions ?? [];
   const orgAllowed = orgNodeIds.length === 0 || orgNodeIds.includes(scope.orgNodeId);
   const domainAllowed = domainIds.length === 0 || scope.domainId == null || domainIds.includes(scope.domainId);
   const capabilityAllowed = permissions.length === 0 ||

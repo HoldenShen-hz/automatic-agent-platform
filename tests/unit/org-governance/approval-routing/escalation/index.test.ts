@@ -291,7 +291,7 @@ test("evaluateApprovalEscalation covers omitted defaults and missing notificatio
       readCount += 1;
       return readCount === 1 ? (["director-1"] as unknown as string[]) : undefined;
     },
-  } as ApprovalEscalationRule;
+  } as unknown as ApprovalEscalationRule;
 
   const decision = evaluateApprovalEscalation(
     rule,
@@ -345,7 +345,7 @@ test("evaluateApprovalEscalation treats missing notification target lists as emp
     get slaBreachNotificationTargetIds() {
       return undefined;
     },
-  } as ApprovalEscalationRule;
+  } as unknown as ApprovalEscalationRule;
 
   const decision = evaluateApprovalEscalation(
     rule,

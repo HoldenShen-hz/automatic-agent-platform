@@ -4,27 +4,30 @@ import assert from "node:assert/strict";
 import { ApprovalRoutingService } from "../../../../src/org-governance/approval-routing/approval-routing-service.js";
 import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
 
+type ApprovalRouteInput = Parameters<ApprovalRoutingService["route"]>[0];
+
 function createMockOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
-    orgNodeId: "org-node-1",
-    nodeType: "department",
-    name: "Test Department",
-    ownerUserIds: ["owner-1", "owner-2"],
-    parentId: null,
-    divisionId: "division-1",
-    departmentId: "dept-1",
-    teamId: null,
+    orgNodeId: overrides.orgNodeId ?? "org-node-1",
+    nodeType: overrides.nodeType ?? "department",
+    displayName: overrides.displayName ?? "Test Department",
+    parentOrgNodeId: overrides.parentOrgNodeId ?? null,
+    ownerUserIds: overrides.ownerUserIds ?? ["owner-1", "owner-2"],
+    active: overrides.active ?? true,
+    costCenter: overrides.costCenter ?? "cc-default",
+    metadata: overrides.metadata ?? {},
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? "active",
     ...overrides,
   };
 }
 
-function createMockRequest(overrides: Partial<Parameters<ApprovalRoutingService["route"]>[0]> = {}) {
+function createMockRequest(overrides: Partial<ApprovalRouteInput> = {}): ApprovalRouteInput {
   return {
     requesterId: "requester-1",
     orgNodeId: "org-node-1",
     amountUsd: 5000,
     riskLevel: "medium",
-    resourceType: "compute",
     ...overrides,
   };
 }
@@ -64,16 +67,12 @@ test("ApprovalRoutingService getAmountThresholdMatrix returns configured rules",
     orgNodes,
     amountThresholdRules: [
       {
-        minAmountUsd: 0,
         maxAmountUsd: 1000,
-        approverIds: ["approver-low"],
-        strategyId: "low-amount",
+        targetNodeTypes: ["department"],
       },
       {
-        minAmountUsd: 1001,
         maxAmountUsd: 10000,
-        approverIds: ["approver-med"],
-        strategyId: "med-amount",
+        targetNodeTypes: ["company"],
       },
     ],
   });
@@ -186,17 +185,17 @@ test("ApprovalRoutingService route handles different risk levels", () => {
   assert.ok(Array.isArray(highRisk.approverChain));
 });
 
-test("ApprovalRoutingService route handles different resource types", () => {
+test("ApprovalRoutingService route handles different request amounts", () => {
   const orgNodes = [createMockOrgNode()];
   const service = new ApprovalRoutingService({ orgNodes });
 
-  const compute = service.route(createMockRequest({ resourceType: "compute" }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
-  const storage = service.route(createMockRequest({ resourceType: "storage" }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
-  const network = service.route(createMockRequest({ resourceType: "network" }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
+  const zeroAmount = service.route(createMockRequest({ amountUsd: 0 }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
+  const normalAmount = service.route(createMockRequest({ amountUsd: 5000 }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
+  const largeAmount = service.route(createMockRequest({ amountUsd: 50000 }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
 
-  assert.ok(Array.isArray(compute.approverChain));
-  assert.ok(Array.isArray(storage.approverChain));
-  assert.ok(Array.isArray(network.approverChain));
+  assert.ok(Array.isArray(zeroAmount.approverChain));
+  assert.ok(Array.isArray(normalAmount.approverChain));
+  assert.ok(Array.isArray(largeAmount.approverChain));
 });
 
 test("ApprovalRoutingService constructor accepts empty arrays for optional params", () => {

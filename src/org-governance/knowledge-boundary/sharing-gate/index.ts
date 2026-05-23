@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { KnowledgeBoundary } from "../boundary-manager/index.js";
+import { KnowledgeBoundarySchema, type KnowledgeBoundaryInput } from "../boundary-manager/index.js";
 
 export const KnowledgeShareGrantSchema = z.object({
   grantId: z.string().min(1),
@@ -64,13 +64,14 @@ function buildKnowledgeShareDecision(input: {
 }
 
 export function evaluateKnowledgeShare(
-  boundary: KnowledgeBoundary,
+  boundary: KnowledgeBoundaryInput,
   requesterOrgNodeId: string,
   grants: readonly KnowledgeShareGrant[],
   nowIso: string,
 ): KnowledgeShareDecision | null {
-  const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
-  if (boundary.ownerOrgNodeId === requesterOrgNodeId || allowedOrgNodeIds.includes(requesterOrgNodeId)) {
+  const normalizedBoundary = KnowledgeBoundarySchema.parse(boundary);
+  const allowedOrgNodeIds = normalizedBoundary.allowedOrgNodeIds ?? [];
+  if (normalizedBoundary.ownerOrgNodeId === requesterOrgNodeId || allowedOrgNodeIds.includes(requesterOrgNodeId)) {
     return buildKnowledgeShareDecision({
       mode: "summary",
       reason: "owner_or_allowed_org_node",
@@ -79,7 +80,7 @@ export function evaluateKnowledgeShare(
     });
   }
   const matchedGrant = grants.find((item) =>
-    item.boundaryId === boundary.boundaryId
+    item.boundaryId === normalizedBoundary.boundaryId
     && ((item as { requesterOrgNodeId?: string }).requesterOrgNodeId ?? (item as { grantedToOrgNodeId?: string }).grantedToOrgNodeId) === requesterOrgNodeId
     && (item.expiresAt == null || new Date(item.expiresAt) >= new Date(nowIso)));
   if (matchedGrant) {

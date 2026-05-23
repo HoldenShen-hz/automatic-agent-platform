@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ApprovalRoutingService } from "../../../src/org-governance/approval-routing/approval-routing-service.js";
+import type { ApprovalDelegation } from "../../../src/org-governance/approval-routing/delegation/index.js";
 import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,6 +19,23 @@ function createOrgNode(overrides: Partial<OrgNode> & { orgNodeId: string; nodeTy
     active: overrides.active ?? true,
     costCenter: overrides.costCenter ?? "",
     metadata: overrides.metadata ?? {},
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? (overrides.active ?? true ? "active" : "inactive"),
+  };
+}
+
+function createDelegation(overrides: Partial<ApprovalDelegation> = {}): ApprovalDelegation {
+  return {
+    delegationId: overrides.delegationId ?? "del_1",
+    approverId: overrides.approverId ?? "director",
+    delegateApproverId: overrides.delegateApproverId ?? "backup_director",
+    delegationType: overrides.delegationType ?? "temporary_cover",
+    scopeNodeIds: overrides.scopeNodeIds ?? [],
+    conflictOfInterestApproverIds: overrides.conflictOfInterestApproverIds ?? [],
+    coiReviewStatus: overrides.coiReviewStatus ?? "pending",
+    startsAt: overrides.startsAt ?? "2026-04-01T00:00:00.000Z",
+    expiresAt: overrides.expiresAt ?? "2026-12-31T00:00:00.000Z",
+    active: overrides.active ?? true,
   };
 }
 
@@ -51,17 +69,7 @@ test("ApprovalRoutingService.route returns direct route without delegation or es
 test("ApprovalRoutingService.route applies delegation when in scope and active", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
-    delegations: [
-      {
-        delegationId: "del_1",
-        approverId: "director",
-        delegateApproverId: "backup_director",
-        scopeNodeIds: ["dept_1"],
-        startsAt: "2026-04-01T00:00:00.000Z",
-        expiresAt: "2026-12-31T00:00:00.000Z",
-        active: true,
-      },
-    ],
+    delegations: [createDelegation({ scopeNodeIds: ["dept_1"] })],
   });
 
   const result = service.route({
@@ -79,17 +87,7 @@ test("ApprovalRoutingService.route applies delegation when in scope and active",
 test("ApprovalRoutingService.route does not apply inactive delegation", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
-    delegations: [
-      {
-        delegationId: "del_1",
-        approverId: "director",
-        delegateApproverId: "backup_director",
-        scopeNodeIds: ["dept_1"],
-        startsAt: "2026-04-01T00:00:00.000Z",
-        expiresAt: "2026-12-31T00:00:00.000Z",
-        active: false, // Inactive
-      },
-    ],
+    delegations: [createDelegation({ scopeNodeIds: ["dept_1"], active: false })],
   });
 
   const result = service.route({
@@ -106,17 +104,11 @@ test("ApprovalRoutingService.route does not apply inactive delegation", () => {
 test("ApprovalRoutingService.route does not apply expired delegation", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
-    delegations: [
-      {
-        delegationId: "del_1",
-        approverId: "director",
-        delegateApproverId: "backup_director",
-        scopeNodeIds: ["dept_1"],
-        startsAt: "2026-01-01T00:00:00.000Z",
-        expiresAt: "2026-03-01T00:00:00.000Z", // Expired
-        active: true,
-      },
-    ],
+    delegations: [createDelegation({
+      scopeNodeIds: ["dept_1"],
+      startsAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: "2026-03-01T00:00:00.000Z",
+    })],
   });
 
   const result = service.route({
@@ -133,17 +125,7 @@ test("ApprovalRoutingService.route does not apply expired delegation", () => {
 test("ApprovalRoutingService.route does not apply delegation outside scope", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
-    delegations: [
-      {
-        delegationId: "del_1",
-        approverId: "director",
-        delegateApproverId: "backup_director",
-        scopeNodeIds: ["other_dept"], // Different scope
-        startsAt: "2026-04-01T00:00:00.000Z",
-        expiresAt: "2026-12-31T00:00:00.000Z",
-        active: true,
-      },
-    ],
+    delegations: [createDelegation({ scopeNodeIds: ["other_dept"] })],
   });
 
   const result = service.route({
@@ -232,17 +214,7 @@ test("ApprovalRoutingService.route does not escalate for low risk when rule targ
 test("ApprovalRoutingService.route combines delegation and escalation", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
-    delegations: [
-      {
-        delegationId: "del_1",
-        approverId: "director",
-        delegateApproverId: "backup_director",
-        scopeNodeIds: ["dept_1"],
-        startsAt: "2026-04-01T00:00:00.000Z",
-        expiresAt: "2026-12-31T00:00:00.000Z",
-        active: true,
-      },
-    ],
+    delegations: [createDelegation({ scopeNodeIds: ["dept_1"] })],
     escalationRules: [
       {
         ruleId: "esc_1",
@@ -462,17 +434,11 @@ test("ApprovalRoutingService.planChain with empty conditionalApproverIds", () =>
 test("ApprovalRoutingService applies delegation and escalation", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
-    delegations: [
-      {
-        delegationId: "del_1",
-        approverId: "director",
-        delegateApproverId: "backup_director",
-        scopeNodeIds: ["dept_1"],
-        startsAt: "2026-04-20T00:00:00.000Z",
-        expiresAt: "2026-04-21T00:00:00.000Z",
-        active: true,
-      },
-    ],
+    delegations: [createDelegation({
+      scopeNodeIds: ["dept_1"],
+      startsAt: "2026-04-20T00:00:00.000Z",
+      expiresAt: "2026-04-21T00:00:00.000Z",
+    })],
     escalationRules: [
       {
         ruleId: "esc_1",

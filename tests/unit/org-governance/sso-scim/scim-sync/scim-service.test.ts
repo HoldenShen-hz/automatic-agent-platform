@@ -257,7 +257,7 @@ test("ScimProvisionService patch group removes target members with filter", () =
 
   assert.ok(updated);
   assert.equal(updated!.members.length, 1);
-  assert.equal(updated!.members[0].value, user2.id);
+  assert.equal(updated!.members[0]?.value, user2.id);
 });
 
 test("ScimProvisionService patch group bare remove does NOT clear all members", () => {

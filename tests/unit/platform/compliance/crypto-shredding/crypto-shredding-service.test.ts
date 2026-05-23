@@ -157,7 +157,7 @@ test("CryptoShreddingService.registerPiiField adds PII field", async () => {
   
   const fields = service.getPiiFields();
   assert.equal(fields.length, 1);
-  assert.equal(fields[0].fieldPath, "email");
+  assert.equal(fields[0]?.fieldPath, "email");
 });
 
 test("CryptoShreddingService.registerPiiField updates existing field", async () => {
@@ -170,7 +170,7 @@ test("CryptoShreddingService.registerPiiField updates existing field", async () 
   
   const fields = service.getPiiFields();
   assert.equal(fields.length, 1);
-  assert.equal(fields[0].classification, "confidential");
+  assert.equal(fields[0]?.classification, "confidential");
 });
 
 test("InMemoryShredAuditTrail records and retrieves audit records", async () => {

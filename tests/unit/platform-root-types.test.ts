@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { buildPlatformArchitectureBootstrapSummary } from "../../src/platform-architecture-bootstrap.js";
 import type {
   PlatformRootSummary,
   PlatformRootSummaryBuilderDeps,
@@ -95,7 +96,7 @@ test("PlatformRootSummaryBuilderDeps structure validation", () => {
   // This type defines the dependencies needed to build a summary
   // Create minimal mock functions to satisfy the function types
   const mockDeps: PlatformRootSummaryBuilderDeps = {
-    buildArchitectureSummary: () => null,
+    buildArchitectureSummary: () => buildPlatformArchitectureBootstrapSummary(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     buildDomainsStartupPlan: () => ({ steps: [], totalCapabilityCount: 0, startupOrder: [] }) as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -170,8 +171,8 @@ test("PlatformRootDemoLegacySnapshot structure validation", () => {
   assert.equal(legacy.session?.status, "active");
   assert.equal(legacy.stepOutputs.length, 2);
   assert.equal(legacy.events.length, 2);
-  assert.equal(legacy.events[0].eventType, "task.created");
-  assert.equal(legacy.events[0].eventTier, "platform");
+  assert.equal(legacy.events[0]?.eventType, "task.created");
+  assert.equal(legacy.events[0]?.eventTier, "platform");
 });
 
 test("PlatformRootDemoLegacySnapshot allows null optional fields", () => {

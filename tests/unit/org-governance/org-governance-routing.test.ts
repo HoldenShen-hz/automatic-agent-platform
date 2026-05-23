@@ -236,9 +236,8 @@ test("ApprovalRoutingService.route applies escalation for high risk requests aft
         ruleId: "esc-1",
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp-eng",
-        escalateToParentManager: false,
         appliesToRiskLevels: ["high", "critical"],
-        escalationLevel: 1,
+        maxEscalationDepth: 1,
       },
     ],
   });
@@ -266,9 +265,8 @@ test("ApprovalRoutingService.route does not escalate for low risk when threshold
         ruleId: "esc-1",
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp-eng",
-        escalateToParentManager: false,
+        maxEscalationDepth: 1,
         appliesToRiskLevels: ["critical"],
-        escalationLevel: 1,
       },
     ],
   });

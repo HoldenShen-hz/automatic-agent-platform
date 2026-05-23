@@ -20,6 +20,19 @@ export interface ComplianceEvidenceRecord {
   readonly hash?: string;
 }
 
+export interface ComplianceEvidenceCollectInput {
+  readonly frameworkId: string;
+  readonly controlId: string;
+  readonly source?: string;
+  readonly artifactRef?: string;
+  readonly evidenceType?: string;
+  readonly collectedBy?: string;
+  readonly content?: string;
+  readonly sourceSystem?: string;
+  readonly timestamp?: string;
+  readonly collectedAt?: string;
+}
+
 export interface ComplianceEvidenceCollectorOptions {
   readonly storagePath?: string | null;
 }
@@ -38,10 +51,6 @@ export interface EvidenceCollectionSchedule {
 export type EvidenceCollectionTrigger =
   | { readonly type: "periodic"; readonly intervalMinutes: number }
   | { readonly type: "on_demand" };
-
-type ComplianceEvidenceCollectInput =
-  Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt" | "previousHash" | "hash">
-  & { collectedAt?: string };
 
 interface EvidenceCollectorSnapshot {
   readonly records: Record<string, ComplianceEvidenceRecord[]>;

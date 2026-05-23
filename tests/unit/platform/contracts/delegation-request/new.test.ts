@@ -257,6 +257,12 @@ test("DelegationRequest interface accepts all fields", () => {
     reason: "Special handling needed",
     contextRef: "ctx_123",
     tenantId: "tenant_global",
+    budgetReservationId: "budget-res-123",
+    budgetEnvelope: {
+      amount: 250,
+      currency: "USD",
+      resourceKinds: ["api_call", "token"],
+    },
     createdAt: "2026-04-01T00:00:00.000Z",
   };
 

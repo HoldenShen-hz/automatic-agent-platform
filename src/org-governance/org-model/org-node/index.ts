@@ -145,9 +145,9 @@ export interface OrgNode {
   readonly active: boolean;
   readonly costCenter: string;
   readonly metadata: Readonly<Record<string, string>>;
-  readonly effectivePolicies: Readonly<Record<string, unknown>>;
+  readonly effectivePolicies?: Readonly<Record<string, unknown>>;
   readonly effective_policies?: Readonly<Record<string, unknown>>;
-  readonly status: "active" | "inactive" | "suspended" | "archived";
+  readonly status?: "active" | "inactive" | "suspended" | "archived";
   readonly legalEntityBoundary?: LegalEntityBoundary | null;
   readonly nodeId?: string;
   readonly type?: InternalOrgNodeType;
@@ -282,7 +282,9 @@ export function getPlatformMapping(nodeType: OrgNodeType): string {
  * The hierarchy allows business_unit and department to be skipped, with seat nodes
  * optionally extending teams into a fifth level.
  */
-export function validateHierarchyDepth(nodes: readonly OrgNode[]): { valid: boolean; depth: number } {
+export function validateHierarchyDepth<T extends Pick<OrgNode, "orgNodeId" | "parentOrgNodeId">>(
+  nodes: readonly T[],
+): { valid: boolean; depth: number } {
   if (nodes.length === 0) {
     return { valid: true, depth: 0 };
   }

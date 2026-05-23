@@ -1,16 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DataResidencyPolicyService } from "../../../../src/platform/compliance/data-residency/index.js";
+import { DataResidencyPolicyService, type ResidencyPolicy } from "../../../../src/platform/compliance/data-residency/index.js";
 
-test("DataResidencyPolicyService decides allow for same region transfer", () => {
-  const service = new DataResidencyPolicyService();
-  const policy = {
+function createPolicy(overrides: Partial<ResidencyPolicy> = {}): ResidencyPolicy {
+  return {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
     restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: true,
+    ...overrides,
   };
+}
+
+test("DataResidencyPolicyService decides allow for same region transfer", () => {
+  const service = new DataResidencyPolicyService();
+  const policy = createPolicy();
 
   const result = service.decideTransfer({
     policy,
@@ -25,12 +30,7 @@ test("DataResidencyPolicyService decides allow for same region transfer", () => 
 
 test("DataResidencyPolicyService decides deny for non-allowed region", () => {
   const service = new DataResidencyPolicyService();
-  const policy = {
-    tenantId: "tenant_1",
-    allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"],
-    allowRedactedTransfer: true,
-  };
+  const policy = createPolicy();
 
   const result = service.decideTransfer({
     policy,
@@ -45,12 +45,7 @@ test("DataResidencyPolicyService decides deny for non-allowed region", () => {
 
 test("DataResidencyPolicyService decides deny for restricted classification without redaction", () => {
   const service = new DataResidencyPolicyService();
-  const policy = {
-    tenantId: "tenant_1",
-    allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"],
-    allowRedactedTransfer: false,
-  };
+  const policy = createPolicy({ allowRedactedTransfer: false });
 
   const result = service.decideTransfer({
     policy,
@@ -66,12 +61,7 @@ test("DataResidencyPolicyService decides deny for restricted classification with
 
 test("DataResidencyPolicyService decides require_redaction for restricted data with redaction allowed", () => {
   const service = new DataResidencyPolicyService();
-  const policy = {
-    tenantId: "tenant_1",
-    allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"],
-    allowRedactedTransfer: true,
-  };
+  const policy = createPolicy();
 
   const result = service.decideTransfer({
     policy,
@@ -87,12 +77,7 @@ test("DataResidencyPolicyService decides require_redaction for restricted data w
 
 test("DataResidencyPolicyService decides require_redaction when redaction allowed but not provided", () => {
   const service = new DataResidencyPolicyService();
-  const policy = {
-    tenantId: "tenant_1",
-    allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"],
-    allowRedactedTransfer: true,
-  };
+  const policy = createPolicy();
 
   const result = service.decideTransfer({
     policy,
@@ -107,12 +92,7 @@ test("DataResidencyPolicyService decides require_redaction when redaction allowe
 
 test("DataResidencyPolicyService decides allow for unrestricted data to allowed region", () => {
   const service = new DataResidencyPolicyService();
-  const policy = {
-    tenantId: "tenant_1",
-    allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"],
-    allowRedactedTransfer: true,
-  };
+  const policy = createPolicy();
 
   const result = service.decideTransfer({
     policy,
@@ -127,12 +107,7 @@ test("DataResidencyPolicyService decides allow for unrestricted data to allowed 
 
 test("DataResidencyPolicyService result includes source and target regions", () => {
   const service = new DataResidencyPolicyService();
-  const policy = {
-    tenantId: "tenant_1",
-    allowedRegions: ["us-east-1"],
-    restrictedClassifications: [],
-    allowRedactedTransfer: true,
-  };
+  const policy = createPolicy({ allowedRegions: ["us-east-1"], restrictedClassifications: [] });
 
   const result = service.decideTransfer({
     policy,
@@ -147,12 +122,7 @@ test("DataResidencyPolicyService result includes source and target regions", () 
 
 test("DataResidencyPolicyService treats internal classification as non-restricted", () => {
   const service = new DataResidencyPolicyService();
-  const policy = {
-    tenantId: "tenant_1",
-    allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"],
-    allowRedactedTransfer: false,
-  };
+  const policy = createPolicy({ allowRedactedTransfer: false });
 
   const result = service.decideTransfer({
     policy,

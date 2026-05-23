@@ -183,8 +183,8 @@ test("2000..2004: domain, gateway, entrypoint, runtime, and threat-model configs
   assert.match(rootIndexSource, /import type \{ PlatformAppKind, PlatformStartupTargetKind \} from "\.\/platform-architecture-types\.js";/);
   assert.match(rootIndexSource, /export type \{ PlatformAppKind, PlatformStartupTargetKind \} from "\.\/platform-architecture-types\.js";/);
 
-  assert.ok(threatMatrix.dimensions.TAMPERING.some((item) => item.includes("configuration")));
-  assert.ok(threatMatrix.dimensions.INFORMATION_DISCLOSURE.some((item) => item.includes("agent memory")));
+  assert.ok((threatMatrix.dimensions.TAMPERING ?? []).some((item) => item.includes("configuration")));
+  assert.ok((threatMatrix.dimensions.INFORMATION_DISCLOSURE ?? []).some((item) => item.includes("agent memory")));
 });
 
 test("2005..2008: client-sdk retry/envelope guards, plugin signature enforcement, and CRM adapter live-fetch path stay fixed", async () => {

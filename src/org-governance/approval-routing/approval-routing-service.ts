@@ -11,6 +11,7 @@ import {
   type AmountThresholdRule,
   type ApprovalRouteDecision,
   type ApprovalRouteRequest,
+  type ApprovalRouteRequestInput,
 } from "./route-engine/index.js";
 import type { OrgNode } from "../org-model/org-node/index.js";
 
@@ -93,7 +94,7 @@ export class ApprovalRoutingService {
   }
 
   public route(
-    request: ApprovalRouteRequest,
+    request: ApprovalRouteRequestInput,
     createdAtIso: string,
     nowIso: string,
     escalationContext: ApprovalEscalationEvaluationContext = {},
@@ -186,7 +187,7 @@ export class ApprovalRoutingService {
   }
 
   public planChain(
-    request: ApprovalRouteRequest,
+    request: ApprovalRouteRequestInput,
     createdAtIso: string,
     nowIso: string,
     options: ApprovalChainOptions = {},
@@ -263,7 +264,7 @@ export class ApprovalRoutingService {
     return allowed;
   }
 
-  private buildAmountSnapshot(request: ApprovalRouteRequest): ApprovalRouteDecision["routeSnapshot"]["amount"] {
+  private buildAmountSnapshot(request: ApprovalRouteRequestInput): ApprovalRouteDecision["routeSnapshot"]["amount"] {
     const originalCurrency = request.amount?.currency?.toUpperCase() ?? "USD";
     const originalValue = request.amount?.value ?? request.amountUsd ?? 0;
     const normalizedCurrency = originalCurrency.trim().toUpperCase();
@@ -288,7 +289,7 @@ export class ApprovalRoutingService {
   private resolveEscalation(
     createdAtIso: string,
     nowIso: string,
-    riskLevel: ApprovalRouteRequest["riskLevel"],
+    riskLevel: ApprovalRouteRequestInput["riskLevel"],
     context: ApprovalEscalationEvaluationContext,
   ): {
     readonly escalatedTo: string | null;

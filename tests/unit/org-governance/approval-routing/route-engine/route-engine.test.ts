@@ -18,8 +18,8 @@ import {
   setDefaultLegacyFxRate,
   type ApprovalRouteRequest,
   type AmountThresholdRule,
-  type OrgNode,
 } from "../../../../../src/org-governance/approval-routing/route-engine/index.js";
+import type { OrgNode } from "../../../../../src/org-governance/org-model/org-node/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -35,6 +35,8 @@ function createOrgNode(overrides?: Partial<OrgNode>): OrgNode {
     active: true,
     costCenter: "CC001",
     metadata: {},
+    effectivePolicies: {},
+    status: "active",
     ...overrides,
   };
 }
@@ -219,6 +221,7 @@ describe("buildParallelSignoffGroups", () => {
     // When first is manager (owner of team-1), remaining approvers are batched in groups of 3
     // manager-1 owns team-1, so isFirstManager = true, and we get group "parallel:team-1:0"
     assert.strictEqual(result.length, 1);
+    assert.ok(result[0] != null);
     assert.strictEqual(result[0].groupId, "parallel:team-1:0");
     assert.deepStrictEqual(result[0].approverIds, ["approver-2", "approver-3"]);
     assert.strictEqual(result[0].requiredCount, 2);
@@ -229,6 +232,8 @@ describe("buildParallelSignoffGroups", () => {
     const result = buildParallelSignoffGroups(approverChain, nodes, "team-1");
 
     assert.strictEqual(result.length, 2);
+    assert.ok(result[0] != null);
+    assert.ok(result[1] != null);
     assert.deepStrictEqual(result[0].approverIds, ["approver-2", "approver-3", "approver-4"]);
     assert.deepStrictEqual(result[1].approverIds, ["approver-5"]);
   });
@@ -237,7 +242,7 @@ describe("buildParallelSignoffGroups", () => {
     const approverChain = ["owner-1", "approver-2"];
     const result = buildParallelSignoffGroups(approverChain, nodes, "custom-org");
 
-    assert.ok(result[0].groupId.includes("custom-org"));
+    assert.ok(result[0]?.groupId.includes("custom-org"));
   });
 });
 
@@ -255,6 +260,7 @@ describe("resolveApprovalSteps", () => {
     const result = resolveApprovalSteps(["approver-1"], nodes, "team-1");
 
     assert.strictEqual(result.length, 1);
+    assert.ok(result[0] != null);
     assert.strictEqual(result[0].stepId, "step:0");
     assert.deepStrictEqual(result[0].approverIds, ["approver-1"]);
     assert.strictEqual(result[0].requiredApprovals, 1);
@@ -267,7 +273,7 @@ describe("resolveApprovalSteps", () => {
 
     assert.ok(result.length > 0);
     // First step is parallel (group-based) when first approver is manager
-    assert.strictEqual(result[0].stepType, "parallel");
+    assert.strictEqual(result[0]?.stepType, "parallel");
   });
 });
 
@@ -391,7 +397,7 @@ describe("resolveApprovalRoute - Threshold Logic", () => {
     const result = resolveApprovalRoute(nodes, request);
 
     assert.ok(result.approverChain.length > 0);
-    assert.ok(result.approvalSteps.length > 0);
+    assert.ok((result.approvalSteps?.length ?? 0) > 0);
   });
 
   it("should populate route snapshot with correct data", () => {

@@ -85,6 +85,9 @@ interface MockDbState {
 
 function createMockSqliteConnection(state: MockDbState): AuthoritativeSqlDatabase["connection"] {
   return {
+    exec: () => {
+      return;
+    },
     prepare: (sql: string) => {
       const normalized = sql.trim().toLowerCase();
       const isInsert = normalized.startsWith("insert");

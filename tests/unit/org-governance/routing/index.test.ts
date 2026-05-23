@@ -6,13 +6,12 @@ import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/
 
 // Test fixtures
 const makeOrgNode = (overrides: Partial<OrgNode> & { orgNodeId: string }): OrgNode => ({
-  orgNodeId: "default",
   nodeType: "team" as const,
   displayName: "Default",
   parentOrgNodeId: null,
   ownerUserIds: [],
   active: true,
-  costCenter: null,
+  costCenter: "",
   metadata: {},
   ...overrides,
 });
@@ -58,6 +57,8 @@ const nodeWithLegalEntity = makeOrgNode({
     jurisdictionCountry: "US",
     dataResidencyRegion: "US",
     crossBorderTransferPolicy: "allow",
+    crossEntityApprovalRoles: [],
+    restrictedDataClasses: [],
   },
 });
 
@@ -71,6 +72,8 @@ const nodeWithDenyPolicy = makeOrgNode({
     jurisdictionCountry: "DE",
     dataResidencyRegion: "EU",
     crossBorderTransferPolicy: "deny",
+    crossEntityApprovalRoles: [],
+    restrictedDataClasses: [],
   },
 });
 
@@ -173,7 +176,7 @@ test("OrgRoutingService.resolveCostCenter falls back to parent cost center", () 
     nodeType: "team",
     displayName: "Child Team",
     parentOrgNodeId: "dept",
-    costCenter: null,
+    costCenter: "",
   });
 
   const service = new OrgRoutingService([nodeWithoutCostCenter, departmentNode]);
@@ -190,7 +193,7 @@ test("OrgRoutingService.resolveCostCenter falls back to default cost center", ()
     nodeType: "team",
     displayName: "Orphan",
     parentOrgNodeId: null,
-    costCenter: null,
+    costCenter: "",
   });
 
   const service = new OrgRoutingService([nodeWithoutCostCenterOrParent]);
@@ -250,13 +253,15 @@ test("OrgRoutingService.crossesTenantBoundary returns false for same tenant", ()
     nodeType: "division",
     displayName: "Subsidiary Division",
     parentOrgNodeId: "subsidiary",
-    legalEntityBoundary: {
-      boundaryId: "LE-001",
-      legalEntityId: "LE-001",
-      jurisdictionCountry: "US",
-      dataResidencyRegion: "US",
-      crossBorderTransferPolicy: "allow",
-    },
+      legalEntityBoundary: {
+        boundaryId: "LE-001",
+        legalEntityId: "LE-001",
+        jurisdictionCountry: "US",
+        dataResidencyRegion: "US",
+        crossBorderTransferPolicy: "allow",
+        crossEntityApprovalRoles: [],
+        restrictedDataClasses: [],
+      },
   });
 
   const service = new OrgRoutingService([nodeWithLegalEntity, subsidiaryChild]);
@@ -363,7 +368,7 @@ test("OrgRoutingService.resolveCostCenter traverses multiple parent levels", () 
     nodeType: "team",
     displayName: "Grandchild",
     parentOrgNodeId: "child",
-    costCenter: null,
+    costCenter: "",
   });
 
   const childNode = makeOrgNode({
@@ -371,7 +376,7 @@ test("OrgRoutingService.resolveCostCenter traverses multiple parent levels", () 
     nodeType: "department",
     displayName: "Child",
     parentOrgNodeId: "dept",
-    costCenter: null,
+    costCenter: "",
   });
 
   const service = new OrgRoutingService([grandchildNode, childNode, departmentNode]);

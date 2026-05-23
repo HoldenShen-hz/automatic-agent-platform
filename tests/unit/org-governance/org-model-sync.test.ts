@@ -45,11 +45,11 @@ test("buildOrgChart creates chart with root and nodes", () => {
     { orgNodeId: "node_2", nodeType: "division", displayName: "Tech", parentOrgNodeId: "node_1", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
-  const chart = buildOrgChart(nodes, "hris_system");
+  const chart = buildOrgChart(nodes, "hr_api");
 
   assert.strictEqual(chart.root.orgNodeId, "node_1");
   assert.strictEqual(chart.nodes.length, 2);
-  assert.strictEqual(chart.syncSource, "hris_system");
+  assert.strictEqual(chart.syncSource, "hr_api");
   assert.ok(chart.lastSyncedAt.length > 0);
 });
 
@@ -58,7 +58,7 @@ test("buildOrgChart throws when no root node", () => {
     { orgNodeId: "node_1", nodeType: "division", displayName: "Tech", parentOrgNodeId: "node_2", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
-  assert.throws(() => buildOrgChart(nodes, "hris_system"), { message: /no root node/ });
+  assert.throws(() => buildOrgChart(nodes, "hr_api"), { message: /no root node/ });
 });
 
 test("diffOrgCharts detects new nodes", () => {
@@ -70,8 +70,8 @@ test("diffOrgCharts detects new nodes", () => {
     { orgNodeId: "node_2", nodeType: "division", displayName: "Tech", parentOrgNodeId: "node_1", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
-  const before = buildOrgChart(beforeNodes, "hris");
-  const after = buildOrgChart(afterNodes, "hris");
+  const before = buildOrgChart(beforeNodes, "hr_api");
+  const after = buildOrgChart(afterNodes, "hr_api");
 
   const changed = diffOrgCharts(before, after);
 
@@ -86,8 +86,8 @@ test("diffOrgCharts detects renamed nodes", () => {
     { orgNodeId: "node_1", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
-  const before = buildOrgChart(beforeNodes, "hris");
-  const after = buildOrgChart(afterNodes, "hris");
+  const before = buildOrgChart(beforeNodes, "hr_api");
+  const after = buildOrgChart(afterNodes, "hr_api");
 
   const changed = diffOrgCharts(before, after);
 
@@ -102,8 +102,8 @@ test("diffOrgCharts detects owner changes", () => {
     { orgNodeId: "node_1", nodeType: "company", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: ["user_2"], active: true, costCenter: "", metadata: {} },
   ];
 
-  const before = buildOrgChart(beforeNodes, "hris");
-  const after = buildOrgChart(afterNodes, "hris");
+  const before = buildOrgChart(beforeNodes, "hr_api");
+  const after = buildOrgChart(afterNodes, "hr_api");
 
   const changed = diffOrgCharts(before, after);
 

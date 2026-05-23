@@ -176,8 +176,9 @@ function applyCrossBoundaryTransform(
   if (transform?.mode === "field_filter" && transform.allowedFieldKeys != null && transform.allowedFieldKeys.length > 0) {
     const fields = source.structuredFields ?? {};
     const deniedFields = Object.keys(fields).filter((key) => !transform.allowedFieldKeys!.includes(key));
+    const boundaryFieldAllowlist = boundary.fieldAllowlist ?? [];
     const filtered = transform.allowedFieldKeys
-      .filter((key) => key.length > 0 && (boundary.fieldAllowlist.length === 0 || boundary.fieldAllowlist.includes(key)))
+      .filter((key) => key.length > 0 && (boundaryFieldAllowlist.length === 0 || boundaryFieldAllowlist.includes(key)))
       .map((key) => `${key}: ${fields[key] ?? "[redacted]"}`);
     return {
       excerpt: filtered.join(" | ").slice(0, 180),

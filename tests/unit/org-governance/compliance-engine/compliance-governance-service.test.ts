@@ -12,12 +12,15 @@ import type { ComplianceFramework } from "../../../../src/org-governance/complia
 function createMockOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
     orgNodeId: "org_1",
-    name: "Test Org",
-    nodeType: "organization",
+    nodeType: "company",
+    displayName: "Test Org",
     parentOrgNodeId: null,
-    createdAt: "2026-04-26T00:00:00Z",
-    updatedAt: "2026-04-26T00:00:00Z",
+    ownerUserIds: [],
+    active: true,
+    costCenter: "",
     metadata: {},
+    effectivePolicies: {},
+    status: "active",
     ...overrides,
   };
 }
@@ -25,9 +28,11 @@ function createMockOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
 function createMockFramework(overrides: Partial<ComplianceFramework> = {}): ComplianceFramework {
   return {
     frameworkId: "GDPR",
-    name: "General Data Protection Regulation",
-    version: "1.0",
+    type: "gdpr",
+    displayName: "General Data Protection Regulation",
     controlIds: ["data_retention", "consent_management", "breach_notification"],
+    auditRequirements: [],
+    reportTemplate: "gdpr-default-report",
     minimumPolicies: {
       encryptionRequired: true,
       retentionDays: 365,
@@ -124,7 +129,7 @@ test("ComplianceGovernanceService lists evidence by framework", () => {
 
   const gdprEvidence = service.listEvidence("GDPR");
   assert.equal(gdprEvidence.length, 1);
-  assert.equal(gdprEvidence[0].frameworkId, "GDPR");
+  assert.equal(gdprEvidence[0]?.frameworkId, "GDPR");
 });
 
 test("ComplianceGovernanceService lists all evidence when no framework specified", () => {
@@ -272,7 +277,7 @@ test("ComplianceGovernanceService evaluate with framework attached", () => {
 
   assert.equal(result.allowed, true);
   assert.equal(result.applicableFrameworks.length, 1);
-  assert.equal(result.applicableFrameworks[0].frameworkId, "GDPR");
+  assert.equal(result.applicableFrameworks[0]?.frameworkId, "GDPR");
 });
 
 test("ComplianceGovernanceService evaluate missing framework controls", () => {
@@ -336,8 +341,8 @@ test("ComplianceGovernanceService evaluate resolves parent node lineage", () => 
   const framework = createMockFramework({ frameworkId: "ISO27001" });
 
   const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    root: [createMockPolicyLayer({ orgNodeId: "root", rules: {} })],
-    child: [createMockPolicyLayer({ orgNodeId: "child", rules: {} })],
+    root: [createMockPolicyLayer({ rules: {} })],
+    child: [createMockPolicyLayer({ rules: {} })],
   };
 
   const service = new ComplianceGovernanceService(nodes, policiesByNodeId, [framework]);

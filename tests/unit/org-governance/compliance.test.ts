@@ -32,6 +32,24 @@ function createMockOrgNode(overrides: Partial<OrgNode> & { orgNodeId: string; no
     active: overrides.active ?? true,
     costCenter: overrides.costCenter ?? "",
     metadata: overrides.metadata ?? {},
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? "active",
+  };
+}
+
+function createFramework(overrides: Partial<ComplianceFramework> & {
+  frameworkId: string;
+  type: ComplianceFramework["type"];
+  displayName: string;
+}): ComplianceFramework {
+  return {
+    frameworkId: overrides.frameworkId,
+    type: overrides.type,
+    displayName: overrides.displayName,
+    controlIds: overrides.controlIds ?? [],
+    auditRequirements: overrides.auditRequirements ?? [],
+    reportTemplate: overrides.reportTemplate ?? `${overrides.frameworkId}-report`,
+    minimumPolicies: overrides.minimumPolicies ?? {},
   };
 }
 
@@ -39,19 +57,20 @@ const COMPANY = createMockOrgNode({ orgNodeId: "company-1", nodeType: "company" 
 const DIVISION = createMockOrgNode({ orgNodeId: "division-1", nodeType: "division", parentOrgNodeId: "company-1" });
 const DEPARTMENT = createMockOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "division-1" });
 const TEAM = createMockOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1" });
-const MEMBER = createMockOrgNode({ orgNodeId: "member-1", nodeType: "member", parentOrgNodeId: "team-1" });
+const MEMBER = createMockOrgNode({ orgNodeId: "member-1", nodeType: "seat", parentOrgNodeId: "team-1" });
 
 const HIERARCHY: readonly OrgNode[] = [COMPANY, DIVISION, DEPARTMENT, TEAM, MEMBER];
 
-const SOX_FRAMEWORK: ComplianceFramework = {
+const SOX_FRAMEWORK: ComplianceFramework = createFramework({
   frameworkId: "custom_sox",
+  type: "sox",
   displayName: "Custom SOX",
   controlIds: ["access_review", "approval_segregation"],
   minimumPolicies: {
     segregationOfDuties: true,
     auditRetentionDays: 2555,
   },
-};
+});
 
 const SOX_BINDING: DepartmentComplianceBinding = {
   bindingId: "binding-1",
@@ -131,12 +150,13 @@ test("ComplianceGovernanceService.constructor applies custom frameworks", () => 
 
 test("ComplianceGovernanceService.registerFramework adds new framework", () => {
   const service = new ComplianceGovernanceService(HIERARCHY, {});
-  const newFramework: ComplianceFramework = {
+  const newFramework: ComplianceFramework = createFramework({
     frameworkId: "new_framework",
+    type: "soc2",
     displayName: "New Framework",
     controlIds: ["control_1"],
     minimumPolicies: {},
-  };
+  });
 
   const result = service.registerFramework(newFramework);
   assert.strictEqual(result.frameworkId, "new_framework");
@@ -229,12 +249,13 @@ test("ComplianceGovernanceService.evaluate blocks action when required policy mi
 });
 
 test("ComplianceGovernanceService.evaluate checks control requirements", () => {
-  const frameworkMissingControl: ComplianceFramework = {
+  const frameworkMissingControl: ComplianceFramework = createFramework({
     frameworkId: "minimal",
+    type: "soc2",
     displayName: "Minimal Framework",
     controlIds: ["required_control"],
     minimumPolicies: {},
-  };
+  });
   const binding: DepartmentComplianceBinding = {
     bindingId: "binding-minimal",
     orgNodeId: "team-1",
@@ -399,12 +420,13 @@ test("ComplianceGovernanceService.evaluate handles number merge in policy inheri
 });
 
 test("ComplianceGovernanceService.evaluate handles string merge in policy inheritance", () => {
-  const hipaaFramework: ComplianceFramework = {
+  const hipaaFramework: ComplianceFramework = createFramework({
     frameworkId: "hipaa_custom",
+    type: "hipaa",
     displayName: "HIPAA Custom",
     controlIds: [],
     minimumPolicies: { dataClassification: "restricted" },
-  };
+  });
   const binding: DepartmentComplianceBinding = {
     bindingId: "binding-hipaa",
     orgNodeId: "dept-1",
@@ -431,7 +453,7 @@ test("ComplianceGovernanceService.evaluate handles string merge in policy inheri
 
 test("ComplianceGovernanceService.listFrameworks returns all registered frameworks", () => {
   const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK]);
-  service.registerFramework({ frameworkId: "extra", displayName: "Extra", controlIds: [], minimumPolicies: {} });
+  service.registerFramework(createFramework({ frameworkId: "extra", type: "soc2", displayName: "Extra" }));
 
   const frameworks = service.listFrameworks();
   assert.strictEqual(frameworks.length, 2);
@@ -480,15 +502,20 @@ test("ComplianceGovernanceService evaluate with multiple required keys missing",
 });
 
 test("ComplianceGovernanceService evaluate deduplicates missing controls", () => {
-  const duplicateFramework: ComplianceFramework = {
+  const duplicateFramework: ComplianceFramework = createFramework({
     frameworkId: "dup_framework",
     type: "soc2",
     displayName: "Duplicate Framework",
     controlIds: ["shared_control"],
-    auditRequirements: ["shared_attestation"],
+    auditRequirements: [{
+      requirementId: "shared_attestation",
+      evidenceType: "shared_attestation",
+      frequency: "monthly",
+      retentionPeriodDays: 365,
+    }],
     reportTemplate: "duplicate_framework_report",
     minimumPolicies: { shared_policy: true },
-  };
+  });
   const binding: DepartmentComplianceBinding = {
     bindingId: "binding-dup",
     orgNodeId: "dept-1",

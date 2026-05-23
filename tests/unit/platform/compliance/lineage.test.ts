@@ -139,7 +139,7 @@ test("recorded edges are immutable - internal chain entry cannot be modified", (
   const edge = service.recordEdge(createEdgeInput());
 
   // Try to mutate the returned edge - should not affect internal state
-  (edge as Record<string, unknown>).sourceRef = "hacked";
+  (edge as unknown as Record<string, unknown>).sourceRef = "hacked";
   const retrieved = service.listEdges()[0]!;
   assert.equal(retrieved.sourceRef, "task_123", "internal chain should be unaffected by returned edge mutation");
 });

@@ -80,7 +80,9 @@ export interface ApprovalRouteDecision {
   readonly routeSnapshot: ApprovalRouteSnapshot;
 }
 
-export type ApprovalRouteRequest = z.infer<typeof ApprovalRouteRequestSchema>;
+export type ApprovalRouteRequestInput = z.input<typeof ApprovalRouteRequestSchema>;
+export type NormalizedApprovalRouteRequest = z.infer<typeof ApprovalRouteRequestSchema>;
+export type ApprovalRouteRequest = ApprovalRouteRequestInput;
 
 const DEFAULT_USD_TO_CNY_RATE = 7.2;
 const DEFAULT_FX_SNAPSHOT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -112,8 +114,9 @@ export class OrgChartRoutingStrategy implements RoutingStrategy {
   public readonly strategyId = "org_chart" as const;
 
   public selectNode(nodes: readonly OrgNode[], request: ApprovalRouteRequest): OrgNode | null {
-    return nodes.find((item) => item.orgNodeId === request.orgNodeId && item.active)
-      ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
+    const normalizedRequest = ApprovalRouteRequestSchema.parse(request);
+    return nodes.find((item) => item.orgNodeId === normalizedRequest.orgNodeId && item.active)
+      ?? nodes.find((item) => item.orgNodeId === normalizedRequest.orgNodeId)
       ?? null;
   }
 }
@@ -301,7 +304,7 @@ export function resolveApprovalSteps(
 
 function resolveApprovalRouteWithMode(
   nodes: readonly OrgNode[],
-  request: ApprovalRouteRequest,
+  request: NormalizedApprovalRouteRequest,
   delegationMap: Readonly<Record<string, string>>,
   routingMode: ApprovalRoutingMode,
 ): ResolvedApprovalRouteChain {
@@ -356,7 +359,7 @@ function resolveApprovalRouteWithMode(
 
 export function resolveApprovalRoute(
   nodes: readonly OrgNode[],
-  request: ApprovalRouteRequest,
+  request: ApprovalRouteRequestInput,
   delegationMap: Readonly<Record<string, string>> = {},
   amountRules: readonly AmountThresholdRule[] = [],
   routingMode: ApprovalRoutingMode = "linear",
@@ -438,7 +441,7 @@ export interface ApprovalRouteRevalidationResult {
 
 export function revalidateApprovalRoute(
   nodes: readonly OrgNode[],
-  request: ApprovalRouteRequest,
+  request: ApprovalRouteRequestInput,
   existingDecision: ApprovalRouteDecision,
   event: ApprovalRouteLifecycleEvent,
   delegationMap: Readonly<Record<string, string>> = {},
@@ -509,7 +512,7 @@ function normalizeThresholdCny(
 }
 
 function normalizeApprovalAmount(
-  request: ApprovalRouteRequest,
+  request: NormalizedApprovalRouteRequest,
   defaultFxRate: number = getDefaultFxRateUsdToCny(),
 ): ApprovalAmountSnapshot {
   if (request.amount != null) {

@@ -70,7 +70,7 @@ test("GroupRoleMappingService.register deduplicates roleIds in audit", () => {
   const log = service.listAuditLog();
 
   // Should be deduplicated to just 2 unique roles
-  assert.deepEqual(log[0]!.roleIds.sort(), ["admin", "superuser"]);
+  assert.deepEqual([...log[0]!.roleIds].sort(), ["admin", "superuser"]);
 });
 
 test("GroupRoleMappingService.unregister does not record if rule not found", () => {
