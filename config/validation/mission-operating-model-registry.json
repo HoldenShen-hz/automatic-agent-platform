@@ -1,23 +1,79 @@
 {
-  "version": "2026-05-21",
+  "version": "2026-05-22",
   "gates": [
     {
       "gateId": "GATE-MISSION-PLAYBOOK-001",
       "defaultSeverity": "P0",
       "ciJob": "playbook-validate",
       "runbookId": "D.35",
-      "owner": "mission-ops"
+      "owner": "orchestration-owner"
+    },
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-002",
+      "defaultSeverity": "P0",
+      "ciJob": "playbook-validate",
+      "runbookId": "D.35",
+      "owner": "orchestration-owner"
+    },
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-003",
+      "defaultSeverity": "P1",
+      "ciJob": "playbook-validate",
+      "runbookId": "D.36",
+      "owner": "reliability-owner"
+    },
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-004",
+      "defaultSeverity": "P0",
+      "ciJob": "stage-exit-e2e",
+      "runbookId": "D.37",
+      "owner": "runtime-owner"
+    },
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-005",
+      "defaultSeverity": "P0",
+      "ciJob": "playbook-validate",
+      "runbookId": "D.35",
+      "owner": "orchestration-owner"
+    },
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-006",
+      "defaultSeverity": "P0",
+      "ciJob": "playbook-validate",
+      "runbookId": "D.35",
+      "owner": "orchestration-owner"
+    },
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-007",
+      "defaultSeverity": "P0",
+      "ciJob": "playbook-validate",
+      "runbookId": "D.35",
+      "owner": "orchestration-owner"
+    },
+    {
+      "gateId": "GATE-MISSION-PLAYBOOK-008",
+      "defaultSeverity": "P1",
+      "ciJob": "playbook-validate",
+      "runbookId": "D.35",
+      "owner": "orchestration-owner"
     },
     {
       "gateId": "GATE-MISSION-OUTCOME-001",
       "defaultSeverity": "P1",
       "ciJob": "mission-outcome-validate",
-      "runbookId": "D.36",
+      "runbookId": "D.38",
       "owner": "quality-owner"
     },
     {
       "gateId": "GATE-SKILL-CANDIDATE-001",
       "defaultSeverity": "P1",
+      "ciJob": "skill-candidate-validate",
+      "runbookId": "D.39A",
+      "owner": "skill-owner"
+    },
+    {
+      "gateId": "GATE-SKILL-CANDIDATE-002",
+      "defaultSeverity": "P0",
       "ciJob": "skill-candidate-validate",
       "runbookId": "D.39A",
       "owner": "skill-owner"
@@ -52,55 +108,166 @@
     }
   ],
   "metrics": [
-    {
-      "metric": "aa.mission.outcome.measurement_missing.count",
-      "owner": "quality-owner",
-      "gateId": "GATE-MISSION-OUTCOME-001"
-    },
-    {
-      "metric": "aa.failure_mode.detected.count",
-      "owner": "reliability-owner"
-    },
-    {
-      "metric": "aa.skill_candidate.conversion_without_approval.count",
-      "owner": "skill-owner",
-      "gateId": "GATE-SKILL-CANDIDATE-001"
-    },
-    {
-      "metric": "aa.workflow_recording.retention_failure.count",
-      "owner": "compliance-owner",
-      "gateId": "GATE-WORKFLOW-RECORDING-003"
-    }
+    { "metric": "aa.mission.playbook.missing.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-001" },
+    { "metric": "aa.mission.playbook.signature_missing.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-005" },
+    { "metric": "aa.mission.playbook.rollback_missing.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-006" },
+    { "metric": "aa.mission.playbook.revoked_used_for_new_mission.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-007" },
+    { "metric": "aa.mission.playbook.auto_drift.count", "owner": "runtime-owner", "gateId": "GATE-MISSION-PLAYBOOK-008" },
+    { "metric": "aa.mission.playbook.migration_without_approval.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-008" },
+    { "metric": "aa.mission.playbook.migration_without_compatibility_report.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-008" },
+    { "metric": "aa.mission.playbook.use_last_active.count", "owner": "orchestration-owner" },
+    { "metric": "aa.mission.playbook.unsafe_fallback_blocked.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-008" },
+    { "metric": "aa.mission.stage.exit_criteria_missing.count", "owner": "orchestration-owner", "gateId": "GATE-MISSION-PLAYBOOK-001" },
+    { "metric": "aa.mission.stage.failure_mode_missing.count", "owner": "reliability-owner", "gateId": "GATE-MISSION-PLAYBOOK-003" },
+    { "metric": "aa.mission.stage.advance_without_decision.count", "owner": "runtime-owner", "gateId": "GATE-MISSION-PLAYBOOK-004" },
+    { "metric": "aa.mission.outcome.measurement_missing.count", "owner": "quality-owner", "gateId": "GATE-MISSION-OUTCOME-001" },
+    { "metric": "aa.mission.outcome.quality_score", "owner": "quality-owner", "gateId": "GATE-MISSION-OUTCOME-001" },
+    { "metric": "aa.mission.outcome.evidence_coverage_ratio", "owner": "evidence-owner", "gateId": "GATE-MISSION-OUTCOME-001" },
+    { "metric": "aa.mission.outcome.cost_per_accepted_output_usd", "owner": "cost-owner" },
+    { "metric": "aa.mission.outcome.time_to_useful_output_ms", "owner": "runtime-owner" },
+    { "metric": "aa.mission.outcome.adoption_ratio", "owner": "mission-owner" },
+    { "metric": "aa.failure_mode.detected.count", "owner": "reliability-owner" },
+    { "metric": "aa.failure_mode.recurrence.count", "owner": "reliability-owner", "gateId": "GATE-MISSION-PLAYBOOK-003" },
+    { "metric": "aa.skill_candidate.created.count", "owner": "skill-owner" },
+    { "metric": "aa.skill_candidate.approved.count", "owner": "skill-owner" },
+    { "metric": "aa.skill_candidate.converted_to_skillpack.count", "owner": "skill-owner" },
+    { "metric": "aa.skill_candidate.conversion_without_approval.count", "owner": "skill-owner", "gateId": "GATE-SKILL-CANDIDATE-002" },
+    { "metric": "aa.skill_candidate.conversion_without_eval.count", "owner": "skill-owner", "gateId": "GATE-SKILL-CANDIDATE-001" },
+    { "metric": "aa.skill_candidate.conversion_without_policy.count", "owner": "skill-owner", "gateId": "GATE-SKILL-CANDIDATE-001" },
+    { "metric": "aa.skillpack.activated.count", "owner": "skill-owner" },
+    { "metric": "aa.skillpack.activation_without_manifest_validation.count", "owner": "skill-owner", "gateId": "GATE-SKILLPACK-001" },
+    { "metric": "aa.skillpack.activation_without_policy_validation.count", "owner": "skill-owner", "gateId": "GATE-SKILLPACK-001" },
+    { "metric": "aa.skillpack.activation_without_sbom_scan.count", "owner": "security-owner", "gateId": "GATE-SKILLPACK-001" },
+    { "metric": "aa.skillpack.activation_without_eval_pass.count", "owner": "skill-owner", "gateId": "GATE-SKILLPACK-001" },
+    { "metric": "aa.skillpack.activation_without_signature.count", "owner": "security-owner", "gateId": "GATE-SKILLPACK-001" },
+    { "metric": "aa.skillpack.activation_without_canary.count", "owner": "skill-owner", "gateId": "GATE-SKILLPACK-001" },
+    { "metric": "aa.skillpack.activation_without_rollback.count", "owner": "skill-owner", "gateId": "GATE-SKILLPACK-001" },
+    { "metric": "aa.workflow.recording.policy_bypass.count", "owner": "security-owner", "gateId": "GATE-WORKFLOW-RECORDING-001" },
+    { "metric": "aa.workflow.recording.restricted_data_capture.count", "owner": "security-owner", "gateId": "GATE-WORKFLOW-RECORDING-002" },
+    { "metric": "aa.workflow.recording.retention_expired_not_deleted.count", "owner": "security-owner", "gateId": "GATE-WORKFLOW-RECORDING-003" },
+    { "metric": "aa.workflow.recording.deletion_failed.count", "owner": "security-owner", "gateId": "GATE-WORKFLOW-RECORDING-003" },
+    { "metric": "aa.claim.unsupported.count", "owner": "evidence-owner" },
+    { "metric": "aa.source.reliability.mean", "owner": "data-owner" },
+    { "metric": "aa.security.critical_findings.count", "owner": "security-owner" },
+    { "metric": "aa.test.unit.failed.count", "owner": "test-owner" }
   ],
   "events": [
     "platform.mission.stage_exit_evaluated",
     "platform.mission.failure_mode_detected",
     "platform.mission.outcome_measured",
+    "mission.playbook.registered",
+    "mission.playbook.validated",
+    "mission.playbook.validation_failed",
+    "mission.playbook.rejected",
+    "mission.playbook.canary.started",
+    "mission.playbook.activated",
+    "mission.playbook.updated",
+    "mission.playbook.deprecated",
+    "mission.playbook.suspended",
+    "mission.playbook.revoked",
+    "mission.playbook.archived",
+    "mission.stage.started",
+    "mission.stage.exit_evaluated",
+    "mission.stage.advanced",
+    "mission.stage.held",
+    "mission.stage.rollback_requested",
+    "mission.stage.terminated",
+    "mission.stage.completed",
+    "mission.outcome.measured",
+    "failure_mode.detected",
+    "failure_mode.learning_object_created",
+    "workflow.recording.started",
     "workflow.recording.completed",
+    "workflow.recording.retention_scheduled",
     "workflow.recording.deleted",
+    "workflow.recording.deletion_failed",
     "skill_candidate.created",
-    "skillpack.activated"
+    "skill_candidate.review_requested",
+    "skill_candidate.approved",
+    "skill_candidate.converted_to_skillpack",
+    "skill_candidate.rejected",
+    "skillpack.draft.created",
+    "skillpack.manifest.validated",
+    "skillpack.policy.validated",
+    "skillpack.policy.rejected",
+    "skillpack.sbom.scanned",
+    "skillpack.sbom.failed",
+    "skillpack.eval.passed",
+    "skillpack.eval.failed",
+    "skillpack.signed",
+    "skillpack.canary.started",
+    "skillpack.canary.failed",
+    "skillpack.activated",
+    "skillpack.suspended",
+    "skillpack.deprecated",
+    "skillpack.revoked",
+    "skillpack.archived",
+    "skillpack.rollback.requested",
+    "skillpack.rollback.completed"
   ],
   "runbooks": [
     {
       "runbookId": "D.35",
-      "linkedGateIds": ["GATE-MISSION-PLAYBOOK-001"],
-      "linkedMetrics": ["aa.failure_mode.detected.count"]
+      "linkedGateIds": [
+        "GATE-MISSION-PLAYBOOK-001",
+        "GATE-MISSION-PLAYBOOK-002",
+        "GATE-MISSION-PLAYBOOK-005",
+        "GATE-MISSION-PLAYBOOK-006",
+        "GATE-MISSION-PLAYBOOK-007",
+        "GATE-MISSION-PLAYBOOK-008"
+      ],
+      "linkedMetrics": [
+        "aa.mission.playbook.missing.count",
+        "aa.mission.stage.exit_criteria_missing.count",
+        "aa.mission.playbook.signature_missing.count",
+        "aa.mission.playbook.rollback_missing.count",
+        "aa.mission.playbook.revoked_used_for_new_mission.count",
+        "aa.mission.playbook.auto_drift.count",
+        "aa.mission.playbook.migration_without_approval.count",
+        "aa.mission.playbook.migration_without_compatibility_report.count",
+        "aa.mission.playbook.unsafe_fallback_blocked.count"
+      ]
     },
     {
       "runbookId": "D.36",
+      "linkedGateIds": ["GATE-MISSION-PLAYBOOK-003"],
+      "linkedMetrics": ["aa.mission.stage.failure_mode_missing.count", "aa.failure_mode.recurrence.count"]
+    },
+    {
+      "runbookId": "D.37",
+      "linkedGateIds": ["GATE-MISSION-PLAYBOOK-004"],
+      "linkedMetrics": ["aa.mission.stage.advance_without_decision.count"]
+    },
+    {
+      "runbookId": "D.38",
       "linkedGateIds": ["GATE-MISSION-OUTCOME-001"],
-      "linkedMetrics": ["aa.mission.outcome.measurement_missing.count"]
+      "linkedMetrics": [
+        "aa.mission.outcome.measurement_missing.count",
+        "aa.mission.outcome.quality_score",
+        "aa.mission.outcome.evidence_coverage_ratio"
+      ]
     },
     {
       "runbookId": "D.39A",
-      "linkedGateIds": ["GATE-SKILL-CANDIDATE-001"],
-      "linkedMetrics": ["aa.skill_candidate.conversion_without_approval.count"]
+      "linkedGateIds": ["GATE-SKILL-CANDIDATE-001", "GATE-SKILL-CANDIDATE-002"],
+      "linkedMetrics": [
+        "aa.skill_candidate.conversion_without_approval.count",
+        "aa.skill_candidate.conversion_without_eval.count",
+        "aa.skill_candidate.conversion_without_policy.count"
+      ]
     },
     {
       "runbookId": "D.39B",
       "linkedGateIds": ["GATE-SKILLPACK-001"],
-      "linkedMetrics": []
+      "linkedMetrics": [
+        "aa.skillpack.activation_without_manifest_validation.count",
+        "aa.skillpack.activation_without_policy_validation.count",
+        "aa.skillpack.activation_without_sbom_scan.count",
+        "aa.skillpack.activation_without_eval_pass.count",
+        "aa.skillpack.activation_without_signature.count",
+        "aa.skillpack.activation_without_canary.count",
+        "aa.skillpack.activation_without_rollback.count"
+      ]
     },
     {
       "runbookId": "D.40",
@@ -109,7 +276,12 @@
         "GATE-WORKFLOW-RECORDING-002",
         "GATE-WORKFLOW-RECORDING-003"
       ],
-      "linkedMetrics": ["aa.workflow_recording.retention_failure.count"]
+      "linkedMetrics": [
+        "aa.workflow.recording.policy_bypass.count",
+        "aa.workflow.recording.restricted_data_capture.count",
+        "aa.workflow.recording.retention_expired_not_deleted.count",
+        "aa.workflow.recording.deletion_failed.count"
+      ]
     }
   ],
   "ciJobs": [
@@ -117,13 +289,21 @@
       "jobId": "playbook-validate",
       "command": "npm run playbook:validate",
       "artifact": "playbook-validation-report.json",
-      "blocks": ["GATE-MISSION-PLAYBOOK-001"]
+      "blocks": [
+        "GATE-MISSION-PLAYBOOK-001",
+        "GATE-MISSION-PLAYBOOK-002",
+        "GATE-MISSION-PLAYBOOK-003",
+        "GATE-MISSION-PLAYBOOK-005",
+        "GATE-MISSION-PLAYBOOK-006",
+        "GATE-MISSION-PLAYBOOK-007",
+        "GATE-MISSION-PLAYBOOK-008"
+      ]
     },
     {
       "jobId": "stage-exit-e2e",
       "command": "npm run test:e2e:stage-exit",
       "artifact": "stage-exit-e2e-report.json",
-      "blocks": ["GATE-MISSION-PLAYBOOK-001"]
+      "blocks": ["GATE-MISSION-PLAYBOOK-004"]
     },
     {
       "jobId": "mission-outcome-validate",
@@ -135,7 +315,7 @@
       "jobId": "skill-candidate-validate",
       "command": "npm run skill-candidate:validate",
       "artifact": "skill-candidate-validation-report.json",
-      "blocks": ["GATE-SKILL-CANDIDATE-001"]
+      "blocks": ["GATE-SKILL-CANDIDATE-001", "GATE-SKILL-CANDIDATE-002"]
     },
     {
       "jobId": "skillpack-validate",
@@ -174,18 +354,14 @@
       "stages": [
         {
           "stageId": "scope",
-          "title": "Research scope",
+          "title": "Research evidence playbook start",
           "exitCriteria": [
             {
               "criterionId": "scope.evidence",
-              "name": "Scope brief exists",
+              "name": "Entry evidence captured",
               "severity": "P0",
               "gateId": "GATE-MISSION-PLAYBOOK-001",
-              "expression": {
-                "type": "evidence_exists",
-                "evidenceKind": "research_brief",
-                "minCount": 1
-              },
+              "expression": { "type": "evidence_exists", "evidenceKind": "research_brief", "minCount": 1 },
               "requiredEvidenceRefs": ["evidence:research_brief"],
               "requiredMetricRefs": [],
               "failureModeRef": "failure:scope:missing_evidence"
@@ -197,18 +373,14 @@
         },
         {
           "stageId": "evidence_review",
-          "title": "Evidence review",
+          "title": "Research evidence playbook exit",
           "exitCriteria": [
             {
               "criterionId": "evidence_review.evidence",
-              "name": "Claims are evidenced",
+              "name": "Exit evidence captured",
               "severity": "P1",
               "gateId": "GATE-MISSION-OUTCOME-001",
-              "expression": {
-                "type": "evidence_exists",
-                "evidenceKind": "claim_evidence",
-                "minCount": 1
-              },
+              "expression": { "type": "evidence_exists", "evidenceKind": "claim_evidence", "minCount": 1 },
               "requiredEvidenceRefs": ["evidence:claim_evidence"],
               "requiredMetricRefs": [],
               "failureModeRef": "failure:evidence_review:missing_evidence"
@@ -229,9 +401,386 @@
           "requiredCapabilities": ["mission.stage.advance"]
         }
       ],
+      "compatibility": { "minPlatformVersion": "2.0.0", "compatibleMissionSchemaVersions": ["1.x"] },
+      "rollout": { "mode": "full", "percentage": 100, "targetTenants": [], "rolloutRef": "rollout:mission-playbook-research:1.0.0" },
+      "signature": {
+        "signedBy": "platform-architecture",
+        "signatureRef": "signature:mission-playbook-research:1.0.0",
+        "signedAt": "2026-05-21T00:00:00.000Z"
+      },
+      "rollback": { "previousVersion": null, "rollbackAllowed": true, "rollbackRef": "rollback:mission-playbook-research:1.0.0" },
       "signatureRef": "signature:mission-playbook-research:1.0.0",
       "rollbackRef": "rollback:mission-playbook-research:1.0.0",
       "compatibilityRef": "compat:mission-playbook-research:1.0.0",
+      "createdAt": "2026-05-21T00:00:00.000Z",
+      "updatedAt": "2026-05-21T00:00:00.000Z"
+    },
+    {
+      "playbookId": "mission-playbook-code",
+      "version": "1.0.0",
+      "missionType": "program",
+      "title": "Code delivery playbook",
+      "owner": "mission-ops",
+      "status": "active",
+      "entryStageId": "design",
+      "stages": [
+        {
+          "stageId": "design",
+          "title": "Code delivery playbook start",
+          "exitCriteria": [
+            {
+              "criterionId": "design.evidence",
+              "name": "Entry evidence captured",
+              "severity": "P0",
+              "gateId": "GATE-MISSION-PLAYBOOK-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "plan_bundle", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:plan_bundle"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:design:missing_evidence"
+            }
+          ],
+          "failureModeRefs": ["failure:design:missing_evidence"],
+          "defaultSkillRefs": ["skill:code-plan"],
+          "evidenceRequirements": ["plan_bundle"]
+        },
+        {
+          "stageId": "verification",
+          "title": "Code delivery playbook exit",
+          "exitCriteria": [
+            {
+              "criterionId": "verification.evidence",
+              "name": "Exit evidence captured",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-OUTCOME-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "test_report", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:test_report"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:verification:missing_evidence"
+            }
+          ],
+          "failureModeRefs": ["failure:verification:missing_evidence"],
+          "defaultSkillRefs": ["skill:code-review"],
+          "evidenceRequirements": ["test_report"]
+        }
+      ],
+      "edges": [
+        {
+          "edgeId": "design_to_verification",
+          "fromStageId": "design",
+          "toStageId": "verification",
+          "requiredGateIds": ["GATE-MISSION-PLAYBOOK-001", "GATE-MISSION-OUTCOME-001"],
+          "requiresHitl": true,
+          "requiredCapabilities": ["mission.stage.advance"]
+        }
+      ],
+      "compatibility": { "minPlatformVersion": "2.0.0", "compatibleMissionSchemaVersions": ["1.x"] },
+      "rollout": { "mode": "full", "percentage": 100, "targetTenants": [], "rolloutRef": "rollout:mission-playbook-code:1.0.0" },
+      "signature": {
+        "signedBy": "platform-architecture",
+        "signatureRef": "signature:mission-playbook-code:1.0.0",
+        "signedAt": "2026-05-21T00:00:00.000Z"
+      },
+      "rollback": { "previousVersion": null, "rollbackAllowed": true, "rollbackRef": "rollback:mission-playbook-code:1.0.0" },
+      "signatureRef": "signature:mission-playbook-code:1.0.0",
+      "rollbackRef": "rollback:mission-playbook-code:1.0.0",
+      "compatibilityRef": "compat:mission-playbook-code:1.0.0",
+      "createdAt": "2026-05-21T00:00:00.000Z",
+      "updatedAt": "2026-05-21T00:00:00.000Z"
+    },
+    {
+      "playbookId": "mission-playbook-ops",
+      "version": "1.0.0",
+      "missionType": "incident",
+      "title": "Incident response playbook",
+      "owner": "mission-ops",
+      "status": "active",
+      "entryStageId": "triage",
+      "stages": [
+        {
+          "stageId": "triage",
+          "title": "Incident response playbook start",
+          "exitCriteria": [
+            {
+              "criterionId": "triage.evidence",
+              "name": "Entry evidence captured",
+              "severity": "P0",
+              "gateId": "GATE-MISSION-PLAYBOOK-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "incident_snapshot", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:incident_snapshot"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:triage:missing_evidence"
+            }
+          ],
+          "failureModeRefs": ["failure:triage:missing_evidence"],
+          "defaultSkillRefs": ["skill:ops-triage"],
+          "evidenceRequirements": ["incident_snapshot"]
+        },
+        {
+          "stageId": "stabilize",
+          "title": "Incident response playbook exit",
+          "exitCriteria": [
+            {
+              "criterionId": "stabilize.evidence",
+              "name": "Exit evidence captured",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-OUTCOME-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "rollback_or_fix_evidence", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:rollback_or_fix_evidence"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:stabilize:missing_evidence"
+            }
+          ],
+          "failureModeRefs": ["failure:stabilize:missing_evidence"],
+          "defaultSkillRefs": ["skill:ops-stabilize"],
+          "evidenceRequirements": ["rollback_or_fix_evidence"]
+        }
+      ],
+      "edges": [
+        {
+          "edgeId": "triage_to_stabilize",
+          "fromStageId": "triage",
+          "toStageId": "stabilize",
+          "requiredGateIds": ["GATE-MISSION-PLAYBOOK-001", "GATE-MISSION-OUTCOME-001"],
+          "requiresHitl": true,
+          "requiredCapabilities": ["mission.stage.advance"]
+        }
+      ],
+      "compatibility": { "minPlatformVersion": "2.0.0", "compatibleMissionSchemaVersions": ["1.x"] },
+      "rollout": { "mode": "full", "percentage": 100, "targetTenants": [], "rolloutRef": "rollout:mission-playbook-ops:1.0.0" },
+      "signature": {
+        "signedBy": "platform-architecture",
+        "signatureRef": "signature:mission-playbook-ops:1.0.0",
+        "signedAt": "2026-05-21T00:00:00.000Z"
+      },
+      "rollback": { "previousVersion": null, "rollbackAllowed": true, "rollbackRef": "rollback:mission-playbook-ops:1.0.0" },
+      "signatureRef": "signature:mission-playbook-ops:1.0.0",
+      "rollbackRef": "rollback:mission-playbook-ops:1.0.0",
+      "compatibilityRef": "compat:mission-playbook-ops:1.0.0",
+      "createdAt": "2026-05-21T00:00:00.000Z",
+      "updatedAt": "2026-05-21T00:00:00.000Z"
+    },
+    {
+      "playbookId": "mission-playbook-benchmark-monitoring",
+      "version": "1.0.0",
+      "missionType": "benchmark_monitoring",
+      "title": "Benchmark monitoring playbook",
+      "owner": "mission-ops",
+      "status": "active",
+      "entryStageId": "ingest",
+      "stages": [
+        {
+          "stageId": "ingest",
+          "title": "Ingest benchmark sources",
+          "exitCriteria": [
+            {
+              "criterionId": "benchmark.ingest.source_coverage",
+              "name": "Benchmark source snapshot exists",
+              "severity": "P0",
+              "gateId": "GATE-MISSION-PLAYBOOK-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "benchmark_source_snapshot", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:benchmark_source_snapshot"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:benchmark.ingest:missing_source_snapshot"
+            }
+          ],
+          "failureModeRefs": ["failure:benchmark.ingest:missing_source_snapshot"],
+          "defaultSkillRefs": ["skill:benchmark-source-ingestion"],
+          "evidenceRequirements": ["benchmark_source_snapshot"]
+        },
+        {
+          "stageId": "normalize",
+          "title": "Normalize benchmark evidence",
+          "exitCriteria": [
+            {
+              "criterionId": "benchmark.normalize.dataset_bound",
+              "name": "Normalized benchmark snapshot exists",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-PLAYBOOK-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "benchmark_normalized_snapshot", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:benchmark_normalized_snapshot"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:benchmark.normalize:missing_normalized_snapshot"
+            }
+          ],
+          "failureModeRefs": ["failure:benchmark.normalize:missing_normalized_snapshot"],
+          "defaultSkillRefs": ["skill:benchmark-normalizer"],
+          "evidenceRequirements": ["benchmark_normalized_snapshot"]
+        },
+        {
+          "stageId": "evaluate",
+          "title": "Evaluate benchmark results",
+          "exitCriteria": [
+            {
+              "criterionId": "benchmark.evaluate.result_validated",
+              "name": "Benchmark quality threshold met",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-OUTCOME-001",
+              "expression": {
+                "type": "metric_threshold",
+                "metric": "aa.mission.outcome.quality_score",
+                "operator": ">=",
+                "value": 0.85
+              },
+              "requiredEvidenceRefs": ["evidence:benchmark_evaluation_report"],
+              "requiredMetricRefs": ["aa.mission.outcome.quality_score"],
+              "failureModeRef": "failure:benchmark.evaluate:quality_below_threshold"
+            }
+          ],
+          "failureModeRefs": ["failure:benchmark.evaluate:quality_below_threshold"],
+          "defaultSkillRefs": ["skill:benchmark-run-analysis"],
+          "evidenceRequirements": ["benchmark_evaluation_report"]
+        },
+        {
+          "stageId": "compare",
+          "title": "Compare benchmark baselines",
+          "exitCriteria": [
+            {
+              "criterionId": "benchmark.compare.baseline_bound",
+              "name": "Comparison matrix exists",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-PLAYBOOK-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "benchmark_comparison_matrix", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:benchmark_comparison_matrix"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:benchmark.compare:missing_comparison"
+            }
+          ],
+          "failureModeRefs": ["failure:benchmark.compare:missing_comparison"],
+          "defaultSkillRefs": ["skill:benchmark-comparator"],
+          "evidenceRequirements": ["benchmark_comparison_matrix"]
+        },
+        {
+          "stageId": "report",
+          "title": "Prepare benchmark report",
+          "exitCriteria": [
+            {
+              "criterionId": "benchmark.report.evidence_ready",
+              "name": "Benchmark report exists",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-OUTCOME-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "benchmark_report", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:benchmark_report"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:benchmark.report:missing_report"
+            }
+          ],
+          "failureModeRefs": ["failure:benchmark.report:missing_report"],
+          "defaultSkillRefs": ["skill:benchmark-reporter"],
+          "evidenceRequirements": ["benchmark_report"]
+        },
+        {
+          "stageId": "alert",
+          "title": "Assess alertability",
+          "exitCriteria": [
+            {
+              "criterionId": "benchmark.alert.regression_triaged",
+              "name": "Regression triage evidence exists",
+              "severity": "P0",
+              "gateId": "GATE-MISSION-PLAYBOOK-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "benchmark_alert_triage", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:benchmark_alert_triage"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:benchmark.alert:regression_unexplained"
+            }
+          ],
+          "failureModeRefs": [
+            "failure:benchmark.alert:regression_unexplained",
+            "failure:benchmark.alert:contamination_risk",
+            "failure:benchmark.alert:metric_drift"
+          ],
+          "defaultSkillRefs": ["skill:benchmark-alert-triage"],
+          "evidenceRequirements": ["benchmark_alert_triage"]
+        },
+        {
+          "stageId": "improve",
+          "title": "Improve benchmark workflow",
+          "exitCriteria": [
+            {
+              "criterionId": "benchmark.improve.learning_captured",
+              "name": "Learning object exists",
+              "severity": "P1",
+              "gateId": "GATE-MISSION-OUTCOME-001",
+              "expression": { "type": "evidence_exists", "evidenceKind": "benchmark_learning_object", "minCount": 1 },
+              "requiredEvidenceRefs": ["evidence:benchmark_learning_object"],
+              "requiredMetricRefs": [],
+              "failureModeRef": "failure:benchmark.improve:learning_missing"
+            }
+          ],
+          "failureModeRefs": ["failure:benchmark.improve:learning_missing"],
+          "defaultSkillRefs": ["skill:benchmark-improver"],
+          "evidenceRequirements": ["benchmark_learning_object"]
+        }
+      ],
+      "edges": [
+        {
+          "edgeId": "benchmark_ingest_to_normalize",
+          "fromStageId": "ingest",
+          "toStageId": "normalize",
+          "requiredGateIds": ["GATE-MISSION-PLAYBOOK-001"],
+          "requiresHitl": false,
+          "requiredCapabilities": ["mission.stage.advance"]
+        },
+        {
+          "edgeId": "benchmark_normalize_to_evaluate",
+          "fromStageId": "normalize",
+          "toStageId": "evaluate",
+          "requiredGateIds": ["GATE-MISSION-PLAYBOOK-001", "GATE-MISSION-OUTCOME-001"],
+          "requiresHitl": false,
+          "requiredCapabilities": ["mission.stage.advance"]
+        },
+        {
+          "edgeId": "benchmark_evaluate_to_compare",
+          "fromStageId": "evaluate",
+          "toStageId": "compare",
+          "requiredGateIds": ["GATE-MISSION-OUTCOME-001"],
+          "requiresHitl": false,
+          "requiredCapabilities": ["mission.stage.advance"]
+        },
+        {
+          "edgeId": "benchmark_compare_to_report",
+          "fromStageId": "compare",
+          "toStageId": "report",
+          "requiredGateIds": ["GATE-MISSION-PLAYBOOK-001"],
+          "requiresHitl": true,
+          "requiredCapabilities": ["mission.stage.advance"]
+        },
+        {
+          "edgeId": "benchmark_report_to_alert",
+          "fromStageId": "report",
+          "toStageId": "alert",
+          "requiredGateIds": ["GATE-MISSION-OUTCOME-001"],
+          "requiresHitl": true,
+          "requiredCapabilities": ["mission.stage.advance"]
+        },
+        {
+          "edgeId": "benchmark_alert_to_improve",
+          "fromStageId": "alert",
+          "toStageId": "improve",
+          "requiredGateIds": ["GATE-MISSION-PLAYBOOK-001", "GATE-MISSION-OUTCOME-001"],
+          "requiresHitl": true,
+          "requiredCapabilities": ["mission.stage.advance"]
+        }
+      ],
+      "compatibility": { "minPlatformVersion": "2.0.0", "compatibleMissionSchemaVersions": ["1.x"] },
+      "rollout": {
+        "mode": "full",
+        "percentage": 100,
+        "targetTenants": [],
+        "rolloutRef": "rollout:mission-playbook-benchmark-monitoring:1.0.0"
+      },
+      "signature": {
+        "signedBy": "platform-architecture",
+        "signatureRef": "signature:mission-playbook-benchmark-monitoring:1.0.0",
+        "signedAt": "2026-05-21T00:00:00.000Z"
+      },
+      "rollback": {
+        "previousVersion": null,
+        "rollbackAllowed": true,
+        "rollbackRef": "rollback:mission-playbook-benchmark-monitoring:1.0.0"
+      },
+      "signatureRef": "signature:mission-playbook-benchmark-monitoring:1.0.0",
+      "rollbackRef": "rollback:mission-playbook-benchmark-monitoring:1.0.0",
+      "compatibilityRef": "compat:mission-playbook-benchmark-monitoring:1.0.0",
       "createdAt": "2026-05-21T00:00:00.000Z",
       "updatedAt": "2026-05-21T00:00:00.000Z"
     }

@@ -6,11 +6,13 @@ import {
   MissionContextSnapshotSchema,
   MissionEventEnvelopeSchema,
   MissionMembershipSchema,
+  MissionPlaybookBindingSchema,
   MissionRecordSchema,
   type MissionContextSnapshot,
   type MissionEventEnvelope,
   type MissionEventType,
   type MissionMembership,
+  type MissionPlaybookBinding,
   type MissionRecord,
   type RuntimeConstraintSet,
 } from "../../contracts/mission/index.js";
@@ -32,6 +34,7 @@ export interface CreateMissionRecordInput {
   readonly riskProfileRef?: string | null;
   readonly budgetEnvelopeRef?: string | null;
   readonly knowledgeBoundaryRef?: string | null;
+  readonly playbookBinding?: MissionPlaybookBinding;
   readonly defaultWorkflowTemplateRefs?: readonly string[];
   readonly metadata?: JsonValue;
   readonly createdBy: string;
@@ -128,6 +131,7 @@ export class InMemoryMissionRepository implements MissionRepository {
       riskProfileRef: input.riskProfileRef ?? null,
       budgetEnvelopeRef: input.budgetEnvelopeRef ?? null,
       knowledgeBoundaryRef: input.knowledgeBoundaryRef ?? null,
+      playbookBinding: input.playbookBinding == null ? undefined : MissionPlaybookBindingSchema.parse(input.playbookBinding),
       defaultWorkflowTemplateRefs: [...(input.defaultWorkflowTemplateRefs ?? [])],
       metadata: input.metadata ?? {},
       freezeReason: null,

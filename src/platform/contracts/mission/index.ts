@@ -14,7 +14,7 @@ export const MissionStatusSchema = z.enum([
 ]);
 export type MissionStatus = z.infer<typeof MissionStatusSchema>;
 
-export const MissionTypeSchema = z.enum(["ad_hoc", "formal", "program", "incident", "scheduled"]);
+export const MissionTypeSchema = z.enum(["ad_hoc", "formal", "program", "incident", "scheduled", "benchmark_monitoring"]);
 export type MissionType = z.infer<typeof MissionTypeSchema>;
 
 export const MissionPrioritySchema = z.enum(["low", "normal", "high", "critical"]);
@@ -81,6 +81,16 @@ export const MissionBudgetEnvelopeSchema = z.object({
 }).strict();
 export type MissionBudgetEnvelope = z.infer<typeof MissionBudgetEnvelopeSchema>;
 
+export const MissionPlaybookBindingSchema = z.object({
+  playbookId: z.string().min(1),
+  playbookVersion: z.string().min(1),
+  resolutionAuditRef: z.string().min(1),
+  lockedAt: isoString,
+  lockedBy: z.string().min(1),
+  migrationPlanRefs: z.array(z.string().min(1)),
+}).strict();
+export type MissionPlaybookBinding = z.infer<typeof MissionPlaybookBindingSchema>;
+
 export const MissionRecordSchema = z.object({
   missionId: z.string().min(1),
   tenantId: z.string().min(1),
@@ -99,6 +109,7 @@ export const MissionRecordSchema = z.object({
   riskProfileRef: z.string().min(1).nullable(),
   budgetEnvelopeRef: z.string().min(1).nullable(),
   knowledgeBoundaryRef: z.string().min(1).nullable(),
+  playbookBinding: MissionPlaybookBindingSchema.optional(),
   defaultWorkflowTemplateRefs: z.array(z.string()),
   metadata: JsonValueSchema,
   freezeReason: z.string().min(1).nullable(),

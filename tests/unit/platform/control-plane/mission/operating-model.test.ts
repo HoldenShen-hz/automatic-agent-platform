@@ -779,10 +779,10 @@ test("SkillCandidatePipeline listPacks returns all packs", () => {
 // createBuiltinMissionPlaybooks Tests
 // ============================================
 
-test("createBuiltinMissionPlaybooks returns three playbooks", () => {
+test("createBuiltinMissionPlaybooks returns four playbooks", () => {
   const playbooks = createBuiltinMissionPlaybooks();
 
-  assert.equal(playbooks.length, 3);
+  assert.equal(playbooks.length, 4);
 });
 
 test("createBuiltinMissionPlaybooks contains research playbook", () => {
@@ -810,6 +810,15 @@ test("createBuiltinMissionPlaybooks contains ops playbook", () => {
   assert.equal(ops!.missionType, "incident");
 });
 
+test("createBuiltinMissionPlaybooks contains benchmark monitoring playbook", () => {
+  const playbooks = createBuiltinMissionPlaybooks();
+
+  const benchmark = playbooks.find((p) => p.playbookId === "mission-playbook-benchmark-monitoring");
+  assert.ok(benchmark !== undefined);
+  assert.equal(benchmark!.missionType, "benchmark_monitoring");
+  assert.equal(benchmark!.stages.length, 7);
+});
+
 test("createBuiltinMissionPlaybooks playbooks have valid structure", () => {
   const playbooks = createBuiltinMissionPlaybooks();
 
@@ -819,6 +828,9 @@ test("createBuiltinMissionPlaybooks playbooks have valid structure", () => {
     assert.ok(playbook.stages.length > 0);
     assert.ok(playbook.edges.length > 0);
     assert.ok(playbook.entryStageId.length > 0);
+    assert.equal(playbook.compatibility?.minPlatformVersion, "2.0.0");
+    assert.equal(playbook.rollback?.rollbackAllowed, true);
+    assert.ok(playbook.signatureRef !== null);
   }
 });
 

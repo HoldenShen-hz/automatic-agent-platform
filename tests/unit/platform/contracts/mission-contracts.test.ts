@@ -6,6 +6,9 @@ import {
   DEFAULT_RUNTIME_CONSTRAINT_SET,
   ExitCriterionExpressionSchema,
   MissionErrorEnvelopeSchema,
+  MissionPlaybookMigrationPlanSchema,
+  MissionPlaybookResolutionPolicySchema,
+  MissionPlaybookResolutionResultSchema,
   MissionOperatingModelRegistryPatchSchema,
   MissionPlaybookSchema,
   MissionRecordSchema,
@@ -36,6 +39,14 @@ test("MissionRecord schema is strict and requires canonical fields", () => {
     riskProfileRef: null,
     budgetEnvelopeRef: null,
     knowledgeBoundaryRef: null,
+    playbookBinding: {
+      playbookId: "mission-playbook-research",
+      playbookVersion: "1.0.0",
+      resolutionAuditRef: "audit:resolution:001",
+      lockedAt: "2026-05-13T00:00:00.000Z",
+      lockedBy: "user_001",
+      migrationPlanRefs: [],
+    },
     defaultWorkflowTemplateRefs: [],
     metadata: {},
     freezeReason: null,
@@ -160,6 +171,26 @@ test("Mission playbook contracts keep stage governance separate from runtime nod
       evidenceRequirements: ["claim_evidence"],
     }],
     edges: [],
+    compatibility: {
+      minPlatformVersion: "2.0.0",
+      compatibleMissionSchemaVersions: ["1.x"],
+    },
+    rollout: {
+      mode: "full",
+      percentage: 100,
+      targetTenants: [],
+      rolloutRef: "rollout:research",
+    },
+    signature: {
+      signedBy: "platform-architecture",
+      signatureRef: "sig:research",
+      signedAt: "2026-05-21T00:00:00.000Z",
+    },
+    rollback: {
+      previousVersion: null,
+      rollbackAllowed: true,
+      rollbackRef: "rollback:research",
+    },
     signatureRef: "sig:research",
     rollbackRef: "rollback:research",
     compatibilityRef: "compat:research",
@@ -192,13 +223,54 @@ test("Mission playbook contracts keep stage governance separate from runtime nod
   );
 });
 
+test("Mission playbook resolution and migration contracts stay machine parseable", () => {
+  const policy = MissionPlaybookResolutionPolicySchema.parse({
+    missionType: "formal",
+    tenantId: "tenant_001",
+    requestedPlaybookId: "mission-playbook-research",
+    requestedVersion: "1.0.0",
+    allowCanary: false,
+    tenantOverrideAllowed: true,
+    fallbackPolicy: "use_last_active",
+  });
+  const resolution = MissionPlaybookResolutionResultSchema.parse({
+    playbookId: "mission-playbook-research",
+    playbookVersion: "1.0.0",
+    resolutionReason: "last_active_fallback",
+    auditRef: "audit:resolution:001",
+  });
+  const migration = MissionPlaybookMigrationPlanSchema.parse({
+    migrationPlanId: "mpbmig_001",
+    fromPlaybookId: "mission-playbook-research",
+    fromVersion: "1.0.0",
+    toPlaybookId: "mission-playbook-research",
+    toVersion: "1.1.0",
+    affectedMissionIds: ["mis_001"],
+    migrationMode: "hold_then_manual",
+    compatibilityReportRef: "compatibility:report:001",
+    approvalRef: "approval:001",
+    rollbackPlanRef: "rollback:plan:001",
+    auditRef: "audit:migration:001",
+    createdAt: "2026-05-21T00:00:00.000Z",
+  });
+
+  assert.equal(policy.fallbackPolicy, "use_last_active");
+  assert.equal(resolution.resolutionReason, "last_active_fallback");
+  assert.equal(migration.migrationMode, "hold_then_manual");
+});
+
 test("Mission operating model validation registry patch stays machine parseable", () => {
   const patch = MissionOperatingModelRegistryPatchSchema.parse(JSON.parse(readFileSync(
     new URL("../../../../config/validation/mission-operating-model-registry.json", import.meta.url),
     "utf8",
   )));
+  const metricAlertPolicy = JSON.parse(readFileSync(
+    new URL("../../../../config/validation/mission-operating-model-metric-alert-policy.yaml", import.meta.url),
+    "utf8",
+  ));
 
   assert.equal(patch.ciJobs.some((job) => job.jobId === "playbook-validate"), true);
   assert.equal(patch.gates.some((gate) => gate.gateId === "GATE-WORKFLOW-RECORDING-003"), true);
   assert.equal(patch.events.includes("platform.mission.outcome_measured"), true);
+  assert.equal(metricAlertPolicy.metrics.some((entry: { metric: string }) => entry.metric === "aa.mission.playbook.use_last_active.count"), true);
 });

@@ -25,6 +25,8 @@ import {
   MissionLearningPromotionGate,
   MissionObservabilityPolicy,
   MissionPlaybookRegistry,
+  MissionPlaybookMigrationService,
+  MissionPlaybookResolver,
   MissionResolver,
   MissionRuntimeBindingService,
   StageExitGateService,
@@ -386,6 +388,27 @@ function createResearchPlaybook() {
       requiresHitl: true,
       requiredCapabilities: ["mission.publish"],
     }],
+    compatibility: {
+      minPlatformVersion: "2.0.0",
+      compatibleMissionSchemaVersions: ["1.x"],
+      authorizedTenantIds: ["tenant_001", "tenant_override", "tenant_canary"],
+    },
+    rollout: {
+      mode: "full" as const,
+      percentage: 100,
+      targetTenants: [],
+      rolloutRef: "rollout:research-release",
+    },
+    signature: {
+      signedBy: "platform-architecture",
+      signatureRef: "sig:research-release",
+      signedAt: "2026-05-21T00:00:00.000Z",
+    },
+    rollback: {
+      previousVersion: null,
+      rollbackAllowed: true,
+      rollbackRef: "rollback:research-release",
+    },
     signatureRef: "sig:research-release",
     rollbackRef: "rollback:research-release",
     compatibilityRef: "compat:research-release",
@@ -418,6 +441,177 @@ test("MissionPlaybookRegistry validates registry references and rejects unsafe P
 
   assert.equal(unsafe.valid, false);
   assert.equal(unsafe.issues.some((issue) => issue.code === "mission.playbook.p0_unsafe_negation"), true);
+});
+
+test("MissionPlaybookRegistry tracks lifecycle events and MissionPlaybookResolver enforces fail-closed fallback policy", () => {
+  const registry = new MissionPlaybookRegistry({
+    metricRefs: ["aa.mission.outcome.quality_score"],
+    eventNames: ["mission.review.failed"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+  registry.register({
+    ...createResearchPlaybook(),
+    status: "validated",
+    rollout: {
+      mode: "canary",
+      percentage: 5,
+      targetTenants: ["tenant_canary"],
+      rolloutRef: "rollout:research-release:canary",
+    },
+  });
+  const canary = registry.transitionStatus({
+    playbookId: "playbook_research_release",
+    version: "1.0.0",
+    targetStatus: "canary",
+    actorId: principal.principalId,
+    auditRef: "audit:playbook:canary",
+  });
+  const active = registry.transitionStatus({
+    playbookId: "playbook_research_release",
+    version: "1.0.0",
+    targetStatus: "active",
+    actorId: principal.principalId,
+    auditRef: "audit:playbook:active",
+  });
+  registry.setTenantOverride({
+    tenantId: "tenant_override",
+    missionType: "formal",
+    playbookId: active.playbookId,
+    version: active.version,
+  });
+
+  const resolver = new MissionPlaybookResolver(registry);
+  assert.equal(resolver.resolve({
+    missionType: "formal",
+    tenantId: "tenant_override",
+    allowCanary: false,
+    tenantOverrideAllowed: true,
+    fallbackPolicy: "fail_closed",
+  }).resolutionReason, "tenant_override");
+  assert.equal(registry.listEvents().some((event) => event.eventType === "mission.playbook.canary.started"), true);
+  assert.equal(canary.status, "canary");
+
+  registry.transitionStatus({
+    playbookId: active.playbookId,
+    version: active.version,
+    targetStatus: "revoked",
+    actorId: principal.principalId,
+    auditRef: "audit:playbook:revoked",
+    reasonCode: "critical_issue",
+    affectedMissionRefs: ["mis_001"],
+  });
+  assert.throws(() =>
+    resolver.resolve({
+      missionType: "formal",
+      tenantId: "tenant_001",
+      allowCanary: false,
+      tenantOverrideAllowed: false,
+      fallbackPolicy: "use_last_active",
+    }),
+  );
+  assert.equal(resolver.metricsSnapshot().unsafeFallbackBlockedCount, 1);
+});
+
+test("MissionPlaybookResolver allows safe last-active fallback and migration service requires approval when incompatible", () => {
+  const repository = new InMemoryMissionRepository();
+  const registry = new MissionPlaybookRegistry({
+    metricRefs: ["aa.mission.outcome.quality_score"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+  registry.register(createResearchPlaybook());
+  const lifecycle = new MissionLifecycleService(repository);
+  lifecycle.createMission({
+    missionId: "mis_bound_001",
+    tenantId: "tenant_001",
+    orgId: "org_001",
+    title: "Mission with playbook binding",
+    objective: "Keep binding for migration",
+    successCriteria: ["done"],
+    ownerPrincipalId: principal.principalId,
+    createdBy: principal.principalId,
+    domainId: "coding",
+    traceId: "trace_binding",
+    correlationId: "corr_binding",
+    playbookBinding: {
+      playbookId: "playbook_research_release",
+      playbookVersion: "1.0.0",
+      resolutionAuditRef: "audit:resolution:bound",
+      lockedAt: "2026-05-21T00:00:00.000Z",
+      lockedBy: principal.principalId,
+      migrationPlanRefs: [],
+    },
+  });
+  const resolver = new MissionPlaybookResolver(registry);
+  const fallback = resolver.resolve({
+    missionType: "formal",
+    tenantId: "tenant_001",
+    requestedPlaybookId: "playbook_research_release",
+    requestedVersion: "1.0.0",
+    allowCanary: false,
+    tenantOverrideAllowed: false,
+    fallbackPolicy: "use_last_active",
+  });
+  assert.equal(fallback.playbookVersion, "1.0.0");
+
+  registry.register({
+    ...createResearchPlaybook(),
+    version: "1.1.0",
+    status: "active",
+    compatibility: {
+      minPlatformVersion: "2.0.0",
+      compatibleMissionSchemaVersions: ["2.x"],
+    },
+    rollout: {
+      mode: "full",
+      percentage: 100,
+      targetTenants: [],
+      rolloutRef: "rollout:research-release:1.1.0",
+    },
+    signature: {
+      signedBy: "platform-architecture",
+      signatureRef: "sig:research-release:1.1.0",
+      signedAt: "2026-05-22T00:00:00.000Z",
+    },
+    rollback: {
+      previousVersion: "1.0.0",
+      rollbackAllowed: true,
+      rollbackRef: "rollback:research-release:1.1.0",
+    },
+    signatureRef: "sig:research-release:1.1.0",
+    rollbackRef: "rollback:research-release:1.1.0",
+    compatibilityRef: "compat:research-release:1.1.0",
+    createdAt: "2026-05-22T00:00:00.000Z",
+    updatedAt: "2026-05-22T00:00:00.000Z",
+  });
+  const migrations = new MissionPlaybookMigrationService(registry, repository);
+  assert.throws(() =>
+    migrations.createPlan({
+      fromPlaybookId: "playbook_research_release",
+      fromVersion: "1.0.0",
+      toPlaybookId: "playbook_research_release",
+      toVersion: "1.1.0",
+      tenantId: "tenant_001",
+      migrationMode: "hold_then_manual",
+      compatibilityReportRef: "compatibility:report:001",
+      rollbackPlanRef: "rollback:plan:001",
+      auditRef: "audit:migration:001",
+      compatible: false,
+    }),
+  );
+  const plan = migrations.createPlan({
+    fromPlaybookId: "playbook_research_release",
+    fromVersion: "1.0.0",
+    toPlaybookId: "playbook_research_release",
+    toVersion: "1.1.0",
+    tenantId: "tenant_001",
+    migrationMode: "hold_then_manual",
+    compatibilityReportRef: "compatibility:report:001",
+    approvalRef: "approval:001",
+    rollbackPlanRef: "rollback:plan:001",
+    auditRef: "audit:migration:001",
+    compatible: false,
+  });
+  assert.deepEqual(plan.affectedMissionIds, ["mis_bound_001"]);
 });
 
 test("StageExitGateService evaluates immutable snapshots, requires HITL for guarded edge, and appends evidence event", () => {

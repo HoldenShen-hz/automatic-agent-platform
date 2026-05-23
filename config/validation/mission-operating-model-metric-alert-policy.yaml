@@ -1,0 +1,168 @@
+{
+  "metricAlertPolicy": {
+    "defaultSeverity": "P1",
+    "escalationRules": [
+      {
+        "condition": "dataClass in [\"restricted\", \"secret\", \"credential\", \"regulated_pii\"]",
+        "severity": "P0"
+      }
+    ]
+  },
+  "metrics": [
+    {
+      "metric": "aa.mission.playbook.missing.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.signature_missing.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.rollback_missing.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.revoked_used_for_new_mission.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.auto_drift.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.migration_without_approval.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.migration_without_compatibility_report.count",
+      "defaultSeverity": "P1",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.use_last_active.count",
+      "defaultSeverity": "P1",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.playbook.unsafe_fallback_blocked.count",
+      "defaultSeverity": "P1",
+      "escalationRules": [
+        {
+          "condition": "missionType == \"formal\" || missionType == \"program\" || missionType == \"incident\"",
+          "severity": "P0"
+        }
+      ]
+    },
+    {
+      "metric": "aa.mission.stage.exit_criteria_missing.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.stage.failure_mode_missing.count",
+      "defaultSeverity": "P1",
+      "escalationRules": [
+        {
+          "condition": "missionType == \"formal\" || missionType == \"program\" || missionType == \"incident\"",
+          "severity": "P0"
+        }
+      ]
+    },
+    {
+      "metric": "aa.mission.stage.advance_without_decision.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.mission.outcome.measurement_missing.count",
+      "defaultSeverity": "P1",
+      "escalationRules": [
+        {
+          "condition": "stageId == \"release\" || stageId == \"publish\"",
+          "severity": "P0"
+        }
+      ]
+    },
+    {
+      "metric": "aa.skill_candidate.conversion_without_approval.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skill_candidate.conversion_without_eval.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skill_candidate.conversion_without_policy.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skillpack.activation_without_manifest_validation.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skillpack.activation_without_policy_validation.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skillpack.activation_without_sbom_scan.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skillpack.activation_without_eval_pass.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skillpack.activation_without_signature.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skillpack.activation_without_canary.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.skillpack.activation_without_rollback.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.workflow.recording.policy_bypass.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.workflow.recording.restricted_data_capture.count",
+      "defaultSeverity": "P0",
+      "escalationRules": []
+    },
+    {
+      "metric": "aa.workflow.recording.retention_expired_not_deleted.count",
+      "defaultSeverity": "P1",
+      "escalationRules": [
+        {
+          "condition": "dataClass in [\"restricted\", \"secret\", \"credential\", \"regulated_pii\"]",
+          "severity": "P0"
+        }
+      ]
+    },
+    {
+      "metric": "aa.workflow.recording.deletion_failed.count",
+      "defaultSeverity": "P1",
+      "escalationRules": []
+    }
+  ]
+}

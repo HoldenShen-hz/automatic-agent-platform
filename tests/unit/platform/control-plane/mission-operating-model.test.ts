@@ -234,13 +234,21 @@ test("builtin Research Code and Ops playbooks are active and validate with regis
       "test_report",
       "incident_snapshot",
       "rollback_or_fix_evidence",
+      "benchmark_source_snapshot",
+      "benchmark_normalized_snapshot",
+      "benchmark_evaluation_report",
+      "benchmark_comparison_matrix",
+      "benchmark_report",
+      "benchmark_alert_triage",
+      "benchmark_learning_object",
     ],
   });
   const playbooks = createBuiltinMissionPlaybooks();
 
-  assert.deepEqual(playbooks.map((playbook) => playbook.missionType), ["formal", "program", "incident"]);
+  assert.deepEqual(playbooks.map((playbook) => playbook.missionType), ["formal", "program", "incident", "benchmark_monitoring"]);
   for (const playbook of playbooks) {
     assert.equal(registry.register(playbook).status, "active");
   }
   assert.equal(registry.resolveActive("incident")?.playbookId, "mission-playbook-ops");
+  assert.equal(registry.resolveActive("benchmark_monitoring")?.playbookId, "mission-playbook-benchmark-monitoring");
 });

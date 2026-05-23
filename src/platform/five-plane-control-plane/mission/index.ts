@@ -8,6 +8,9 @@ import {
   riskRequiresFormalMission,
   hashExitCriterionExpression,
   ExitCriterionExpressionSchema,
+  MissionPlaybookMigrationPlanSchema,
+  MissionPlaybookResolutionPolicySchema,
+  MissionPlaybookResolutionResultSchema,
   MissionPlaybookSchema,
   MissionStageInstanceSchema,
   StageExitDecisionSchema,
@@ -20,6 +23,9 @@ import {
   type MissionContextSnapshot,
   type MissionHandoffRequest,
   type MissionPlaybook,
+  type MissionPlaybookMigrationPlan,
+  type MissionPlaybookResolutionPolicy,
+  type MissionPlaybookResolutionResult,
   type MissionPlaybookStage,
   type MissionPermission,
   type MissionRecord,
@@ -476,6 +482,49 @@ export interface MissionPlaybookValidationCatalog {
   readonly requireFailureModeRefs?: boolean;
 }
 
+export type MissionPlaybookLifecycleEventType =
+  | "mission.playbook.registered"
+  | "mission.playbook.validated"
+  | "mission.playbook.validation_failed"
+  | "mission.playbook.rejected"
+  | "mission.playbook.canary.started"
+  | "mission.playbook.activated"
+  | "mission.playbook.updated"
+  | "mission.playbook.deprecated"
+  | "mission.playbook.suspended"
+  | "mission.playbook.revoked"
+  | "mission.playbook.archived";
+
+export interface MissionPlaybookLifecycleEvent {
+  readonly eventId: string;
+  readonly eventType: MissionPlaybookLifecycleEventType;
+  readonly playbookId: string;
+  readonly version: string;
+  readonly missionType: MissionPlaybook["missionType"];
+  readonly auditRef: string;
+  readonly payload: Record<string, unknown>;
+  readonly occurredAt: string;
+}
+
+export interface MissionPlaybookStatusTransitionCommand {
+  readonly playbookId: string;
+  readonly version: string;
+  readonly targetStatus: MissionPlaybook["status"];
+  readonly actorId: string;
+  readonly auditRef: string;
+  readonly reasonCode?: string;
+  readonly replacementVersion?: string;
+  readonly affectedMissionRefs?: readonly string[];
+  readonly occurredAt?: string;
+}
+
+export interface MissionPlaybookTenantOverride {
+  readonly tenantId: string;
+  readonly missionType: MissionPlaybook["missionType"];
+  readonly playbookId: string;
+  readonly version: string;
+}
+
 export interface MissionPlaybookValidationIssue {
   readonly code:
     | "mission.playbook.duplicate_stage"
@@ -487,7 +536,11 @@ export interface MissionPlaybookValidationIssue {
     | "mission.playbook.unknown_event"
     | "mission.playbook.unknown_evidence_kind"
     | "mission.playbook.expression_depth_exceeded"
-    | "mission.playbook.p0_unsafe_negation";
+    | "mission.playbook.p0_unsafe_negation"
+    | "mission.playbook.compatibility_missing"
+    | "mission.playbook.signature_missing"
+    | "mission.playbook.rollback_missing"
+    | "mission.playbook.canary_rollout_missing";
   readonly path: string;
   readonly message: string;
 }
@@ -500,6 +553,9 @@ export interface MissionPlaybookValidationResult {
 export class MissionPlaybookRegistry {
   private readonly playbooks = new Map<string, MissionPlaybook>();
   private readonly activeByMissionType = new Map<MissionPlaybook["missionType"], string>();
+  private readonly lastActiveByMissionType = new Map<MissionPlaybook["missionType"], string>();
+  private readonly tenantOverrides = new Map<string, string>();
+  private readonly lifecycleEvents: MissionPlaybookLifecycleEvent[] = [];
 
   public constructor(private readonly catalog: MissionPlaybookValidationCatalog = {}) {}
 
@@ -517,7 +573,18 @@ export class MissionPlaybookRegistry {
     this.playbooks.set(key, playbook);
     if (playbook.status === "active") {
       this.activeByMissionType.set(playbook.missionType, key);
+      this.lastActiveByMissionType.set(playbook.missionType, key);
     }
+    this.appendLifecycleEvent({
+      eventType: "mission.playbook.registered",
+      playbook,
+      auditRef: `audit:mission_playbook:${playbook.playbookId}:${playbook.version}:registered`,
+      payload: {
+        owner: playbook.owner,
+        status: playbook.status,
+      },
+      occurredAt: playbook.updatedAt,
+    });
     return playbook;
   }
 
@@ -525,13 +592,292 @@ export class MissionPlaybookRegistry {
     return this.playbooks.get(playbookKey(playbookId, version)) ?? null;
   }
 
+  public transitionStatus(command: MissionPlaybookStatusTransitionCommand): MissionPlaybook {
+    const current = this.get(command.playbookId, command.version);
+    if (current == null) {
+      throwMissionError("mission.playbook_not_found", "Mission playbook was not found", {
+        playbookId: command.playbookId,
+        version: command.version,
+      });
+    }
+    if (!isMissionPlaybookStatusTransitionAllowed(current.status, command.targetStatus)) {
+      throwMissionError("mission.playbook_state_conflict", "Mission playbook status transition is not allowed", {
+        playbookId: current.playbookId,
+        version: current.version,
+        fromStatus: current.status,
+        toStatus: command.targetStatus,
+      });
+    }
+    const updated = MissionPlaybookSchema.parse({
+      ...current,
+      status: command.targetStatus,
+      updatedAt: command.occurredAt ?? nowIso(),
+    });
+    this.playbooks.set(playbookKey(updated.playbookId, updated.version), updated);
+    if (updated.status === "active") {
+      this.activeByMissionType.set(updated.missionType, playbookKey(updated.playbookId, updated.version));
+      this.lastActiveByMissionType.set(updated.missionType, playbookKey(updated.playbookId, updated.version));
+    } else if (this.activeByMissionType.get(updated.missionType) === playbookKey(updated.playbookId, updated.version)) {
+      this.activeByMissionType.delete(updated.missionType);
+    }
+    this.appendLifecycleEvent({
+      eventType: lifecycleEventTypeForStatus(updated.status),
+      playbook: updated,
+      auditRef: command.auditRef,
+      payload: {
+        actorId: command.actorId,
+        reasonCode: command.reasonCode ?? null,
+        replacementVersion: command.replacementVersion ?? null,
+        affectedMissionRefs: [...(command.affectedMissionRefs ?? [])],
+      },
+      occurredAt: updated.updatedAt,
+    });
+    return updated;
+  }
+
+  public setTenantOverride(input: MissionPlaybookTenantOverride): void {
+    const playbook = this.get(input.playbookId, input.version);
+    if (playbook == null || playbook.missionType !== input.missionType) {
+      throwMissionError("mission.playbook_not_found", "Mission playbook tenant override requires a registered playbook", { ...input });
+    }
+    this.tenantOverrides.set(tenantOverrideKey(input.tenantId, input.missionType), playbookKey(input.playbookId, input.version));
+  }
+
+  public resolveTenantOverride(tenantId: string, missionType: MissionPlaybook["missionType"]): MissionPlaybook | null {
+    const key = this.tenantOverrides.get(tenantOverrideKey(tenantId, missionType));
+    return key == null ? null : this.playbooks.get(key) ?? null;
+  }
+
   public resolveActive(missionType: MissionPlaybook["missionType"]): MissionPlaybook | null {
     const key = this.activeByMissionType.get(missionType);
     return key == null ? null : this.playbooks.get(key) ?? null;
   }
 
+  public resolveLastActive(missionType: MissionPlaybook["missionType"]): MissionPlaybook | null {
+    const key = this.lastActiveByMissionType.get(missionType);
+    return key == null ? null : this.playbooks.get(key) ?? null;
+  }
+
+  public resolveCanary(missionType: MissionPlaybook["missionType"], tenantId: string): MissionPlaybook | null {
+    const candidates = this.listByMissionType(missionType).filter((playbook) => playbook.status === "canary");
+    return candidates.find((playbook) => isTenantTargetedByRollout(playbook, tenantId)) ?? null;
+  }
+
+  public listByMissionType(missionType: MissionPlaybook["missionType"]): readonly MissionPlaybook[] {
+    return this.list().filter((playbook) => playbook.missionType === missionType);
+  }
+
+  public listEvents(): readonly MissionPlaybookLifecycleEvent[] {
+    return [...this.lifecycleEvents];
+  }
+
   public list(): readonly MissionPlaybook[] {
     return [...this.playbooks.values()];
+  }
+
+  private appendLifecycleEvent(input: {
+    readonly eventType: MissionPlaybookLifecycleEventType;
+    readonly playbook: MissionPlaybook;
+    readonly auditRef: string;
+    readonly payload: Record<string, unknown>;
+    readonly occurredAt: string;
+  }): void {
+    this.lifecycleEvents.push({
+      eventId: newId("mpbevt"),
+      eventType: input.eventType,
+      playbookId: input.playbook.playbookId,
+      version: input.playbook.version,
+      missionType: input.playbook.missionType,
+      auditRef: input.auditRef,
+      payload: input.payload,
+      occurredAt: input.occurredAt,
+    });
+  }
+}
+
+export interface MissionPlaybookResolverMetrics {
+  readonly useLastActiveCount: number;
+  readonly unsafeFallbackBlockedCount: number;
+}
+
+export class MissionPlaybookResolver {
+  private metrics: MissionPlaybookResolverMetrics = {
+    useLastActiveCount: 0,
+    unsafeFallbackBlockedCount: 0,
+  };
+
+  public constructor(
+    private readonly registry: MissionPlaybookRegistry,
+    private readonly options: {
+      readonly platformVersion?: string;
+      readonly missionSchemaVersion?: string;
+    } = {},
+  ) {}
+
+  public resolve(input: MissionPlaybookResolutionPolicy): MissionPlaybookResolutionResult {
+    const policy = MissionPlaybookResolutionPolicySchema.parse(input);
+    const platformVersion = this.options.platformVersion ?? "2.0.0";
+    const missionSchemaVersion = this.options.missionSchemaVersion ?? "1.0.0";
+    const explicit = this.resolveExplicit(policy, platformVersion, missionSchemaVersion);
+    if (explicit != null) {
+      return explicit;
+    }
+    if (policy.tenantOverrideAllowed) {
+      const overridden = this.registry.resolveTenantOverride(policy.tenantId, policy.missionType);
+      if (overridden != null && isPlaybookResolvable(overridden, platformVersion, missionSchemaVersion, policy.tenantId, policy.allowCanary)) {
+        return MissionPlaybookResolutionResultSchema.parse({
+          playbookId: overridden.playbookId,
+          playbookVersion: overridden.version,
+          resolutionReason: "tenant_override",
+          auditRef: resolutionAuditRef(policy, overridden, "tenant_override"),
+          ...(overridden.rollout == null ? {} : { rolloutRef: overridden.rollout.rolloutRef }),
+        });
+      }
+    }
+    if (policy.allowCanary) {
+      const canary = this.registry.resolveCanary(policy.missionType, policy.tenantId);
+      if (canary != null && isPlaybookResolvable(canary, platformVersion, missionSchemaVersion, policy.tenantId, true)) {
+        return MissionPlaybookResolutionResultSchema.parse({
+          playbookId: canary.playbookId,
+          playbookVersion: canary.version,
+          resolutionReason: "canary_rollout",
+          rolloutRef: canary.rollout?.rolloutRef,
+          auditRef: resolutionAuditRef(policy, canary, "canary_rollout"),
+        });
+      }
+    }
+    const active = this.registry.resolveActive(policy.missionType);
+    if (active != null && isPlaybookResolvable(active, platformVersion, missionSchemaVersion, policy.tenantId, policy.allowCanary)) {
+      return MissionPlaybookResolutionResultSchema.parse({
+        playbookId: active.playbookId,
+        playbookVersion: active.version,
+        resolutionReason: "default_active",
+        auditRef: resolutionAuditRef(policy, active, "default_active"),
+      });
+    }
+    if (policy.fallbackPolicy === "use_last_active") {
+      const lastActive = this.registry.resolveLastActive(policy.missionType);
+      if (lastActive != null && isPlaybookFallbackSafe(lastActive, platformVersion, missionSchemaVersion, policy.tenantId)) {
+        this.metrics = {
+          ...this.metrics,
+          useLastActiveCount: this.metrics.useLastActiveCount + 1,
+        };
+        return MissionPlaybookResolutionResultSchema.parse({
+          playbookId: lastActive.playbookId,
+          playbookVersion: lastActive.version,
+          resolutionReason: "last_active_fallback",
+          auditRef: resolutionAuditRef(policy, lastActive, "last_active_fallback"),
+        });
+      }
+      this.metrics = {
+        ...this.metrics,
+        unsafeFallbackBlockedCount: this.metrics.unsafeFallbackBlockedCount + 1,
+      };
+    }
+    if (policy.fallbackPolicy === "manual_selection") {
+      throwMissionError("mission.playbook_manual_selection_required", "Mission playbook resolution requires manual selection", {
+        missionType: policy.missionType,
+        tenantId: policy.tenantId,
+      });
+    }
+    throwMissionError("mission.playbook_resolution_failed", "Mission playbook resolution failed closed", {
+      missionType: policy.missionType,
+      tenantId: policy.tenantId,
+      fallbackPolicy: policy.fallbackPolicy,
+    });
+  }
+
+  public metricsSnapshot(): MissionPlaybookResolverMetrics {
+    return { ...this.metrics };
+  }
+
+  private resolveExplicit(
+    policy: MissionPlaybookResolutionPolicy,
+    platformVersion: string,
+    missionSchemaVersion: string,
+  ): MissionPlaybookResolutionResult | null {
+    if (policy.requestedPlaybookId == null) {
+      return null;
+    }
+    const playbook = policy.requestedVersion == null
+      ? this.registry.listByMissionType(policy.missionType).find((candidate) =>
+          candidate.playbookId === policy.requestedPlaybookId
+          && isPlaybookResolvable(candidate, platformVersion, missionSchemaVersion, policy.tenantId, policy.allowCanary)
+        ) ?? null
+      : this.registry.get(policy.requestedPlaybookId, policy.requestedVersion);
+    if (playbook == null || !isPlaybookResolvable(playbook, platformVersion, missionSchemaVersion, policy.tenantId, policy.allowCanary)) {
+      throwMissionError("mission.playbook_resolution_failed", "Explicit Mission playbook request is not resolvable", {
+        missionType: policy.missionType,
+        tenantId: policy.tenantId,
+        requestedPlaybookId: policy.requestedPlaybookId,
+        requestedVersion: policy.requestedVersion ?? null,
+      });
+    }
+    return MissionPlaybookResolutionResultSchema.parse({
+      playbookId: playbook.playbookId,
+      playbookVersion: playbook.version,
+      resolutionReason: "explicit_request",
+      auditRef: resolutionAuditRef(policy, playbook, "explicit_request"),
+      ...(playbook.rollout == null ? {} : { rolloutRef: playbook.rollout.rolloutRef }),
+    });
+  }
+}
+
+export class MissionPlaybookMigrationService {
+  private readonly plans = new Map<string, MissionPlaybookMigrationPlan>();
+
+  public constructor(
+    private readonly registry: MissionPlaybookRegistry,
+    private readonly repository?: MissionRepository,
+  ) {}
+
+  public createPlan(input: Omit<MissionPlaybookMigrationPlan, "migrationPlanId" | "createdAt" | "affectedMissionIds"> & {
+    readonly migrationPlanId?: string;
+    readonly createdAt?: string;
+    readonly affectedMissionIds?: readonly string[];
+    readonly tenantId?: string;
+    readonly compatible?: boolean;
+  }): MissionPlaybookMigrationPlan {
+    const fromPlaybook = this.registry.get(input.fromPlaybookId, input.fromVersion);
+    const toPlaybook = this.registry.get(input.toPlaybookId, input.toVersion);
+    if (fromPlaybook == null || toPlaybook == null) {
+      throwMissionError("mission.playbook_not_found", "Mission playbook migration requires registered source and target playbooks", {
+        fromPlaybookId: input.fromPlaybookId,
+        fromVersion: input.fromVersion,
+        toPlaybookId: input.toPlaybookId,
+        toVersion: input.toVersion,
+      });
+    }
+    if ((input.compatible === false || input.migrationMode !== "auto_if_compatible") && input.approvalRef == null) {
+      throwMissionError("mission.playbook_migration_approval_required", "Mission playbook migration requires HITL approval", {
+        fromPlaybookId: input.fromPlaybookId,
+        toPlaybookId: input.toPlaybookId,
+        migrationMode: input.migrationMode,
+      });
+    }
+    const affectedMissionIds = input.affectedMissionIds == null
+      ? resolveAffectedMissionIds(this.repository, input.tenantId, input.fromPlaybookId, input.fromVersion)
+      : [...input.affectedMissionIds];
+    const {
+      tenantId: _tenantId,
+      compatible: _compatible,
+      affectedMissionIds: _ignoredAffectedMissionIds,
+      migrationPlanId,
+      createdAt,
+      ...schemaInput
+    } = input;
+    const plan = MissionPlaybookMigrationPlanSchema.parse({
+      ...schemaInput,
+      migrationPlanId: migrationPlanId ?? newId("mpbmig"),
+      affectedMissionIds,
+      createdAt: createdAt ?? nowIso(),
+    });
+    this.plans.set(plan.migrationPlanId, plan);
+    return plan;
+  }
+
+  public listPlans(): readonly MissionPlaybookMigrationPlan[] {
+    return [...this.plans.values()];
   }
 }
 
@@ -655,6 +1001,34 @@ export function validateMissionPlaybook(
 ): MissionPlaybookValidationResult {
   const playbook = MissionPlaybookSchema.parse(input);
   const issues: MissionPlaybookValidationIssue[] = [];
+  if ((playbook.status === "active" || playbook.status === "canary") && (playbook.compatibility == null || playbook.compatibilityRef == null)) {
+    issues.push({
+      code: "mission.playbook.compatibility_missing",
+      path: "compatibility",
+      message: `Playbook ${playbook.playbookId}@${playbook.version} must declare compatibility metadata before rollout`,
+    });
+  }
+  if ((playbook.status === "active" || playbook.status === "canary") && (playbook.signature == null || playbook.signatureRef == null)) {
+    issues.push({
+      code: "mission.playbook.signature_missing",
+      path: "signature",
+      message: `Playbook ${playbook.playbookId}@${playbook.version} must declare signature metadata before rollout`,
+    });
+  }
+  if ((playbook.status === "active" || playbook.status === "canary") && (playbook.rollback == null || playbook.rollbackRef == null)) {
+    issues.push({
+      code: "mission.playbook.rollback_missing",
+      path: "rollback",
+      message: `Playbook ${playbook.playbookId}@${playbook.version} must declare rollback metadata before rollout`,
+    });
+  }
+  if (playbook.status === "canary" && (playbook.rollout == null || playbook.rollout.mode !== "canary")) {
+    issues.push({
+      code: "mission.playbook.canary_rollout_missing",
+      path: "rollout",
+      message: `Canary playbook ${playbook.playbookId}@${playbook.version} requires canary rollout metadata`,
+    });
+  }
   const stageIds = new Set<string>();
   for (const [index, stage] of playbook.stages.entries()) {
     if (stageIds.has(stage.stageId)) {
@@ -862,6 +1236,167 @@ function resolveStageEdge(playbook: MissionPlaybook, stageId: string, targetStag
 
 function playbookKey(playbookId: string, version: string): string {
   return `${playbookId}@${version}`;
+}
+
+function tenantOverrideKey(tenantId: string, missionType: MissionPlaybook["missionType"]): string {
+  return `${tenantId}:${missionType}`;
+}
+
+function isMissionPlaybookStatusTransitionAllowed(
+  current: MissionPlaybook["status"],
+  target: MissionPlaybook["status"],
+): boolean {
+  const allowed: Record<MissionPlaybook["status"], readonly MissionPlaybook["status"][]> = {
+    draft: ["validated", "validation_failed"],
+    validated: ["canary", "active", "rejected"],
+    validation_failed: ["rejected"],
+    rejected: [],
+    canary: ["active", "deprecated", "suspended", "revoked"],
+    active: ["deprecated", "suspended", "revoked"],
+    suspended: ["active", "revoked", "archived"],
+    deprecated: ["archived", "revoked"],
+    revoked: ["archived"],
+    archived: [],
+  };
+  return allowed[current].includes(target);
+}
+
+function lifecycleEventTypeForStatus(status: MissionPlaybook["status"]): MissionPlaybookLifecycleEventType {
+  switch (status) {
+    case "validated":
+      return "mission.playbook.validated";
+    case "validation_failed":
+      return "mission.playbook.validation_failed";
+    case "rejected":
+      return "mission.playbook.rejected";
+    case "canary":
+      return "mission.playbook.canary.started";
+    case "active":
+      return "mission.playbook.activated";
+    case "suspended":
+      return "mission.playbook.suspended";
+    case "deprecated":
+      return "mission.playbook.deprecated";
+    case "revoked":
+      return "mission.playbook.revoked";
+    case "archived":
+      return "mission.playbook.archived";
+    case "draft":
+      return "mission.playbook.updated";
+  }
+}
+
+function isTenantTargetedByRollout(playbook: MissionPlaybook, tenantId: string): boolean {
+  if (playbook.rollout == null) {
+    return false;
+  }
+  if (playbook.rollout.targetTenants.includes(tenantId)) {
+    return true;
+  }
+  if (playbook.rollout.percentage <= 0) {
+    return false;
+  }
+  return stableBucket(`${playbook.playbookId}:${playbook.version}:${tenantId}`) < playbook.rollout.percentage;
+}
+
+function isPlaybookResolvable(
+  playbook: MissionPlaybook,
+  platformVersion: string,
+  missionSchemaVersion: string,
+  tenantId: string,
+  allowCanary: boolean,
+): boolean {
+  if (playbook.status === "revoked" || playbook.status === "suspended" || playbook.status === "archived") {
+    return false;
+  }
+  if (playbook.status === "canary" && !allowCanary) {
+    return false;
+  }
+  return isPlaybookCompatible(playbook, platformVersion, missionSchemaVersion, tenantId);
+}
+
+function isPlaybookFallbackSafe(
+  playbook: MissionPlaybook,
+  platformVersion: string,
+  missionSchemaVersion: string,
+  tenantId: string,
+): boolean {
+  if (!isPlaybookResolvable(playbook, platformVersion, missionSchemaVersion, tenantId, false)) {
+    return false;
+  }
+  return playbook.rollback?.rollbackAllowed === true;
+}
+
+function isPlaybookCompatible(
+  playbook: MissionPlaybook,
+  platformVersion: string,
+  missionSchemaVersion: string,
+  tenantId: string,
+): boolean {
+  const compatibility = playbook.compatibility;
+  if (compatibility == null) {
+    return false;
+  }
+  if (compatibility.authorizedTenantIds != null && compatibility.authorizedTenantIds.length > 0 && !compatibility.authorizedTenantIds.includes(tenantId)) {
+    return false;
+  }
+  if (compareSemver(platformVersion, compatibility.minPlatformVersion) < 0) {
+    return false;
+  }
+  return compatibility.compatibleMissionSchemaVersions.some((pattern) => versionMatchesPattern(missionSchemaVersion, pattern));
+}
+
+function compareSemver(left: string, right: string): number {
+  const leftParts = left.split(".").map((value) => Number.parseInt(value, 10) || 0);
+  const rightParts = right.split(".").map((value) => Number.parseInt(value, 10) || 0);
+  const size = Math.max(leftParts.length, rightParts.length);
+  for (let index = 0; index < size; index += 1) {
+    const delta = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+    if (delta !== 0) {
+      return delta;
+    }
+  }
+  return 0;
+}
+
+function versionMatchesPattern(version: string, pattern: string): boolean {
+  if (pattern.endsWith(".x")) {
+    return version.startsWith(`${pattern.slice(0, -2)}.`);
+  }
+  return version === pattern;
+}
+
+function stableBucket(input: string): number {
+  let value = 0;
+  for (const char of input) {
+    value = (value * 31 + char.charCodeAt(0)) % 100;
+  }
+  return value;
+}
+
+function resolutionAuditRef(
+  policy: MissionPlaybookResolutionPolicy,
+  playbook: MissionPlaybook,
+  resolutionReason: MissionPlaybookResolutionResult["resolutionReason"],
+): string {
+  return `audit:mission_playbook_resolution:${policy.tenantId}:${policy.missionType}:${playbook.playbookId}:${playbook.version}:${resolutionReason}`;
+}
+
+function resolveAffectedMissionIds(
+  repository: MissionRepository | undefined,
+  tenantId: string | undefined,
+  fromPlaybookId: string,
+  fromVersion: string,
+): string[] {
+  if (repository == null || tenantId == null) {
+    return [];
+  }
+  return repository.listMissions(tenantId)
+    .filter((mission) =>
+      mission.playbookBinding?.playbookId === fromPlaybookId
+      && mission.playbookBinding?.playbookVersion === fromVersion
+    )
+    .map((mission) => mission.missionId);
 }
 
 export class MissionObservabilityPolicy {
