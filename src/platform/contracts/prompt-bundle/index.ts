@@ -85,11 +85,11 @@ export interface PromptBundleTrafficAllocation {
   /** Percentage of traffic for this version (0-100) */
   weight: number;
   /** Start time for this allocation (ISO timestamp) */
-  startTime?: string;
+  startTime?: string | undefined;
   /** End time for this allocation (ISO timestamp) */
-  endTime?: string;
+  endTime?: string | undefined;
   /** Targeting criteria for A/B testing */
-  targeting?: TrafficTargeting;
+  targeting?: TrafficTargeting | undefined;
 }
 
 export interface TrafficTargeting {
@@ -107,14 +107,14 @@ export interface PromptBundleRegistrationInput {
   displayVersion: string;
   domain: string;
   taskType: string;
-  packId?: string;
+  packId?: string | undefined;
   systemPrompt: PromptBundleSegment;
-  userPrompt?: PromptBundleSegment;
-  fewShotExamples?: FewShotExample[];
-  constraints?: PromptBundleConstraints;
+  userPrompt?: PromptBundleSegment | undefined;
+  fewShotExamples?: FewShotExample[] | undefined;
+  constraints?: PromptBundleConstraints | undefined;
   /** §16.4: Compatibility matrix - must cover Tool/Evaluator/DomainDescriptor/Model routing */
   compatibilityMatrix: PromptBundleCompatibilityMatrix;
-  metadata?: PromptBundleMetadata;
+  metadata?: PromptBundleMetadata | undefined;
 }
 
 export interface PromptBundleVersion {

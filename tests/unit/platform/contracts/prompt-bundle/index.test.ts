@@ -5,6 +5,7 @@ import {
   createPromptBundle,
   validatePromptBundle,
   validatePromptBundleRegistrationInput,
+  type CreatePromptBundleInput,
   type PromptBundle,
   type PromptBundleCompatibilityMatrix,
   type PromptBundleListResult,
@@ -24,8 +25,8 @@ function createCompatibilityMatrix(): PromptBundleCompatibilityMatrix {
 }
 
 function createRegistrationInput(
-  overrides: Partial<PromptBundleRegistrationInput> = {},
-): PromptBundleRegistrationInput {
+  overrides: Partial<CreatePromptBundleInput> = {},
+): CreatePromptBundleInput {
   return {
     name: "assistant-core",
     version: 3,

@@ -483,14 +483,20 @@ test("PromptVersionManager handles version strings with mixed case", () => {
 
 function createMockBundle(
   name: string,
-  version: string,
+  displayVersion: string,
   weight = 100,
   deprecated = false,
 ): PromptBundle {
+  const normalizedVersion = displayVersion
+    .replace(/^v/i, "")
+    .split(".")
+    .reduce((accumulator, segment, index) => accumulator + Number(segment) * (index === 0 ? 100 : index === 1 ? 10 : 1), 0);
+
   return {
-    bundleId: `bundle-${name}-${version}`,
+    bundleId: `bundle-${name}-${displayVersion}`,
     name,
-    version,
+    version: normalizedVersion,
+    displayVersion,
     domain: "test",
     taskType: "simple",
     packId: undefined,
@@ -508,6 +514,7 @@ function createMockBundle(
     metadata: {
       owner: "test",
       deprecated,
+      lifecycleStatus: deprecated ? "deprecated" : "active",
       tags: [],
       compatibilityTags: [],
       trafficAllocation: {
