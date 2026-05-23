@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer as createNetServer } from "node:net";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 
 import { ApiAuthService } from "../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../../../src/platform/five-plane-interface/api/http-api-server.js";
@@ -248,7 +248,7 @@ async function canBindLocalSockets(): Promise<boolean> {
 
 const canBindSockets = await canBindLocalSockets();
 
-function networkPathTest(name: string, body: Parameters<typeof test>[1]): void {
+function networkPathTest(name: string, body: (t: TestContext) => Promise<void> | void): void {
   test(name, async (t) => {
     if (!canBindSockets) {
       t.diagnostic("Skipping local socket bind lifecycle path: local sockets are unavailable in this environment.");

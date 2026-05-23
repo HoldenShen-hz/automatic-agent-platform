@@ -18,7 +18,14 @@ function createAgent(overrides: Partial<ManagedAgentDefinition> = {}): ManagedAg
       pack: { packId: "pack.platform", version: "1.0.0" },
       promptBundle: { bundleId: "prompt.platform", version: "1.0.0" },
       modelBinding: { provider: "openai", model: "gpt-4.1", fallbackChain: [] },
-      trustProfile: { initialLevel: "no_write", scoringConfig: {} },
+      trustProfile: {
+        initialLevel: "no_write",
+        scoringConfig: {
+          successWeight: 1,
+          latencyWeight: 1,
+          errorWeight: 1,
+        },
+      },
       triggerSet: [],
       connectorBindings: [],
       autonomyConfig: {

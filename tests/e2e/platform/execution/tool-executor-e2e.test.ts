@@ -6,12 +6,36 @@ import type {
   CommandExecutor,
   CommandExecutionResult,
 } from "../../../../src/platform/five-plane-execution/tool-executor/command-executor.js";
-import type { CommandToolRequest } from "../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
+import {
+  COMMAND_TOOL_METADATA,
+  type CommandToolRequest,
+  type ToolExecutionMetadata,
+} from "../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
+import type { SandboxPolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 function mockCommandExecutor(
   execute: (request: CommandToolRequest, signal?: AbortSignal) => Promise<CommandExecutionResult>,
 ): CommandExecutor {
   return { execute } as unknown as CommandExecutor;
+}
+
+function createSandboxPolicy(): SandboxPolicy {
+  return {
+    policyId: "policy-tool-e2e",
+    mode: "workspace_write",
+    allowedRoots: ["/tmp"],
+    deniedRoots: [],
+    realpathEnforced: false,
+    symlinkPolicy: "deny",
+    processRuleMode: "allow",
+    timeLimitMs: 60_000,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
+  };
+}
+
+function createParallelMetadata(toolName: string): ToolExecutionMetadata {
+  return { ...COMMAND_TOOL_METADATA, toolName };
 }
 
 function createRequest(overrides: Partial<CommandToolRequest> = {}): CommandToolRequest {
@@ -21,15 +45,7 @@ function createRequest(overrides: Partial<CommandToolRequest> = {}): CommandTool
     agentId: overrides.agentId ?? "agent-tool-e2e",
     traceId: overrides.traceId ?? "trace-tool-e2e",
     toolName: overrides.toolName ?? "command_exec",
-    sandboxPolicy: overrides.sandboxPolicy ?? {
-      policyId: "policy-tool-e2e",
-      mode: "workspace_write",
-      allowedRoots: ["/tmp"],
-      deniedRoots: [],
-      realpathEnforced: false,
-      symlinkPolicy: "deny",
-      processRuleMode: "allow",
-    },
+    sandboxPolicy: overrides.sandboxPolicy ?? createSandboxPolicy(),
     command: overrides.command ?? "echo",
     args: overrides.args ?? ["hello"],
     cwd: overrides.cwd ?? "/tmp",
@@ -153,11 +169,11 @@ test("E2E ToolExecutor: executeParallel aggregates multiple items", async () => 
 
   const result = await executor.executeParallel([
     {
-      metadata: { toolName: "parallel.a" } as { toolName: string },
+      metadata: createParallelMetadata("parallel.a"),
       execute: async () => "alpha",
     },
     {
-      metadata: { toolName: "parallel.b" } as { toolName: string },
+      metadata: createParallelMetadata("parallel.b"),
       execute: async () => "beta",
     },
   ]);

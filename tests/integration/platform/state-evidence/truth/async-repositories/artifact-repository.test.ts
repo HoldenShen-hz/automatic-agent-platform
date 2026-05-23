@@ -59,7 +59,7 @@ test.describe("AsyncArtifactRepository", () => {
       divisionId: "general_ops",
       tenantId,
       title: "Test Task",
-      status: "completed",
+      status: "done",
       source: "user",
       priority: "normal",
       inputJson: "{}",
@@ -82,15 +82,18 @@ test.describe("AsyncArtifactRepository", () => {
       taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-001",
       roleId: "general_executor",
       runKind: "task_run",
-      status: "completed",
+      status: "succeeded",
       inputRef: null,
       traceId: `trace-${executionId}`,
       attempt,
       timeoutMs: 60000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -246,7 +249,7 @@ test.describe("AsyncArtifactRepository", () => {
 
     const listed = await harness.artifactRepo.listArtifactsByTask("task-artifact-order", "tenant-artifact-order");
     assert.equal(listed.length, 2);
-    assert.equal(listed[0].artifactId, "artifact-order-001");
-    assert.equal(listed[1].artifactId, "artifact-order-002");
+    assert.equal(listed[0]!.artifactId, "artifact-order-001");
+    assert.equal(listed[1]!.artifactId, "artifact-order-002");
   });
 });

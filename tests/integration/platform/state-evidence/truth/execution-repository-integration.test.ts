@@ -8,6 +8,41 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import type { ExecutionRecord } from "../../../../../src/platform/contracts/types/domain.js";
+
+function createExecution(now: string, taskId: string, executionId: string, overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
+  return {
+    id: executionId,
+    taskId,
+    workflowId: "single_agent_minimal",
+    parentExecutionId: null,
+    harnessRunId: null,
+    agentId: "agent-001",
+    roleId: "general_executor",
+    runKind: "task_run",
+    status: "created",
+    inputRef: null,
+    traceId: `trace-${executionId}`,
+    attempt: 1,
+    timeoutMs: 60000,
+    budgetUsdLimit: 1,
+    budgetReservationId: null,
+    budgetLedgerId: null,
+    requiresApproval: 0,
+    sandboxMode: "workspace_write",
+    allowedToolsJson: "[]",
+    allowedPathsJson: "[]",
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: null,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
 
 test("execution repository persists and retrieves execution", () => {
   const ctx = createIntegrationContext("aa-exec-repo-");
@@ -38,33 +73,7 @@ test("execution repository persists and retrieves execution", () => {
         completedAt: null,
       });
 
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "pending",
-        inputRef: null,
-        traceId: "trace-exec-001",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, { traceId: "trace-exec-001" }));
     });
 
     const execution = ctx.store.getExecution(executionId);
@@ -72,7 +81,7 @@ test("execution repository persists and retrieves execution", () => {
     assert.ok(execution, "Execution should be retrieved");
     assert.equal(execution!.id, executionId);
     assert.equal(execution!.taskId, taskId);
-    assert.equal(execution!.status, "pending");
+    assert.equal(execution!.status, "created");
     assert.equal(execution!.attempt, 1);
   } finally {
     ctx.cleanup();
@@ -118,33 +127,7 @@ test("execution repository updates execution status", () => {
         completedAt: null,
       });
 
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "pending",
-        inputRef: null,
-        traceId: "trace-update",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, { traceId: "trace-update" }));
     });
 
     const startTime = new Date().toISOString();
@@ -188,33 +171,11 @@ test("execution repository records execution failure", () => {
         completedAt: null,
       });
 
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: "general_executor",
-        runKind: "task_run",
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, {
         status: "executing",
-        inputRef: null,
         traceId: "trace-fail",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
         startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      }));
     });
 
     const failTime = new Date().toISOString();
@@ -268,33 +229,15 @@ test("execution repository tracks multiple executions per task", () => {
 
       // Insert multiple executions with different attempts
       for (let i = 1; i <= 3; i++) {
-        ctx.store.insertExecution({
-          id: `exec-multi-${i}`,
-          taskId,
-          workflowId: "single_agent_minimal",
-          parentExecutionId: null,
-          agentId: "agent-001",
-          roleId: "general_executor",
-          runKind: "task_run",
+        ctx.store.insertExecution(createExecution(now, taskId, `exec-multi-${i}`, {
           status: i === 3 ? "executing" : "failed",
-          inputRef: null,
           traceId: `trace-multi-${i}`,
           attempt: i,
-          timeoutMs: 60000,
-          budgetUsdLimit: 1,
-          requiresApproval: 0,
-          sandboxMode: "workspace_write",
-          allowedToolsJson: "[]",
-          allowedPathsJson: "[]",
-          maxRetries: 0,
-          retryBackoff: "none",
           lastErrorCode: i < 3 ? "ERR_RETRY" : null,
           lastErrorMessage: i < 3 ? "Retry attempt" : null,
           startedAt: now,
           finishedAt: i < 3 ? now : null,
-          createdAt: now,
-          updatedAt: now,
-        });
+        }));
       }
     });
 

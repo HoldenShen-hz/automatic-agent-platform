@@ -8,13 +8,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import type { ExecutionRecord, TaskRecord, WorkflowStateRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 const now = "2026-04-29T00:00:00.000Z";
 
 function createTestTaskInput(overrides: Partial<{
   id: string;
   tenantId: string | null;
-  status: string;
+  status: TaskRecord["status"];
 }> = {}): Parameters<ReturnType<typeof createIntegrationContext>["store"]["insertTask"]>[0] {
   return {
     id: overrides.id ?? `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -48,15 +49,18 @@ function createTestExecutionInput(
     taskId,
     workflowId: "single_agent_minimal",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "agent-001",
     roleId: "general_executor",
     runKind: "task_run",
-    status: "pending",
+    status: "created",
     inputRef: null,
     traceId: `trace-${executionId}`,
     attempt: 1,
     timeoutMs: 60000,
     budgetUsdLimit: 1.0,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: "workspace_write",
     allowedToolsJson: "[]",
@@ -110,11 +114,11 @@ test("task lifecycle: create -> read -> update -> complete", () => {
 
     // Complete
     ctx.db.transaction(() => {
-      ctx.store.updateTaskStatus(taskId, "completed", now, null, now);
+      ctx.store.updateTaskStatus(taskId, "done", now, null, now);
     });
 
     updated = ctx.store.getTask(taskId);
-    assert.equal(updated!.status, "completed");
+    assert.equal(updated!.status, "done");
     assert.ok(updated!.completedAt);
   } finally {
     ctx.cleanup();
@@ -145,15 +149,15 @@ test("task with multiple executions tracks history correctly", () => {
 
     // Update first execution to failed (simulating retry)
     ctx.db.transaction(() => {
-      ctx.store.updateExecutionStatus(executionIds[0], "failed", now, now, now, "ERR_RETRY");
+      ctx.store.updateExecutionStatus(executionIds[0]!, "failed", now, now, now, "ERR_RETRY");
     });
 
     // Verify second execution is still pending
-    const exec1 = ctx.store.getExecution(executionIds[0]);
+    const exec1 = ctx.store.getExecution(executionIds[0]!);
     assert.equal(exec1!.status, "failed");
 
-    const exec2 = ctx.store.getExecution(executionIds[1]);
-    assert.equal(exec2!.status, "pending");
+    const exec2 = ctx.store.getExecution(executionIds[1]!);
+    assert.equal(exec2!.status, "created");
   } finally {
     ctx.cleanup();
   }
@@ -168,18 +172,20 @@ test("workflow state persists and updates correctly", () => {
     // Create task and workflow
     ctx.db.transaction(() => {
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
-      ctx.store.insertWorkflowState({
-        id: workflowId,
+      const workflow: WorkflowStateRecord = {
         taskId,
+        divisionId: "general_ops",
+        workflowId,
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
-        stepCount: 5,
-        version: 1,
-        createdAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
+        startedAt: now,
         updatedAt: now,
         resumableFromStep: null,
-      });
+      };
+      ctx.store.insertWorkflowState(workflow);
     });
 
     // Verify workflow state
@@ -243,7 +249,7 @@ test("CAS updateTaskStatusCas only updates when status matches", () => {
 
     // Wrong expected status - should return 0
     affected = ctx.db.transaction(() => {
-      return ctx.store.updateTaskStatusCas(taskId, "queued", "running", now);
+      return ctx.store.updateTaskStatusCas(taskId, "queued", "done", now);
     });
     assert.equal(affected, 0);
 
@@ -262,18 +268,20 @@ test("concurrent workflow updates with CAS version check", () => {
 
     ctx.db.transaction(() => {
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
-      ctx.store.insertWorkflowState({
-        id: "wf-cas-001",
+      const workflow: WorkflowStateRecord = {
         taskId,
+        divisionId: "general_ops",
+        workflowId: "wf-cas-001",
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
-        stepCount: 10,
-        version: 1,
-        createdAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
+        startedAt: now,
         updatedAt: now,
         resumableFromStep: null,
-      });
+      };
+      ctx.store.insertWorkflowState(workflow);
     });
 
     // First update should succeed (version 1 -> 2)
@@ -394,19 +402,19 @@ test("listTasks with combined filters returns correct subset", () => {
       ctx.store.insertTask(createTestTaskInput({ id: "t1", tenantId: "tenant-a", status: "queued" }));
       ctx.store.insertTask(createTestTaskInput({ id: "t2", tenantId: "tenant-a", status: "in_progress" }));
       ctx.store.insertTask(createTestTaskInput({ id: "t3", tenantId: "tenant-b", status: "queued" }));
-      ctx.store.insertTask(createTestTaskInput({ id: "t4", tenantId: "tenant-a", status: "completed" }));
+      ctx.store.insertTask(createTestTaskInput({ id: "t4", tenantId: "tenant-a", status: "done" }));
     });
 
     // Filter by tenant only
-    const tenantATasks = ctx.store.listTasks({ tenantId: "tenant-a" });
+    const tenantATasks = ctx.store.listTasks(100, "tenant-a");
     assert.equal(tenantATasks.length, 3);
 
     // Filter by status only
-    const queuedTasks = ctx.store.listTasks({ status: "queued" });
+    const queuedTasks = ctx.store.listTasks(100).filter((task) => task.status === "queued");
     assert.equal(queuedTasks.length, 2);
 
     // Filter by both tenant and status
-    const filtered = ctx.store.listTasks({ tenantId: "tenant-a", status: "queued" });
+    const filtered = ctx.store.listTasks(100, "tenant-a").filter((task) => task.status === "queued");
     assert.equal(filtered.length, 1);
     assert.equal(filtered[0]!.id, "t1");
   } finally {
@@ -431,11 +439,11 @@ test("execution state transitions are atomic within transaction", () => {
 
     ctx.db.transaction(() => {
       ctx.store.updateExecutionStatus(executionId, "executing", startTime, startTime);
-      ctx.store.updateExecutionStatus(executionId, "completed", finishTime, startTime, finishTime);
+      ctx.store.updateExecutionStatus(executionId, "succeeded", finishTime, startTime, finishTime);
     });
 
     const execution = ctx.store.getExecution(executionId);
-    assert.equal(execution!.status, "completed");
+    assert.equal(execution!.status, "succeeded");
     assert.equal(execution!.startedAt, startTime);
     assert.equal(execution!.finishedAt, finishTime);
   } finally {

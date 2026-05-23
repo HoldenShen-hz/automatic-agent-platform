@@ -7,7 +7,7 @@ import { SqliteAsyncAdapter } from "../../../../../../src/platform/five-plane-st
 import { AsyncSessionRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/session-repository.js";
 import { AsyncTaskRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/task-repository.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
-import type { SessionRecord, MessageRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { GatewayTargetRecord, MessageRecord, SessionRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 test.describe("AsyncSessionRepository", () => {
   let harness: {
@@ -77,7 +77,7 @@ test.describe("AsyncSessionRepository", () => {
       id: "session-001",
       taskId: "task-session-001",
       channel: "console",
-      status: "active",
+      status: "open",
       externalSessionId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -89,7 +89,7 @@ test.describe("AsyncSessionRepository", () => {
     assert.equal(retrieved?.id, "session-001");
     assert.equal(retrieved?.taskId, "task-session-001");
     assert.equal(retrieved?.channel, "console");
-    assert.equal(retrieved?.status, "active");
+    assert.equal(retrieved?.status, "open");
   });
 
   test("getSession returns null for non-existent session", async () => {
@@ -104,7 +104,7 @@ test.describe("AsyncSessionRepository", () => {
         id: "session-list-001",
         taskId: "task-session-list",
         channel: "console",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: "2026-04-23T10:00:00.000Z",
         updatedAt: "2026-04-23T10:00:00.000Z",
@@ -113,7 +113,7 @@ test.describe("AsyncSessionRepository", () => {
         id: "session-list-002",
         taskId: "task-session-list",
         channel: "api",
-        status: "closed",
+        status: "completed",
         externalSessionId: "ext-456",
         createdAt: "2026-04-23T11:00:00.000Z",
         updatedAt: "2026-04-23T11:00:00.000Z",
@@ -134,18 +134,18 @@ test.describe("AsyncSessionRepository", () => {
       id: "session-update-001",
       taskId: "task-session-update",
       channel: "console",
-      status: "active",
+      status: "open",
       externalSessionId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
     };
 
     await harness.repo.insertSession(session);
-    const affected = await harness.repo.updateSessionStatus("session-update-001", "closed", "2026-04-23T12:00:00.000Z");
+    const affected = await harness.repo.updateSessionStatus("session-update-001", "completed", "2026-04-23T12:00:00.000Z");
     assert.equal(affected, 1);
 
     const retrieved = await harness.repo.getSession("session-update-001");
-    assert.equal(retrieved?.status, "closed");
+    assert.equal(retrieved?.status, "completed");
     assert.equal(retrieved?.updatedAt, "2026-04-23T12:00:00.000Z");
   });
 
@@ -155,7 +155,7 @@ test.describe("AsyncSessionRepository", () => {
       id: "session-msg-001",
       taskId: "task-msg-001",
       channel: "console",
-      status: "active",
+      status: "open",
       externalSessionId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -191,9 +191,9 @@ test.describe("AsyncSessionRepository", () => {
 
     const listed = await harness.repo.listMessagesBySession("session-msg-001");
     assert.equal(listed.length, 2);
-    assert.equal(listed[0].id, "msg-001");
-    assert.equal(listed[0].direction, "inbound");
-    assert.equal(listed[1].id, "msg-002");
+    assert.equal(listed[0]!.id, "msg-001");
+    assert.equal(listed[0]!.direction, "inbound");
+    assert.equal(listed[1]!.id, "msg-002");
   });
 
   test("listMessagesBySession with limit", async () => {
@@ -202,7 +202,7 @@ test.describe("AsyncSessionRepository", () => {
       id: "session-msg-limit",
       taskId: "task-msg-limit",
       channel: "console",
-      status: "active",
+      status: "open",
       externalSessionId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -228,7 +228,7 @@ test.describe("AsyncSessionRepository", () => {
   });
 
   test("upsertGatewayTarget and getGatewayTarget roundtrip", async () => {
-    const target = {
+    const target: GatewayTargetRecord = {
       targetId: "target-001",
       channel: "console",
       targetKind: "user",
@@ -236,7 +236,7 @@ test.describe("AsyncSessionRepository", () => {
       displayName: "Test User",
       aliasesJson: '["testuser"]',
       metadataJson: '{"verified": true}',
-      source: "oauth",
+      source: "directory",
       lastSeenAt: "2026-04-23T10:00:00.000Z",
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -251,7 +251,7 @@ test.describe("AsyncSessionRepository", () => {
   });
 
   test("upsertGatewayTarget updates existing record", async () => {
-    const target = {
+    const target: GatewayTargetRecord = {
       targetId: "target-update-001",
       channel: "console",
       targetKind: "user",
@@ -259,7 +259,7 @@ test.describe("AsyncSessionRepository", () => {
       displayName: "Original Name",
       aliasesJson: "[]",
       metadataJson: "{}",
-      source: "manual",
+      source: "directory",
       lastSeenAt: "2026-04-23T10:00:00.000Z",
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -267,7 +267,7 @@ test.describe("AsyncSessionRepository", () => {
 
     await harness.repo.upsertGatewayTarget(target);
 
-    const updatedTarget = {
+    const updatedTarget: GatewayTargetRecord = {
       ...target,
       displayName: "Updated Name",
       lastSeenAt: "2026-04-23T11:00:00.000Z",
@@ -281,10 +281,10 @@ test.describe("AsyncSessionRepository", () => {
   });
 
   test("listGatewayTargetsByChannel returns targets for channel", async () => {
-    const targets = [
-      { targetId: "target-list-001", channel: "console", targetKind: "user", externalTargetId: "user-1", displayName: "User One", aliasesJson: "[]", metadataJson: "{}", source: "manual", lastSeenAt: "2026-04-23T10:00:00.000Z", createdAt: "2026-04-23T10:00:00.000Z", updatedAt: "2026-04-23T10:00:00.000Z" },
-      { targetId: "target-list-002", channel: "console", targetKind: "user", externalTargetId: "user-2", displayName: "User Two", aliasesJson: "[]", metadataJson: "{}", source: "manual", lastSeenAt: "2026-04-23T10:00:00.000Z", createdAt: "2026-04-23T10:00:00.000Z", updatedAt: "2026-04-23T10:00:00.000Z" },
-      { targetId: "target-list-003", channel: "api", targetKind: "bot", externalTargetId: "bot-1", displayName: "Bot One", aliasesJson: "[]", metadataJson: "{}", source: "oauth", lastSeenAt: "2026-04-23T10:00:00.000Z", createdAt: "2026-04-23T10:00:00.000Z", updatedAt: "2026-04-23T10:00:00.000Z" },
+    const targets: GatewayTargetRecord[] = [
+      { targetId: "target-list-001", channel: "console", targetKind: "user", externalTargetId: "user-1", displayName: "User One", aliasesJson: "[]", metadataJson: "{}", source: "directory", lastSeenAt: "2026-04-23T10:00:00.000Z", createdAt: "2026-04-23T10:00:00.000Z", updatedAt: "2026-04-23T10:00:00.000Z" },
+      { targetId: "target-list-002", channel: "console", targetKind: "user", externalTargetId: "user-2", displayName: "User Two", aliasesJson: "[]", metadataJson: "{}", source: "directory", lastSeenAt: "2026-04-23T10:00:00.000Z", createdAt: "2026-04-23T10:00:00.000Z", updatedAt: "2026-04-23T10:00:00.000Z" },
+      { targetId: "target-list-003", channel: "api", targetKind: "room", externalTargetId: "room-1", displayName: "Room One", aliasesJson: "[]", metadataJson: "{}", source: "session_history", lastSeenAt: "2026-04-23T10:00:00.000Z", createdAt: "2026-04-23T10:00:00.000Z", updatedAt: "2026-04-23T10:00:00.000Z" },
     ];
 
     for (const target of targets) {
@@ -304,7 +304,7 @@ test.describe("AsyncSessionRepository", () => {
       id: "session-event-001",
       taskId: "task-event-001",
       channel: "console",
-      status: "active",
+      status: "open",
       externalSessionId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -322,7 +322,7 @@ test.describe("AsyncSessionRepository", () => {
 
     const listed = await harness.repo.listSessionEvents("session-event-001", 10);
     assert.equal(listed.length, 2);
-    assert.equal(listed[0].eventType, "session.started");
+    assert.equal(listed[0]!.eventType, "session.started");
   });
 
   test("listSessionEvents respects limit", async () => {
@@ -331,7 +331,7 @@ test.describe("AsyncSessionRepository", () => {
       id: "session-event-limit",
       taskId: "task-event-limit",
       channel: "console",
-      status: "active",
+      status: "open",
       externalSessionId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",

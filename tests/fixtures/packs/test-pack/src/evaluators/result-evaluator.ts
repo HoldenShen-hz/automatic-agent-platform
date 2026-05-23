@@ -1,9 +1,8 @@
 import { defineEvaluator } from "@platform/plugin-sdk";
 
 export const resultEvaluator = defineEvaluator({
-  evaluatorId: "test-pack.result",
+  pluginId: "test-pack.result",
   name: "Result Evaluator",
-  async evaluate(input: { result: unknown }) {
-    return { passed: true, score: 1.0 };
-  },
+  version: "1.0.0",
+  capabilities: [{ name: "evaluate", description: "Evaluate result quality", inputSchema: {}, outputSchema: {} }],
 });

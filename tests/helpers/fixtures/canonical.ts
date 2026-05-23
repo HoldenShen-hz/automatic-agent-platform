@@ -415,6 +415,7 @@ export function createMinimalBudgetReservation(input: MinimalBudgetReservationIn
     status: input.status ?? "reserved",
     expiresAt: input.expiresAt ?? new Date(Date.now() + 3600000).toISOString(),
     createdAt: input.createdAt ?? DEFAULT_NOW,
+    version: input.overrides?.version ?? 0,
     ...input.overrides,
   };
 }
@@ -458,6 +459,7 @@ export function createMinimalSideEffectRecord(input: MinimalSideEffectRecordInpu
     deadline,
     createdAt: now,
     updatedAt: input.updatedAt ?? now,
+    version: input.overrides?.version ?? 0,
     ...input.overrides,
   };
 }

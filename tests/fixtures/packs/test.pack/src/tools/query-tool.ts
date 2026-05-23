@@ -1,10 +1,9 @@
 import { defineTool } from "@platform/plugin-sdk";
 
 export const queryTool = defineTool({
-  toolId: "test.pack.query",
+  pluginId: "test.pack.query",
   name: "Query",
+  version: "1.0.0",
   description: "Execute a query",
-  async execute(input: { query: string }) {
-    return { result: `Query executed: ${input.query}` };
-  },
+  capabilities: [{ name: "query", description: "Execute a query", inputSchema: {}, outputSchema: {} }],
 });

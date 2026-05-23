@@ -138,8 +138,14 @@ test("E2E: async worker handshake and writeback services drive a full execution 
 
     const claimEvents: string[] = [];
     const writebackEvents: string[] = [];
-    handshake.on("operation_complete", (event) => claimEvents.push(`${event.operation}:${event.success}`));
-    writeback.on("writeback_complete", (event) => writebackEvents.push(`${event.executionId}:${event.accepted}`));
+    handshake.on("operation_complete", (event) => {
+      const payload = event as { operation: string; success: boolean };
+      claimEvents.push(`${payload.operation}:${payload.success}`);
+    });
+    writeback.on("writeback_complete", (event) => {
+      const payload = event as { executionId: string; accepted: boolean };
+      writebackEvents.push(`${payload.executionId}:${payload.accepted}`);
+    });
 
     const claim = await handshake.claimExecution({
       ticketId,

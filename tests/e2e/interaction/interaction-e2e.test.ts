@@ -15,10 +15,12 @@ import assert from "node:assert/strict";
 import { GoalDecompositionService, type Goal } from "../../../src/interaction/goal-decomposer/index.js";
 import { ProactiveAgentService, type TriggerDefinition } from "../../../src/interaction/proactive-agent/index.js";
 import { NlEntryService } from "../../../src/interaction/nl-gateway/index.js";
-import { DashboardAggregationService } from "../../../src/interaction/dashboard/index.js";
+import {
+  DashboardAggregationService,
+  type DashboardSystemSituation,
+} from "../../../src/interaction/dashboard/index.js";
 import { DashboardWebSocketServer } from "../../../src/interaction/dashboard/dashboard-websocket-server.js";
 import type { TaskBoardItem } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
 
 // Mock IntakeRouter for NL Gateway tests
 const mockIntakeRouter = {
@@ -33,6 +35,23 @@ const mockIntakeRouter = {
     workflowId: "single_agent_minimal",
   }),
 };
+
+function createDashboardSystem(
+  overrides: Partial<DashboardSystemSituation> & {
+    queueDepth?: number;
+    degraded?: boolean;
+  } = {},
+): DashboardSystemSituation {
+  return {
+    healthStatus: "ok",
+    providerHealth: { status: "healthy", successRate: 0.98 },
+    queueBacklog: new Set<string>(),
+    queueDepth: 0,
+    degraded: false,
+    findings: [],
+    ...overrides,
+  };
+}
 
 test("e2e: Goal decomposition flow with NL entry and dashboard update", async () => {
   // 1. User sends NL request
@@ -72,16 +91,7 @@ test("e2e: Goal decomposition flow with NL entry and dashboard update", async ()
       list: () => [],
     },
     systemSource: {
-      build: (): SystemSituation => ({
-        healthStatus: "ok",
-        providerHealth: { status: "healthy", successRate: 0.98, recentCalls: 100 },
-        resourceUtilization: { memoryRssMb: 512, cpuPercent: 45, activeProcesses: 8 },
-        queueBacklog: { size: 0, degraded: false },
-        eventBusBacklog: { tier1PendingAcks: 0 },
-        findings: [],
-// @ts-ignore
-        observedAt: new Date().toISOString(),
-      }),
+      build: () => createDashboardSystem(),
     },
   });
 
@@ -233,15 +243,13 @@ test("e2e: Dashboard aggregation with operator dashboard flow", async () => {
       list: () => tasks,
     },
     systemSource: {
-      build: (): SystemSituation => ({
+      build: () =>
+        createDashboardSystem({
         healthStatus: "degraded",
-        providerHealth: { status: "degraded", successRate: 0.92, recentCalls: 50 },
-        resourceUtilization: { memoryRssMb: 512, cpuPercent: 45, activeProcesses: 8 },
-        queueBacklog: { size: 3, degraded: true },
-        eventBusBacklog: { tier1PendingAcks: 1 },
+        providerHealth: { status: "degraded", successRate: 0.92 },
+        queueDepth: 3,
+        degraded: true,
         findings: ["queue backlog elevated"],
-// @ts-ignore
-        observedAt: currentTime,
       }),
     },
     costBurnUsd: 150,
@@ -267,8 +275,8 @@ test("e2e: Dashboard aggregation with operator dashboard flow", async () => {
   for (let i = 1; i < operatorDashboard.attentionQueue.length; i++) {
     const previous = operatorDashboard.attentionQueue[i - 1]!;
     const current = operatorDashboard.attentionQueue[i]!;
-    const previousPriority = priorityRank[previous.priority];
-    const currentPriority = priorityRank[current.priority];
+    const previousPriority = priorityRank[previous.priority]!;
+    const currentPriority = priorityRank[current.priority]!;
 
     assert.ok(previousPriority <= currentPriority, "Attention queue should be sorted by priority");
 

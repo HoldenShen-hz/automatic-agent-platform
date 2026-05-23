@@ -76,11 +76,9 @@ test("E2E: marketplace lifecycle transitions from published to deprecated to ret
       tenantId: packageRecord.tenantId,
       packageId: packageRecord.packageId,
       reasonCode: "lifecycle_sunset",
-      migrationPath: "plugin.marketplace.lifecycle.v2",
+      migrationTarget: "plugin.marketplace.lifecycle.v2",
       sunsetAt: "2026-04-24T13:05:00.000Z",
       endOfLifeAt: "2026-10-24T13:05:00.000Z",
-      gracePeriodDays: 180,
-      migrationCompletionRatio: 0.97,
     });
     const retired = governance.retirePackage({
       tenantId: packageRecord.tenantId,

@@ -42,7 +42,7 @@ test("session repository persists and retrieves session", () => {
         id: sessionId,
         taskId,
         channel: "console",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: now,
         updatedAt: now,
@@ -55,7 +55,7 @@ test("session repository persists and retrieves session", () => {
     assert.equal(session!.id, sessionId);
     assert.equal(session!.taskId, taskId);
     assert.equal(session!.channel, "console");
-    assert.equal(session!.status, "active");
+    assert.equal(session!.status, "open");
   } finally {
     ctx.cleanup();
   }
@@ -104,7 +104,7 @@ test("session repository updates session status", () => {
         id: sessionId,
         taskId,
         channel: "console",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: now,
         updatedAt: now,
@@ -113,11 +113,11 @@ test("session repository updates session status", () => {
 
     const closeTime = new Date().toISOString();
     ctx.db.transaction(() => {
-      ctx.store.updateSessionStatus(sessionId, "closed", closeTime);
+      ctx.store.updateSessionStatus(sessionId, "completed", closeTime);
     });
 
     const updated = ctx.store.getSession(sessionId);
-    assert.equal(updated!.status, "closed");
+    assert.equal(updated!.status, "completed");
     assert.equal(updated!.updatedAt, closeTime);
   } finally {
     ctx.cleanup();
@@ -157,7 +157,7 @@ test("session repository lists sessions by task", () => {
         id: "session-list-1",
         taskId,
         channel: "console",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: now,
         updatedAt: now,
@@ -167,7 +167,7 @@ test("session repository lists sessions by task", () => {
         id: "session-list-2",
         taskId,
         channel: "api",
-        status: "closed",
+        status: "completed",
         externalSessionId: "ext-session-123",
         createdAt: now,
         updatedAt: now,
@@ -213,7 +213,7 @@ test("session repository tracks latest session by task", () => {
         id: "session-old",
         taskId,
         channel: "console",
-        status: "closed",
+        status: "completed",
         externalSessionId: null,
         createdAt: now,
         updatedAt: now,
@@ -227,7 +227,7 @@ test("session repository tracks latest session by task", () => {
         id: "session-new",
         taskId,
         channel: "console",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: newerTime,
         updatedAt: newerTime,

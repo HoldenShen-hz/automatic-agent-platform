@@ -127,6 +127,10 @@ test("platform-contracts: createExecutionReceipt generates valid receipt", () =>
     () =>
       createExecutionReceipt({
         planId: "plan_123",
+        harnessRunId: null,
+        planGraphId: null,
+        nodeRunId: null,
+        attemptId: null,
         stepId: "step_1",
         status: "completed",
         workerId: "worker_1",
@@ -147,6 +151,10 @@ test("platform-contracts: createExecutionReceipt handles error detail", () => {
     () =>
       createExecutionReceipt({
         planId: "plan_123",
+        harnessRunId: null,
+        planGraphId: null,
+        nodeRunId: null,
+        attemptId: null,
         stepId: "step_1",
         status: "failed",
         workerId: "worker_1",

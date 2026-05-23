@@ -6,8 +6,9 @@ import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-async-adapter.js";
 import { AsyncEventRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/event-repository.js";
 import { AsyncTaskRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/task-repository.js";
+import type { EventRecordDraft } from "../../../../../../src/platform/five-plane-state-evidence/events/event-record-support.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
-import type { EventRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 test.describe("AsyncEventRepository", () => {
   let harness: {
@@ -47,6 +48,20 @@ test.describe("AsyncEventRepository", () => {
     harness.cleanup();
   });
 
+  function createEventRecord(overrides: Partial<EventRecordDraft> = {}): EventRecordDraft {
+    return {
+      id: overrides.id ?? "event-default",
+      eventType: overrides.eventType ?? "task:status_changed",
+      payloadJson: overrides.payloadJson ?? "{}",
+      createdAt: overrides.createdAt ?? "2026-04-23T10:00:00.000Z",
+      taskId: overrides.taskId ?? null,
+      sessionId: overrides.sessionId ?? null,
+      executionId: overrides.executionId ?? null,
+      traceId: overrides.traceId ?? null,
+      ...overrides,
+    };
+  }
+
   async function insertTestTask(taskId: string): Promise<void> {
     const task: TaskRecord = {
       id: taskId,
@@ -73,16 +88,13 @@ test.describe("AsyncEventRepository", () => {
 
   test("insertEvent and getEvent roundtrip", async () => {
     await insertTestTask("task-event-001");
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event = createEventRecord({
       id: "event-001",
       taskId: "task-event-001",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       payloadJson: '{"taskId":"task-event-001"}',
-      traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
-    };
+    });
 
     const record = await harness.repo.insertEvent(event);
 
@@ -102,9 +114,9 @@ test.describe("AsyncEventRepository", () => {
 
   test("listEventsByType returns events filtered by type", async () => {
     const events = [
-      { id: "event-type-001", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:00:00.000Z" },
-      { id: "event-type-002", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:01:00.000Z" },
-      { id: "event-type-003", taskId: null, sessionId: null, executionId: null, eventType: "decision:requested", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:02:00.000Z" },
+      createEventRecord({ id: "event-type-001", eventType: "task:status_changed", createdAt: "2026-04-23T10:00:00.000Z" }),
+      createEventRecord({ id: "event-type-002", eventType: "task:status_changed", createdAt: "2026-04-23T10:01:00.000Z" }),
+      createEventRecord({ id: "event-type-003", eventType: "decision:requested", createdAt: "2026-04-23T10:02:00.000Z" }),
     ];
 
     for (const event of events) {
@@ -120,7 +132,11 @@ test.describe("AsyncEventRepository", () => {
 
   test("listEventsByType with limit", async () => {
     for (let i = 0; i < 5; i++) {
-      const event = { id: `event-limit-${i}`, taskId: null, sessionId: null, executionId: null, eventType: "test.event", payloadJson: "{}", traceId: null, createdAt: new Date(2026, 3, 23, 10, i).toISOString() };
+      const event = createEventRecord({
+        id: `event-limit-${i}`,
+        eventType: "test.event",
+        createdAt: new Date(2026, 3, 23, 10, i).toISOString(),
+      });
       await harness.repo.insertEvent(event);
     }
 
@@ -129,16 +145,10 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("insertEventConsumerAck and getEventConsumerAck roundtrip", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event = createEventRecord({
       id: "event-ack-001",
-      taskId: null,
-      sessionId: null,
-      executionId: null,
       eventType: "dispatch:ticket_created",
-      payloadJson: "{}",
-      traceId: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-    };
+    });
     await harness.repo.insertEvent(event);
 
     await harness.repo.insertEventConsumerAck({
@@ -159,16 +169,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("markEventAck preserves readable ack state", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
-      id: "event-mark-001",
-      taskId: null,
-      sessionId: null,
-      executionId: null,
-      eventType: "task:status_changed",
-      payloadJson: "{}",
-      traceId: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-    };
+    const event = createEventRecord({ id: "event-mark-001" });
     await harness.repo.insertEvent(event);
     await harness.repo.markEventAck("event-mark-001", "task_projection", "acked", "2026-04-23T10:30:00.000Z", null);
 
@@ -178,16 +179,10 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("ackAllConsumersForEvent marks all pending/failed acks as acked", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event = createEventRecord({
       id: "event-ack-all-001",
-      taskId: null,
-      sessionId: null,
-      executionId: null,
       eventType: "dispatch:ticket_created",
-      payloadJson: "{}",
-      traceId: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-    };
+    });
     await harness.repo.insertEvent(event);
 
     // Insert multiple consumer acks
@@ -214,16 +209,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("countPendingTier1Acks counts pending tier 1 acks", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
-      id: "event-tier1-001",
-      taskId: null,
-      sessionId: null,
-      executionId: null,
-      eventType: "task:status_changed",
-      payloadJson: "{}",
-      traceId: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-    };
+    const event = createEventRecord({ id: "event-tier1-001" });
     await harness.repo.insertEvent(event);
 
     const count = await harness.repo.countPendingTier1Acks();
@@ -231,16 +217,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("getRequiredConsumerIds returns consumer ids for event", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
-      id: "event-consumers-001",
-      taskId: null,
-      sessionId: null,
-      executionId: null,
-      eventType: "task:status_changed",
-      payloadJson: "{}",
-      traceId: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-    };
+    const event = createEventRecord({ id: "event-consumers-001" });
     await harness.repo.insertEvent(event);
 
     const consumerIds = await harness.repo.getRequiredConsumerIds("event-consumers-001");

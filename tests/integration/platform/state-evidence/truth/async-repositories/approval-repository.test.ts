@@ -59,7 +59,7 @@ test.describe("AsyncApprovalRepository", () => {
       divisionId: "general_ops",
       tenantId,
       title: "Test Task",
-      status: "pending_approval",
+      status: "awaiting_decision",
       source: "user",
       priority: "normal",
       inputJson: "{}",
@@ -82,15 +82,18 @@ test.describe("AsyncApprovalRepository", () => {
       taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-001",
       roleId: "general_executor",
       runKind: "task_run",
-      status: "pending",
+      status: "created",
       inputRef: null,
       traceId: `trace-${executionId}`,
       attempt: 1,
       timeoutMs: 60000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -114,7 +117,7 @@ test.describe("AsyncApprovalRepository", () => {
       id: "approval-001",
       taskId: "task-approval-001",
       executionId: "exec-approval-001",
-      status: "pending",
+      status: "requested",
       requestJson: '{"reason":"high_priority_task"}',
       responseJson: null,
       timeoutPolicy: '{"timeout_seconds":3600}',
@@ -127,7 +130,7 @@ test.describe("AsyncApprovalRepository", () => {
 
     assert.equal(retrieved?.id, "approval-001");
     assert.equal(retrieved?.taskId, "task-approval-001");
-    assert.equal(retrieved?.status, "pending");
+    assert.equal(retrieved?.status, "requested");
     assert.equal(retrieved?.executionId, "exec-approval-001");
   });
 
@@ -143,7 +146,7 @@ test.describe("AsyncApprovalRepository", () => {
       id: "approval-tenant-001",
       taskId: "task-approval-tenant",
       executionId: "exec-tenant",
-      status: "pending",
+      status: "requested",
       requestJson: "{}",
       responseJson: null,
       timeoutPolicy: "{}",
@@ -163,15 +166,18 @@ test.describe("AsyncApprovalRepository", () => {
       taskId: "task-approval-list",
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-002",
       roleId: "general_executor",
       runKind: "task_run",
-      status: "pending",
+      status: "created",
       inputRef: null,
       traceId: "trace-exec-list-002",
       attempt: 2,
       timeoutMs: 60000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -191,7 +197,7 @@ test.describe("AsyncApprovalRepository", () => {
         id: "approval-list-001",
         taskId: "task-approval-list",
         executionId: "exec-list-001",
-        status: "pending",
+        status: "requested",
         requestJson: "{}",
         responseJson: null,
         timeoutPolicy: "{}",
@@ -226,7 +232,7 @@ test.describe("AsyncApprovalRepository", () => {
       id: "approval-update-001",
       taskId: "task-approval-update",
       executionId: "exec-update-001",
-      status: "pending",
+      status: "requested",
       requestJson: '{"cost_estimate":500}',
       responseJson: null,
       timeoutPolicy: '{"timeout_seconds":3600}',
@@ -246,7 +252,7 @@ test.describe("AsyncApprovalRepository", () => {
 
     const retrieved = await harness.approvalRepo.getApproval("approval-update-001");
     assert.equal(retrieved?.status, "approved");
-    assert.ok(retrieved?.responseJson.includes("approved"));
+    assert.ok(retrieved?.responseJson?.includes("approved"));
   });
 
   test("listApprovalsByStatus filters by status", async () => {
@@ -257,15 +263,18 @@ test.describe("AsyncApprovalRepository", () => {
         taskId: "task-approval-status",
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: `agent-${i}`,
         roleId: "general_executor",
         runKind: "task_run",
-        status: "pending",
+        status: "created",
         inputRef: null,
         traceId: `trace-exec-status-${i}`,
         attempt: i + 1,
         timeoutMs: 60000,
         budgetUsdLimit: 1,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
@@ -281,26 +290,28 @@ test.describe("AsyncApprovalRepository", () => {
       });
     }
 
-    const approvals: Array<ApprovalRecord["status"]> = ["pending", "approved", "pending", "rejected"];
+    const approvals: Array<ApprovalRecord["status"]> = ["requested", "approved", "requested", "rejected"];
     const approvalIds = ["approval-status-001", "approval-status-002", "approval-status-003", "approval-status-004"];
 
     for (let i = 0; i < approvals.length; i++) {
+      const approvalId = approvalIds[i]!;
+      const approvalStatus = approvals[i]!;
       const approval: ApprovalRecord = {
-        id: approvalIds[i],
+        id: approvalId,
         taskId: "task-approval-status",
         executionId: `exec-status-${i}`,
-        status: approvals[i],
+        status: approvalStatus,
         requestJson: "{}",
         responseJson: null,
         timeoutPolicy: "{}",
         createdAt: new Date(2026, 3, 23, 10, i).toISOString(),
-        respondedAt: approvals[i] !== "pending" ? new Date(2026, 3, 23, 11, i).toISOString() : null,
+        respondedAt: approvalStatus !== "requested" ? new Date(2026, 3, 23, 11, i).toISOString() : null,
       };
       await harness.approvalRepo.insertApproval(approval);
     }
 
-    const pending = await harness.approvalRepo.listApprovalsByStatus("pending");
-    assert.equal(pending.length, 2);
+    const requested = await harness.approvalRepo.listApprovalsByStatus("requested");
+    assert.equal(requested.length, 2);
 
     const approved = await harness.approvalRepo.listApprovalsByStatus("approved");
     assert.equal(approved.length, 1);
@@ -317,7 +328,7 @@ test.describe("AsyncApprovalRepository", () => {
       taskId: "task-takeover-001",
       executionId: "exec-takeover-001",
       operatorId: "operator-001",
-      status: "active" as const,
+      status: "open" as const,
       reasonCode: "manual_intervention",
       startedAt: "2026-04-23T10:00:00.000Z",
       closedAt: null,
@@ -328,7 +339,7 @@ test.describe("AsyncApprovalRepository", () => {
 
     assert.equal(retrieved?.id, "takeover-001");
     assert.equal(retrieved?.operatorId, "operator-001");
-    assert.equal(retrieved?.status, "active");
+    assert.equal(retrieved?.status, "open");
   });
 
   test("closeTakeoverSession updates status and closed_at", async () => {
@@ -339,7 +350,7 @@ test.describe("AsyncApprovalRepository", () => {
       taskId: "task-takeover-close",
       executionId: "exec-takeover-close",
       operatorId: "operator-001",
-      status: "active" as const,
+      status: "open" as const,
       reasonCode: "manual_intervention",
       startedAt: "2026-04-23T10:00:00.000Z",
       closedAt: null,

@@ -94,7 +94,7 @@ test("E2E Autonomy: AutonomyAuditService records all autonomy decisions", async 
       agentId: "agent_e2e_001",
       capabilityId: "code_generation",
       fromLevel: "semi_auto",
-      toLevel: "auto",
+      toLevel: "full_auto",
       trigger: "rule_engine",
       approvedBy: "auto",
       evidence: {

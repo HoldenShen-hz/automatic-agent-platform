@@ -8,13 +8,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import type { ExecutionRecord, TaskRecord, WorkflowStateRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 const now = "2026-04-29T00:00:00.000Z";
 
 function createTestTaskInput(overrides: Partial<{
   id: string;
   tenantId: string | null;
-  status: string;
+  status: TaskRecord["status"];
 }> = {}): Parameters<ReturnType<typeof createIntegrationContext>["store"]["insertTask"]>[0] {
   return {
     id: overrides.id ?? `task-lifecycle-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -44,15 +45,18 @@ function createTestExecutionInput(taskId: string, executionId: string): Paramete
     taskId,
     workflowId: "single_agent_minimal",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "agent-001",
     roleId: "general_executor",
     runKind: "task_run",
-    status: "pending",
+    status: "created",
     inputRef: null,
     traceId: `trace-${executionId}`,
     attempt: 1,
     timeoutMs: 60000,
     budgetUsdLimit: 1.0,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: "workspace_write",
     allowedToolsJson: "[]",
@@ -91,11 +95,11 @@ test("RuntimeLifecycleRepository updateTaskStatus transitions through states", (
 
     // in_progress -> completed
     ctx.db.transaction(() => {
-      ctx.store.task.updateTaskStatus(taskId, "completed", now, null, now);
+      ctx.store.task.updateTaskStatus(taskId, "done", now, null, now);
     });
 
     task = ctx.store.getTask(taskId);
-    assert.equal(task!.status, "completed");
+    assert.equal(task!.status, "done");
     assert.ok(task!.completedAt);
   } finally {
     ctx.cleanup();
@@ -119,7 +123,7 @@ test("RuntimeLifecycleRepository updateTaskStatusCas ensures atomic updates", ()
 
     // Wrong expected status
     affected = ctx.db.transaction(() => {
-      return ctx.store.task.updateTaskStatusCas(taskId, "queued", "running", now);
+      return ctx.store.task.updateTaskStatusCas(taskId, "queued", "done", now);
     });
     assert.equal(affected, 0);
 
@@ -142,18 +146,20 @@ test("RuntimeLifecycleRepository updateWorkflowState advances through steps", ()
 
     ctx.db.transaction(() => {
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
-      ctx.store.insertWorkflowState({
-        id: "wf-lifecycle-001",
+      const workflow: WorkflowStateRecord = {
         taskId,
+        divisionId: "general_ops",
+        workflowId: "wf-lifecycle-001",
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
-        stepCount: 3,
-        version: 1,
-        createdAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
+        startedAt: now,
         updatedAt: now,
         resumableFromStep: null,
-      });
+      };
+      ctx.store.insertWorkflowState(workflow);
     });
 
     // Advance through steps
@@ -187,18 +193,20 @@ test("RuntimeLifecycleRepository updateWorkflowStateCas prevents stale updates",
 
     ctx.db.transaction(() => {
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
-      ctx.store.insertWorkflowState({
-        id: "wf-cas-001",
+      const workflow: WorkflowStateRecord = {
         taskId,
+        divisionId: "general_ops",
+        workflowId: "wf-cas-001",
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
-        stepCount: 5,
-        version: 1,
-        createdAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
+        startedAt: now,
         updatedAt: now,
         resumableFromStep: null,
-      });
+      };
+      ctx.store.insertWorkflowState(workflow);
     });
 
     // First update succeeds

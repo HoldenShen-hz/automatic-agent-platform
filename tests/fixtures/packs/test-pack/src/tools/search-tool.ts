@@ -1,10 +1,9 @@
 import { defineTool } from "@platform/plugin-sdk";
 
 export const searchTool = defineTool({
-  toolId: "test-pack.search",
+  pluginId: "test-pack.search",
   name: "Search",
+  version: "1.0.0",
   description: "Search resources",
-  async execute(input: { query: string }) {
-    return { results: [] };
-  },
+  capabilities: [{ name: "search", description: "Search resources", inputSchema: {}, outputSchema: {} }],
 });

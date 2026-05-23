@@ -116,7 +116,7 @@ test("contract: DomainOnboardingService enforces ordered evidence-backed activat
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   });
@@ -145,6 +145,11 @@ test("contract: DomainTaskDesignService preserves review and interaction constra
         triggerPhrases: ["release"],
         defaultWorkflowId: "wf_release",
         defaultToolBundleIds: ["repo_tools"],
+        riskProfileRef: "coding.risk",
+        guardrailOverlay: {},
+        recommendedWorkflowIds: ["wf_release"],
+        defaultPromptBundleRef: "coding.default-prompt",
+        acceptanceChecklistRef: "coding.acceptance",
       },
     ],
     promptLibrary: {
@@ -300,6 +305,8 @@ test("contract: ApprovalRoutingService preserves delegation and escalation const
       active: true,
       metadata: {},
       costCenter: "FIN-001",
+      effectivePolicies: {},
+      status: "active",
     },
   ];
   const service = new ApprovalRoutingService({
@@ -357,6 +364,8 @@ test("contract: ComplianceGovernanceService must deny missing required policy ke
         active: true,
         metadata: {},
         costCenter: "",
+        effectivePolicies: {},
+        status: "active",
       },
     ],
     {
@@ -411,6 +420,8 @@ test("contract: KnowledgeBoundaryService logs and redacts denied access", () => 
       allowedOrgNodeIds: [],
       auditOnAccess: false,
       fieldAllowlist: [],
+      classificationRules: [],
+      sharePolicy: { mode: "explicit_grant", allowCrossTenant: false, requireAudit: true, allowOrgNodeIds: [] },
     },
     "user_1",
     "dept_hr",

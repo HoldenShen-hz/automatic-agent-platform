@@ -255,7 +255,6 @@ test("E2E Canonical HarnessRun: failure path transitions to failed terminal stat
       emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
       fencingToken: harnessRun.fencingToken ?? "fence_default",
       auditRef: "audit://harness-failed/failed",
-      errorCode: "E2E_TEST_FAILURE",
     });
 
     assert.equal(failed.aggregate.status, "failed");
@@ -464,7 +463,6 @@ test("E2E Canonical NodeRun: failed execution transitions to failed state", asyn
       leaseId: nodeRun.leaseId!,
       fencingToken: nodeRun.fencingToken!,
       auditRef: "audit://nrun-failed/failed",
-      errorCode: "E2E_NODE_FAILURE",
     });
 
     assert.equal(failed.aggregate.status, "failed");

@@ -29,6 +29,7 @@ import {
   createNodeAttemptReceipt,
   createRunVersionLock,
 } from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import type { ExecutionRecord, WorkflowStateRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ---------------------------------------------------------------------------
@@ -53,6 +54,40 @@ function createInMemoryContext(prefix: string = "aa-test-"): InMemoryTestContext
     cleanup() {
       db.close();
     },
+  };
+}
+
+function createExecution(now: string, taskId: string, executionId: string, overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
+  return {
+    id: executionId,
+    taskId,
+    workflowId: "single_agent_minimal",
+    parentExecutionId: null,
+    harnessRunId: null,
+    agentId: "agent-001",
+    roleId: "general_executor",
+    runKind: "task_run",
+    status: "created",
+    inputRef: null,
+    traceId: `trace-${executionId}`,
+    attempt: 1,
+    timeoutMs: 60000,
+    budgetUsdLimit: 1,
+    budgetReservationId: null,
+    budgetLedgerId: null,
+    requiresApproval: 0,
+    sandboxMode: "workspace_write",
+    allowedToolsJson: "[]",
+    allowedPathsJson: "[]",
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: null,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
   };
 }
 
@@ -459,38 +494,12 @@ test("Truth repository: execution lifecycle maintains append-only state", () => 
         completedAt: null,
       });
 
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "queued",
-        inputRef: null,
-        traceId: `trace-${executionId}`,
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1.0,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, { status: "queued", budgetUsdLimit: 1.0 }));
     });
 
     // Transition execution through states
     const transitions = [
-      { from: "pending", to: "prechecking" },
+      { from: "created", to: "prechecking" },
       { from: "prechecking", to: "executing" },
       { from: "executing", to: "succeeded" },
     ];
@@ -547,8 +556,9 @@ test("Truth repository: workflow state append-only transitions", () => {
 
     // Insert workflow state
     ctx.db.transaction(() => {
-      ctx.store.insertWorkflowState({
+      const workflow: WorkflowStateRecord = {
         taskId,
+        divisionId: "general_ops",
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
@@ -558,7 +568,8 @@ test("Truth repository: workflow state append-only transitions", () => {
         startedAt: now,
         updatedAt: now,
         workflowId: "wf-001",
-      });
+      };
+      ctx.store.insertWorkflowState(workflow);
     });
 
     // Advance workflow steps
@@ -714,33 +725,10 @@ test("Truth repository: cost events append-only tracking", () => {
         createdAt: now,
         updatedAt: now,
       });
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, {
         agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "pending",
-        inputRef: null,
-        traceId: `trace-${executionId}`,
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+        status: "created",
+      }));
       for (const cost of costs) {
         ctx.store.insertCostEvent({
           id: cost.id,
@@ -999,9 +987,9 @@ test("RuntimeTruthRepository: transition records events in append-only fashion",
     traceId: "trace-2",
     reasonCode: "start_planning",
     emittedBy: "test",
-    leaseId: t1.aggregate.leaseId,
-    fencingToken: t1.aggregate.fencingToken,
     auditRef: "audit://runtime-truth/hrun-transition-001/planning",
+    ...(t1.aggregate.leaseId != null ? { leaseId: t1.aggregate.leaseId } : {}),
+    ...(t1.aggregate.fencingToken != null ? { fencingToken: t1.aggregate.fencingToken } : {}),
   });
 
   assert.equal(t2.event.aggregateSeq, 2, "Second event should have seq 2");

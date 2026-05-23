@@ -5,6 +5,19 @@ import { createMinimalPlanGraphBundle } from "../../../helpers/fixtures/base.js"
 import { EvaluatorService } from "../../../../src/platform/five-plane-orchestration/evaluator/evaluator-service.js";
 import type { FeedbackBatch } from "../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
+function createFeedbackTrust() {
+  return {
+    feedbackTrustScore: 0.5,
+    trustFactors: {
+      sourceReliability: 0.5,
+      historicalAccuracy: 0.5,
+      authenticatedSource: false,
+      attackSurfaceExposure: 0.5,
+      holdoutOverlap: 0,
+    },
+  };
+}
+
 function createFeedback(overrides: Partial<FeedbackBatch> = {}): FeedbackBatch {
   return {
     feedbackId: "feedback-e2e-001",
@@ -35,6 +48,7 @@ test("E2E Evaluator: accepts a clean successful feedback batch", () => {
           payload: { summary: "step completed" },
           stepOutputRefs: [],
           timestamp: Date.now(),
+          ...createFeedbackTrust(),
         },
       ],
     }),
@@ -63,6 +77,7 @@ test("E2E Evaluator: converts failure signals into a non-accept decision", () =>
           payload: { reasonCode: "timeout" },
           stepOutputRefs: [],
           timestamp: Date.now(),
+          ...createFeedbackTrust(),
         },
       ],
     }),

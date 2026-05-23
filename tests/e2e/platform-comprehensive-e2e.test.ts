@@ -1722,12 +1722,12 @@ test("E2E Events: tier-1 and tier-2 events are recorded correctly", async () => 
 // @ts-ignore
     const tier1Events = events.filter(e => e.eventTier === "tier_1");
     assert.equal(tier1Events.length, 1, "Should have 1 tier-1 event");
-    assert.equal(tier1Events[0].eventType, "workflow:step_completed");
+    assert.equal(tier1Events[0]!.eventType, "workflow:step_completed");
 
 // @ts-ignore
     const tier2Events = events.filter(e => e.eventTier === "tier_2");
     assert.equal(tier2Events.length, 1, "Should have 1 tier-2 event");
-    assert.equal(tier2Events[0].eventType, "admission:evaluated");
+    assert.equal(tier2Events[0]!.eventType, "admission:evaluated");
 
   } finally {
     harness.cleanup();

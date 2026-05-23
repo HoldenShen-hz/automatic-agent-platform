@@ -1,10 +1,9 @@
 import { defineTool } from "@platform/plugin-sdk";
 
 export const transformTool = defineTool({
-  toolId: "test-pack.transform",
+  pluginId: "test-pack.transform",
   name: "Transform",
+  version: "1.0.0",
   description: "Transform data",
-  async execute(input: { data: unknown }) {
-    return { result: JSON.stringify(input.data) };
-  },
+  capabilities: [{ name: "transform", description: "Transform data", inputSchema: {}, outputSchema: {} }],
 });

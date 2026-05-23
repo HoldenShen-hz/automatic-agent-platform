@@ -41,7 +41,7 @@ test("E2E Canonical Intake: raw request flows through task draft, confirmed spec
     preferredIntent: {
       intent: "create",
       confidence: 0.95,
-      source: "e2e-test",
+      reasoning: "e2e-test",
     },
     riskPreview: {
       riskClass: "medium",

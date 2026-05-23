@@ -2,80 +2,67 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { scoreSystemHealth } from "../../../../../src/interaction/dashboard/health-scorer/index.js";
-import type { SystemSituation } from "../../../../../src/platform/shared/observability/system-situation-model.js";
+import type { DashboardSystemSituation } from "../../../../../src/interaction/dashboard/index.js";
+
+function createSystem(
+  overrides: Partial<DashboardSystemSituation> & {
+    queueDepth?: number;
+    degraded?: boolean;
+  } = {},
+): DashboardSystemSituation {
+  return {
+    healthStatus: "ok",
+    providerHealth: { status: "healthy", successRate: 1 },
+    queueBacklog: new Set<string>(),
+    queueDepth: 0,
+    degraded: false,
+    findings: [],
+    ...overrides,
+  };
+}
 
 test("scoreSystemHealth returns 100 for ok status with no backlog or findings", () => {
-  const system: SystemSituation = {
-    healthStatus: "ok",
-    providerHealth: { status: "healthy", successRate: 1, recentCalls: 100 },
-    resourceUtilization: { memoryRssMb: 512, activeProcesses: 10 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 0 },
-    findings: [],
-    observedAt: Date.now(),
-  };
+  const system = createSystem();
 
   assert.equal(scoreSystemHealth(system), 100);
 });
 
 test("scoreSystemHealth returns 80 for degraded status", () => {
-  const system: SystemSituation = {
+  const system = createSystem({
     healthStatus: "degraded",
-    providerHealth: { status: "degraded", successRate: 0.9, recentCalls: 100 },
-    resourceUtilization: { memoryRssMb: 512, activeProcesses: 10 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 0 },
-    findings: [],
-    observedAt: Date.now(),
-  };
+    providerHealth: { status: "degraded", successRate: 0.9 },
+  });
 
   assert.equal(scoreSystemHealth(system), 80);
 });
 
 test("scoreSystemHealth returns 60 for overloaded status with no backlog", () => {
-  const system: SystemSituation = {
+  const system = createSystem({
     healthStatus: "overloaded",
-    providerHealth: { status: "degraded", successRate: 0.85, recentCalls: 1000 },
-    resourceUtilization: { memoryRssMb: 2048, activeProcesses: 50 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 100 },
-    findings: [],
-    observedAt: Date.now(),
-  };
+    providerHealth: { status: "degraded", successRate: 0.85 },
+  });
 
   // Base is 60 (overloaded), no backlog penalty
   assert.equal(scoreSystemHealth(system), 60);
 });
 
 test("scoreSystemHealth returns 30 for unhealthy status with no backlog", () => {
-  const system: SystemSituation = {
+  const system = createSystem({
     healthStatus: "unhealthy",
-    providerHealth: { status: "failed", successRate: 0.5, recentCalls: 5000 },
-    resourceUtilization: { memoryRssMb: 4096, activeProcesses: 100 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 500 },
-    findings: [],
-    observedAt: Date.now(),
-  };
+    providerHealth: { status: "failed", successRate: 0.5 },
+  });
 
   // Base is 30 (unhealthy), no backlog penalty
   assert.equal(scoreSystemHealth(system), 30);
 });
 
 test("scoreSystemHealth applies backlog penalty (max 30)", () => {
-  const baseSystem: SystemSituation = {
-    healthStatus: "ok",
-    providerHealth: { status: "healthy", successRate: 1, recentCalls: 100 },
-    resourceUtilization: { memoryRssMb: 512, activeProcesses: 10 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 0 },
-    findings: [],
-    observedAt: Date.now(),
-  };
+  const baseSystem = createSystem();
 
-  const withBacklog: SystemSituation = {
+  const withBacklog: DashboardSystemSituation = {
     ...baseSystem,
-    queueBacklog: { size: 50, degraded: true },
+    queueDepth: 50,
+    degraded: true,
   };
 
   // Base is 100, backlog of 50 should apply 30 penalty (capped)
@@ -83,18 +70,10 @@ test("scoreSystemHealth applies backlog penalty (max 30)", () => {
 });
 
 test("scoreSystemHealth applies findings penalty (max 20)", () => {
-  const baseSystem: SystemSituation = {
-    healthStatus: "ok",
-    providerHealth: { status: "healthy", successRate: 1, recentCalls: 100 },
-    resourceUtilization: { memoryRssMb: 512, activeProcesses: 10 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 0 },
-    findings: [],
-    observedAt: Date.now(),
-  };
+  const baseSystem = createSystem();
 
   // 5 findings * 5 = 25, capped at 20
-  const withFindings: SystemSituation = {
+  const withFindings: DashboardSystemSituation = {
     ...baseSystem,
     findings: ["finding1", "finding2", "finding3", "finding4", "finding5"],
   };
@@ -104,30 +83,20 @@ test("scoreSystemHealth applies findings penalty (max 20)", () => {
 });
 
 test("scoreSystemHealth returns 0 when penalties exceed base", () => {
-  const system: SystemSituation = {
+  const system = createSystem({
     healthStatus: "unhealthy",
-    providerHealth: { status: "failed", successRate: 0.3, recentCalls: 10000 },
-    resourceUtilization: { memoryRssMb: 8192, activeProcesses: 200 },
-    queueBacklog: { size: 100, degraded: true },
-    eventBusBacklog: { tier1PendingAcks: 1000 },
+    providerHealth: { status: "failed", successRate: 0.3 },
+    queueDepth: 100,
+    degraded: true,
     findings: ["f1", "f2", "f3", "f4", "f5", "f6"],
-    observedAt: Date.now(),
-  };
+  });
 
   // Base 30 - 30 (backlog) - 20 (findings, capped) = -20, clamped to 0
   assert.equal(scoreSystemHealth(system), 0);
 });
 
 test("scoreSystemHealth handles minimal system state", () => {
-  const system: SystemSituation = {
-    healthStatus: "ok",
-    providerHealth: { status: "healthy", successRate: 1, recentCalls: 0 },
-    resourceUtilization: { memoryRssMb: 0, activeProcesses: 0 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 0 },
-    findings: [],
-    observedAt: Date.now(),
-  };
+  const system = createSystem();
 
   assert.equal(scoreSystemHealth(system), 100);
 });

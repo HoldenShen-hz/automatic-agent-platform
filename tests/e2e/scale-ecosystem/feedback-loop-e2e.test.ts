@@ -16,7 +16,7 @@ function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
     severity: overrides.severity ?? "warning",
     payload: overrides.payload ?? { summary: "Operator corrected the output", reasonCode: "correction" },
     stepOutputRefs: overrides.stepOutputRefs ?? ["step-output-1"],
-    timestamp: overrides.timestamp ?? nowIso(),
+    timestamp: overrides.timestamp ?? Date.now(),
     trustFactors: overrides.trustFactors ?? {
       sourceReliability: 1,
       historicalAccuracy: 1,
@@ -24,7 +24,7 @@ function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
       attackSurfaceExposure: 0,
       holdoutOverlap: 0,
     },
-    feedbackTrustScore: overrides.feedbackTrustScore,
+    feedbackTrustScore: overrides.feedbackTrustScore ?? 1,
     trustScore: overrides.trustScore,
   };
 }

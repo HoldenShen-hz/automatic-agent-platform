@@ -79,8 +79,14 @@ test("E2E: runtime-services async human takeover modifies input and completes th
   try {
     const takeover = new HumanTakeoverServiceAsync(harness.db, harness.store);
     const asyncEvents: string[] = [];
-    takeover.on("session_opened", (event) => asyncEvents.push(`opened:${event.taskId}`));
-    takeover.on("session_closed", (event) => asyncEvents.push(`closed:${event.taskId}`));
+    takeover.on("session_opened", (event) => {
+      const payload = event as { taskId: string };
+      asyncEvents.push(`opened:${payload.taskId}`);
+    });
+    takeover.on("session_closed", (event) => {
+      const payload = event as { taskId: string };
+      asyncEvents.push(`closed:${payload.taskId}`);
+    });
 
     const opened = await takeover.openSession({
       taskId: "task-runtime-takeover",

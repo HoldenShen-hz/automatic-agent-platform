@@ -116,7 +116,6 @@ test("E2E OAPEFLIR: handoff builder preserves facts and state for the next agent
       {
         stepId: "step-1",
         planRef: "plan-1",
-        status: "succeeded",
         userFacingResult: { summary: "Read and summarized the file", artifacts: ["artifact-1"] },
         systemTelemetry: {
           durationMs: 100,

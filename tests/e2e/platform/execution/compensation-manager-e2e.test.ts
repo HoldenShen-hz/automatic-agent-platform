@@ -27,6 +27,7 @@ function createSideEffect(overrides: Partial<SideEffectRecord> = {}): SideEffect
     status: overrides.status ?? "compensation_required",
     riskClass: overrides.riskClass ?? "medium",
     preCommitPolicyProofRef: overrides.preCommitPolicyProofRef ?? planArtifact,
+    deadline: overrides.deadline ?? "2026-05-10T00:30:00.000Z",
     ...(overrides.externalRef != null ? { externalRef: overrides.externalRef } : {}),
   });
 }

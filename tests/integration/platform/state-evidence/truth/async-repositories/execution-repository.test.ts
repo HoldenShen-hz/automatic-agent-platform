@@ -77,6 +77,7 @@ test.describe("AsyncExecutionRepository", () => {
       taskId: overrides.taskId,
       workflowId: overrides.workflowId ?? "single_agent_minimal",
       parentExecutionId: overrides.parentExecutionId ?? null,
+      harnessRunId: overrides.harnessRunId ?? null,
       agentId: overrides.agentId ?? "agent-001",
       roleId: overrides.roleId ?? "general_executor",
       runKind: overrides.runKind ?? "task_run",
@@ -86,6 +87,8 @@ test.describe("AsyncExecutionRepository", () => {
       attempt: overrides.attempt ?? 1,
       timeoutMs: overrides.timeoutMs ?? 60000,
       budgetUsdLimit: overrides.budgetUsdLimit ?? 1,
+      budgetReservationId: overrides.budgetReservationId ?? null,
+      budgetLedgerId: overrides.budgetLedgerId ?? null,
       requiresApproval: overrides.requiresApproval ?? 0,
       sandboxMode: overrides.sandboxMode ?? "workspace_write",
       allowedToolsJson: overrides.allowedToolsJson ?? "[]",
@@ -107,7 +110,7 @@ test.describe("AsyncExecutionRepository", () => {
     const execution = createExecution({
       id: "exec-001",
       taskId: "task-exec-001",
-      status: "pending",
+      status: "created",
     });
 
     await harness.executionRepo.insertExecution(execution);
@@ -115,7 +118,7 @@ test.describe("AsyncExecutionRepository", () => {
 
     assert.equal(retrieved?.id, "exec-001");
     assert.equal(retrieved?.taskId, "task-exec-001");
-    assert.equal(retrieved?.status, "pending");
+    assert.equal(retrieved?.status, "created");
     assert.equal(retrieved?.attempt, 1);
   });
 
@@ -131,7 +134,7 @@ test.describe("AsyncExecutionRepository", () => {
       createExecution({
         id: "exec-list-001",
         taskId: "task-exec-list",
-        status: "pending",
+        status: "created",
         attempt: 1,
         createdAt: "2026-04-23T10:00:00.000Z",
         updatedAt: "2026-04-23T10:00:00.000Z",
@@ -139,7 +142,7 @@ test.describe("AsyncExecutionRepository", () => {
       createExecution({
         id: "exec-list-002",
         taskId: "task-exec-list",
-        status: "pending",
+        status: "created",
         agentId: "agent-002",
         attempt: 2,
         createdAt: "2026-04-23T10:01:00.000Z",
@@ -158,14 +161,16 @@ test.describe("AsyncExecutionRepository", () => {
   test("listExecutionsByStatuses filters by status list", async () => {
     await insertTestTask("task-exec-status", "tenant-exec-status");
 
-    const statuses: Array<ExecutionRecord["status"]> = ["pending", "executing", "completed", "pending"];
+    const statuses: Array<ExecutionRecord["status"]> = ["created", "executing", "succeeded", "created"];
     const execIds = ["exec-status-001", "exec-status-002", "exec-status-003", "exec-status-004"];
 
     for (let i = 0; i < statuses.length; i++) {
+      const execId = execIds[i]!;
+      const status = statuses[i]!;
       const exec = createExecution({
-        id: execIds[i],
+        id: execId,
         taskId: "task-exec-status",
-        status: statuses[i],
+        status,
         attempt: i + 1,
         createdAt: new Date(2026, 3, 23, 10, i).toISOString(),
         updatedAt: new Date(2026, 3, 23, 10, i).toISOString(),
@@ -173,13 +178,13 @@ test.describe("AsyncExecutionRepository", () => {
       await harness.executionRepo.insertExecution(exec);
     }
 
-    const pending = await harness.executionRepo.listExecutionsByStatuses(["pending"]);
-    assert.equal(pending.length, 2);
+    const created = await harness.executionRepo.listExecutionsByStatuses(["created"]);
+    assert.equal(created.length, 2);
 
     const executing = await harness.executionRepo.listExecutionsByStatuses(["executing"]);
     assert.equal(executing.length, 1);
 
-    const multiple = await harness.executionRepo.listExecutionsByStatuses(["pending", "executing"]);
+    const multiple = await harness.executionRepo.listExecutionsByStatuses(["created", "executing"]);
     assert.equal(multiple.length, 3);
   });
 
@@ -194,7 +199,7 @@ test.describe("AsyncExecutionRepository", () => {
     const exec = createExecution({
       id: "exec-update-001",
       taskId: "task-exec-update",
-      status: "pending",
+      status: "created",
     });
     await harness.executionRepo.insertExecution(exec);
 
@@ -240,13 +245,14 @@ test.describe("AsyncExecutionRepository", () => {
   test("countActiveExecutions counts executing and prechecking", async () => {
     await insertTestTask("task-exec-active", "tenant-exec-active");
 
-    const statuses: Array<ExecutionRecord["status"]> = ["executing", "prechecking", "pending", "completed", "executing"];
+    const statuses: Array<ExecutionRecord["status"]> = ["executing", "prechecking", "created", "succeeded", "executing"];
 
     for (let i = 0; i < statuses.length; i++) {
+      const status = statuses[i]!;
       const exec = createExecution({
         id: `exec-active-${i}`,
         taskId: "task-exec-active",
-        status: statuses[i],
+        status,
         attempt: i + 1,
         createdAt: new Date(2026, 3, 23, 10, i).toISOString(),
         updatedAt: new Date(2026, 3, 23, 10, i).toISOString(),

@@ -4,9 +4,9 @@ import test from "node:test";
 
 import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-async-adapter.js";
-import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AsyncTaskRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/task-repository.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
+import type { TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 function createHarness() {
   const workspace = createTempWorkspace("aa-async-task-repo-");

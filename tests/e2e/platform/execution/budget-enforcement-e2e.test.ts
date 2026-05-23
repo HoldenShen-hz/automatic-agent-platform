@@ -112,7 +112,7 @@ test("E2E Budget: Budget settlement updates ledger correctly", async () => {
       version: reservationResult.ledger.version,
     });
 
-    const settleResult = allocator.settle({
+    const settleResult = await allocator.settle({
       ledger: settledLedger,
       reservation: reservationResult.reservation,
       actualAmount: 2500,

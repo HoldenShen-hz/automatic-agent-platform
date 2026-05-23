@@ -8,6 +8,41 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import type { EventRecord, ExecutionRecord } from "../../../../../src/platform/contracts/types/domain.js";
+
+function createExecution(now: string, taskId: string, executionId: string, overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
+  return {
+    id: executionId,
+    taskId,
+    workflowId: "single_agent_minimal",
+    parentExecutionId: null,
+    harnessRunId: null,
+    agentId: "agent-001",
+    roleId: "general_executor",
+    runKind: "task_run",
+    status: "created",
+    inputRef: null,
+    traceId: `trace-${executionId}`,
+    attempt: 1,
+    timeoutMs: 60000,
+    budgetUsdLimit: 1,
+    budgetReservationId: null,
+    budgetLedgerId: null,
+    requiresApproval: 0,
+    sandboxMode: "workspace_write",
+    allowedToolsJson: "[]",
+    allowedPathsJson: "[]",
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: null,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
 
 test("data integrity: task-execution relationship is enforced", () => {
   const ctx = createIntegrationContext("aa-di-task-exec-");
@@ -42,33 +77,7 @@ test("data integrity: task-execution relationship is enforced", () => {
 
     // Insert execution that references the task
     ctx.db.transaction(() => {
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "pending",
-        inputRef: null,
-        traceId: "trace-di",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, { traceId: "trace-di" }));
     });
 
     // Verify relationship
@@ -176,7 +185,7 @@ test("data integrity: session-task relationship is enforced", () => {
         id: sessionId,
         taskId,
         channel: "console",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: now,
         updatedAt: now,
@@ -222,33 +231,12 @@ test("data integrity: approval-execution relationship is enforced", () => {
         completedAt: null,
       });
 
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: "general_executor",
-        runKind: "task_run",
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, {
         status: "blocked",
-        inputRef: null,
         traceId: "trace-approval",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
         requiresApproval: 1,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
         startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      }));
 
       ctx.store.insertApproval({
         id: approvalId,
@@ -286,16 +274,29 @@ test("data integrity: event-consumer ack relationship is enforced", () => {
     const now = new Date().toISOString();
 
     ctx.db.transaction(() => {
-      ctx.store.insertEvent({
+      const event: EventRecord = {
         id: eventId,
         taskId: null,
         sessionId: null,
         executionId: null,
         eventType: "task.created",
+        eventTier: "tier_1",
         payloadJson: "{}",
         traceId: null,
         createdAt: now,
-      });
+        schemaVersion: null,
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: null,
+        replayBehavior: null,
+        principal: null,
+        evidenceRefs: [],
+      };
+      ctx.store.insertEvent(event);
 
       ctx.store.insertEventConsumerAck({
         id: ackId,
@@ -413,33 +414,7 @@ test("data integrity: execution status transitions are atomic", () => {
         completedAt: null,
       });
 
-      ctx.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "pending",
-        inputRef: null,
-        traceId: "trace-atomic",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      ctx.store.insertExecution(createExecution(now, taskId, executionId, { traceId: "trace-atomic" }));
     });
 
     // Update execution status to running
@@ -451,7 +426,7 @@ test("data integrity: execution status transitions are atomic", () => {
         startTime,
         null,
         null,
-        null
+        null,
       );
     });
 
@@ -460,17 +435,17 @@ test("data integrity: execution status transitions are atomic", () => {
     ctx.db.transaction(() => {
       ctx.store.updateExecutionStatus(
         executionId,
-        "completed",
+        "succeeded",
         completeTime,
         startTime,
         completeTime,
-        null
+        null,
       );
     });
 
     // Verify final state
     const execution = ctx.store.getExecution(executionId);
-    assert.equal(execution!.status, "completed");
+    assert.equal(execution!.status, "succeeded");
     assert.ok(execution!.finishedAt, "Should have finished timestamp");
   } finally {
     ctx.cleanup();

@@ -24,6 +24,19 @@ import { FeedbackQualityGrader } from "../../src/scale-ecosystem/feedback-loop/q
 import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import type { PlanStep } from "../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
+function createFeedbackTrust() {
+  return {
+    feedbackTrustScore: 0.5,
+    trustFactors: {
+      sourceReliability: 0.5,
+      historicalAccuracy: 0.5,
+      authenticatedSource: false,
+      attackSurfaceExposure: 0.5,
+      holdoutOverlap: 0,
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Test 1: Plan DAG Validator - valid plan passes validation
 // ---------------------------------------------------------------------------
@@ -468,10 +481,10 @@ test("E2E Feedback Loop: improvement candidate follows approval lifecycle", () =
           severity: "error",
           payload: { reasonCode: "user_correction", summary: "Wrong approach" },
           stepOutputRefs: ["step-output-1"],
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
+          ...createFeedbackTrust(),
         },
       ],
-      outcome: "partial",
     });
 
 // @ts-ignore
@@ -523,10 +536,10 @@ test("E2E Feedback Loop: rejected candidate cannot be released", () => {
           severity: "error",
           payload: { reasonCode: "validation_failure" },
           stepOutputRefs: [],
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
+          ...createFeedbackTrust(),
         },
       ],
-      outcome: "failed",
     });
 
     const candidate = result.candidates[0]!;
@@ -886,7 +899,8 @@ test("E2E Learning Loop: feedback signals generate learning signals", () => {
           severity: "error",
           payload: { reasonCode: "wrong_tool_selection", summary: "Should have used bash not read" },
           stepOutputRefs: ["step-output-1"],
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
+          ...createFeedbackTrust(),
         },
         {
           signalId: "sig-learn-2",
@@ -896,10 +910,10 @@ test("E2E Learning Loop: feedback signals generate learning signals", () => {
           severity: "warning",
           payload: { reasonCode: "wrong_tool_selection", summary: "Same issue again" },
           stepOutputRefs: ["step-output-2"],
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
+          ...createFeedbackTrust(),
         },
       ],
-      outcome: "partial",
     });
 
     // Verify learning signals are generated
@@ -950,10 +964,10 @@ test("E2E Learning Loop: feedback loop snapshot reflects analysis", () => {
             summary: "Repeated failure on database queries - timeout issues"
           },
           stepOutputRefs: ["step-db-1", "step-db-2", "step-db-3"],
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
+          ...createFeedbackTrust(),
         },
       ],
-      outcome: "failed",
     });
 
     const snapshot = service.buildSnapshot(result.feedback.signals);

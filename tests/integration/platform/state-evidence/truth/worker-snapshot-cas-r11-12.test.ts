@@ -9,7 +9,7 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 function createSnapshot(version: number) {
   return {
     workerId: "worker-r11-12",
-    status: "active" as const,
+    status: "idle" as const,
     placement: "local" as const,
     isolationLevel: "standard" as const,
     repoVersion: "v1",

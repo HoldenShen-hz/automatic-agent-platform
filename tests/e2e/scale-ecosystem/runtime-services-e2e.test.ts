@@ -99,6 +99,7 @@ test("E2E Runtime: feedback improvement service builds actionable snapshot", () 
           attackSurfaceExposure: 0,
           holdoutOverlap: 0,
         },
+        feedbackTrustScore: 1,
       },
     ],
   });

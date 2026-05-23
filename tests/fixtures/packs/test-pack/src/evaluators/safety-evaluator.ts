@@ -1,9 +1,8 @@
 import { defineEvaluator } from "@platform/plugin-sdk";
 
 export const safetyEvaluator = defineEvaluator({
-  evaluatorId: "test-pack.safety",
+  pluginId: "test-pack.safety",
   name: "Safety Evaluator",
-  async evaluate(input: { result: unknown }) {
-    return { passed: true, score: 1.0, findings: [] };
-  },
+  version: "1.0.0",
+  capabilities: [{ name: "evaluate", description: "Evaluate safety", inputSchema: {}, outputSchema: {} }],
 });

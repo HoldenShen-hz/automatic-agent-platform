@@ -21,7 +21,7 @@ function createParentContext(overrides: Partial<AgentContext> = {}): AgentContex
       actions: ["read", "write", "delegate"],
       constraints: { maxDurationMs: 300000, maxTokens: 8000 },
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "corr-orchestration",
     tenantId: "tenant-e2e",
     ...overrides,

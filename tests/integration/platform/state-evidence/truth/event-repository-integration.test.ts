@@ -174,7 +174,13 @@ test("event store marks consumer acknowledgment as acked", () => {
 
     const ackTime = new Date().toISOString();
     ctx.db.transaction(() => {
-      ctx.store.markEventAck(eventId, consumerId, "acked", ackTime, null);
+      ctx.store.markEventAck({
+        eventId,
+        consumerId,
+        status: "acked",
+        occurredAt: ackTime,
+        errorCode: null,
+      });
     });
 
     const ack = ctx.store.getEventConsumerAck(eventId, consumerId);

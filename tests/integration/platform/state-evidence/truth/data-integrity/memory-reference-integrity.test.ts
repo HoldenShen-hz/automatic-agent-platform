@@ -14,7 +14,40 @@ import { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plan
 import { MemoryRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/memory-repository.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../../src/platform/contracts/types/ids.js";
-import type { MemoryRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { ExecutionRecord, MemoryRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+
+function createExecution(now: string, taskId: string, executionId: string): ExecutionRecord {
+  return {
+    id: executionId,
+    taskId,
+    workflowId: "single_agent_minimal",
+    parentExecutionId: null,
+    harnessRunId: null,
+    agentId: "agent-1",
+    roleId: "general_executor",
+    runKind: "task_run",
+    status: "executing",
+    inputRef: null,
+    traceId: "trace-memory",
+    attempt: 1,
+    timeoutMs: 60000,
+    budgetUsdLimit: 1,
+    budgetReservationId: null,
+    budgetLedgerId: null,
+    requiresApproval: 0,
+    sandboxMode: "workspace_write",
+    allowedToolsJson: "[]",
+    allowedPathsJson: "[]",
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: now,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 test("data integrity: memory references task correctly", () => {
   const workspace = createTempWorkspace("aa-memory-ref-");
@@ -62,33 +95,7 @@ test("data integrity: memory references task correctly", () => {
         updatedAt: now,
       });
 
-      store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId: "trace-memory",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      store.insertExecution(createExecution(now, taskId, executionId));
 
       // Insert memory with references
       db.connection.exec(`

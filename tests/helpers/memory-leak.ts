@@ -12,6 +12,9 @@ export function formatMegabytes(bytes: number): string {
 export async function forceFullGc(cycles = 3): Promise<void> {
   const gc = (globalThis as { gc?: () => void }).gc;
   assert.equal(typeof gc, "function", "memory leak guardrails require Node to run with --expose-gc");
+  if (gc == null) {
+    throw new Error("memory leak guardrails require Node to run with --expose-gc");
+  }
 
   for (let index = 0; index < cycles; index += 1) {
     gc();

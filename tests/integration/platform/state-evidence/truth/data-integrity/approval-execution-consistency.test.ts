@@ -13,6 +13,40 @@ import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-
 import { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../../src/platform/contracts/types/ids.js";
+import type { ExecutionRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+
+function createExecution(now: string, taskId: string, executionId: string, traceId: string): ExecutionRecord {
+  return {
+    id: executionId,
+    taskId,
+    workflowId: "single_agent_minimal",
+    parentExecutionId: null,
+    harnessRunId: null,
+    agentId: "agent-1",
+    roleId: "general_executor",
+    runKind: "task_run",
+    status: "blocked",
+    inputRef: null,
+    traceId,
+    attempt: 1,
+    timeoutMs: 60000,
+    budgetUsdLimit: 1,
+    budgetReservationId: null,
+    budgetLedgerId: null,
+    requiresApproval: 1,
+    sandboxMode: "workspace_write",
+    allowedToolsJson: "[]",
+    allowedPathsJson: "[]",
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: now,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 test("data integrity: approval and execution are linked correctly", () => {
   const workspace = createTempWorkspace("aa-approval-exec-");
@@ -48,36 +82,7 @@ test("data integrity: approval and execution are linked correctly", () => {
         completedAt: null,
       });
 
-      store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        harnessRunId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "blocked",
-        inputRef: null,
-        traceId: "trace-approval",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        budgetReservationId: null,
-        budgetLedgerId: null,
-        requiresApproval: 1,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      store.insertExecution(createExecution(now, taskId, executionId, "trace-approval"));
 
       store.insertApproval({
         id: approvalId,
@@ -143,33 +148,7 @@ test("data integrity: approval status transitions are reflected in execution", (
         completedAt: null,
       });
 
-      store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "blocked",
-        inputRef: null,
-        traceId: "trace-status",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 1,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      store.insertExecution(createExecution(now, taskId, executionId, "trace-status"));
 
       store.insertApproval({
         id: approvalId,
@@ -239,33 +218,7 @@ test("data integrity: rejected approval has correct status and response", () => 
         completedAt: null,
       });
 
-      store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "blocked",
-        inputRef: null,
-        traceId: "trace-reject",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 1,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      store.insertExecution(createExecution(now, taskId, executionId, "trace-reject"));
 
       store.insertApproval({
         id: approvalId,
@@ -337,33 +290,7 @@ test("data integrity: multiple approvals for same execution are tracked", () => 
         completedAt: null,
       });
 
-      store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "blocked",
-        inputRef: null,
-        traceId: "trace-multi",
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 1,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+      store.insertExecution(createExecution(now, taskId, executionId, "trace-multi"));
     });
 
     // Create multiple approvals

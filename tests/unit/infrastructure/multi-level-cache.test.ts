@@ -8,7 +8,11 @@ import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
 
 // Cache types
-import type { CacheLookupResult, CacheMeta } from "../../../src/platform/shared/cache/cache-types.js";
+import type {
+  CacheLayer,
+  CacheLookupResult,
+  CacheMeta,
+} from "../../../src/platform/shared/cache/cache-types.js";
 
 // Cache store interface
 import type { CacheStore } from "../../../src/platform/shared/cache/stores/cache-store.js";
@@ -87,7 +91,7 @@ class MockCacheStore implements CacheStore {
     return {
       hit: Math.random() < this.hitRate,
       value: entry.value as T,
-      layer: this.name as CacheLookupResult<T>["layer"],
+      layer: this.name as CacheLayer,
       meta: entry.meta,
     };
   }

@@ -83,7 +83,7 @@ describe("Edge Sync Queue - Ordering", () => {
     it("treats missing createdAt as empty string and sorts first", () => {
       const items: EdgeSyncEnvelope[] = [
         { envelopeId: "a", priority: 10, createdAt: "2024-01-02T00:00:00Z" },
-        { envelopeId: "b", priority: 10, createdAt: undefined }, // empty string comes first
+        { envelopeId: "b", priority: 10 }, // empty string comes first
       ];
       const result = orderEdgeSyncQueue(items);
       // Empty string (missing createdAt) is first because sort is ascending
@@ -186,7 +186,7 @@ describe("Edge Sync Queue - Chain Validation", () => {
 
     it("returns valid for single item with null prev_hash", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "env-1", priority: 1, prev_hash: undefined },
+        { envelopeId: "env-1", priority: 1 },
       ];
       const result = validateSyncQueueChain(items);
       assert.equal(result.valid, true);
@@ -203,7 +203,7 @@ describe("Edge Sync Queue - Chain Validation", () => {
 
     it("returns error when prev_hash does not match expected", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "env-1", priority: 1, prev_hash: undefined },
+        { envelopeId: "env-1", priority: 1 },
         { envelopeId: "env-2", priority: 1, prev_hash: "wrong-hash" },
       ];
       const result = validateSyncQueueChain(items);
@@ -218,17 +218,12 @@ describe("Edge Sync Queue - Chain Validation", () => {
       const env1: EdgeSyncEnvelope = {
         envelopeId: "env-1",
         priority: 1,
-        prev_hash: undefined,
-        sequence_no: undefined,
-        createdAt: undefined,
       };
       // For env-2, expected prev_hash = "env-1:" + "" (seq_no) + ":" + "" (createdAt) = "env-1::"
       const env2: EdgeSyncEnvelope = {
         envelopeId: "env-2",
         priority: 1,
         prev_hash: "env-1::",
-        sequence_no: undefined,
-        createdAt: undefined,
       };
       const items = [env1, env2];
       const result = validateSyncQueueChain(items);
@@ -238,7 +233,7 @@ describe("Edge Sync Queue - Chain Validation", () => {
 
     it("detects missing dependency", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "env-1", priority: 1, prev_hash: undefined },
+        { envelopeId: "env-1", priority: 1 },
         { envelopeId: "env-2", priority: 1, prev_hash: "env-1::", side_effect_dependency_refs: ["nonexistent"] },
       ];
       const result = validateSyncQueueChain(items);
@@ -248,12 +243,10 @@ describe("Edge Sync Queue - Chain Validation", () => {
 
     it("detects missing dependency when side_effect_dependency_refs target not in queue", () => {
       const env1: EdgeSyncEnvelope = {
-        envelopeId: "env-1", priority: 1, prev_hash: undefined,
-        sequence_no: undefined, createdAt: undefined,
+        envelopeId: "env-1", priority: 1,
       };
       const env2: EdgeSyncEnvelope = {
         envelopeId: "env-2", priority: 1, prev_hash: "env-1::",
-        sequence_no: undefined, createdAt: undefined,
         side_effect_dependency_refs: ["env-99"], // does not exist
       };
       const result = validateSyncQueueChain([env1, env2]);
@@ -263,7 +256,7 @@ describe("Edge Sync Queue - Chain Validation", () => {
 
     it("topological order excludes items with dependency issues", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "env-1", priority: 1, prev_hash: undefined },
+        { envelopeId: "env-1", priority: 1 },
         { envelopeId: "env-2", priority: 1, prev_hash: "env-1::", side_effect_dependency_refs: ["nonexistent"] },
       ];
       const result = validateSyncQueueChain(items);

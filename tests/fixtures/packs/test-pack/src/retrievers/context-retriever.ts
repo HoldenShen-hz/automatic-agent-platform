@@ -1,9 +1,8 @@
 import { defineRetriever } from "@platform/plugin-sdk";
 
 export const contextRetriever = defineRetriever({
-  retrieverId: "test-pack.context",
+  pluginId: "test-pack.context",
   name: "Context Retriever",
-  async retrieve(input: { query: string }) {
-    return { documents: [] };
-  },
+  version: "1.0.0",
+  capabilities: [{ name: "retrieve", description: "Retrieve context", inputSchema: {}, outputSchema: {} }],
 });

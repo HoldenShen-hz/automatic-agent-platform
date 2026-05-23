@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   HarnessRuntimeService,
   type HarnessRunRuntimeState,
+  toCanonicalHarnessRun,
 } from "../../src/platform/five-plane-orchestration/harness/index.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { createMinimalPlanGraphBundle } from "../helpers/fixtures/base.js";
@@ -32,6 +33,12 @@ function makeRuntimeState(overrides: Partial<HarnessRunRuntimeState> = {}): Harn
       tool_policy: { allowedTools: ["read_file", "write_file"] },
       risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
+      sandboxRequirement: { sandboxMode: "persistent", timeoutMs: 60_000 },
+      approvalRequirement: {
+        requiredForRiskClass: ["high", "critical"],
+        approverRoles: ["operator"],
+        escalationTimeoutMs: 60_000,
+      },
       budget: { maxSteps: 12, maxCost: 2, maxDurationMs: 60_000 },
     },
     planGraphBundle: createMinimalPlanGraphBundle("harness_run_resume_test", {
@@ -79,10 +86,13 @@ test("E2E Workflow Resume: partial step outputs are preserved across pause and r
       {
         stepId: "step_extract",
         role: "generator",
-        status: "completed",
+        stage: "execute",
+        iteration: 1,
+        semanticPhase: "execute",
+        inputs: {},
+        outputs: { step0_output: "completed" },
         startedAt: "2026-05-10T00:00:00.000Z",
         completedAt: "2026-05-10T00:00:05.000Z",
-        output: { step0_output: "completed" },
         rationale: "partial progress",
         evidenceRefs: [],
         nodeRunRefs: [],
@@ -98,7 +108,7 @@ test("E2E Workflow Resume: partial step outputs are preserved across pause and r
   const resumed = service.resume(paused);
 
   assert.equal(resumed.steps.length, 1);
-  assert.deepEqual(resumed.steps[0]?.output, { step0_output: "completed" });
+  assert.deepEqual(resumed.steps[0]?.outputs, { step0_output: "completed" });
   assert.equal(resumed.status, "running");
 });
 
@@ -108,21 +118,22 @@ test("E2E Workflow Resume: paused canonical HarnessRun can be cancelled", () => 
     status: "paused",
     pauseReason: "sleep",
   });
+  const canonicalPausedRun = toCanonicalHarnessRun(pausedRun);
 
   const transitioned = machine.transition({
     commandId: newId("cmd"),
     entityType: "HarnessRun",
-    entityId: pausedRun.harnessRunId,
+    entityId: canonicalPausedRun.harnessRunId,
     principal: "workflow-resume-e2e",
     aggregateType: "HarnessRun",
-    aggregate: pausedRun,
-    fromStatus: "paused",
+    aggregate: canonicalPausedRun,
+    fromStatus: canonicalPausedRun.status,
     toStatus: "cancelled",
-    tenantId: pausedRun.tenantId,
+    tenantId: canonicalPausedRun.tenantId,
     traceId: newId("trace"),
     reasonCode: "operator.cancelled",
     emittedBy: "tests/e2e/workflow-resume-flow.test.ts",
-    fencingToken: pausedRun.fencingToken ?? "fence-resume-cancelled",
+    fencingToken: canonicalPausedRun.fencingToken,
     auditRef: "audit://workflow-resume/cancelled",
   });
 
@@ -157,7 +168,7 @@ test("E2E Workflow Resume: HITL pause and approval resume use canonical runtime 
   assert.equal(paused.pauseReason, "hitl");
   assert.ok(paused.hitlRequest);
 
-  const resumed = service.resolveHitlReview(paused, "approved");
+  const resumed = service.resolveHitlReview(paused, "approved", "operator-resume");
   assert.equal(resumed.status, "running");
   assert.equal(resumed.pauseReason, null);
 });

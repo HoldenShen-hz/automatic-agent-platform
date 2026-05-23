@@ -15,32 +15,19 @@ import { KnowledgeBoundaryService } from "../../../src/org-governance/knowledge-
 import { GroupRoleMappingService } from "../../../src/org-governance/sso-scim/group-role-mapping-service.js";
 import { IdentitySyncService } from "../../../src/org-governance/sso-scim/identity-sync-service.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
-import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
 import type { TaskBoardItem } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
+import type { DashboardSystemSituation } from "../../../src/interaction/dashboard/index.js";
 
-function makeSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSituation {
+function makeSystemSituation(overrides: Partial<DashboardSystemSituation> = {}): DashboardSystemSituation {
   return {
     healthStatus: "degraded",
+    queueBacklog: new Set(["approval_queue"]),
+    findings: ["approval queue requires follow-up"],
     providerHealth: {
       status: "healthy",
       successRate: 0.98,
-      recentCalls: 24,
     },
-    resourceUtilization: {
-      memoryRssMb: 640,
-      cpuPercent: 38,
-      activeProcesses: 12,
-    },
-    queueBacklog: {
-      size: 1,
-      degraded: false,
-    },
-    eventBusBacklog: {
-      tier1PendingAcks: 0,
-    },
-    findings: ["approval queue requires follow-up"],
-    observedAt: Date.parse("2026-04-22T00:45:00.000Z"),
     ...overrides,
   };
 }
@@ -277,6 +264,8 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         active: true,
         metadata: {},
         costCenter: "",
+        effectivePolicies: {},
+        status: "active",
       },
       {
         orgNodeId: "dept_finance",
@@ -287,6 +276,8 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         active: true,
         metadata: {},
         costCenter: "FIN-001",
+        effectivePolicies: {},
+        status: "active",
       },
     ];
     const compliance = new ComplianceGovernanceService(
@@ -421,6 +412,8 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         allowedOrgNodeIds: [],
         auditOnAccess: false,
         fieldAllowlist: [],
+        classificationRules: [],
+        sharePolicy: { mode: "explicit_grant", allowCrossTenant: false, requireAudit: true, allowOrgNodeIds: [] },
       },
       "manager_finance",
       "dept_finance",
@@ -461,6 +454,7 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
       forecastCostUsd: 12,
       activeGoals: [{ goalId: decomposition.goalId, progressPercent: 20 }],
       suggestions: proactive.listSuggestions("finance").map((suggestion) => ({
+        id: suggestion.suggestionId,
         itemType: "suggestion",
         priority: "normal",
         title: suggestion.title,

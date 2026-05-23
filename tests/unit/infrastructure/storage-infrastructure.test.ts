@@ -299,13 +299,13 @@ describe("Async SQL Database Types", () => {
   it("AsyncSqlConnection interface is satisfied by mock", async () => {
     // Create a mock that satisfies the interface
     const mockConnection: AsyncSqlConnection = {
-      query: async (sql, ...params) => {
+      query: async <T = unknown>(_sql: string, ..._params: unknown[]) => {
         return { rows: [], rowCount: 0 };
       },
-      queryOne: async (sql, ...params) => {
+      queryOne: async <T = unknown>(_sql: string, ..._params: unknown[]) => {
         return undefined;
       },
-      execute: async (sql, ...params) => {
+      execute: async (_sql: string, ..._params: unknown[]) => {
         return 1;
       },
     };
@@ -315,8 +315,11 @@ describe("Async SQL Database Types", () => {
 
   it("asyncQueryAll helper works", async () => {
     const mockConnection: AsyncSqlConnection = {
-      query: async (sql, ...params) => {
-        return { rows: [{ id: 1 }, { id: 2 }], rowCount: 2 };
+      query: async <T = unknown>(_sql: string, ..._params: unknown[]) => {
+        return {
+          rows: [{ id: 1 }, { id: 2 }] as T[],
+          rowCount: 2,
+        };
       },
       queryOne: async () => undefined,
       execute: async () => 0,
@@ -328,7 +331,8 @@ describe("Async SQL Database Types", () => {
   it("asyncQueryOne helper works", async () => {
     const mockConnection: AsyncSqlConnection = {
       query: async () => ({ rows: [], rowCount: 0 }),
-      queryOne: async (sql, ...params) => ({ id: 1 }),
+      queryOne: async <T = unknown>(_sql: string, ..._params: unknown[]) =>
+        ({ id: 1 } as T),
       execute: async () => 0,
     };
     const row = await asyncQueryOne(mockConnection, "SELECT * FROM test");
@@ -340,7 +344,7 @@ describe("Async SQL Database Types", () => {
     const mockConnection: AsyncSqlConnection = {
       query: async () => ({ rows: [], rowCount: 0 }),
       queryOne: async () => undefined,
-      execute: async (sql, ...params) => 5,
+      execute: async (_sql: string, ..._params: unknown[]) => 5,
     };
     const changes = await asyncExecute(mockConnection, "UPDATE test SET x = 1");
     assert.equal(changes, 5);

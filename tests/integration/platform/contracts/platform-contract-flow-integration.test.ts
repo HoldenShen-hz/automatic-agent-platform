@@ -80,6 +80,10 @@ test("integration: supported platform contract objects compose while legacy plan
     () =>
       createExecutionReceipt({
         planId: "plan-1",
+        harnessRunId: null,
+        planGraphId: null,
+        nodeRunId: null,
+        attemptId: null,
         stepId: "step-1",
         status: "completed",
         workerId: "worker-1",

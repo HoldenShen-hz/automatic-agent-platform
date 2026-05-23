@@ -184,13 +184,8 @@ test("RuntimeTruthRepository allows valid lease holder transition", () => {
     constraintPackRef: "cp-1",
     versionLockId: "rvlock-1",
     budgetLedgerId: "bledger-1",
-    // Valid lease
-    lease: {
-      leaseId: "lease-valid",
-      ownerId: "worker-1",
-      expiresAt: new Date(Date.now() + 60000).toISOString(), // 1 minute from now
-    },
-    ownedBy: "worker-1", // Same owner as lease
+    leaseId: "lease-valid",
+    ownership: { ownerId: "worker-1", ownerType: "worker" },
   });
 
   repository.seed("HarnessRun", harnessRun);
@@ -355,8 +350,13 @@ test("RuntimeTruthRepository appendNodeAttemptReceipt is append-only", () => {
     nodeAttemptReceiptId: "receipt-append-1",
     nodeAttemptId: "attempt-1",
     nodeRunId: "nrun-1",
+    harnessRunId: "hrun-1",
+    planGraphId: "pg-1",
+    graphVersion: 1,
     receiptKind: "tool",
     status: "succeeded",
+    duration: 1,
+    errorDetail: "",
   });
 
   repository.appendNodeAttemptReceipt(receipt1);
@@ -498,9 +498,9 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
     traceId: "trace-2",
     reasonCode: "start_planning",
     emittedBy: "test",
-    leaseId: t1.aggregate.leaseId,
-    fencingToken: t1.aggregate.fencingToken,
     auditRef: "audit://runtime-truth/hrun-seq-1/planning",
+    ...(t1.aggregate.leaseId != null ? { leaseId: t1.aggregate.leaseId } : {}),
+    ...(t1.aggregate.fencingToken != null ? { fencingToken: t1.aggregate.fencingToken } : {}),
   });
   assert.equal(t2.event.aggregateSeq, 2);
 
@@ -518,9 +518,9 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
     traceId: "trace-3",
     reasonCode: "plan_complete",
     emittedBy: "test",
-    leaseId: t2.aggregate.leaseId,
-    fencingToken: t2.aggregate.fencingToken,
     auditRef: "audit://runtime-truth/hrun-seq-1/ready",
+    ...(t2.aggregate.leaseId != null ? { leaseId: t2.aggregate.leaseId } : {}),
+    ...(t2.aggregate.fencingToken != null ? { fencingToken: t2.aggregate.fencingToken } : {}),
   });
   assert.equal(t3.event.aggregateSeq, 3);
 

@@ -4,6 +4,8 @@ import type {
   RiskFactors,
 } from "../../src/platform/five-plane-control-plane/risk-control/types.js";
 
+type CanonicalRiskFactors = Extract<RiskFactors, { impact: number }>;
+
 export function createCanonicalRiskConfig(): RiskConfig {
   return {
     factorWeights: {
@@ -104,7 +106,7 @@ export function createCanonicalRiskConfig(): RiskConfig {
   };
 }
 
-export function createRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
+export function createRiskFactors(overrides: Partial<CanonicalRiskFactors> = {}): CanonicalRiskFactors {
   return {
     impact: 4,
     irreversibility: 3,
@@ -118,7 +120,7 @@ export function createRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFac
   };
 }
 
-export function createLowRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
+export function createLowRiskFactors(overrides: Partial<CanonicalRiskFactors> = {}): CanonicalRiskFactors {
   return createRiskFactors({
     impact: 1,
     irreversibility: 1,
@@ -132,7 +134,7 @@ export function createLowRiskFactors(overrides: Partial<RiskFactors> = {}): Risk
   });
 }
 
-export function createMediumRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
+export function createMediumRiskFactors(overrides: Partial<CanonicalRiskFactors> = {}): CanonicalRiskFactors {
   return createRiskFactors({
     impact: 3,
     irreversibility: 3,
@@ -146,7 +148,7 @@ export function createMediumRiskFactors(overrides: Partial<RiskFactors> = {}): R
   });
 }
 
-export function createHighRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
+export function createHighRiskFactors(overrides: Partial<CanonicalRiskFactors> = {}): CanonicalRiskFactors {
   return createRiskFactors({
     impact: 5,
     irreversibility: 5,
@@ -160,7 +162,7 @@ export function createHighRiskFactors(overrides: Partial<RiskFactors> = {}): Ris
   });
 }
 
-export function createCriticalRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
+export function createCriticalRiskFactors(overrides: Partial<CanonicalRiskFactors> = {}): CanonicalRiskFactors {
   return createRiskFactors({
     impact: 5,
     irreversibility: 5,

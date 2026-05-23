@@ -261,9 +261,10 @@ test.describe("AsyncWorkflowRepository", () => {
     const stepOutput: StepOutputRecord = {
       id: "step-output-001",
       taskId: "task-wf-step",
+      nodeRunId: "node-run-001",
       stepId: "step-1",
       roleId: "general_executor",
-      status: "completed",
+      status: "succeeded",
       dataJson: '{"result":"success"}',
       summary: "Step 1 completed",
       artifactsJson: null,

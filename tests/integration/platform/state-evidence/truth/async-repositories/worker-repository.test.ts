@@ -14,6 +14,7 @@ import type {
   ExecutionTicketRecord,
   ExecutionLeaseRecord,
   HeartbeatSnapshotRecord,
+  WorkerSnapshotRecord,
 } from "../../../../../../src/platform/contracts/types/domain.js";
 
 test.describe("AsyncWorkerRepository", () => {
@@ -88,15 +89,18 @@ test.describe("AsyncWorkerRepository", () => {
       taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-001",
       roleId: "general_executor",
       runKind: "task_run",
-      status: "pending",
+      status: "created",
       inputRef: null,
       traceId: `trace-${executionId}`,
       attempt: 1,
       timeoutMs: 60000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -132,14 +136,14 @@ test.describe("AsyncWorkerRepository", () => {
 
     const listed = await harness.workerRepo.listHeartbeatSnapshotsByExecution("exec-hb-001");
     assert.equal(listed.length, 1);
-    assert.equal(listed[0].executionId, "exec-hb-001");
-    assert.equal(listed[0].cpuPct, 45.5);
+    assert.equal(listed[0]!.executionId, "exec-hb-001");
+    assert.equal(listed[0]!.cpuPct, 45.5);
   });
 
   test("upsertWorkerSnapshot and getWorkerSnapshot roundtrip", async () => {
-    const snapshot = {
+    const snapshot: WorkerSnapshotRecord = {
       workerId: "worker-001",
-      status: "active",
+      status: "busy",
       placement: "local" as const,
       isolationLevel: "standard" as const,
       repoVersion: "v1.0.0",
@@ -172,21 +176,22 @@ test.describe("AsyncWorkerRepository", () => {
       lastProgressAt: "2026-04-23T10:30:00.000Z",
       lastHeartbeatAt: "2026-04-23T10:30:00.000Z",
       updatedAt: "2026-04-23T10:30:00.000Z",
+      version: 1,
     };
 
     await harness.workerRepo.upsertWorkerSnapshot(snapshot);
 
     const retrieved = await harness.workerRepo.getWorkerSnapshot("worker-001");
     assert.equal(retrieved?.workerId, "worker-001");
-    assert.equal(retrieved?.status, "active");
+    assert.equal(retrieved?.status, "busy");
     assert.equal(retrieved?.saturation, 0.5);
     assert.equal(retrieved?.maxConcurrency, 5);
   });
 
   test("upsertWorkerSnapshot updates existing record", async () => {
-    const snapshot = {
+    const snapshot: WorkerSnapshotRecord = {
       workerId: "worker-update-001",
-      status: "active",
+      status: "idle",
       placement: "local" as const,
       isolationLevel: "standard" as const,
       repoVersion: null,
@@ -219,11 +224,12 @@ test.describe("AsyncWorkerRepository", () => {
       lastProgressAt: null,
       lastHeartbeatAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
+      version: 1,
     };
 
     await harness.workerRepo.upsertWorkerSnapshot(snapshot);
 
-    const updatedSnapshot = {
+    const updatedSnapshot: WorkerSnapshotRecord = {
       ...snapshot,
       saturation: 0.8,
       activeLeaseCount: 5,
@@ -242,7 +248,7 @@ test.describe("AsyncWorkerRepository", () => {
     for (const workerId of workers) {
       await harness.workerRepo.upsertWorkerSnapshot({
         workerId,
-        status: "active",
+        status: "idle",
         placement: "local" as const,
         isolationLevel: "standard" as const,
         repoVersion: null,
@@ -275,6 +281,7 @@ test.describe("AsyncWorkerRepository", () => {
         lastProgressAt: null,
         lastHeartbeatAt: "2026-04-23T10:00:00.000Z",
         updatedAt: "2026-04-23T10:00:00.000Z",
+        version: 1,
       });
     }
 
@@ -285,7 +292,7 @@ test.describe("AsyncWorkerRepository", () => {
   test("listWorkerSnapshots filters by status", async () => {
     await harness.workerRepo.upsertWorkerSnapshot({
       workerId: "worker-status-active",
-      status: "active",
+      status: "idle",
       placement: "local" as const,
       isolationLevel: "standard" as const,
       repoVersion: null,
@@ -318,6 +325,7 @@ test.describe("AsyncWorkerRepository", () => {
       lastProgressAt: null,
       lastHeartbeatAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
+      version: 1,
     });
 
     await harness.workerRepo.upsertWorkerSnapshot({
@@ -355,15 +363,16 @@ test.describe("AsyncWorkerRepository", () => {
       lastProgressAt: null,
       lastHeartbeatAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
+      version: 1,
     });
 
-    const activeWorkers = await harness.workerRepo.listWorkerSnapshots("active");
-    assert.equal(activeWorkers.length, 1);
-    assert.equal(activeWorkers[0].workerId, "worker-status-active");
+    const idleWorkers = await harness.workerRepo.listWorkerSnapshots("idle");
+    assert.equal(idleWorkers.length, 1);
+    assert.equal(idleWorkers[0]!.workerId, "worker-status-active");
 
     const drainingWorkers = await harness.workerRepo.listWorkerSnapshots("draining");
     assert.equal(drainingWorkers.length, 1);
-    assert.equal(drainingWorkers[0].workerId, "worker-status-draining");
+    assert.equal(drainingWorkers[0]!.workerId, "worker-status-draining");
   });
 
   test("insertExecutionTicket and getExecutionTicket roundtrip", async () => {
@@ -373,9 +382,10 @@ test.describe("AsyncWorkerRepository", () => {
       id: "ticket-001",
       executionId: "exec-ticket-001",
       taskId: "task-ticket-001",
+      tenantId: "tenant-ticket",
       priority: "high",
       queueName: "default",
-      dispatchTarget: "worker-1",
+      dispatchTarget: "any",
       requiredIsolationLevel: "standard",
       requiredRepoVersion: null,
       requiredCapabilitiesJson: "[]",
@@ -407,6 +417,7 @@ test.describe("AsyncWorkerRepository", () => {
       id: "ticket-claim-001",
       executionId: "exec-ticket-claim",
       taskId: "task-ticket-claim",
+      tenantId: "tenant-ticket-claim",
       priority: "normal",
       queueName: "default",
       dispatchTarget: "any",
@@ -446,6 +457,7 @@ test.describe("AsyncWorkerRepository", () => {
       id: "ticket-consume-001",
       executionId: "exec-ticket-consume",
       taskId: "task-ticket-consume",
+      tenantId: "tenant-ticket-consume",
       priority: "low",
       queueName: "default",
       dispatchTarget: "any",

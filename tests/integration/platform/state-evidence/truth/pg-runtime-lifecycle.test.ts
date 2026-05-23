@@ -237,6 +237,7 @@ test("PostgreSQL async repositories cover worker lease and ticket lifecycle", as
       lastProgressAt: null,
       lastHeartbeatAt: "2026-04-16T01:00:01.000Z",
       updatedAt: "2026-04-16T01:00:01.000Z",
+      version: 1,
     });
     await repos.worker.upsertAgentExecutionRecord({
       executionId: "exec_pg_worker",

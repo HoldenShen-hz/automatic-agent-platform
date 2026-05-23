@@ -15,8 +15,33 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { ConfigRolloutService, RolloutPhase, type ConfigRollout, type RolloutDecision } from "../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
-import { ConfigRolloutRepository, type InMemoryConfigRolloutStore } from "../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/config-rollout-repository.js";
+import {
+  ConfigRolloutService,
+  RolloutPhase,
+  type ConfigRollout,
+  type ConfigRolloutStore,
+} from "../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
+
+type TestConfigRolloutStore = ConfigRolloutStore & {
+  rollouts: Map<string, ConfigRollout>;
+};
+
+function createInMemoryRolloutStore(
+  loadAllOverride?: () => ConfigRollout[],
+): TestConfigRolloutStore {
+  return {
+    rollouts: new Map(),
+    save(rollout: ConfigRollout) {
+      this.rollouts.set(rollout.rolloutId, rollout);
+    },
+    loadAll(): ConfigRollout[] {
+      return loadAllOverride ? loadAllOverride() : Array.from(this.rollouts.values());
+    },
+    delete(rolloutId: string) {
+      this.rollouts.delete(rolloutId);
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Test 1: Start a new config rollout with canary strategy
@@ -25,19 +50,7 @@ import { ConfigRolloutRepository, type InMemoryConfigRolloutStore } from "../../
 test("E2E Config Rollout: starts a new rollout with canary phases", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-");
   try {
-    const repo = new ConfigRolloutRepository(harness.db);
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     // Start a rollout
@@ -63,18 +76,7 @@ test("E2E Config Rollout: starts a new rollout with canary phases", () => {
 test("E2E Config Rollout: shouldApplyConfig respects deterministic hash percentage", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-hash-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     // Start a rollout at 50%
@@ -106,18 +108,7 @@ test("E2E Config Rollout: shouldApplyConfig respects deterministic hash percenta
 test("E2E Config Rollout: promoteRollout advances to next stage", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-promote-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     const rollout = service.startRollout("security.sandboxMode", "platform", null, 100);
@@ -144,18 +135,7 @@ test("E2E Config Rollout: promoteRollout advances to next stage", () => {
 test("E2E Config Rollout: cancelRollout prevents config application", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-cancel-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     const rollout = service.startRollout("runtime.timeoutMs", "platform", null, 100);
@@ -181,18 +161,7 @@ test("E2E Config Rollout: cancelRollout prevents config application", () => {
 test("E2E Config Rollout: autoProgressRollouts advances based on time and health", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-autoprog-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     // Start rollout at CANARY_5 (5% with 30min auto-progress)
@@ -236,18 +205,7 @@ test("E2E Config Rollout: autoProgressRollouts advances based on time and health
 test("E2E Config Rollout: autoProgressRollouts blocks on unhealthy metrics", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-health-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     const rollout = service.startRollout("providers.retryDelay", "platform", null, 100);
@@ -289,18 +247,7 @@ test("E2E Config Rollout: autoProgressRollouts blocks on unhealthy metrics", () 
 test("E2E Config Rollout: cleanupRollouts removes old completed rollouts", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-cleanup-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     const rollout1 = service.startRollout("runtime.concurrentLimit", "platform", null, 100);
@@ -325,7 +272,7 @@ test("E2E Config Rollout: cleanupRollouts removes old completed rollouts", () =>
 
     const remaining = service.getActiveRollouts();
     assert.equal(remaining.length, 1, "Should have 1 remaining rollout");
-    assert.equal(remaining[0].rolloutId, rollout2.rolloutId);
+    assert.equal(remaining[0]!.rolloutId, rollout2.rolloutId);
 
   } finally {
     harness.cleanup();
@@ -339,12 +286,7 @@ test("E2E Config Rollout: cleanupRollouts removes old completed rollouts", () =>
 test("E2E Config Rollout: no active rollout applies config immediately", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-none-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save() {},
-      loadAll() { return []; },
-      delete() {},
-    };
+    const store = createInMemoryRolloutStore(() => []);
     const service = new ConfigRolloutService({ store });
 
     const decision = service.shouldApplyConfig("runtime.maxDuration", "platform", null, "tenant-xyz");
@@ -366,18 +308,7 @@ test("E2E Config Rollout: no active rollout applies config immediately", () => {
 test("E2E Config Rollout: getActiveRollouts returns all active rollouts", () => {
   const harness = createE2EHarness("aa-e2e-config-rollout-active-");
   try {
-    const store: InMemoryConfigRolloutStore = {
-      rollouts: new Map(),
-      save(rollout: ConfigRollout) {
-        this.rollouts.set(rollout.rolloutId, rollout);
-      },
-      loadAll(): ConfigRollout[] {
-        return Array.from(this.rollouts.values());
-      },
-      delete(rolloutId: string) {
-        this.rollouts.delete(rolloutId);
-      },
-    };
+    const store = createInMemoryRolloutStore();
     const service = new ConfigRolloutService({ store });
 
     service.startRollout("providers.defaultModel", "platform", null, 100);

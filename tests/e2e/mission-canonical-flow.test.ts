@@ -61,21 +61,22 @@ test("Mission canonical E2E creates a Mission, binds a Task snapshot, and live-g
   const repository = new InMemoryMissionRepository();
   const missionRoutes = createMissionRoutes({ authService, missionRepository: repository });
   const taskIds: string[] = [];
+  const taskStore = {
+    task: {
+      insertTask(record: { id: string }) {
+        taskIds.push(record.id);
+      },
+    },
+  } as unknown as AuthoritativeTaskStore;
   const taskRoutes = createTaskRoutes({
     authService,
-    inspectService: new InspectService(),
+    inspectService: new InspectService(taskStore),
     missionControlService: {
       getTaskCockpit(taskId: string) {
         return { snapshot: { task: { id: taskId, tenantId: "tenant_001" }, events: [] } };
       },
     } as unknown as MissionControlService,
-    taskStore: {
-      task: {
-        insertTask(record: { id: string }) {
-          taskIds.push(record.id);
-        },
-      },
-    } as unknown as AuthoritativeTaskStore,
+    taskStore,
     missionRepository: repository,
   });
   const createdResponse = await invokeRoute(missionRoutes, "POST", "/v1/missions", {
@@ -122,17 +123,18 @@ test("Mission canonical E2E creates a Mission, binds a Task snapshot, and live-g
 });
 
 test("Mission canonical E2E rejects high-risk Task dispatch without Mission context", async () => {
+  const taskStore = {
+    task: { insertTask() { throw new Error("high_risk_task_must_not_insert"); } },
+  } as unknown as AuthoritativeTaskStore;
   const taskRoutes = createTaskRoutes({
     authService,
-    inspectService: new InspectService(),
+    inspectService: new InspectService(taskStore),
     missionControlService: {
       getTaskCockpit(taskId: string) {
         return { snapshot: { task: { id: taskId, tenantId: "tenant_001" }, events: [] } };
       },
     } as unknown as MissionControlService,
-    taskStore: {
-      task: { insertTask() { throw new Error("high_risk_task_must_not_insert"); } },
-    } as unknown as AuthoritativeTaskStore,
+    taskStore,
     missionRepository: new InMemoryMissionRepository(),
   });
 
