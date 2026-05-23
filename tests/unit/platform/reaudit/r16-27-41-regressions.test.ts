@@ -3,6 +3,7 @@ import test from "node:test";
 import { join } from "node:path";
 
 import { DurableEventBus } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { RedisQueueAdapter } from "../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import { getEventSchema, getRegisteredConsumers } from "../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 import { TIER_1_EVENT_TYPES } from "../../../../src/platform/five-plane-state-evidence/events/event-types.js";
 import { ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
@@ -127,6 +128,43 @@ test("R16-35 CAS service still exposes an explicit in-memory helper for non-dura
 
 test("R16-36 active subscriber poll interval is no longer 10ms", () => {
   assert.equal(ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS, 100);
+});
+
+test("R16-40 redis queue adapter keeps in-memory runtime path reachable for queue coverage gates", async () => {
+  const previousRunningTests = process.env.AA_RUNNING_TESTS;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.AA_RUNNING_TESTS = "1";
+  process.env.NODE_ENV = "test";
+
+  try {
+    const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+    const job = await adapter.enqueueAsync({
+      queueName: "reaudit-queue",
+      payload: { taskId: "task-r16-40" },
+      idempotencyKey: "reaudit-idempotent",
+    });
+
+    const stored = await adapter.getJobAsync(job.id);
+    const stats = await adapter.statsAsync("reaudit-queue");
+    const queues = await adapter.listQueuesAsync();
+
+    assert.equal(stored?.id, job.id);
+    assert.equal(stats.waiting, 1);
+    assert.equal(queues.includes("reaudit-queue"), true);
+
+    await adapter.close();
+  } finally {
+    if (previousRunningTests == null) {
+      delete process.env.AA_RUNNING_TESTS;
+    } else {
+      process.env.AA_RUNNING_TESTS = previousRunningTests;
+    }
+    if (previousNodeEnv == null) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  }
 });
 
 test("R16-38 and R16-39 memory promotion and eviction reporting are wired", () => {

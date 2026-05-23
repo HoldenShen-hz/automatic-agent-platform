@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getEventSchema } from "../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
+import {
+  getEventReplayMetadata,
+  getEventSchema,
+  isCanonicalEventName,
+} from "../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 import type { TypedEventPayloadMap } from "../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
 import type {
   AuthProviderBinding,
@@ -39,6 +43,15 @@ test("event registry exposes producer consumer and compatibility metadata for st
   assert.deepEqual(schema.consumers, ["oapeflir_projection", "truth_projector"]);
   assert.equal(schema.compatibilityPolicy, "backward_compatible_additive");
   assert.match(schema.payloadSchemaRef, /observe\/signals_collected\/v1$/);
+});
+
+test("event registry exposes canonical platform replay metadata and canonical naming guard", () => {
+  const metadata = getEventReplayMetadata("platform.harness_run.status_changed");
+
+  assert.equal(metadata.sourceOfTruth, "platform");
+  assert.equal(metadata.replayBehavior, "replay_as_fact");
+  assert.equal(isCanonicalEventName("oapeflir.stage.completed"), true);
+  assert.equal(isCanonicalEventName("task:status_changed"), false);
 });
 
 test("sandbox IAM contract exports canonical sandbox auth types", () => {

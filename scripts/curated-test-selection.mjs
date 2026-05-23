@@ -97,6 +97,8 @@ const INCLUDED_FILES = new Set([
   "tests/integration/platform/interface/api/mission-routes.test.ts",
   "tests/integration/platform/interface/api/mission-task-binding.test.ts",
   "tests/integration/platform/five-plane-execution/queue/sqlite-queue-adapter.integration.test.ts",
+  "tests/unit/platform/execution/queue/redis-queue-adapter.unit.test.ts",
+  "tests/unit/platform/execution/queue/redis-queue-adapter-functions.test.ts",
   "tests/unit/interaction/dashboard-port.test.ts",
   "tests/unit/interaction/dashboard/health-scorer/index.test.ts",
   "tests/unit/interaction/nl-gateway/intent-parser/index.test.ts",

@@ -16,9 +16,65 @@ import {
   RuntimeConstraintSetSchema,
   buildMissionEtag,
   computeMissionSnapshotHash,
+  hashExitCriterionExpression,
   mergeRuntimeConstraintSets,
   nextMissionStatus,
+  principalToMissionPrincipal,
 } from "../../../../src/platform/contracts/mission/index.js";
+
+function createContractPlaybook() {
+  return {
+    playbookId: "playbook_research",
+    version: "1.0.0",
+    missionType: "formal" as const,
+    title: "Research release",
+    owner: "mission-ops",
+    status: "active" as const,
+    entryStageId: "review",
+    stages: [{
+      stageId: "review",
+      title: "Review",
+      exitCriteria: [{
+        criterionId: "review.evidence",
+        name: "Evidence exists",
+        severity: "P0" as const,
+        gateId: "GATE-EVIDENCE-001",
+        expression: { type: "evidence_exists" as const, evidenceKind: "claim_evidence" },
+        requiredEvidenceRefs: ["evidence:snapshot"],
+        requiredMetricRefs: [],
+      }],
+      failureModeRefs: ["failure:unsupported_claim"],
+      defaultSkillRefs: [],
+      evidenceRequirements: ["claim_evidence"],
+    }],
+    edges: [],
+    compatibility: {
+      minPlatformVersion: "2.0.0",
+      compatibleMissionSchemaVersions: ["1.x"],
+    },
+    rollout: {
+      mode: "full" as const,
+      percentage: 100,
+      targetTenants: [],
+      rolloutRef: "rollout:research",
+    },
+    signature: {
+      signedBy: "platform-architecture",
+      signatureRef: "sig:research",
+      signedAt: "2026-05-21T00:00:00.000Z",
+    },
+    rollback: {
+      previousVersion: null,
+      rollbackAllowed: true,
+      rollbackRef: "rollback:research",
+    },
+    signatureRef: "sig:research",
+    rollbackRef: "rollback:research",
+    compatibilityRef: "compat:research",
+    createdAt: "2026-05-21T00:00:00.000Z",
+    updatedAt: "2026-05-21T00:00:00.000Z",
+  };
+}
 
 test("MissionRecord schema is strict and requires canonical fields", () => {
   const record = {
@@ -146,57 +202,7 @@ test("MissionErrorEnvelope requires trace and correlation identifiers", () => {
 });
 
 test("Mission playbook contracts keep stage governance separate from runtime nodes", () => {
-  const playbook = MissionPlaybookSchema.parse({
-    playbookId: "playbook_research",
-    version: "1.0.0",
-    missionType: "formal",
-    title: "Research release",
-    owner: "mission-ops",
-    status: "active",
-    entryStageId: "review",
-    stages: [{
-      stageId: "review",
-      title: "Review",
-      exitCriteria: [{
-        criterionId: "review.evidence",
-        name: "Evidence exists",
-        severity: "P0",
-        gateId: "GATE-EVIDENCE-001",
-        expression: { type: "evidence_exists", evidenceKind: "claim_evidence" },
-        requiredEvidenceRefs: ["evidence:snapshot"],
-        requiredMetricRefs: [],
-      }],
-      failureModeRefs: ["failure:unsupported_claim"],
-      defaultSkillRefs: [],
-      evidenceRequirements: ["claim_evidence"],
-    }],
-    edges: [],
-    compatibility: {
-      minPlatformVersion: "2.0.0",
-      compatibleMissionSchemaVersions: ["1.x"],
-    },
-    rollout: {
-      mode: "full",
-      percentage: 100,
-      targetTenants: [],
-      rolloutRef: "rollout:research",
-    },
-    signature: {
-      signedBy: "platform-architecture",
-      signatureRef: "sig:research",
-      signedAt: "2026-05-21T00:00:00.000Z",
-    },
-    rollback: {
-      previousVersion: null,
-      rollbackAllowed: true,
-      rollbackRef: "rollback:research",
-    },
-    signatureRef: "sig:research",
-    rollbackRef: "rollback:research",
-    compatibilityRef: "compat:research",
-    createdAt: "2026-05-21T00:00:00.000Z",
-    updatedAt: "2026-05-21T00:00:00.000Z",
-  });
+  const playbook = MissionPlaybookSchema.parse(createContractPlaybook());
   const stage = MissionStageInstanceSchema.parse({
     stageInstanceId: "mstage_001",
     missionId: "mis_001",
@@ -257,6 +263,76 @@ test("Mission playbook resolution and migration contracts stay machine parseable
   assert.equal(policy.fallbackPolicy, "use_last_active");
   assert.equal(resolution.resolutionReason, "last_active_fallback");
   assert.equal(migration.migrationMode, "hold_then_manual");
+});
+
+test("MissionPlaybookSchema enforces active and canary metadata invariants", () => {
+  assert.throws(() => MissionPlaybookSchema.parse({
+    ...createContractPlaybook(),
+    compatibility: null,
+    compatibilityRef: null,
+    signature: null,
+    signatureRef: null,
+    rollback: null,
+    rollbackRef: null,
+  }));
+
+  assert.throws(() => MissionPlaybookSchema.parse({
+    ...createContractPlaybook(),
+    signature: {
+      ...createContractPlaybook().signature,
+      signatureRef: "sig:other",
+    },
+  }));
+
+  assert.throws(() => MissionPlaybookSchema.parse({
+    ...createContractPlaybook(),
+    rollback: {
+      ...createContractPlaybook().rollback,
+      rollbackRef: "rollback:other",
+    },
+  }));
+
+  assert.throws(() => MissionPlaybookSchema.parse({
+    ...createContractPlaybook(),
+    status: "canary",
+    rollout: null,
+  }));
+
+  assert.throws(() => MissionPlaybookSchema.parse({
+    ...createContractPlaybook(),
+    status: "canary",
+    rollout: {
+      mode: "canary",
+      percentage: 100,
+      targetTenants: [],
+      rolloutRef: "rollout:unsafe-canary",
+    },
+  }));
+});
+
+test("Mission contracts expose stable hashing and principal projection helpers", () => {
+  const leftHash = hashExitCriterionExpression({
+    type: "all_of",
+    criteria: [
+      { type: "metric_threshold", metric: "aa.metric", operator: ">=", value: 1 },
+      { type: "evidence_exists", evidenceKind: "claim_evidence", minCount: 1 },
+    ],
+  });
+  const rightHash = hashExitCriterionExpression({
+    criteria: [
+      { operator: ">=", value: 1, metric: "aa.metric", type: "metric_threshold" },
+      { minCount: 1, evidenceKind: "claim_evidence", type: "evidence_exists" },
+    ],
+    type: "all_of",
+  });
+
+  assert.equal(leftHash, rightHash);
+  assert.equal(principalToMissionPrincipal({
+    principalId: "user_001",
+    type: "human",
+    tenantId: "tenant_001",
+    roles: ["operator"],
+  }), "user_001");
 });
 
 test("Mission operating model validation registry patch stays machine parseable", () => {

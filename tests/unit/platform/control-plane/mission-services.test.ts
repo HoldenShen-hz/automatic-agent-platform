@@ -24,12 +24,15 @@ import {
   MissionLiveGuard,
   MissionLearningPromotionGate,
   MissionObservabilityPolicy,
+  MissionOutcomeAnalyticsService,
   MissionPlaybookRegistry,
   MissionPlaybookMigrationService,
   MissionPlaybookResolver,
   MissionResolver,
   MissionRuntimeBindingService,
+  MissionTemplateIntegrationService,
   StageExitGateService,
+  createMissionMetadata,
   createMissionContextSnapshot,
   validateMissionPlaybook,
 } from "../../../../src/platform/five-plane-control-plane/mission/index.js";
@@ -258,7 +261,55 @@ test("MissionBudgetService prevents concurrent over-reservation baseline", () =>
   });
 
   assert.equal(budget.reserve("mis_001", 8).reservedAmount, 8);
+  assert.deepEqual(budget.settle("mis_001", 3), {
+    budgetEnvelopeId: "budget_001",
+    missionId: "mis_001",
+    currency: "USD",
+    hardCap: 10,
+    reservedAmount: 5,
+    settledAmount: 3,
+    releasedAmount: 0,
+    version: 2,
+  });
   assert.throws(() => budget.reserve("mis_001", 3));
+});
+
+test("Mission analytics and template helpers summarize outcome and preserve metadata shape", () => {
+  const analytics = new MissionOutcomeAnalyticsService();
+  const completedSummary = analytics.summarize({
+    mission: {
+      ...createActiveMission().mission,
+      status: "completed",
+    },
+    tasks: [{ id: "task_001" }, { id: "task_002" }],
+    runs: [{ id: "run_001" }],
+  });
+  const archivedSummary = analytics.summarize({
+    mission: {
+      ...createActiveMission().mission,
+      status: "archived",
+    },
+    tasks: [],
+    runs: [],
+  });
+  const template = new MissionTemplateIntegrationService().createTemplateBinding({
+    missionId: "mis_001",
+    templateId: "tpl_001",
+  });
+  const metadata = createMissionMetadata({
+    labels: ["formal", "validated"],
+    score: 0.92,
+  });
+
+  assert.equal(completedSummary.outcome, "successful");
+  assert.equal(completedSummary.taskCount, 2);
+  assert.equal(archivedSummary.outcome, "incomplete");
+  assert.equal(template.missionId, "mis_001");
+  assert.equal(template.packageId, null);
+  assert.deepEqual(metadata, {
+    labels: ["formal", "validated"],
+    score: 0.92,
+  });
 });
 
 test("MissionRuntimeBindingService binds PlanGraphBundle, HarnessRun, and NodeRun to one snapshot", () => {
@@ -612,6 +663,85 @@ test("MissionPlaybookResolver allows safe last-active fallback and migration ser
     compatible: false,
   });
   assert.deepEqual(plan.affectedMissionIds, ["mis_bound_001"]);
+  assert.equal(migrations.listPlans().length, 1);
+});
+
+test("MissionPlaybookRegistry lists registered playbooks and resolver covers explicit, canary, default, and manual selection paths", () => {
+  const registry = new MissionPlaybookRegistry({
+    metricRefs: ["aa.mission.outcome.quality_score"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+  const active = registry.register(createResearchPlaybook());
+  registry.register({
+    ...createResearchPlaybook(),
+    playbookId: "playbook_research_canary",
+    version: "1.1.0",
+    status: "validated",
+    rollout: {
+      mode: "canary",
+      percentage: 10,
+      targetTenants: ["tenant_canary"],
+      rolloutRef: "rollout:research-canary",
+    },
+    signature: {
+      signedBy: "platform-architecture",
+      signatureRef: "sig:research-canary",
+      signedAt: "2026-05-22T00:00:00.000Z",
+    },
+    rollback: {
+      previousVersion: "1.0.0",
+      rollbackAllowed: true,
+      rollbackRef: "rollback:research-canary",
+    },
+    signatureRef: "sig:research-canary",
+    rollbackRef: "rollback:research-canary",
+    compatibilityRef: "compat:research-canary",
+    createdAt: "2026-05-22T00:00:00.000Z",
+    updatedAt: "2026-05-22T00:00:00.000Z",
+  });
+  const canary = registry.transitionStatus({
+    playbookId: "playbook_research_canary",
+    version: "1.1.0",
+    targetStatus: "canary",
+    actorId: principal.principalId,
+    auditRef: "audit:playbook:canary:listed",
+  });
+  const resolver = new MissionPlaybookResolver(registry);
+
+  assert.equal(registry.list().length, 2);
+  assert.equal(registry.listByMissionType("formal").length, 2);
+  assert.equal(registry.resolveCanary("formal", "tenant_canary")?.playbookId, canary.playbookId);
+  assert.equal(resolver.resolve({
+    missionType: "formal",
+    tenantId: "tenant_canary",
+    requestedPlaybookId: canary.playbookId,
+    allowCanary: true,
+    tenantOverrideAllowed: false,
+    fallbackPolicy: "fail_closed",
+  }).resolutionReason, "explicit_request");
+  assert.equal(resolver.resolve({
+    missionType: "formal",
+    tenantId: "tenant_canary",
+    allowCanary: true,
+    tenantOverrideAllowed: false,
+    fallbackPolicy: "fail_closed",
+  }).resolutionReason, "canary_rollout");
+  assert.equal(resolver.resolve({
+    missionType: "formal",
+    tenantId: "tenant_001",
+    allowCanary: false,
+    tenantOverrideAllowed: false,
+    fallbackPolicy: "fail_closed",
+  }).playbookId, active.playbookId);
+  assert.throws(() =>
+    resolver.resolve({
+      missionType: "formal",
+      tenantId: "tenant_unknown",
+      allowCanary: false,
+      tenantOverrideAllowed: false,
+      fallbackPolicy: "manual_selection",
+    }),
+  );
 });
 
 test("StageExitGateService evaluates immutable snapshots, requires HITL for guarded edge, and appends evidence event", () => {

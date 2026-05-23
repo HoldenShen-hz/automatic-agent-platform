@@ -74,6 +74,15 @@ test("runtime platform events expose replay metadata and synthesized registry sc
   assert.equal(metadata.consumerContractTests.includes("runtime-state-machine.test.ts"), true);
 });
 
+test("projection runtime events expose replay-safe synthesized metadata", () => {
+  const metadata = getEventReplayMetadata("oapeflir.view.run_lifecycle");
+
+  assert.equal(metadata.eventType, "oapeflir.view.run_lifecycle");
+  assert.equal(metadata.sourceOfTruth, "projection");
+  assert.equal(metadata.sideEffectSafeToReplay, true);
+  assert.equal(metadata.replayBehavior, "simulate");
+});
+
 test("getEventSchema throws ValidationError for unknown event", () => {
   assert.throws(
     () => getEventSchema("unknown:event"),

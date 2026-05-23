@@ -91,6 +91,86 @@ test("RedisQueueAdapter has backendKind of redis", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
+test("RedisQueueAdapter uses in-memory redis when AA_RUNNING_TESTS is enabled", async () => {
+  const previousRunningTests = process.env.AA_RUNNING_TESTS;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.AA_RUNNING_TESTS = "1";
+  process.env.NODE_ENV = "test";
+
+  try {
+    const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+    assert.equal(await adapter.ping(), "PONG");
+    await adapter.close();
+  } finally {
+    if (previousRunningTests == null) {
+      delete process.env.AA_RUNNING_TESTS;
+    } else {
+      process.env.AA_RUNNING_TESTS = previousRunningTests;
+    }
+    if (previousNodeEnv == null) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  }
+});
+
+test("RedisQueueAdapter in-memory client covers default config and empty-store branches", async () => {
+  const previousRunningTests = process.env.AA_RUNNING_TESTS;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.AA_RUNNING_TESTS = "1";
+  process.env.NODE_ENV = "test";
+
+  try {
+    const adapter = new RedisQueueAdapter({} as never);
+    assert.equal(await adapter.getJobAsync("missing-job"), null);
+    assert.deepEqual(await adapter.listQueuesAsync(), []);
+    assert.deepEqual(await adapter.statsAsync("missing-queue"), {
+      queueName: "missing-queue",
+      waiting: 0,
+      delayed: 0,
+      active: 0,
+      completed: 0,
+      failed: 0,
+      deadLetter: 0,
+    });
+    await adapter.close();
+  } finally {
+    if (previousRunningTests == null) {
+      delete process.env.AA_RUNNING_TESTS;
+    } else {
+      process.env.AA_RUNNING_TESTS = previousRunningTests;
+    }
+    if (previousNodeEnv == null) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  }
+});
+
+test("RedisQueueAdapter forbids in-memory redis in production test mode", () => {
+  const previousRunningTests = process.env.AA_RUNNING_TESTS;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.AA_RUNNING_TESTS = "1";
+  process.env.NODE_ENV = "production";
+
+  try {
+    assert.throws(() => new RedisQueueAdapter({ host: "localhost", port: 6379 }), /queue.redis_test_memory_forbidden_in_production/);
+  } finally {
+    if (previousRunningTests == null) {
+      delete process.env.AA_RUNNING_TESTS;
+    } else {
+      process.env.AA_RUNNING_TESTS = previousRunningTests;
+    }
+    if (previousNodeEnv == null) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  }
+});
+
 // =============================================================================
 // enqueue (sync) Tests
 // =============================================================================
@@ -1128,6 +1208,22 @@ test("RedisQueueAdapter ping returns PONG", async () => {
   assert.equal(result, "PONG");
 });
 
+test("RedisQueueAdapter ping connects when redis client is waiting", async () => {
+  let connectCalls = 0;
+  const mockRedis = createMockRedisClient({
+    status: "wait",
+    connect: async () => {
+      connectCalls += 1;
+      mockRedis.status = "ready";
+    },
+    ping: async () => "PONG",
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  assert.equal(await adapter.ping(), "PONG");
+  assert.equal(connectCalls, 1);
+});
+
 test("RedisQueueAdapter ping throws when Redis is unavailable", async () => {
   const mockRedis = createMockRedisClient({
     ping: async () => {
@@ -1137,6 +1233,18 @@ test("RedisQueueAdapter ping throws when Redis is unavailable", async () => {
   const adapter = createAdapterWithMockRedis(mockRedis);
 
   await assert.rejects(adapter.ping());
+});
+
+test("RedisQueueAdapter ping throws storage error when closed connection cannot reconnect", async () => {
+  const mockRedis = createMockRedisClient({
+    status: "end",
+    connect: async () => {
+      throw new Error("connect failed");
+    },
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await assert.rejects(adapter.ping(), /queue.redis_connection_failed/);
 });
 
 test("RedisQueueAdapter close calls quit when status is ready", async () => {
