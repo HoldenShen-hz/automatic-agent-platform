@@ -4,30 +4,30 @@
 
 Accepted
 
-## Decision Date
+## Date
 
 2026-04-20
 
-## Context
+## Background
 
-`§15`-`§18`, `§21`, `§23`, `§27` define LLM Provider, Prompt, Eval, Cost, HITL, Compliance, SLO, and other AI operations capabilities. These capabilities were previously scattered across provider, prompt governance, quality, budget, approval contracts, but lacked a unified ADR explaining why the AI layer must be treated as a governable runtime, not a ordinary dependency.
+`§15`-`§18`, `§21`, `§23`, `§27` define LLM Provider, Prompt, Eval, Cost, HITL, Compliance, SLO and other AI operations capabilities. In the past, these capabilities were respectively落在 provider, prompt governance, quality, budget, approval contracts, but lacked a unified ADR explaining why the AI layer must be treated as a governable runtime, not a regular dependency.
 
 ## Decision
 
-AI operations layer adopts a unified governance model:
+AI operations layer adopts unified governance model:
 
-- LLM Provider must be abstracted via ModelGateway with routing, failover, observability, and degradation capabilities.
-- Prompt/model/policy must all be versioned, staged, rollbackable, auditable.
-- Eval and quality gates are part of the release pipeline, not offline report accessories.
-- Token/model costs must enter budget, metering, chargeback, optimization closed loop.
-- HITL is a formal control path, not a UI interaction exception.
-- Compliance, data classification, prompt handling, SLO/error budget together determine whether AI actions can execute.
+- LLM Provider must be abstracted access through ModelGateway, with routing, failover, observability, and degradation capabilities.
+- Prompt / model / policy must all be versioned, canary-deployable, rollback-able, and auditable.
+- Eval and quality gate are part of the release pipeline, and cannot be附属能力 as offline reports.
+- Token / model cost must enter budget, metering, chargeback, optimization闭环.
+- HITL is a formal control path, not a UI interaction特殊case.
+- Compliance, data classification, prompt handling, SLO / error budget together determine whether AI actions can execute.
 
 ## Trade-offs
 
-- Do not use model provider API as the platform primary contract to avoid vendor lock-in.
+- Do not take model vendor API as platform main contract to avoid vendor lock-in.
 - Do not allow prompt to directly enter production without governance.
-- Do not allow cost to be only for reporting display; cost must be able to participate in pre-execution budget guard and post-execution optimization.
+- Do not allow cost to only be displayed as reports; cost must be able to participate in pre-execution budget guard and post-execution optimization.
 
 ## Impact
 
@@ -51,18 +51,18 @@ Corresponding implementation boundaries:
 - `src/domains/eval-framework/*`
 - `src/ops-maturity/cost-optimizer/*`
 
-## Test Requirements
+## Testing Requirements
 
 - unit tests: provider selection, prompt version policy, budget guard, quality gate.
 - integration tests: prompt/model release, HITL approval, cost attribution.
-- contract tests: AI actions without passing quality gates, budget, or data classification must not execute.
+- contract tests: AI actions that fail quality gate, budget, or data classification must not execute.
 
-## Alternative Approaches
+## Alternatives
 
-1. **Use model provider API as the platform primary contract**: Information is clear, but increases vendor lock-in risk.
+1. **Take model vendor API as platform main contract**: Clear information, but increases vendor lock-in risk.
 2. **Allow prompt to directly enter production**: Reduces governance cost, but cannot guarantee quality, compliance, and security.
-3. **Cost as reporting display only**: Simple implementation, but cost cannot participate in pre-execution guard or post-execution optimization.
-4. **Adopt this decision**: Unified governance of AI operations layer, ensuring quality, security, compliance, and cost control.
+3. **Cost only as report display**: Simple to implement, but cost cannot participate in pre-execution guard and post-execution optimization.
+4. **Adopt this decision**: Unifies governance of AI operations layer, ensuring quality, security, compliance, and cost are controllable.
 
 ## Cross References
 

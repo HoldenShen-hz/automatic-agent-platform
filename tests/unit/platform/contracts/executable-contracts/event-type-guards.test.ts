@@ -12,8 +12,9 @@ import {
 function createMockEventEnvelope(overrides: Partial<EventEnvelope> = {}): EventEnvelope {
   return {
     eventId: "evt_test_123",
+    runId: "run_123",
     eventType: "platform.test.event",
-    eventVersion: "v1",
+    schemaVersion: 1,
     aggregateType: "TestAggregate",
     aggregateId: "agg_123",
     aggregateSeq: 1,
@@ -21,6 +22,7 @@ function createMockEventEnvelope(overrides: Partial<EventEnvelope> = {}): EventE
     traceId: "trace_123",
     payloadHash: "hash123",
     payload: { test: "data" },
+    replayBehavior: "replay_as_fact",
     occurredAt: "2026-04-01T00:00:00.000Z",
     ...overrides,
   };

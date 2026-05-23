@@ -1,53 +1,53 @@
-# ADR-084: Operator Dashboard And User Experience
+# ADR-084 Operator Dashboard And User Experience
 
 ---
 
-## OAPEFLIR Relationship
+## OAPEFLIR Association
 
 This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
-- **Observe**: Unified aggregation of task, incident, cost, approval, and autonomy signals
+- **Observe**: Unified aggregation of task, incident, cost, approval, autonomy signals
 - **Assess**: Generate operator / admin / fleet views and summaries
 - **Plan**: Recommend operations based on attention queue
-- **Execute**: Trigger approval, takeover, rollback, and repair through console
-- **Feedback**: User clicks, accepted suggestions, failure review
+- **Execute**: Trigger approval, takeover, rollback, repair through console
+- **Feedback**: User clicks, accepting suggestions, failure review
 - **Learn**: View weight and summary prompt optimization
-- **Improve**: Dashboard layout, summary quality, and UX flow improvement
-- **Release**: Console and UX component staged rollout
+- **Improve**: Dashboard layout, summary quality, and UX process improvement
+- **Release**: Console and UX component rollout
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
-v2.7 `§43-§44` requires the platform to provide not just infrastructure metrics, but also:
+v2.7 `§43-§44` requires the platform to not just provide infrastructure metrics, but to provide:
 
-- L1 Operator view
-- L2 Domain management view
-- L3 Platform operations view
-- L4 Fleet view
+- L1 operator view
+- L2 domain admin view
+- L3 platform ops view
+- L4 fleet view
 - Guided UX for non-technical users
 
-The current repository already has `src/interaction/dashboard` and `src/interaction/ux`, but the latter is mostly still empty shells.
+The current repository already has `src/interaction/dashboard` and `src/interaction/ux`, but the latter is mostly still an empty shell.
 
-## Decision
+## Decisions
 
-### 1. Dashboards are Layered by Role, Not by Page
+### 1. Dashboard is layered by role, not by page
 
-Canonical dashboard hierarchy is fixed as:
+Dashboard canonical layers are fixed as:
 
 - Operator Dashboard
 - Domain Admin Dashboard
 - Platform Ops Dashboard
 - Fleet Dashboard
 
-### 2. Attention Queue is the Unified Entry Point for All Console Actions
+### 2. Attention Queue is the unified entry for all console actions
 
-All objects requiring human intervention are uniformly mapped to `AttentionItem`, rather than each module having its own separate UI event model.
+All objects requiring human intervention are uniformly mapped to `AttentionItem`, rather than each module having its own UI event model.
 
-### 3. Non-Technical UX Uses Wizard / Template / Summary Trio
+### 3. Non-technical UX uses wizard / template / summary trio
 
 For non-technical users, prioritize exposing:
 
@@ -57,11 +57,11 @@ For non-technical users, prioritize exposing:
 
 Do not directly expose complex runtime terminology.
 
-### 4. Console is the Surface Layer for Execution Governance Actions, Does Not Carry Governance Logic
+### 4. Console is the surface layer for governance actions, does not承载 governance logic
 
-The real governance logic still belongs to control-plane / org-governance / ops-maturity.
+Real governance logic still belongs to control-plane / org-governance / ops-maturity.
 
 ## Consequences
 
-- `src/interaction/dashboard` needs to become a UI aggregation layer, not a business logic dumping ground
-- When `src/interaction/ux` subsequent implementation is added, it must be built around the canonical role hierarchy
+- `src/interaction/dashboard` needs to become UI aggregation layer rather than business logic dump
+- When `src/interaction/ux` supplement implementation later, it must revolve around canonical role layers

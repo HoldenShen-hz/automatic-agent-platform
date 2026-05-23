@@ -150,7 +150,7 @@ test("CostEstimationServicePort.estimate accepts null divisionId", () => {
       estimatedCostUsd: 0.05,
       confidence: divisionId ? "high" : "default",
       sampleCount: divisionId ? 50 : 0,
-      divisionId,
+      divisionId: divisionId ?? null,
       basedOn: divisionId ? "division_avg" : "default",
     }),
   };

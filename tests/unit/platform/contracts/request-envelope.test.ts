@@ -10,13 +10,20 @@ import assert from "node:assert/strict";
 import { createRequestEnvelope } from "../../../../src/platform/contracts/request-envelope/index.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
+const principal = {
+  principalId: "user_123",
+  type: "human" as const,
+  tenantId: "tenant_global",
+  roles: ["user"],
+};
+
 test("request-envelope: createRequestEnvelope generates valid envelope", () => {
   const envelope = createRequestEnvelope({
     requestId: "req_123",
     confirmedTaskSpecId: "cts_123",
     taskId: null,
     tenantId: null,
-    principal: { principalId: "user_123", tenantId: null, roles: ["user"] },
+    principal,
     sessionId: null,
     traceId: "trace_123",
     idempotencyKey: "idem_123",
@@ -49,7 +56,7 @@ test("request-envelope: createRequestEnvelope normalizes whitespace-only strings
     confirmedTaskSpecId: "cts_123",
     taskId: "   ",
     tenantId: "",
-    principal: { principalId: "user_123", tenantId: null, roles: ["user"] },
+    principal,
     sessionId: null,
     traceId: "trace_123",
     idempotencyKey: "idem_123",
@@ -74,7 +81,7 @@ test("request-envelope: createRequestEnvelope preserves non-empty strings", () =
     confirmedTaskSpecId: "cts_123",
     taskId: "task_456",
     tenantId: "tenant_abc",
-    principal: { principalId: "user_123", tenantId: "tenant_abc", roles: ["user"] },
+    principal: { ...principal, tenantId: "tenant_abc" },
     sessionId: "sess_789",
     traceId: "trace_xyz",
     idempotencyKey: "idem_123",
@@ -92,7 +99,7 @@ test("request-envelope: createRequestEnvelope preserves non-empty strings", () =
   assert.equal(envelope.traceId, "trace_xyz");
   assert.equal(envelope.sourcePlane, "interface");
   assert.equal(envelope.targetPlane, "control");
-  assert.equal(envelope.directives.length, 1);
+  assert.equal(envelope.directives?.length, 1);
 });
 
 test("request-envelope: createRequestEnvelope throws when requestId is empty", () => {
@@ -103,7 +110,7 @@ test("request-envelope: createRequestEnvelope throws when requestId is empty", (
         confirmedTaskSpecId: "cts_123",
         taskId: null,
         tenantId: null,
-        principal: { principalId: "user_123", tenantId: null, roles: ["user"] },
+        principal,
         sessionId: null,
         traceId: "trace_123",
         idempotencyKey: "idem_123",
@@ -124,7 +131,7 @@ test("request-envelope: createRequestEnvelope throws when requestId is whitespac
         confirmedTaskSpecId: "cts_123",
         taskId: null,
         tenantId: null,
-        principal: { principalId: "user_123", tenantId: null, roles: ["user"] },
+        principal,
         sessionId: null,
         traceId: "trace_123",
         idempotencyKey: "idem_123",
@@ -143,7 +150,7 @@ test("request-envelope: createRequestEnvelope accepts async mode", () => {
     confirmedTaskSpecId: "cts_123",
     taskId: null,
     tenantId: null,
-    principal: { principalId: "user_123", tenantId: null, roles: ["user"] },
+    principal,
     sessionId: null,
     traceId: "trace_123",
     idempotencyKey: "idem_123",
@@ -162,7 +169,7 @@ test("request-envelope: createRequestEnvelope accepts custom envelopeId and crea
     confirmedTaskSpecId: "cts_123",
     taskId: null,
     tenantId: null,
-    principal: { principalId: "user_123", tenantId: null, roles: ["user"] },
+    principal,
     sessionId: null,
     traceId: "trace_123",
     idempotencyKey: "idem_123",

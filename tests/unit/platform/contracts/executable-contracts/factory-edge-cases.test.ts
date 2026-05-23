@@ -35,6 +35,7 @@ import {
 
 const minimalPrincipal: PrincipalRef = {
   principalId: "user-1",
+  type: "human",
   tenantId: "tenant-1",
   roles: ["operator"],
 };
@@ -793,7 +794,7 @@ test("createPlatformFactEvent requires platform.* eventType", () => {
   assert.throws(
     () =>
       createPlatformFactEvent({
-        eventType: "user.task.created",
+        eventType: "user.task.created" as `platform.${string}`,
         aggregateType: "Task",
         aggregateId: "task-1",
         aggregateSeq: 1,
@@ -875,7 +876,7 @@ test("createOapeflirViewEvent requires oapeflir.view.* eventType", () => {
   assert.throws(
     () =>
       createOapeflirViewEvent({
-        eventType: "platform.task.created",
+        eventType: "platform.task.created" as `oapeflir.view.${string}`,
         aggregateType: "Task",
         aggregateId: "task-1",
         aggregateSeq: 1,

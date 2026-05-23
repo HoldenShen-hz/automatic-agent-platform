@@ -10,13 +10,13 @@ import { ApprovalService, validateApprovalDecision } from "../../../../../src/pl
 
 // Mock dependencies before imports
 const mockRepository = {
-  insertApproval: mock.fn(),
-  insertEvent: mock.fn(),
-  getApproval: mock.fn(),
-  updateApprovalDecisionCas: mock.fn(),
-  updateExecutionStatus: mock.fn(),
-  listApprovalsByTask: mock.fn(),
-  updateApprovalRequest: mock.fn(),
+  insertApproval: mock.fn((() => undefined) as any),
+  insertEvent: mock.fn((() => undefined) as any),
+  getApproval: mock.fn((() => undefined) as any),
+  updateApprovalDecisionCas: mock.fn((() => 0) as any),
+  updateExecutionStatus: mock.fn((() => undefined) as any),
+  listApprovalsByTask: mock.fn((() => []) as any),
+  updateApprovalRequest: mock.fn((() => undefined) as any),
 };
 
 const mockStore = {
@@ -53,7 +53,7 @@ describe("ApprovalService", () => {
         validateApprovalDecision({
           approvalId: "approval-123",
           decisionType: "confirmed",
-          confirmed: true,
+          confirmed: true as const,
           respondedBy: "user-1",
           respondedAt: "2026-01-01T00:00:00.000Z",
         });
@@ -254,7 +254,7 @@ describe("ApprovalService", () => {
       const decision = {
         approvalId: "approval-123",
         decisionType: "confirmed" as const,
-        confirmed: true,
+        confirmed: true as const,
         respondedBy: "user-1",
         respondedAt: "2026-01-01T00:00:00.000Z",
       };
@@ -321,7 +321,7 @@ describe("ApprovalService", () => {
       const decision = {
         approvalId: "approval-nonexistent",
         decisionType: "confirmed" as const,
-        confirmed: true,
+        confirmed: true as const,
         respondedBy: "user-1",
         respondedAt: "2026-01-01T00:00:00.000Z",
       };
@@ -350,7 +350,7 @@ describe("ApprovalService", () => {
       const decision = {
         approvalId: "approval-123",
         decisionType: "confirmed" as const,
-        confirmed: true,
+        confirmed: true as const,
         respondedBy: "user-1",
         respondedAt: "2026-01-01T00:00:00.000Z",
       };

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the standardized pipeline model for video multimodal input, supplementing the video subset specification of `multimodal_gateway_contract.md`.
+This contract defines the standardized pipeline model for video multimodal input, supplementing the video subset specifications of `multimodal_gateway_contract.md`.
 
 Related documents:
 
@@ -18,13 +18,13 @@ Related documents:
 
 ## 3. `VideoMultimodalInput` Minimum Fields
 
-Inherits from `MultimodalInputPart`, specialized for video modality:
+Inherits from `MultimodalInputPart`, specializing video modality:
 
 - `part_id`
 - `type` = `"video"`
 - `content_ref` — Video URI
-- `mime_type` — Required, e.g., `video/mp4`
-- `video_metadata?` — Pre-injected metadata override
+- `mime_type` — Required, e.g. `video/mp4`
+- `video_metadata?` — Metadata override injected in advance
 - `safety_labels?`
 - `provenance?`
 - `data_classification?`
@@ -46,7 +46,7 @@ Inherits from `MultimodalInputPart`, specialized for video modality:
 ## 6. `VideoPipelineOutput` Minimum Fields
 
 - `metadata` — `VideoMetadata`
-- `transcript` — Full text transcription
+- `transcript` — Full transcript
 - `transcript_segments` — `VideoTranscriptSegment[]`
 - `scenes` — `VideoScene[]` (timeline)
 - `key_frames` — `VideoFrame[]`
@@ -56,19 +56,19 @@ Inherits from `MultimodalInputPart`, specialized for video modality:
 
 - Video input must go through structured pipeline standardization.
 - Pipeline output order: metadata -> transcript -> scenes -> key_frames -> quality_assessment.
-- If transcript segment is unavailable, it must be exposed as `conditional` safety finding, not silently ignored.
+- If transcript segment is unavailable, it must be exposed as a `conditional` safety finding, not silently ignored.
 - `quality_assessment.readiness` values: `"ready" | "conditional" | "blocked"`.
 - When `metadata.duration_ms <= 0` or resolution is invalid, `readiness` must be `"blocked"`.
 - `key_frames` interval defaults to 10 seconds, minimum 1 second.
-- Scene timeline defaults to 15 second segmentation, maximum 12 scenes.
+- Scene timeline defaults to 15-second segmentation, maximum 12 scenes.
 
 ## 8. Relationship with MultimodalGateway
 
 `VideoMultimodalInput` is the video specialization of `MultimodalInputPart`.
-`VideoPipelineOutput` field mapping to `MultimodalGatewayResult.normalized_inputs` video summary.
+`VideoPipelineOutput` field mapping goes to `MultimodalGatewayResult.normalized_inputs` video summary.
 
 ## 9. Test Requirements
 
-- unit: `VideoProcessor` covers metadata extraction, scene detection, keyframe extraction, quality assessment
-- integration: video request -> gateway -> `VideoPipelineOutput`, verifying transcript / scenes / keyframes / summary correctness
-- contract: `VideoMultimodalInput` field completeness, `VideoTimeline` scene count boundaries
+- unit: `VideoProcessor` coverage of metadata extraction, scene detection, keyframe extraction, quality assessment
+- integration: video request -> gateway -> `VideoPipelineOutput`, verify transcript / scenes / keyframes / summary correctness
+- contract: `VideoMultimodalInput` field completeness, `VideoTimeline` scene count boundary

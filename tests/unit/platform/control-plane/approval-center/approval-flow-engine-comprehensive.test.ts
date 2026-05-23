@@ -8,30 +8,29 @@ import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 import { EscalationManager } from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
-import { FlowStatus, FlowType } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-types.js";
+import {
+  DEFAULT_ESCALATION_RULE,
+  DEFAULT_TIMEOUT_CONFIG,
+  FlowStatus,
+  FlowType,
+  type ApprovalFlowConfig,
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-types.js";
 import { VoteType } from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 import { ApprovalFlowEngine } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
 
 describe("ApprovalFlowEngine", () => {
 
-  const createMockEscalationManager = () => ({
-    canEscalate: mock.fn(() => true),
-    isDelegationExpired: mock.fn(() => false),
-    createDelegation: mock.fn(() => ({
-      delegationId: "delegation-123",
-      fromApprover: "approver-1",
-      toApprover: "approver-2",
-      delegatedAt: nowIso(),
-      expiresAt: new Date(Date.now() + 3600000).toISOString(),
-      originalApprovalId: "approval-123",
-      ttlResetCount: 0,
-      maxTtlResets: 3,
-      status: "active",
-    })),
-    resetDelegationTtl: mock.fn((d) => d),
-    escalate: mock.fn(() => ({ success: true, newLevel: { level: 1 } })),
-    notifyChannels: mock.fn(),
-  });
+  const createMockEscalationManager = () => new EscalationManager();
+
+  function createFlowConfig(
+    overrides: Partial<Omit<ApprovalFlowConfig, "flowId">> & Pick<Omit<ApprovalFlowConfig, "flowId">, "flowType" | "approvers">,
+  ): Omit<ApprovalFlowConfig, "flowId"> {
+    return {
+      timeout: DEFAULT_TIMEOUT_CONFIG,
+      escalation: DEFAULT_ESCALATION_RULE,
+      ...overrides,
+    };
+  }
 
   describe("createFlow", () => {
     it("should create a single-party flow with pending status", () => {
@@ -51,10 +50,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -80,7 +79,7 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.MULTI_PARTY,
           approvers: [
             { type: "user", identifier: "user-1", can_delegate: false },
@@ -90,7 +89,7 @@ describe("ApprovalFlowEngine", () => {
             minApprovals: 2,
             minRejectionsToDeny: 2,
           },
-        },
+        }),
         request,
       );
 
@@ -115,7 +114,7 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
           timeout: {
@@ -124,7 +123,7 @@ describe("ApprovalFlowEngine", () => {
             autoActionAfterMs: 300000,
             autoAction: "deny" as const,
           },
-        },
+        }),
         request,
       );
 
@@ -150,10 +149,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -180,10 +179,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -220,10 +219,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -256,10 +255,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: true }],
-        },
+        }),
         request,
       );
 
@@ -286,10 +285,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -318,10 +317,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -347,10 +346,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -380,14 +379,14 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
           feedbackLoop: {
             maxIterations: 5,
             requireReplanOnReject: true,
           },
-        },
+        }),
         request,
       );
 
@@ -418,14 +417,14 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
           feedbackLoop: {
             maxIterations: 5,
             requireReplanOnReject: true,
           },
-        },
+        }),
         request,
       );
 
@@ -454,14 +453,14 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
           feedbackLoop: {
             maxIterations: 1,
             requireReplanOnReject: true,
           },
-        },
+        }),
         request,
       );
 
@@ -509,10 +508,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       const flow = engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 
@@ -541,10 +540,10 @@ describe("ApprovalFlowEngine", () => {
       };
 
       engine.createFlow(
-        {
+        createFlowConfig({
           flowType: FlowType.SINGLE,
           approvers: [{ type: "user", identifier: "user-1", can_delegate: false }],
-        },
+        }),
         request,
       );
 

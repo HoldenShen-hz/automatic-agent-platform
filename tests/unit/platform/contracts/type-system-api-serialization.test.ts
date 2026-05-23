@@ -96,6 +96,7 @@ import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 function createTestPrincipal(): PrincipalRef {
   return {
     principalId: "test-principal",
+    type: "human",
     tenantId: "test-tenant",
     roles: ["operator"],
     displayName: "Test User",

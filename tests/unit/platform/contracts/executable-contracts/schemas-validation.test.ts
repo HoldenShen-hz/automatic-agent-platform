@@ -2441,7 +2441,7 @@ test("CompensationRecordSchema allows optional completedAt", () => {
 // ---------------------------------------------------------------------------
 
 test("CONTRACT_ZOD_SCHEMAS contains all canonical contract schemas", () => {
-  const expectedSchemas = [
+  const expectedSchemas: Array<keyof typeof CONTRACT_ZOD_SCHEMAS> = [
     "TaskDraft",
     "ConfirmedTaskSpec",
     "RequestEnvelope",

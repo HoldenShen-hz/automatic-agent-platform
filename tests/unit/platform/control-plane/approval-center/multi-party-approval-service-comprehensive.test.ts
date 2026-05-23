@@ -12,11 +12,11 @@ import { MultiPartyApprovalService } from "../../../../../src/platform/five-plan
 describe("MultiPartyApprovalService", () => {
 
   const mockRepository = {
-    insertApproval: mock.fn(),
-    insertEvent: mock.fn(),
-    getApproval: mock.fn(),
-    updateApprovalDecisionCas: mock.fn(),
-    updateApprovalRequest: mock.fn(),
+    insertApproval: mock.fn((() => undefined) as any),
+    insertEvent: mock.fn((() => undefined) as any),
+    getApproval: mock.fn((() => undefined) as any),
+    updateApprovalDecisionCas: mock.fn((() => 0) as any),
+    updateApprovalRequest: mock.fn((() => undefined) as any),
   };
 
   const mockStore = {

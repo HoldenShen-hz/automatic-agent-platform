@@ -80,6 +80,7 @@ function createArtifactRecord(overrides: Partial<ArtifactRecord> = {}): Artifact
     executionId: null,
     // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
     nodeRunId: "node_run_1",
+    stepId: null,
     kind: "code",
     storagePath: "/tmp/art_1.txt",
     fileName: "art_1.txt",

@@ -214,7 +214,7 @@ function createMockSqliteConnection(state: MockDbState): AuthoritativeSqlDatabas
         all: () => [],
       };
     },
-  } as AuthoritativeSqlDatabase["connection"];
+  } as unknown as AuthoritativeSqlDatabase["connection"];
 }
 
 function createMockSqliteDb(state: MockDbState = { leases: new Map(), audits: [] }): AuthoritativeSqlDatabase {
@@ -247,7 +247,7 @@ function createLease(overrides: Partial<ExecutionLeaseRecord> = {}): ExecutionLe
     releasedAt: null,
     reasonCode: null,
     ...overrides,
-  } as unknown as AuthoritativeSqlDatabase["connection"];
+  };
 }
 
 test("R26-01 and R26-03 context isolation avoids zero-action escalation and empty minimal fallback", () => {

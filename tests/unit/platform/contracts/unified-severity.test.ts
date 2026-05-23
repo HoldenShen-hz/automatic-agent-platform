@@ -112,6 +112,8 @@ test("[ARCH-P0-2] SLA escalation ordering is correct", () => {
   for (let i = 0; i < severityOrdering.length - 1; i++) {
     const current = severityOrdering[i];
     const next = severityOrdering[i + 1];
+    assert.ok(current !== undefined);
+    assert.ok(next !== undefined);
     assert.ok(
       UNIFIED_SEVERITY_SLA[current].acknowledgeWithinMinutes < UNIFIED_SEVERITY_SLA[next].acknowledgeWithinMinutes,
       `${current} acknowledge time should be less than ${next}`
@@ -133,9 +135,10 @@ test("[ARCH-P0-2] SEVERITY_SLA ownerExpectation values are meaningful", () => {
 
   for (const sev of UNIFIED_SEVERITIES) {
     const sla = UNIFIED_SEVERITY_SLA[sev];
+    const expectations = expectedExpectations[sev];
     assert.ok(
-      expectedExpectations[sev].includes(sla.ownerExpectation),
-      `${sev} ownerExpectation should be one of ${expectedExpectations[sev].join(", ")}`
+      expectations.includes(sla.ownerExpectation),
+      `${sev} ownerExpectation should be one of ${expectations.join(", ")}`
     );
   }
 });

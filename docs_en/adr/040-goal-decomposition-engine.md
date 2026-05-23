@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
 Complex business goals need to be decomposed into executable task sequences, and the platform requires automated goal decomposition capabilities.
 
@@ -70,8 +70,8 @@ const CLARIFICATION_THRESHOLD = 0.7;  // confidence < 0.7 → human assistance
 ### Depth Limits
 
 ```typescript
-const DEFAULT_MAX_DEPTH = 5;  // maximum decomposition depth of 5 levels
-const GLOBAL_CALL_DEPTH_CAP = 8;  // system-level hard cap, goal decomposition recursion must not exceed this limit
+const DEFAULT_MAX_DEPTH = 5;  // Maximum decomposition depth of 5 levels
+const GLOBAL_CALL_DEPTH_CAP = 8;  // System-level hard cap, goal decomposition recursion must not exceed this limit
 ```
 
 Constraints:
@@ -122,11 +122,11 @@ Trade-offs:
 
 - A-28: This ADR originally defined a separate 9-state goal lifecycle. The root cause was that the goal decomposition ADR mixed "decomposition product status" and "runtime truth status" into one lifecycle, and did not converge when `HarnessRun` became the sole execution state machine. Fix: The main text now downgrades goal status to `GoalProjection`, and the execution phase is uniformly mapped to `HarnessRun.status`.
 
-## Cross-references
+## Cross-References
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-060 Explicit Planning Hub](./060-explicit-planning-hub.md)
 
-## Source Section
+## Source Sections
 
-- `§40` Goal Decomposition Engine Architecture
+- Section 40

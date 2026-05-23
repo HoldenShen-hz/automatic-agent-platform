@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
 New business domain onboarding to the platform requires standardized processes and checklists to ensure onboarding quality.
 
@@ -17,7 +17,7 @@ New business domain onboarding to the platform requires standardized processes a
 | Gate 1 | Development Complete | ≥5 few-shot + eval ≥20 items |
 | Gate 2 | Tests Passed | Coverage ≥80% |
 | Gate 3 | Certification Passed | Prompt Injection 100% |
-| Gate 4 | Canary Release | CANARY_5 → CANARY_20 → CANARY_50 → CANARY_100 |
+| Gate 4 | Canary Release | canary_5 → partial_25 → stable_75 → stable_100 |
 
 ### Gate 1 Detailed Requirements
 
@@ -38,8 +38,8 @@ New business domain onboarding to the platform requires standardized processes a
 ### Canary Release Configuration
 
 ```typescript
-const CANARY_STAGES = [5, 20, 50, 100];  // Percentages
-const DEFAULT_CANARY_PERCENT = 10;        // Default 10%
+const CANARY_STAGES = [5, 25, 75, 100];  // Percentages
+const DEFAULT_CANARY_PERCENT = 5;        // Default 5%
 ```
 
 ### Drift Detection Rollout
@@ -64,11 +64,11 @@ Trade-offs:
 - Onboarding process is heavy
 - Gate checks require tool support
 
-## Cross-references
+## Cross-References
 
 - [ADR-037 Business Domain Modeling and Onboarding Architecture](./037-domain-modeling-and-onboarding.md)
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 
-## Source Section
+## Source Sections
 
-- `§38` Business Domain Onboarding Runbook
+- Section 38

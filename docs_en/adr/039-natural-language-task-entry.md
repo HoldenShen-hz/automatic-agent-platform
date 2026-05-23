@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
 Non-technical users need to interact with the platform through natural language, and the platform needs to convert NL input into structured tasks.
 
@@ -22,16 +22,16 @@ Non-technical users need to interact with the platform through natural language,
 
 ```typescript
 interface DetectedIntent {
-  intent_type: IntentType;  // 8 types
+  intent_type: IntentType;  // 6 types
   confidence: number;
   entities: Entity[];
   fallback_domain?: string;
 }
 ```
 
-### 8 intent_types (§6.3 reconciliation)
+### 6 intent_types (Section 6.3 reconciliation)
 
-> Note: `cancel_task` was removed in §6.3. Please use `abort_task` (abort in-progress task), `pause_task` (pause task), or `panic_kill` (emergency termination) instead.
+> Note: `cancel_task` was removed in Section 6.3. Please use `abort_task` (abort in-progress task), `pause_task` (pause task), or `panic_kill` (emergency termination) instead.
 
 | Type | Description |
 |------|-------------|
@@ -85,11 +85,12 @@ Benefits:
 Trade-offs:
 
 - NLU model requires training and maintenance
+- Ambiguity detection may delay simple tasks
 
-## Cross-references
+## Cross-References
 
 - [ADR-040 Goal Decomposition Engine Architecture](./040-goal-decomposition-engine.md)
 
-## Source Section
+## Source Sections
 
-- `§39` Natural Language Task Entry Architecture
+- Section 39

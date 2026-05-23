@@ -1,33 +1,33 @@
-# ADR-093: Harness Constraint Engine
+# ADR-093 Harness Constraint Engine
 
 ---
 
-## OAPEFLIR Relationship
+## OAPEFLIR Association
 
 - **Observe**: Read platform, tenant, domain, task four-layer constraints
 - **Assess**: Evaluate budget, risk, and output boundaries
-- **Plan**: Merge ConstraintPack and form execution upper limits
-- **Execute**: Enforce application before each run
-- **Feedback**: Record constraint hits and upgrade reasons
+- **Plan**: Merge ConstraintPack and form execution ceiling
+- **Execute**: Force apply before each round of execution
+- **Feedback**: Record constraint hits and escalation reasons
 - **Learn**: Accumulate high-frequency constraint conflict patterns
 - **Improve**: Iterate risk/output policy
-- **Release**: Put constraint engine into release gate
+- **Release**: Include constraint engine in release gate
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Context
+## Background
 
 If Harness does not have a unified constraint engine, risk, budget, and output governance will be scattered among callers.
 
 ## Decision
 
 - Each HarnessRun must carry explicit `ConstraintPack`
-- `ConstraintPack` must at minimum contain `risk_policy`, `output_policy`, `budget_envelope`, `sandbox_requirement`, and `approval_requirement`
-- Constraint sources merge in order: platform -> tenant -> domain -> task
-- When constraints are not satisfied, must fail-close, and write to audit and timeline
+- `ConstraintPack` at minimum contains `risk_policy`, `output_policy`, `budget_envelope`, `sandbox_requirement`, and `approval_requirement`
+- Constraint sources merge by platform -> tenant -> domain -> task
+- When constraints are not met, must fail-close, and write audit and timeline
 
 ## Consequences
 
@@ -36,4 +36,4 @@ If Harness does not have a unified constraint engine, risk, budget, and output g
 
 ## v4.3 ADR Remediation
 
-- A-37: This ADR originally reduced `ConstraintPack` to `risk_policy + output_policy`. Root cause was that when the constraint engine ADR was drafted, it only covered risk and output governance, without including budget, sandbox, and approval requirements into the unified constraint pack. Fix: The text now adds `budget_envelope / sandbox_requirement / approval_requirement` to the minimum set.
+- A-37: This ADR originally reduced `ConstraintPack` to `risk_policy + output_policy`,根因 was that constraint engine ADR was drafted covering only risk and output governance, and did not include budget, sandbox, and approval requirements into unified constraint pack. Fix: The text now adds `budget_envelope / sandbox_requirement / approval_requirement` to the minimum set.

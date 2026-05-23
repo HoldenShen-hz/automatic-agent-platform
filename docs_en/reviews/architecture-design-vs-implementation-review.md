@@ -5,4 +5,4 @@ This document is used to align architecture design with current code implementat
 ## Constraints
 
 - `ConstraintPack` is the primary carrier for Harness/Runtime constraint inputs.
-- Code implementation must continuously maintain consistency among contracts, ADRs, tests, and runtime behavior.
+- Code implementation needs to continuously maintain consistency among contracts, ADRs, tests, and runtime behavior.

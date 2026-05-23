@@ -1,26 +1,26 @@
-# ADR-106: Quant Trading Pre Trade Risk Mandatory
+# ADR-106 Quant Trading Pre Trade Risk Mandatory
 
 ---
 
-## OAPEFLIR Relationship
+## OAPEFLIR Association
 
-- **Observe**: Read orders, positions, and risk thresholds
+- **Observe**: Read orders, positions, and risk control thresholds
 - **Assess**: Perform pre-trade risk assessment
-- **Plan**: Decide whether to allow order submission
-- **Execute**: Only enter execution chain after risk passes
-- **Feedback**: Record blocking reasons and risk evidence
+- **Plan**: Decide whether to allow order placement
+- **Execute**: Only enter execution chain after risk control passes
+- **Feedback**: Record blocking reasons and risk control evidence
 - **Learn**: Review abnormal order patterns
-- **Improve**: Adjust risk parameters
-- **Release**: trading domain must pass domain-specific risk gate
+- **Improve**: Adjust risk control parameters
+- **Release**: Trading domain must pass exclusive risk gate
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Context
+## Background
 
-Quant trading domain has extremely high cost of erroneous execution; must have pre-trade risk independent of platform generic risk.
+The cost of erroneous execution in quantitative trading domain is extremely high, and must have pre-trade risk control independent of platform general risk.
 
 ## Decision
 
@@ -29,4 +29,4 @@ Quant trading domain has extremely high cost of erroneous execution; must have p
 
 ## Consequences
 
-- `quant-trading` domain has non-bypassable pre-trade risk boundary
+- `quant-trading` domain has non-bypassable pre-trade risk boundaries

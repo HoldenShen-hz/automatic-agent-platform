@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   isSessionTerminalStatus,
   createRecoverySession,
-  type SessionRecord,
 } from "../../../../../src/platform/contracts/types/status.js";
+import type { SessionRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 test("isSessionTerminalStatus returns true for completed", () => {
   assert.equal(isSessionTerminalStatus("completed"), true);

@@ -1,8 +1,8 @@
-# ADR-095: Harness Context Assembly
+# ADR-095 Harness Context Assembly
 
 ---
 
-## OAPEFLIR Relationship
+## OAPEFLIR Association
 
 - **Observe**: Collect task/domain/shared context sources
 - **Assess**: Evaluate token budget and sensitive information
@@ -11,23 +11,23 @@
 - **Feedback**: Record context missing and compression results
 - **Learn**: Identify most valuable context sources
 - **Improve**: Optimize compression and namespace strategy
-- **Release**: Put context quality into runtime acceptance
+- **Release**: Include context quality in runtime acceptance
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Context
+## Background
 
-If context does not have a unified assembler, Harness will redundantly splice across different call paths, cannot be audited, cannot compress or replay.
+If context does not have a unified assembler, Harness will repeatedly concatenate in different call paths, cannot be audited, and cannot be compressed or replayed.
 
 ## Decision
 
-- `ContextAssembler` serves as the authoritative context assembly entry point for Harness
-- Each context assembly must carry `NodeRun` level scope / audit ref to avoid task-level包裹 distortion
+- `ContextAssembler` serves as Harness's authoritative context assembly entry
+- Each context assembly must carry `NodeRun`-level scope / audit ref to avoid task-level big包裹 distortion
 - Must support task / domain / shared source set
-- Each loop iteration generates `ContextSnapshot`
+- Each loop generates `ContextSnapshot`
 
 ## Consequences
 

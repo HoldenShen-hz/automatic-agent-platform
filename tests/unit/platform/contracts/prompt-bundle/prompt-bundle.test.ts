@@ -511,6 +511,12 @@ function createMockBundle(
       responseFormat: undefined,
       customConstraints: {},
     },
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: {
       owner: "test",
       deprecated,

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines static analysis rules for workflows before execution, compensation transaction boundaries, and long-task sharding and partial commit semantics.
+This contract defines pre-execution static analysis rules for workflows, compensation transaction boundaries, and long-task segmentation with partial commit semantics.
 
 Related documents:
 
@@ -11,29 +11,29 @@ Related documents:
 - `idempotency_and_recovery_matrix_contract.md`
 - `runtime_execution_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
-- Block obvious errors before execution, rather than exposing them during execution.
+- Catch obvious errors before execution, not expose them during execution.
 - Provide a formal compensation model for steps with side effects.
 - Provide unified semantics for long tasks, subgraph recovery, and phased commits.
 
-## 3. Minimum Static Analysis Checks
+## 3. Static Analysis Minimum Checks
 
-Before execution, must check at minimum:
+At least the following must be checked before execution:
 
 - Infinite loop detection
-- Unreachable step detection
+- Unreachable node detection
 - Dependency cycle detection
-- Required input key missing
+- Missing required input keys
 - Schema incompatibility
-- Timeout / retry missing or illegal
-- Step type and side effect level inconsistency
-- Step ID uniqueness check
+- Missing or illegal timeout / retry
+- Node type and side effect level inconsistency
+- Node ID uniqueness check
 - Output key duplicate check
 - Unknown dependency reference check
-- Whether OAPEFLIR stage order is legal
-- Whether plugin / domain tool bundle references exist
-- Whether release rollback declares compensating_action or equivalent compensation strategy
+- OAPEFLIR stage order validity
+- Plugin / domain tool bundle reference existence
+- Release rollback declares compensating_action or equivalent compensation strategy
 
 ## 4. Analysis Result Objects
 
@@ -44,21 +44,21 @@ Before execution, must check at minimum:
 - `CheckpointPlan`
 - `WorkflowTemplate`
 
-v4.3 Alignment Notes:
+v4.3 alignment notes:
 
-- Code-side `StaticCompatibilityIssue` is exported as the canonical compatibility alias for `WorkflowLintIssue`, providing direct contract-level consumption of the issue array.
-- Code-side `WorkflowTemplate` is exported as a compatibility alias for `MinimalWorkflowDefinition`, pointing to the authoritative workflow definition structure in the codebase rather than maintaining a separate template entity.
+- On the code side, `StaticCompatibilityIssue` is now exported as the canonical compatibility alias of `WorkflowLintIssue`, for contract call surfaces to directly consume issue arrays.
+- On the code side, `WorkflowTemplate` is now exported as the compatibility alias of `MinimalWorkflowDefinition`, pointing uniformly to the authoritative workflow definition structure in the repository, rather than maintaining a second separate template entity.
 
 ## 5. Compensation Model
 
-Each step with side effects must declare one of:
+Each node with side effects must declare one of the following:
 
 - `idempotent_replay`
 - `compare_and_swap_write`
 - `compensating_action`
 - `manual_reconciliation_required`
 
-Compensation action must at minimum explain:
+Compensation actions must at least specify:
 
 - Trigger condition
 - Compensation owner
@@ -66,25 +66,25 @@ Compensation action must at minimum explain:
 - Compensation idempotency
 - Evidence artifact
 
-## 6. Long-Task Sharding
+## 6. Long Task Segmentation
 
-Long tasks must support at minimum:
+Long tasks must support at least:
 
-- Checkpoint sharding
+- Checkpoint segmentation
 - Subgraph recovery
-- Phased commit
+- Phased commits
 - Task-level partial commit
 
 Rules:
 
 - Checkpoints can only be established after side effect boundaries.
-- Subgraph recovery must not cross steps with incomplete compensation.
-- Partial commit must be auditable and traceable to corresponding step group.
-- If an upstream step enters `failed` or `skipped` and dependencies cannot be re-satisfied, downstream steps must not indefinitely remain `blocked`; the system should have clear cascade-fail or cascade-skip semantics.
+- Subgraph recovery must not cross nodes with incomplete compensation.
+- Partial commits must be auditable and traceable to corresponding node groups.
+- If an upstream node enters `failed` or `skipped` and dependencies can no longer be satisfied, downstream nodes must not remain in `blocked` indefinitely; the system should have clear cascade-fail or cascade-skip semantics.
 
 ## 6.1 Templated Workflow / Recipe
 
-If the system supports workflow / recipe templates, templates must explicitly declare:
+If the system supports workflow / recipe templates, templates must explicitly declare at least:
 
 - `version`
 - `title`
@@ -96,13 +96,13 @@ If the system supports workflow / recipe templates, templates must explicitly de
 
 Rules:
 
-- Templates should not be just free-text prompts; parameters, extension dependencies, and execution entries must be structured.
-- New templates should pass structural validation and minimum security scan before entering shared directory, marketplace, or team distribution.
-- Template author guide should clarify: which fields are required, which extensions need trust confirmation, which parameters must be explicitly input.
-- If the system simultaneously has server, web console, desktop, or other editing entries, template validation rules should be derived from a unified authoritative schema artifact as much as possible, rather than manually maintaining multiple parallel validation logics.
-- `$ref`, composite types, and dependency fields in template schema should be consistently parsed across all entries, avoiding "server passes but editor fails" or vice versa.
+- Templates must not be free-text prompts only; parameters, extension dependencies, and execution entry must be structured.
+- New templates must pass structural validation and minimum security scan before entering shared directories, marketplaces, or team distribution.
+- Template author guidelines must clarify: which fields are required, which extensions require trust confirmation, which parameters must be explicitly input.
+- If the system simultaneously has server, web console, desktop, or other editing entry points, template validation rules should be derived from a unified authoritative schema artifact as much as possible, rather than manually maintaining multiple parallel validation logics.
+- `$ref`, composite types, and dependency fields in template schemas must be consistently parsed across all entry points, avoiding "server passes but editor fails" or vice versa.
 
-## 7. Pre-Execution Gate
+## 7. Pre-execution Gate
 
 ```mermaid
 flowchart TD
@@ -125,7 +125,7 @@ Phase 1a:
 
 Phase 1b / 2:
 
-- Unreachable step
+- Unreachable node
 - More complete schema compatibility
 - Compensation templates
 - Partial commit orchestration
@@ -133,11 +133,11 @@ Phase 1b / 2:
 
 ## 9. Closure Conclusion
 
-Industrial-grade workflow cannot only "execute along the path".
+Industrial-grade workflows cannot just "run along".
 
-It must know before starting:
+They must know before starting:
 
 - Whether structure is valid
-- Which steps have side effects
+- Which nodes have side effects
 - How to compensate after failure
-- How to shard-recover long tasks
+- How to segment and recover long tasks

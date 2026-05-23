@@ -45,6 +45,7 @@ interface ComplianceRule {
 - Sub-departments inherit parent department policies
 - Sub-departments can override parent department policies (stricter)
 - Platform-level policies cannot be overridden
+- `org_node_id` must point to `OrgNodeType.department` node, no longer introducing a separate `department_id` named branch
 
 ### Compliance Checkpoints
 

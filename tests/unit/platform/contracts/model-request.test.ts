@@ -106,7 +106,7 @@ test("model-request: createModelRequest accepts all message roles", () => {
       taskId: null,
     });
 
-    assert.equal(request.messages[0].role, role);
+    assert.equal(request.messages[0]?.role, role);
   }
 });
 

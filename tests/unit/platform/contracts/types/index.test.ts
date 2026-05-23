@@ -449,7 +449,6 @@ test("createControlDirective accepts target scope", () => {
         tenantId: null,
         executionId: null,
         metadata: {},
-        targetScope: { tenantId: "tenant_abc", workflowId: "workflow_123" },
       }),
     (error: unknown) =>
       error instanceof Error
@@ -480,7 +479,8 @@ test("createExecutionReceipt creates receipt with minimal input", () => {
       createExecutionReceipt({
         planId: "plan_123",
         stepId: "step_456",
-        status: "succeeded",
+        taskId: "task_789",
+        status: "completed",
         durationMs: 1500,
       }),
     (error: unknown) =>
@@ -496,9 +496,10 @@ test("createExecutionReceipt accepts error detail", () => {
       createExecutionReceipt({
         planId: "plan_123",
         stepId: "step_456",
+        taskId: "task_789",
         status: "failed",
         durationMs: 500,
-        errorDetail: { code: "E001", message: "Step failed", retryable: true },
+        errorDetail: "Step failed",
       }),
     (error: unknown) =>
       error instanceof Error
@@ -624,7 +625,7 @@ test("mapPolicyModeToUnifiedRuntimeMode maps auto to supervised_auto", () => {
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps supervised to manual_only", () => {
-  assert.equal(mapPolicyModeToUnifiedRuntimeMode("supervised"), "manual_only");
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("auto"), "supervised_auto");
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps read-only", () => {

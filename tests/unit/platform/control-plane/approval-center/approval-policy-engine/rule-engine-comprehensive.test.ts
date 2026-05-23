@@ -12,19 +12,21 @@ import {
 } from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/rule-engine.js";
 import {
   DEFAULT_APPROVAL_POLICY_BUNDLE,
+  type ApprovalPolicyBundle,
+  type ApprovalPolicyContext,
 } from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
 
 describe("ApprovalPolicyEngine", () => {
 
   describe("evaluate", () => {
     it("should return default result when bundle is disabled", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         ...DEFAULT_APPROVAL_POLICY_BUNDLE,
         enabled: false,
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
@@ -44,7 +46,7 @@ describe("ApprovalPolicyEngine", () => {
 
     it("should deny critical destructive actions in auto mode", () => {
       const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
@@ -64,12 +66,12 @@ describe("ApprovalPolicyEngine", () => {
 
     it("should require approval for destructive actions in supervised mode", () => {
       const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "delete_resource",
+        action: "write_file",
         riskCategory: "destructive" as const,
         mode: "supervised" as const,
         stage: "execute",
@@ -84,12 +86,12 @@ describe("ApprovalPolicyEngine", () => {
 
     it("should require approval for prod-affecting actions", () => {
       const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "deploy",
+        action: "advance_rollout",
         riskCategory: "prod_affecting" as const,
         mode: "auto" as const,
         stage: "execute",
@@ -103,12 +105,12 @@ describe("ApprovalPolicyEngine", () => {
 
     it("should require approval for org-changing actions", () => {
       const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "modify_permissions",
+        action: "org_change",
         riskCategory: "org_changing" as const,
         mode: "auto" as const,
         stage: "execute",
@@ -122,13 +124,13 @@ describe("ApprovalPolicyEngine", () => {
 
     it("should require approval for high-cost actions (>= $100)", () => {
       const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "deploy",
-        riskCategory: "normal" as const,
+        action: "advance_rollout",
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
         estimatedCostUsd: 150,
@@ -142,13 +144,13 @@ describe("ApprovalPolicyEngine", () => {
 
     it("should not require approval for low-cost actions", () => {
       const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "read_file",
-        riskCategory: "normal" as const,
+        action: "invoke_model",
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
         estimatedCostUsd: 10,
@@ -161,7 +163,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate rules in priority order (highest first)", () => {
-      const customBundle = {
+      const customBundle: ApprovalPolicyBundle = {
         bundleId: "test-bundle",
         version: "1.0.0",
         name: "Test Bundle",
@@ -194,7 +196,7 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(customBundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
@@ -214,13 +216,13 @@ describe("ApprovalPolicyEngine", () => {
 
     it("should return default result when no rules match", () => {
       const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "read_file",
-        riskCategory: "normal" as const,
+        action: "invoke_model",
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
         estimatedCostUsd: 5,
@@ -236,7 +238,7 @@ describe("ApprovalPolicyEngine", () => {
 
   describe("condition evaluation", () => {
     it("should evaluate eq operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -259,7 +261,7 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
@@ -275,7 +277,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate neq operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -298,13 +300,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
         action: "write_file",
-        riskCategory: "normal" as const,
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
       };
@@ -314,7 +316,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate in operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -337,13 +339,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
         action: "exec_command",
-        riskCategory: "normal" as const,
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
       };
@@ -353,7 +355,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate nin operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -376,13 +378,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
         action: "exec_command",
-        riskCategory: "normal" as const,
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
       };
@@ -392,7 +394,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate gt operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -415,13 +417,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "deploy",
-        riskCategory: "normal" as const,
+        action: "advance_rollout",
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
         estimatedCostUsd: 150,
@@ -432,7 +434,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate gte operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -455,13 +457,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "deploy",
-        riskCategory: "normal" as const,
+        action: "advance_rollout",
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
         estimatedCostUsd: 100,
@@ -472,7 +474,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate lt operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -495,13 +497,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "deploy",
-        riskCategory: "normal" as const,
+        action: "advance_rollout",
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
         estimatedCostUsd: 50,
@@ -512,7 +514,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should evaluate contains operator correctly", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -535,13 +537,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
         action: "exec_command",
-        riskCategory: "normal" as const,
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
       };
@@ -553,7 +555,7 @@ describe("ApprovalPolicyEngine", () => {
 
   describe("condition logic", () => {
     it("should use AND logic when specified", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -580,7 +582,7 @@ describe("ApprovalPolicyEngine", () => {
       const engine = new ApprovalPolicyEngine(bundle);
 
       // Both conditions match
-      const context1 = {
+      const context1: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
@@ -593,7 +595,7 @@ describe("ApprovalPolicyEngine", () => {
       assert.strictEqual(engine.evaluate(context1).deny, true);
 
       // Only one condition matches
-      const context2 = {
+      const context2: ApprovalPolicyContext = {
         decisionId: "decision-456",
         taskId: "task-456",
         subjectType: "agent" as const,
@@ -607,7 +609,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should use OR logic when specified", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -634,7 +636,7 @@ describe("ApprovalPolicyEngine", () => {
       const engine = new ApprovalPolicyEngine(bundle);
 
       // Only one condition matches
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
@@ -650,7 +652,7 @@ describe("ApprovalPolicyEngine", () => {
 
   describe("nested field access", () => {
     it("should access nested fields using dot notation", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -673,13 +675,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "deploy",
-        riskCategory: "normal" as const,
+        action: "advance_rollout",
+        riskCategory: "cost_sensitive" as const,
         mode: "auto" as const,
         stage: "execute",
         metadata: {
@@ -702,7 +704,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should detect duplicate rule IDs", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -725,7 +727,7 @@ describe("ApprovalPolicyEngine", () => {
             priority: 90,
             enabled: true,
             conditions: [
-              { field: "riskCategory", operator: "eq", value: "normal" },
+              { field: "riskCategory", operator: "eq", value: "cost_sensitive" },
             ],
             action: "allow",
           },
@@ -742,7 +744,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should detect invalid field references", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -772,7 +774,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should detect shadowed rules", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -811,7 +813,7 @@ describe("ApprovalPolicyEngine", () => {
     });
 
     it("should warn about rules with no conditions", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -843,7 +845,7 @@ describe("ApprovalPolicyEngine", () => {
       const engine = createDefaultPolicyEngine();
 
       assert.ok(engine);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
@@ -861,7 +863,7 @@ describe("ApprovalPolicyEngine", () => {
 
   describe("require_multi_party_approval action", () => {
     it("should require multi-party approval when action is require_multi_party_approval", () => {
-      const bundle = {
+      const bundle: ApprovalPolicyBundle = {
         bundleId: "test",
         version: "1.0.0",
         name: "Test",
@@ -874,7 +876,7 @@ describe("ApprovalPolicyEngine", () => {
             priority: 100,
             enabled: true,
             conditions: [
-              { field: "riskCategory", operator: "eq", value: "critical" },
+              { field: "riskCategory", operator: "eq", value: "destructive" },
             ],
             action: "require_multi_party_approval",
             requiredApprovals: 3,
@@ -885,13 +887,13 @@ describe("ApprovalPolicyEngine", () => {
       };
 
       const engine = new ApprovalPolicyEngine(bundle);
-      const context = {
+      const context: ApprovalPolicyContext = {
         decisionId: "decision-123",
         taskId: "task-123",
         subjectType: "agent" as const,
         subjectId: "agent-1",
-        action: "deploy",
-        riskCategory: "critical" as const,
+        action: "advance_rollout",
+        riskCategory: "destructive" as const,
         mode: "auto" as const,
         stage: "execute",
       };

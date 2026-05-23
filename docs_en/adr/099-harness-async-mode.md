@@ -1,15 +1,15 @@
-# ADR-099: Harness Async Mode
+# ADR-099 Harness Async Mode
 
 ---
 
-## OAPEFLIR Relationship
+## OAPEFLIR Association
 
 - **Observe**: Receive async queue, sleep lease, and external events
-- **Assess**: Determine if execution can continue
+- **Assess**: Determine whether execution can continue
 - **Plan**: Plan async recovery and rescheduling
 - **Execute**: Handle long-running tasks through async harness
 - **Feedback**: Record async delay, timeout, and recovery results
-- **Learn**: Aggregate async failure patterns
+- **Learn**: Summarize async failure patterns
 - **Improve**: Optimize async strategy and backlog
 - **Release**: Async Harness as Ring 2 async-readiness acceptance item
 
@@ -18,20 +18,20 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Context
+## Background
 
-Long-running tasks, external waits, and human approvals all require Harness to have a formal async mode.
+Long-running tasks, external waits, and human approval all require Harness to have a formal async mode.
 
 ## Decision
 
-- `AsyncHarnessService` as a formal subsystem of Harness
-- Async run requires queue / checkpoint / resume capability
-- sleep / wake / timeout must be part of the same lifecycle model
+- `AsyncHarnessService` serves as Harness's formal subsystem
+- Async run needs queue / checkpoint / resume capabilities
+- Sleep / wake / timeout must be part of the same lifecycle model
 
 ## Consequences
 
-- Harness can carry true async workflows
+- Harness can承载 true async workflows
 
 ## v4.3 ADR Remediation
 
-- A-31: This ADR originally used `phase 8c` as delivery gate terminology. Root cause was that the async mode ADR followed historical phase scheduling and did not switch to the main architecture's unified ring terminology. Fix: The text now changed to `Ring 2 async-readiness`.
+- A-31: This ADR originally used `phase 8c` as delivery gate terminology,根因 was that async mode ADR followed historical phase scheduling, and did not switch to the主架构 unified ring口径. Fix: The text now changed to `Ring 2 async-readiness`.

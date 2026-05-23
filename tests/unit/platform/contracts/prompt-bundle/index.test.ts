@@ -10,7 +10,6 @@ import {
   type PromptBundleCompatibilityMatrix,
   type PromptBundleListResult,
   type PromptBundleMetadata,
-  type PromptBundleRegistrationInput,
   type PromptBundleVersion,
 } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";

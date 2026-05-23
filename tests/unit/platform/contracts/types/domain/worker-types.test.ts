@@ -139,6 +139,7 @@ test("WorkerSnapshotRecord structure is correct", () => {
     lastProgressAt: "2026-04-14T00:00:30.000Z",
     lastHeartbeatAt: "2026-04-14T00:01:00.000Z",
     updatedAt: "2026-04-14T00:01:00.000Z",
+    version: 1,
   };
   assert.equal(record.workerId, "worker_123");
   assert.equal(record.status, "busy");
@@ -170,6 +171,7 @@ test("WorkerSnapshotRecord allows remote placement with session status", () => {
     lastProgressAt: "2026-04-14T00:00:30.000Z",
     lastHeartbeatAt: "2026-04-14T00:01:00.000Z",
     updatedAt: "2026-04-14T00:01:00.000Z",
+    version: 2,
   };
   assert.equal(record.placement, "remote");
   assert.equal(record.remoteSessionStatus, "connected");
@@ -194,6 +196,7 @@ test("WorkerSnapshotRecord allows null optional fields", () => {
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-14T00:01:00.000Z",
     updatedAt: "2026-04-14T00:01:00.000Z",
+    version: 1,
   };
   assert.equal(record.placement, undefined);
   assert.equal(record.repoVersion, undefined);

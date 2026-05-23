@@ -7,7 +7,7 @@
 
 ### A9 Final Test Failure Cluster Closure (2026-04-28)
 
-> This batch承接 A8 之后仍未关闭的测试失败，目标是一次性收口当前已识别的剩余失败簇；优先修复真实实现与契约/导出面漂移，再对齐明确已稳定语义的测试断言，最后重跑定向回归与更广基线。
+> This batch inherits the test failures that remained unclosed after A8, with the goal of一次性收口 (completely closing) the remaining failure clusters currently identified; prioritize fixing real implementation vs contract/export surface drift, then align clearly stabilized semantic test assertions, and finally rerun targeted regression and broader baseline.
 
 - [x] Fix orchestration remaining failures: `TopologyValidator` default construction, progressive demotion, loop controller, assessment service, feedback signal schema, execute bridge compatible export.
 - [x] Fix runtime / stability / compliance / pack remaining failures: output continuation, stable release package, compliance program, pack lifecycle.
@@ -21,7 +21,7 @@
 
 ### A8 Remaining Test Failure Cluster Continued Closure (2026-04-28)
 
-> 本批次承接 A7 之后的剩余失败簇，目标是继续压降当前全量测试中的真实代码缺陷与明显陈旧断言；先修复运行时/接口层真实语义问题，再对齐已稳定 contract 的测试预期，最后回跑定向测试形成新的收口证据。
+> This batch inherits the remaining failure clusters after A7, with the goal of continuing to reduce real code defects and obvious outdated assertions in the current full test suite; first fix runtime/interface layer real semantic issues, then align test expectations for stable contracts, and finally run targeted tests to form new closure evidence.
 
 - [x] Fixed real code issues: `DataLineageService` return value isolation, Postgres DSN `SSLMODE` case compatibility, zero quota in-memory rate limit, `TaskWebSocketStatusRelay` event order, Lease repository/mock drift, etc.
 - [x] Aligned outdated test assertions for stable contracts: currency rounding, unicode sorting, delegation request null normalization, API schema/error helper, request body empty string, package export surface, skill serializer, etc.
@@ -35,7 +35,7 @@
 
 ### A7 Full Test Closure Batch (2026-04-28)
 
-> 本批次目标是在不回退既有架构与契约修复的前提下，持续收敛当前全量测试剩余失败；优先处理高频失败簇、缺失兼容入口、barrel 导出漂移，以及 build/typecheck/test 三者之间的不一致。
+> This batch aims to continuously converge the remaining failures in the current full test suite without rolling back existing architecture and contract fixes; prioritize handling high-frequency failure clusters, missing compatibility entries, barrel export drift, and inconsistencies among build/typecheck/test.
 
 - [x] Filled missing compatibility source files and legacy import shims discovered recently, eliminated skipped/missing source reports.
 - [x] Executed source-only typecheck, fixed new errors introduced by compatibility layer, barrel, precise optional types, or state semantic drift.
@@ -51,7 +51,7 @@
 
 ### A6 Implementation Consistency Audit Full Closure Batch (2026-04-27)
 
-> 本批次以 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` 中 C/T/A/G/O/S/M/F/I/D 全部编号为输入，目标是把旧差异表改为可验证的收口报告，并为 238 个审计编号建立机器可检查的 coverage registry。
+> This batch takes all C/T/A/G/O/S/M/F/I/D IDs from `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` as input, with the goal of transforming the old difference table into a verifiable closure report, and establishing a machine-checkable coverage registry for the 238 audit IDs.
 
 - [x] Established `ImplementationConsistencyClosureRegistry`, covering C-1..C-7, T-1..T-56, A-1..A-37, G-1..G-9, O-1..O-24, S-1..S-20, M-1..M-20, F-1..F-25, I-1..I-20, D-1..D-20.
 - [x] Added invariant tests, verifying audit ID totals, group counts, closure status, closure types, and evidence paths.
@@ -60,7 +60,7 @@
 
 ### A5 Design Review New Constraint Implementation Closure Batch (2026-04-27)
 
-> 本批次以 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 中仍为"部分完成 / 未实现"的条目为输入，目标是为每个新增架构约束补齐可执行实现入口、聚焦测试和审计证据；生产演练类条目以可执行 gate / receipt / report 对象收口，不伪装为线上 GA 证据。
+> This batch takes items still marked as "partially completed / not implemented" in `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 as input, with the goal of supplementing executable implementation entries, focused tests, and audit evidence for each new architectural constraint; production drill items are closed with executable gate/receipt/report objects, not伪装 (faked) as online GA evidence.
 
 - [x] P0 Multi-tenant and entry security: Filled WebSocket/SSE tenant scope per-event filtering, SDK version handshake, endpoint-class backpressure, and worker service identity checks.
 - [x] P0 Runtime terminal state cleanup: Filled `WorkerDrainProtocol` receipt, `RunTerminationCleanup`, plugin crash cleanup hook, orphaned budget reservation metric, and DB time / clock-skew safe budget sweeper.
@@ -75,7 +75,7 @@
 
 ### A4 Design Review Post Architecture Implementation Item-by-Item Review (2026-04-27)
 
-> 本轮以最新 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，重点复核刚吸收的 `architecture-design-review` 约束是否已有代码、测试、contract 或运营证据；旧审计完成态只能作为历史基线，不能自动视为本轮新增约束已完成。
+> This round takes the latest `docs_zh/architecture/00-platform-architecture.md` as authoritative input, focusing on verifying whether the newly absorbed `architecture-design-review` constraints have code, tests, contracts, or operational evidence; old audit completion states can only serve as historical baseline, not automatically considered as completed for this round's new constraints.
 
 - [x] Extracted new/strengthened executable constraints from latest architecture document, especially §2.5, §7-§12, §14, §15, §17-§24, §31-§32, §45, §46-§51, §56, §66-§67.
 - [x] Checked implementation completeness against `src/`, `tests/`, `docs_zh/contracts/`, `docs_zh/adr/`, `config/`, `divisions/` item by item.
@@ -85,7 +85,7 @@
 
 ## 00-platform-architecture.md Implementation Consistency Audit Current TODO
 
-> 本轮审计以 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，逐条核对实现是否完成、是否与文档描述一致；先产出事实矩阵与差距清单，再决定后续实现批次。
+> This audit round takes `docs_zh/architecture/00-platform-architecture.md` as authoritative input, checking line by line whether implementation is complete and consistent with documentation; first produce a fact matrix and gap list, then decide subsequent implementation batches.
 
 ### I2 Audit Gap Implementation Closure Batch
 
@@ -189,7 +189,7 @@
 
 ## Historical Test Baseline: Full Test Failure List (2026-04-25)
 
-> 以下清单保留为 2026-04-25 的历史失败基线，用于后续对比 v4.3 修复是否扩大或缩小回归面；不删除、不重排。
+> The following list is retained as the 2026-04-25 historical failure baseline, used for subsequent comparison of whether v4.3 fixes expand or contract the regression surface; do not delete or reorder.
 
 ## 9. Full Test Failure List (2026-04-25 Update)
 
@@ -506,7 +506,7 @@
 
 ## Historical Baseline Archive List
 
-> 以下 #15-#30 已不再作为当前活动待办管理；它们是 2026-04-25 历史测试基线的索引。当前架构实现收口已由 A5/A6 的 registry、gate、receipt、report 与 invariant 测试承接。
+> Items #15-#30 below are no longer managed as current active TODOs; they serve as the index for the 2026-04-25 historical test baseline. Current architecture implementation closure is handled by A5/A6 registry, gate, receipt, report, and invariant tests.
 
 | Task ID | Directory | Failures | Status |
 |---------|-----------|---------|--------|
@@ -533,7 +533,7 @@
 
 ## Mission v1.4 Architecture Implementation Activity TODO
 
-> 来源：`docs_zh/reference/mission_architecture_design_review_v1_4_full_merged.md`。本主线按"文档状态回写 -> 契约冻结 -> Truth/Event -> Control Plane -> API/Runtime Binding -> P1/P2 能力 -> 测试收口"的顺序执行。Mission 只作为长期目标与治理上下文根对象，不成为执行对象，不替代 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`。
+> Source: `docs_zh/reference/mission_architecture_design_review_v1_4_full_merged.md`. This main line executes in the order of "documentation status writeback -> contract freeze -> Truth/Event -> Control Plane -> API/Runtime Binding -> P1/P2 capabilities -> test closure". Mission only serves as long-term goal and governance context root object, does not become an execution object, and does not replace `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
 
 | Wave | Covered Tasks | Status | Acceptance Criteria |
 |------|---------------|--------|---------------------|

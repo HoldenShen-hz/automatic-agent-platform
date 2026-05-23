@@ -64,8 +64,8 @@ function createMinimalPlanGraph(graphId: string, nodeIds: string[]): PlanGraph {
   for (let i = 0; i < nodeIds.length - 1; i++) {
     edges.push({
       edgeId: `edge-${i}`,
-      fromNodeId: nodeIds[i],
-      toNodeId: nodeIds[i + 1],
+      fromNodeId: nodeIds[i]!,
+      toNodeId: nodeIds[i + 1]!,
       condition: {},
       dependencyType: "hard",
     });

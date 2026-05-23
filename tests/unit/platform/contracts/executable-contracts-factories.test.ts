@@ -1303,7 +1303,7 @@ test("executable-contracts: createPlatformFactEvent throws for non-platform even
   assert.throws(
     () =>
       createPlatformFactEvent({
-        eventType: "external.something.happened", // invalid namespace
+        eventType: "external.something.happened" as `platform.${string}`, // invalid namespace
         aggregateType: "Test",
         aggregateId: "test-1",
         aggregateSeq: 1,
@@ -1361,7 +1361,7 @@ test("executable-contracts: createOapeflirViewEvent throws for invalid namespace
   assert.throws(
     () =>
       createOapeflirViewEvent({
-        eventType: "invalid.namespace.event",
+        eventType: "invalid.namespace.event" as `oapeflir.view.${string}`,
         aggregateType: "Test",
         aggregateId: "test-1",
         aggregateSeq: 1,

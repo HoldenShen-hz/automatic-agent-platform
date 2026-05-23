@@ -6,11 +6,18 @@
 import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import type { ApprovalRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 import { ApprovalTimeoutExecutor } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-timeout-executor.js";
 import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 describe("ApprovalTimeoutExecutor", () => {
+  class TestApprovalTimeoutExecutor extends ApprovalTimeoutExecutor {
+    public timeoutForPolicy(policy: string): number {
+      return this.getTimeoutForPolicy(policy);
+    }
+  }
+
 
   const mockApprovalService = {
     applyDecision: mock.fn(() => ({ decisionType: "expired" })),
@@ -23,8 +30,8 @@ describe("ApprovalTimeoutExecutor", () => {
   };
 
   const mockApprovalRepo = {
-    listApprovalsByStatus: mock.fn(() => []),
-    getApproval: mock.fn(),
+    listApprovalsByStatus: mock.fn((() => []) as any),
+    getApproval: mock.fn((() => undefined) as any),
   };
 
   beforeEach(() => {
@@ -33,6 +40,21 @@ describe("ApprovalTimeoutExecutor", () => {
     mockApprovalRepo.listApprovalsByStatus.mock.resetCalls();
     mockApprovalRepo.getApproval.mock.resetCalls();
   });
+
+  function createApprovalRecord(overrides: Partial<ApprovalRecord> = {}): ApprovalRecord {
+    return {
+      id: "approval-123",
+      taskId: "task-123",
+      executionId: null,
+      status: "requested",
+      requestJson: "{}",
+      responseJson: null,
+      timeoutPolicy: "reject",
+      createdAt: nowIso(),
+      respondedAt: null,
+      ...overrides,
+    };
+  }
 
   describe("constructor", () => {
     it("should accept ApprovalService instance", () => {
@@ -352,17 +374,10 @@ describe("ApprovalTimeoutExecutor", () => {
         mockApprovalRepo as any,
       );
 
-      const approval = {
-        id: "approval-123",
-        taskId: "task-123",
-        executionId: null,
-        status: "requested",
-        requestJson: "{}",
+      const approval = createApprovalRecord({
         responseJson: JSON.stringify({ decisionType: "confirmed" }),
-        timeoutPolicy: "reject",
-        createdAt: nowIso(),
         respondedAt: nowIso(),
-      };
+      });
 
       const result = executor.isExpired(approval, nowIso());
 
@@ -380,16 +395,8 @@ describe("ApprovalTimeoutExecutor", () => {
       const currentTime = nowIso();
 
       const approval = {
-        id: "approval-123",
-        taskId: "task-123",
-        executionId: null,
-        status: "requested",
-        requestJson: "{}",
-        responseJson: null,
-        timeoutPolicy: "reject",
-        createdAt: pastTime,
-        respondedAt: null,
-        timeoutAt: pastTime, // Already expired
+        ...createApprovalRecord({ createdAt: pastTime }),
+        timeoutAt: pastTime,
       };
 
       const result = executor.isExpired(approval, currentTime);
@@ -408,17 +415,7 @@ describe("ApprovalTimeoutExecutor", () => {
       const oldTime = new Date(Date.now() - 2 * 3600000).toISOString(); // 2 hours ago
       const currentTime = nowIso();
 
-      const approval = {
-        id: "approval-123",
-        taskId: "task-123",
-        executionId: null,
-        status: "requested",
-        requestJson: "{}",
-        responseJson: null,
-        timeoutPolicy: "reject",
-        createdAt: oldTime,
-        respondedAt: null,
-      };
+      const approval = createApprovalRecord({ createdAt: oldTime });
 
       const result = executor.isExpired(approval, currentTime);
 
@@ -436,17 +433,7 @@ describe("ApprovalTimeoutExecutor", () => {
       const recentTime = new Date(Date.now() - 1800000).toISOString(); // 30 minutes ago
       const currentTime = nowIso();
 
-      const approval = {
-        id: "approval-123",
-        taskId: "task-123",
-        executionId: null,
-        status: "requested",
-        requestJson: "{}",
-        responseJson: null,
-        timeoutPolicy: "reject",
-        createdAt: recentTime,
-        respondedAt: null,
-      };
+      const approval = createApprovalRecord({ createdAt: recentTime });
 
       const result = executor.isExpired(approval, currentTime);
 
@@ -456,14 +443,14 @@ describe("ApprovalTimeoutExecutor", () => {
 
   describe("getTimeoutForPolicy", () => {
     it("should return default timeout when not overridden", () => {
-      const executor = new ApprovalTimeoutExecutor(
+      const executor = new TestApprovalTimeoutExecutor(
         mockApprovalService as any,
         mockStore as any,
         mockApprovalRepo as any,
         { defaultTimeoutMs: 7200000 },
       );
 
-      const result = executor.getTimeoutForPolicy("reject");
+      const result = executor.timeoutForPolicy("reject");
 
       assert.strictEqual(result, 7200000);
     });

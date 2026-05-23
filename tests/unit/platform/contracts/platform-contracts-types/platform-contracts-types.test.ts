@@ -383,10 +383,15 @@ test("platform-contracts: StateCommand has correct shape", () => {
     leaseId: "lease-1",
     fencingToken: "token-1",
     event: "TestEvent",
+    entityKind: "aggregate",
+    entityId: "agg-1",
+    action: "upsert",
     type: "update_truth",
     aggregateId: "agg-1",
     expectedVersion: 1,
     payload: { data: "test" },
+    emittedBy: "user-1",
+    createdAt: "2026-01-01T00:00:00.000Z",
   };
 
   assert.equal(command.commandId, "cmd-1");

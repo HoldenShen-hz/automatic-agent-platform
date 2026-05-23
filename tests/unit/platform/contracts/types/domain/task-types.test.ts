@@ -167,6 +167,7 @@ test("StepOutputRecord structure is correct", () => {
   const record: StepOutputRecord = {
     id: "stepout_123",
     taskId: "task_123",
+    nodeRunId: "node_run_123",
     stepId: "step_1",
     roleId: "executor",
     status: "succeeded",
@@ -191,6 +192,7 @@ test("StepOutputRecord allows null summary and artifactsJson", () => {
   const record: StepOutputRecord = {
     id: "stepout_456",
     taskId: "task_123",
+    nodeRunId: "node_run_456",
     stepId: "step_2",
     roleId: "reviewer",
     status: "failed",

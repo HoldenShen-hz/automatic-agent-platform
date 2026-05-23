@@ -190,7 +190,7 @@ test("intake factories enforce confirmation before request envelope", () => {
   assert.equal(validatedDraft.taskDraftId, draft.taskDraftId);
   assert.equal(validatedDraft.tenantId, draft.tenantId);
   assert.equal(validatedConfirmed.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);
-  assert.equal(validatedConfirmed.confirmationReceipt.receiptId, "receipt-1");
+  assert.equal(validatedConfirmed.confirmationReceipt?.receiptId, "receipt-1");
   assert.equal(validatedEnvelope.requestId, envelope.requestId);
   assert.equal(validatedEnvelope.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);
   assert.throws(() => validateExecutableContract("RequestEnvelope", { requestId: "" }), ValidationError);
@@ -246,8 +246,12 @@ test("runtime factories create harness, graph, node, attempt, and receipt record
   const receipt = createNodeAttemptReceipt({
     nodeAttemptId: attempt.nodeAttemptId,
     nodeRunId: nodeRun.nodeRunId,
+    harnessRunId: run.harnessRunId,
+    planGraphId: bundle.graph.graphId,
+    graphVersion: bundle.graphVersion,
     receiptKind: "tool",
     status: "succeeded",
+    duration: 1500,
     outputRef: artifact,
   });
 
@@ -264,7 +268,7 @@ test("SideEffectRecord factory preserves rollback handler and deadline metadata"
     harnessRunId: "run-1",
     nodeRunId: "node-run-1",
     nodeAttemptId: "attempt-1",
-    effectKind: "external_api_call",
+    effectKind: "external_api",
     idempotencyKey: "idem-side-effect-1",
     riskClass: "high",
     preCommitPolicyProofRef: artifact,

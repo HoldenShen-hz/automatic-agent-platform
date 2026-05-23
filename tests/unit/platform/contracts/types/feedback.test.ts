@@ -131,9 +131,11 @@ test("createEmptyFeedbackBatch can be used in arrays", () => {
     createEmptyFeedbackBatch("task2"),
     createEmptyFeedbackBatch("task3"),
   ];
+  const [first, second, third] = batches;
 
   assert.strictEqual(batches.length, 3);
-  assert.strictEqual(batches[0].taskId, "task1");
-  assert.strictEqual(batches[1].taskId, "task2");
-  assert.strictEqual(batches[2].taskId, "task3");
+  assert.ok(first && second && third);
+  assert.strictEqual(first.taskId, "task1");
+  assert.strictEqual(second.taskId, "task2");
+  assert.strictEqual(third.taskId, "task3");
 });

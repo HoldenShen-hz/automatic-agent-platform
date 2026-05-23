@@ -1,32 +1,32 @@
-# ADR-100: Domain Descriptor As Semantic Layer
+# ADR-100 Domain Descriptor As Semantic Layer
 
 ---
 
-## OAPEFLIR Relationship
+## OAPEFLIR Association
 
 - **Observe**: Domain signals, terminology, risk, and knowledge boundary input
-- **Assess**: Domain descriptor completeness and consistency validation
-- **Plan**: Drive workflow, prompt, eval with descriptor
-- **Execute**: Expose domain capabilities per descriptor
-- **Feedback**: Aggregate domain performance and governance feedback
+- **Assess**: Domain description completeness and consistency check
+- **Plan**: Drive workflow, prompt, eval by descriptor
+- **Execute**: Expose domain capabilities by descriptor
+- **Feedback**: Summarize domain performance and governance feedback
 - **Learn**: Iterate domain meta-model
 - **Improve**: Optimize descriptor completeness
-- **Release**: descriptor becomes domain release gate
+- **Release**: Descriptor becomes domain release gate
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Context
+## Background
 
-Business domains cannot rely solely on directory names or pack names to express semantics; there must be a formal semantic layer.
+Business domains cannot be expressed semantically by directory name or pack name alone, and must have a formal semantic layer.
 
 ## Decision
 
-- `DomainDescriptor` is the authoritative semantic layer for business domains
-- All workflow, tool bundle, prompt library, risk/eval must trace back to descriptor
+- `DomainDescriptor` is the business domain authoritative semantic layer
+- All workflow, tool bundle, prompt library, risk/eval must挂回 descriptor
 
 ## Consequences
 
-- Domain meta-model and domain registry main chain have a unified root object
+- Domain meta-model and domain registry main chain have unified root object

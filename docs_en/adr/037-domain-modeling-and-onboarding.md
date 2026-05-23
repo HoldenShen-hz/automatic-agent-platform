@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
 Different business domains (finance, HR, customer service, code development, etc.) have huge differences in risk levels, knowledge structures, tool ecosystems, and evaluation standards. The platform needs a structured domain modeling framework.
 
@@ -99,13 +99,14 @@ Trade-offs:
 
 ## v4.3 ADR Remediation
 
-- A-32: This ADR originally compressed `DomainClass` into 7 broad categories. The root cause was that when the domain modeling ADR was formed, it still leaned towards product-market groupings and did not expand as the main architecture took the 24 vertical domains as the unified metamodel instantiation entry. Fix: The main text now converges `DomainClass` to 24 vertical domain types and aligns with the domain directory in main architecture `§71-§94`.
+- A-32: This ADR originally compressed `DomainClass` into 7 broad categories. The root cause was that when the domain modeling ADR was formed, it still leaned towards product-market groupings and did not expand as the main architecture took the 24 vertical domains as the unified metamodel instantiation entry. Fix: The main text now converges `DomainClass` to 24 vertical domain types and aligns with the domain directory in main architecture sections 71-94.
 
-## Cross-references
+## Cross-References
 
 - [ADR-030 Runtime Execution Plane](./030-runtime-execution-plane.md)
 - [ADR-038 Business Domain Onboarding Runbook](./038-business-domain-onboarding-runbook.md)
 
-## Source Section
+## Source Sections
 
-- `§37` Business Domain Modeling and Onboarding Architecture
+- Section 37
+- Section 71-94

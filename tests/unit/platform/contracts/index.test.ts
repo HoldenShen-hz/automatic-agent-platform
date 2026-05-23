@@ -314,11 +314,6 @@ test("createControlDirective with targetScope", async () => {
         tenantId: null,
         executionId: null,
         metadata: {},
-        targetScope: {
-          tenantId: "tenant_abc",
-          workflowId: "workflow_xyz",
-          workerId: "worker_123",
-        },
       }),
     (error: unknown) =>
       error instanceof Error
@@ -352,14 +347,11 @@ test("createExecutionReceipt with error detail", async () => {
     () =>
       createExecutionReceipt({
         planId: "plan_123",
+        taskId: "task_123",
         stepId: "step_456",
         status: "failed",
         durationMs: 2500,
-        errorDetail: {
-          code: "E001",
-          message: "Step execution timed out",
-          retryable: true,
-        },
+        errorDetail: "E001: Step execution timed out",
       }),
     (error: unknown) =>
       error instanceof Error
