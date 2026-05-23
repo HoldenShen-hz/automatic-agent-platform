@@ -357,9 +357,11 @@ test("checkResumeCompatibility() returns not compatible when contractVersion dif
 
   assert.equal(result.compatible, false);
   assert.equal(result.differences.length, 1);
-  assert.equal(result.differences[0].field, "contractVersion");
-  assert.equal(result.differences[0].beforeValue, "v4.3");
-  assert.equal(result.differences[0].afterValue, "v4.4");
+  const [difference] = result.differences;
+  assert.ok(difference);
+  assert.equal(difference.field, "contractVersion");
+  assert.equal(difference.beforeValue, "v4.3");
+  assert.equal(difference.afterValue, "v4.4");
 });
 
 test("checkResumeCompatibility() returns timedOut when timeout exceeded", () => {

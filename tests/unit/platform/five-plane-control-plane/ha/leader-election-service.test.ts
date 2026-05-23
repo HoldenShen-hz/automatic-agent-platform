@@ -32,7 +32,11 @@ class TestCoordinator {
   }
 
   registerNode(nodeId: string, region: string, metadata?: Record<string, unknown>): void {
-    this.registrations.push({ nodeId, region, metadata });
+    this.registrations.push({
+      nodeId,
+      region,
+      ...(metadata == null ? {} : { metadata }),
+    });
   }
 
   updateNodeHeartbeat(nodeId: string, status: string): void {
@@ -99,7 +103,10 @@ class TestCoordinator {
   }
 
   releaseLeadership(nodeId?: string, leaseId?: string): boolean {
-    this.releases.push({ nodeId, leaseId });
+    this.releases.push({
+      ...(nodeId == null ? {} : { nodeId }),
+      ...(leaseId == null ? {} : { leaseId }),
+    });
     this.activeLease = null;
     this.leaderNodeId = null;
     this.expired = true;

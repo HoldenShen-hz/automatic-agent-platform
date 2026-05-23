@@ -15,12 +15,14 @@ function createMockChildProcess(
   pgid?: number,
 ): ChildProcess {
   const emitter = new EventEmitter() as EventEmitter & {
-    pid?: number;
+    pid: number;
     pgid?: number;
     once: ChildProcess["once"];
   };
   emitter.pid = pid;
-  emitter.pgid = pgid;
+  if (pgid != null) {
+    emitter.pgid = pgid;
+  }
   return emitter as unknown as ChildProcess;
 }
 
@@ -63,9 +65,9 @@ test("kill uses process group when pgid differs from pid", async () => {
   const tracker = new ProcessTracker();
   const child = createMockChildProcess(12345, 12000);
   const originalKill = process.kill;
-  const calls: Array<{ pid: number; signal?: string | number }> = [];
+  const calls: Array<{ pid: number; signal: string | number }> = [];
   process.kill = ((pid: number, signal?: string | number) => {
-    calls.push({ pid, signal });
+    calls.push({ pid, signal: signal ?? "SIGTERM" });
     return true;
   }) as typeof process.kill;
 
@@ -83,9 +85,9 @@ test("kill uses process group when pgid differs from pid", async () => {
 test("killAll escalates to SIGKILL for processes still active after grace period", async () => {
   const tracker = new ProcessTracker();
   const originalKill = process.kill;
-  const calls: Array<{ pid: number; signal?: string | number }> = [];
+  const calls: Array<{ pid: number; signal: string | number }> = [];
   process.kill = ((pid: number, signal?: string | number) => {
-    calls.push({ pid, signal });
+    calls.push({ pid, signal: signal ?? "SIGTERM" });
     return true;
   }) as typeof process.kill;
 
