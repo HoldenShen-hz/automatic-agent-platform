@@ -7,6 +7,7 @@ import {
   getRegisteredConsumers,
   getEventSchema,
   getEventReplayMetadata,
+  isCanonicalEventName,
   validateEventPayload,
   type EventSchemaDefinition,
   type KnownEventType,
@@ -208,4 +209,13 @@ test("validateEventPayload rejects subtask payload missing both stepId and subta
       return error.code === "event.payload_invalid" && error.message.includes("subtask:completed");
     }
   );
+});
+
+test("isCanonicalEventName enforces dot-separated lowercase canonical event names", () => {
+  assert.equal(isCanonicalEventName("oapeflir.stage.completed"), true);
+  assert.equal(isCanonicalEventName("plugin.critical_cve.detected"), true);
+  assert.equal(isCanonicalEventName("tool.schemaValidationFailed"), false);
+  assert.equal(isCanonicalEventName("plugin-critical-cve.detected"), false);
+  assert.equal(isCanonicalEventName("connector..egress.denied"), false);
+  assert.equal(isCanonicalEventName("task:status_changed"), false);
 });

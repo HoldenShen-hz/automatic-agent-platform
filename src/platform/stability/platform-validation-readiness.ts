@@ -44,6 +44,49 @@ export interface PlatformValidationScorecard {
   >;
 }
 
+export interface PlatformMissionSloProfile {
+  readonly missionType: "research" | "code_agent" | "ops";
+  readonly evidenceCoverageTarget: number;
+  readonly toolReceiptCoverageTarget: number;
+  readonly budgetAttributionCoverageTarget: number;
+  readonly harnessCompletionTarget: number;
+  readonly hitlSlaMs: number;
+  readonly recoveryRtoMs: number;
+  readonly projectionLagP95Ms: number;
+  readonly apiAvailabilityTarget: number;
+}
+
+export interface PlatformMissionSloMeasurement {
+  readonly evidenceCoverage: number;
+  readonly toolReceiptCoverage: number;
+  readonly budgetAttributionCoverage: number;
+  readonly harnessCompletion: number;
+  readonly hitlSlaMs: number;
+  readonly recoveryRtoMs: number;
+  readonly projectionLagP95Ms: number;
+  readonly apiAvailability: number;
+}
+
+export interface PlatformMissionSloEvaluation {
+  readonly missionType: PlatformMissionSloProfile["missionType"];
+  readonly passed: boolean;
+  readonly checks: ReadonlyArray<{
+    readonly name:
+      | "evidence_coverage"
+      | "tool_receipt_coverage"
+      | "budget_attribution_coverage"
+      | "harness_completion"
+      | "hitl_sla"
+      | "recovery_rto"
+      | "projection_lag_p95"
+      | "api_availability";
+    readonly operator: ">=" | "<=";
+    readonly actual: number;
+    readonly target: number;
+    readonly passed: boolean;
+  }>;
+}
+
 export interface PlatformCapacityValidationReport {
   readonly profiles: readonly PlatformCapacityProfileResult[];
   readonly soakCommand: string;
@@ -140,6 +183,51 @@ export function buildCapacityValidationReport(input: {
   };
 }
 
+export function evaluatePlatformMissionSlo(
+  profile: PlatformMissionSloProfile,
+  measurement: PlatformMissionSloMeasurement,
+): PlatformMissionSloEvaluation {
+  const checks: PlatformMissionSloEvaluation["checks"] = [
+    passAtLeast(
+      "evidence_coverage",
+      measurement.evidenceCoverage,
+      profile.evidenceCoverageTarget,
+    ),
+    passAtLeast(
+      "tool_receipt_coverage",
+      measurement.toolReceiptCoverage,
+      profile.toolReceiptCoverageTarget,
+    ),
+    passAtLeast(
+      "budget_attribution_coverage",
+      measurement.budgetAttributionCoverage,
+      profile.budgetAttributionCoverageTarget,
+    ),
+    passAtLeast(
+      "harness_completion",
+      measurement.harnessCompletion,
+      profile.harnessCompletionTarget,
+    ),
+    passAtMost("hitl_sla", measurement.hitlSlaMs, profile.hitlSlaMs),
+    passAtMost("recovery_rto", measurement.recoveryRtoMs, profile.recoveryRtoMs),
+    passAtMost(
+      "projection_lag_p95",
+      measurement.projectionLagP95Ms,
+      profile.projectionLagP95Ms,
+    ),
+    passAtLeast(
+      "api_availability",
+      measurement.apiAvailability,
+      profile.apiAvailabilityTarget,
+    ),
+  ];
+  return {
+    missionType: profile.missionType,
+    passed: checks.every((check) => check.passed),
+    checks,
+  };
+}
+
 function buildFreezeBlockers(
   input: PlatformValidationScorecardInput,
 ): string[] {
@@ -180,6 +268,39 @@ function profile(
     targetConcurrentTasks,
     evidenceKind,
     passed,
+  };
+}
+
+function passAtLeast(
+  name:
+    | "evidence_coverage"
+    | "tool_receipt_coverage"
+    | "budget_attribution_coverage"
+    | "harness_completion"
+    | "api_availability",
+  actual: number,
+  target: number,
+) {
+  return {
+    name,
+    operator: ">=" as const,
+    actual,
+    target,
+    passed: actual >= target,
+  };
+}
+
+function passAtMost(
+  name: "hitl_sla" | "recovery_rto" | "projection_lag_p95",
+  actual: number,
+  target: number,
+) {
+  return {
+    name,
+    operator: "<=" as const,
+    actual,
+    target,
+    passed: actual <= target,
   };
 }
 

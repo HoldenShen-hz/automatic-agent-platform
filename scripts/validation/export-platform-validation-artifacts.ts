@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { EVENT_SCHEMA_REGISTRY } from "../../src/platform/five-plane-state-evidence/events/event-registry.js";
+import { VALIDATION_SPAN_NAMES } from "../../src/platform/shared/observability/validation-semantic-conventions.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const artifactRoot = join(root, "artifacts/validation/platform/contracts");
@@ -11,50 +12,83 @@ const eventPayloadSchemaRoot = join(schemaRoot, "event-payload-schemas");
 const generatedRoot = join(root, "artifacts/validation/platform/generated");
 const registry = readJson(
   "config/validation/platform-validation-registry.json",
-) as {
-  version: string;
-  ciJobs: unknown[];
-  gates: unknown[];
-  runbooks: unknown[];
-};
+) as PlatformValidationRegistry;
 const metricMap = readJson(
   "config/validation/platform-monitoring-metric-map.json",
-);
+) as PlatformMonitoringMetricMap;
+const runbookMetadata = readJson(
+  registry.sources.runbookMetadata,
+) as PlatformRunbookMetadataRegistry;
+const missionSloProfiles = readJson(
+  registry.sources.missionSloProfiles,
+) as PlatformMissionSloProfileRegistry;
 const lifecycleMatrix = readJson(
   "config/validation/platform-lifecycle-matrix.json",
-);
+) as Record<string, unknown>;
 const referenceDocument = readText(
   "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md",
 );
 const targetMetrics = extractCoreMetricRegistry(referenceDocument);
 const eventRegistry = Object.values(EVENT_SCHEMA_REGISTRY);
+const runbookMetadataById = new Map(
+  runbookMetadata.runbooks.map((runbook) => [runbook.runbookId, runbook]),
+);
+const enrichedRunbooks = registry.runbooks.map((runbook) => {
+  const metadata = runbookMetadataById.get(runbook.runbookId);
+  if (metadata == null) {
+    throw new Error(
+      `platform_validation_artifacts.runbook_metadata_missing:${runbook.runbookId}`,
+    );
+  }
+  return {
+    ...runbook,
+    ...metadata,
+  };
+});
+const enrichedGates = registry.gates.map((gate) => {
+  const runbook = runbookMetadataById.get(gate.runbookId);
+  return {
+    ...gate,
+    defaultSeverity: runbook?.severity ?? "P1",
+    escalationRules: [] as unknown[],
+    blocking: true,
+    owner: runbook?.owner ?? "Platform Owner",
+    linkedMetrics: runbook?.linkedMetrics ?? [],
+    automationAllowed: runbook?.automationAllowed ?? "none",
+  };
+});
 
 mkdirSync(artifactRoot, { recursive: true });
 mkdirSync(eventPayloadSchemaRoot, { recursive: true });
 mkdirSync(generatedRoot, { recursive: true });
 writeJson("event-registry.canonical.json", {
   version: registry.version,
-  events: eventRegistry,
+  events: eventRegistry.map((event) => ({
+    ...event,
+    nameForm: event.type.includes(".") ? "canonical" : "legacy_compat",
+  })),
 });
 writeJson("gate-registry.canonical.json", {
   version: registry.version,
-  gates: registry.gates,
+  gates: enrichedGates,
 });
 writeJson("ci-job-registry.canonical.json", {
   version: registry.version,
   ciJobs: registry.ciJobs,
 });
 writeJson("runbook-registry.canonical.yaml", {
-  version: registry.version,
-  runbooks: registry.runbooks,
+  version: runbookMetadata.version,
+  runbooks: enrichedRunbooks,
 });
 writeJson("metric-registry.canonical.json", {
   version: registry.version,
   targetMetrics,
   runtimeMappings: metricMap.metrics,
   forbiddenAlertMetrics: metricMap.forbiddenAlertMetrics,
+  forbiddenValidationSpanNames: VALIDATION_SPAN_NAMES,
 });
 writeJson("lifecycle-matrix.canonical.json", lifecycleMatrix);
+writeJson("mission-slo-profiles.canonical.json", missionSloProfiles);
 writeSchemaArtifacts();
 writeGeneratedArtifacts();
 
@@ -98,7 +132,7 @@ function writeGenerated(name: string, value: string): void {
 
 function extractCoreMetricRegistry(
   markdown: string,
-): Array<Record<string, string>> {
+): PlatformTargetMetricRecord[] {
   const start = markdown.indexOf("## 48.1 Core Metrics");
   const end = markdown.indexOf("\n---\n\n# 49. Runbook Registry", start);
   const section = markdown.slice(start, end);
@@ -251,6 +285,62 @@ function writeSchemaArtifacts(): void {
       decision: enumSchema(["pass", "fail", "conditional_pass"]),
       approvedBy: stringArray(),
       createdAt: dateTimeString(),
+    },
+  });
+
+  writeSchema("mission-slo-profile.schema.json", {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "aa://validation/mission-slo-profile.schema.json",
+    title: "PlatformMissionSloProfiles",
+    type: "object",
+    additionalProperties: false,
+    required: ["version", "profiles", "burnRateAlerts"],
+    properties: {
+      version: nonEmptyString(),
+      profiles: {
+        type: "array",
+        minItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "missionType",
+            "evidenceCoverageTarget",
+            "toolReceiptCoverageTarget",
+            "budgetAttributionCoverageTarget",
+            "harnessCompletionTarget",
+            "hitlSlaMs",
+            "recoveryRtoMs",
+            "projectionLagP95Ms",
+            "apiAvailabilityTarget",
+          ],
+          properties: {
+            missionType: enumSchema(["research", "code_agent", "ops"]),
+            evidenceCoverageTarget: zeroToOne(),
+            toolReceiptCoverageTarget: zeroToOne(),
+            budgetAttributionCoverageTarget: zeroToOne(),
+            harnessCompletionTarget: zeroToOne(),
+            hitlSlaMs: positiveInteger(),
+            recoveryRtoMs: positiveInteger(),
+            projectionLagP95Ms: positiveInteger(),
+            apiAvailabilityTarget: zeroToOne(),
+          },
+        },
+      },
+      burnRateAlerts: {
+        type: "array",
+        minItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["window", "burnRateThreshold", "severity"],
+          properties: {
+            window: enumSchema(["1h", "6h", "24h"]),
+            burnRateThreshold: positiveInteger(),
+            severity: enumSchema(["P0", "P1", "P2", "P3"]),
+          },
+        },
+      },
     },
   });
 
@@ -417,11 +507,19 @@ function writeGeneratedArtifacts(): void {
   );
   writeGenerated(
     "gate-registry.generated.ts",
-    generatedConst("PLATFORM_GATE_REGISTRY", registry.gates),
+    generatedConst("PLATFORM_GATE_REGISTRY", enrichedGates),
   );
   writeGenerated(
     "metric-registry.generated.ts",
     generatedConst("PLATFORM_METRIC_REGISTRY", targetMetrics),
+  );
+  writeGenerated(
+    "mission-slo-profiles.generated.ts",
+    generatedConst("PLATFORM_MISSION_SLO_PROFILES", missionSloProfiles),
+  );
+  writeGenerated(
+    "runbook-registry.generated.ts",
+    generatedConst("PLATFORM_RUNBOOK_REGISTRY", enrichedRunbooks),
   );
 }
 
@@ -455,4 +553,67 @@ function stringArray(): Record<string, unknown> {
 
 function positiveInteger(): Record<string, unknown> {
   return { type: "integer", minimum: 1 };
+}
+
+function zeroToOne(): Record<string, unknown> {
+  return { type: "number", minimum: 0, maximum: 1 };
+}
+
+interface PlatformValidationRegistry {
+  readonly version: string;
+  readonly sources: {
+    readonly runbookMetadata: string;
+    readonly missionSloProfiles: string;
+  };
+  readonly ciJobs: readonly unknown[];
+  readonly gates: ReadonlyArray<{
+    readonly gateId: string;
+    readonly ciJob: string;
+    readonly runbookId: string;
+  }>;
+  readonly runbooks: ReadonlyArray<{
+    readonly runbookId: string;
+    readonly path: string;
+  }>;
+}
+
+interface PlatformMonitoringMetricMap {
+  readonly version: string;
+  readonly metrics: readonly unknown[];
+  readonly forbiddenAlertMetrics: readonly string[];
+}
+
+interface PlatformRunbookMetadataRegistry {
+  readonly version: string;
+  readonly runbooks: ReadonlyArray<{
+    readonly runbookId: string;
+    readonly title: string;
+    readonly severity: "P0" | "P1" | "P2" | "P3";
+    readonly owner: string;
+    readonly linkedGates: readonly string[];
+    readonly linkedMetrics: readonly string[];
+    readonly automationAllowed: "none" | "partial" | "full";
+    readonly requiresHumanApproval: boolean;
+    readonly rollbackSupported: boolean;
+    readonly lastReviewedAt: string;
+  }>;
+}
+
+interface PlatformMissionSloProfileRegistry {
+  readonly version: string;
+  readonly profiles: readonly unknown[];
+  readonly burnRateAlerts: readonly unknown[];
+}
+
+interface PlatformTargetMetricRecord {
+  readonly metric: string;
+  readonly type: string;
+  readonly formula: string;
+  readonly window: string;
+  readonly labels: string;
+  readonly source: string;
+  readonly dashboard: string;
+  readonly alert: string;
+  readonly owner: string;
+  readonly target: string;
 }

@@ -34,6 +34,8 @@ export interface EventReplayMetadata {
   readonly consumerContractTests: readonly string[];
 }
 
+export const CANONICAL_EVENT_SEGMENT_REGEX = /^[a-z][a-z0-9_]*$/;
+
 /**
  * Raw event schema definition before normalization.
  * Allows optional fields that get defaults during processing.
@@ -1123,6 +1125,23 @@ export function getEventReplayMetadata(type: string): EventReplayMetadata {
       details: { eventType: type },
     });
   }
+}
+
+export function isCanonicalEventName(eventName: string): boolean {
+  if (
+    eventName.length === 0 ||
+    eventName.startsWith(".") ||
+    eventName.endsWith(".") ||
+    eventName.includes("..") ||
+    eventName.includes(":")
+  ) {
+    return false;
+  }
+  const segments = eventName.split(".");
+  return (
+    segments.length >= 3 &&
+    segments.every((segment) => CANONICAL_EVENT_SEGMENT_REGEX.test(segment))
+  );
 }
 
 /**

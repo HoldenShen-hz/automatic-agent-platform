@@ -140,13 +140,17 @@ test("platform validation artifact exporter materializes schemas generated types
   );
 
   for (const artifact of [
+    "artifacts/validation/platform/contracts/mission-slo-profiles.canonical.json",
     "artifacts/validation/platform/schemas/validation-evidence-bundle.schema.json",
+    "artifacts/validation/platform/schemas/mission-slo-profile.schema.json",
     "artifacts/validation/platform/schemas/plugin-manifest.schema.json",
     "artifacts/validation/platform/schemas/tool-definition.schema.json",
     "artifacts/validation/platform/schemas/data-governance.schema.json",
     "artifacts/validation/platform/generated/typed-event-payloads.generated.ts",
     "artifacts/validation/platform/generated/gate-registry.generated.ts",
     "artifacts/validation/platform/generated/metric-registry.generated.ts",
+    "artifacts/validation/platform/generated/mission-slo-profiles.generated.ts",
+    "artifacts/validation/platform/generated/runbook-registry.generated.ts",
     "artifacts/validation/platform/reports/metric-registry-closure-report.json",
     "artifacts/validation/platform/reports/event-schema-coverage-report.json",
   ]) {
@@ -158,10 +162,62 @@ test("platform validation artifact exporter materializes schemas generated types
       "artifacts/validation/platform/contracts/metric-registry.canonical.json",
       "utf8",
     ),
-  ) as { targetMetrics: Array<{ metric: string }> };
+  ) as {
+    targetMetrics: Array<{ metric: string }>;
+    forbiddenValidationSpanNames: string[];
+  };
   assert.ok(
     metricRegistry.targetMetrics.some(
       (metric) => metric.metric === "aa.truth.atomicity.violation.count",
     ),
   );
+  assert.ok(
+    Array.isArray(metricRegistry.forbiddenValidationSpanNames),
+    "metric registry should publish forbidden validation span names",
+  );
+  assert.equal(
+    metricRegistry.targetMetrics.some((metric) =>
+      metricRegistry.forbiddenValidationSpanNames.includes(metric.metric),
+    ),
+    false,
+    "validation span names must not leak into target metrics",
+  );
+});
+
+test("platform product validation reports expose mission slo and runbook summaries", () => {
+  const productResult = spawnSync(
+    "node",
+    ["--import", "tsx", "scripts/validation/platform-product-validation.ts", "all"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    },
+  );
+  assert.equal(
+    productResult.status,
+    0,
+    `${productResult.stdout}\n${productResult.stderr}`,
+  );
+
+  const researchReport = JSON.parse(
+    readFileSync(
+      "artifacts/validation/platform/reports/research-validation-report.json",
+      "utf8",
+    ),
+  ) as {
+    missionSloEvaluation?: { passed?: boolean };
+  };
+  const freezeReport = JSON.parse(
+    readFileSync(
+      "artifacts/validation/platform/reports/freeze-validation-report.json",
+      "utf8",
+    ),
+  ) as {
+    gateSummary?: { p0GateCount?: number };
+    runbookSummary?: { missingMetadataCount?: number };
+  };
+
+  assert.equal(researchReport.missionSloEvaluation?.passed, true);
+  assert.equal(freezeReport.runbookSummary?.missingMetadataCount, 0);
+  assert.ok((freezeReport.gateSummary?.p0GateCount ?? 0) > 0);
 });

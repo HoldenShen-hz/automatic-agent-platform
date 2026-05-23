@@ -20,6 +20,12 @@ const mode = process.argv[2] ?? "registry";
 const packageJson = readJson(join(root, "package.json"));
 const registry = readJson(registryPath);
 const metricMap = readJson(metricMapPath);
+const runbookMetadata = readJson(
+  join(root, registry.sources.runbookMetadata),
+);
+const missionSloProfiles = readJson(
+  join(root, registry.sources.missionSloProfiles),
+);
 const issues = [];
 
 if (mode === "registry" || mode === "docs-registry" || mode === "bundle") {
@@ -76,11 +82,22 @@ function validateRegistry() {
     "registry.lifecycle_matrix_missing",
   );
   requireFile(registry.sources.runbook, "registry.runbook_missing");
+  requireFile(
+    registry.sources.runbookMetadata,
+    "registry.runbook_metadata_missing",
+  );
+  requireFile(
+    registry.sources.missionSloProfiles,
+    "registry.mission_slo_profiles_missing",
+  );
 
   const scripts = packageJson.scripts ?? {};
   const ciJobIds = new Set(registry.ciJobs.map((job) => job.jobId));
   const runbookIds = new Set(
     registry.runbooks.map((runbook) => runbook.runbookId),
+  );
+  const runbookMetadataById = new Map(
+    runbookMetadata.runbooks.map((runbook) => [runbook.runbookId, runbook]),
   );
   for (const job of registry.ciJobs) {
     if (typeof scripts[job.script] !== "string") {
@@ -92,6 +109,31 @@ function validateRegistry() {
   }
   for (const runbook of registry.runbooks) {
     requireFile(runbook.path, `runbook.${runbook.runbookId}.path_missing`);
+    const metadata = runbookMetadataById.get(runbook.runbookId);
+    if (metadata == null) {
+      issues.push(`runbook.${runbook.runbookId}.metadata_missing`);
+      continue;
+    }
+    for (const field of [
+      "title",
+      "severity",
+      "owner",
+      "automationAllowed",
+      "lastReviewedAt",
+    ]) {
+      if (
+        typeof metadata[field] !== "string" ||
+        metadata[field].length === 0
+      ) {
+        issues.push(`runbook.${runbook.runbookId}.${field}_missing`);
+      }
+    }
+    if (!Array.isArray(metadata.linkedGates) || metadata.linkedGates.length === 0) {
+      issues.push(`runbook.${runbook.runbookId}.linked_gates_missing`);
+    }
+    if (!Array.isArray(metadata.linkedMetrics)) {
+      issues.push(`runbook.${runbook.runbookId}.linked_metrics_missing`);
+    }
     if (runbook.runbookId.startsWith("D.")) {
       const runbookSource = readFile(runbook.path);
       if (!runbookSource.includes(`## ${runbook.runbookId} `)) {
@@ -106,7 +148,13 @@ function validateRegistry() {
     if (!runbookIds.has(gate.runbookId)) {
       issues.push(`gate.${gate.gateId}.runbook_missing:${gate.runbookId}`);
     }
+    const metadata = runbookMetadataById.get(gate.runbookId);
+    if (metadata != null && !metadata.linkedGates.includes(gate.gateId)) {
+      issues.push(`gate.${gate.gateId}.runbook_link_missing:${gate.runbookId}`);
+    }
   }
+  validateMissionSloProfiles();
+  validateCanonicalEventNames();
 }
 
 function validateMonitoring() {
@@ -138,6 +186,16 @@ function validateMonitoring() {
       issues.push(`monitoring.forbidden_alert_metric:${metricName}`);
     }
   }
+  const targetMetrics = extractCoreMetricRegistry(
+    readFile(
+      "docs_zh/reference/automatic_agent_platform_validation_monitoring_full_v1_7_1.md",
+    ),
+  ).map((metric) => metric.metric);
+  for (const spanName of extractValidationSpanNames()) {
+    if (targetMetrics.includes(spanName)) {
+      issues.push(`monitoring.validation_span_name_promoted_to_metric:${spanName}`);
+    }
+  }
 }
 
 function validateGpuCapacitySeam() {
@@ -161,13 +219,17 @@ function validateGeneratedArtifacts() {
     "contracts/runbook-registry.canonical.yaml",
     "contracts/ci-job-registry.canonical.json",
     "contracts/lifecycle-matrix.canonical.json",
+    "contracts/mission-slo-profiles.canonical.json",
     "schemas/validation-evidence-bundle.schema.json",
+    "schemas/mission-slo-profile.schema.json",
     "schemas/plugin-manifest.schema.json",
     "schemas/tool-definition.schema.json",
     "schemas/data-governance.schema.json",
     "generated/typed-event-payloads.generated.ts",
     "generated/gate-registry.generated.ts",
     "generated/metric-registry.generated.ts",
+    "generated/mission-slo-profiles.generated.ts",
+    "generated/runbook-registry.generated.ts",
   ]) {
     requireFile(
       `artifacts/validation/platform/${path}`,
@@ -203,6 +265,19 @@ function validateGeneratedArtifacts() {
   ) {
     issues.push("artifact.metric_registry_target_metrics_missing");
   }
+  if (
+    Array.isArray(metricRegistryArtifact.targetMetrics) &&
+    Array.isArray(metricRegistryArtifact.forbiddenValidationSpanNames)
+  ) {
+    const collisions = metricRegistryArtifact.targetMetrics
+      .map((metric) => metric.metric)
+      .filter((metric) =>
+        metricRegistryArtifact.forbiddenValidationSpanNames.includes(metric),
+      );
+    for (const collision of collisions) {
+      issues.push(`artifact.metric_registry_span_collision:${collision}`);
+    }
+  }
 }
 
 function validateProductReports() {
@@ -219,6 +294,19 @@ function validateProductReports() {
       `artifacts/validation/platform/${path}`,
       `artifact.product.${path}.missing`,
     );
+  }
+  const research = readJson(
+    join(reportsRoot, "research-validation-report.json"),
+  );
+  if (research.missionSloEvaluation?.passed !== true) {
+    issues.push("product.research_mission_slo_failed");
+  }
+  const freeze = readJson(join(reportsRoot, "freeze-validation-report.json"));
+  if (freeze.runbookSummary?.missingMetadataCount !== 0) {
+    issues.push("product.freeze_runbook_metadata_incomplete");
+  }
+  if (freeze.gateSummary?.p0GateCount == null) {
+    issues.push("product.freeze_gate_summary_missing");
   }
 }
 
@@ -247,6 +335,68 @@ function artifactName(value) {
       "gpu-capacity": "gpu-capacity-report.json",
     }[value] ?? `${value}-report.json`
   );
+}
+
+function validateMissionSloProfiles() {
+  const profileIds = new Set(
+    missionSloProfiles.profiles.map((profile) => profile.missionType),
+  );
+  for (const missionType of ["research", "code_agent", "ops"]) {
+    if (!profileIds.has(missionType)) {
+      issues.push(`mission_slo.profile_missing:${missionType}`);
+    }
+  }
+  if (!Array.isArray(missionSloProfiles.burnRateAlerts) || missionSloProfiles.burnRateAlerts.length < 3) {
+    issues.push("mission_slo.burn_rate_alerts_missing");
+  }
+}
+
+function validateCanonicalEventNames() {
+  const eventRegistrySource = readFile(registry.sources.eventRegistry);
+  const eventNames = new Set(
+    [...eventRegistrySource.matchAll(/"([a-zA-Z0-9_.:]+)":\s*\{/g)].map(
+      (match) => match[1],
+    ),
+  );
+  for (const eventName of eventNames) {
+    if (!eventName.includes(".")) {
+      continue;
+    }
+    const segments = eventName.split(".");
+    if (
+      eventName.startsWith(".") ||
+      eventName.endsWith(".") ||
+      eventName.includes("..") ||
+      segments.some((segment) => !/^[a-z][a-z0-9_]*$/u.test(segment))
+    ) {
+      issues.push(`event_registry.invalid_canonical_event_name:${eventName}`);
+    }
+  }
+}
+
+function extractCoreMetricRegistry(markdown) {
+  const start = markdown.indexOf("## 48.1 Core Metrics");
+  const end = markdown.indexOf("\n---\n\n# 49. Runbook Registry", start);
+  const section = markdown.slice(start, end);
+  return section
+    .split("\n")
+    .filter((line) => line.startsWith("| `aa."))
+    .map((line) => {
+      const cells = line
+        .split("|")
+        .slice(1, -1)
+        .map((cell) => cell.trim().replace(/^`|`$/g, ""));
+      return { metric: cells[0] };
+    });
+}
+
+function extractValidationSpanNames() {
+  const source = readFile(
+    "src/platform/shared/observability/validation-semantic-conventions.ts",
+  );
+  return [
+    ...source.matchAll(/"aa\.[a-z0-9_.]+"/g),
+  ].map((match) => match[0].slice(1, -1));
 }
 
 function writeClosureReports(reportValue) {

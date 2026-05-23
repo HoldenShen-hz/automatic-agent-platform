@@ -19,12 +19,28 @@ import {
 import {
   buildCapacityValidationReport,
   buildPlatformValidationScorecard,
+  evaluatePlatformMissionSlo,
+  type PlatformMissionSloEvaluation,
+  type PlatformMissionSloMeasurement,
+  type PlatformMissionSloProfile,
   type PlatformValidationScorecardDimension,
 } from "../../src/platform/stability/platform-validation-readiness.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const reportRoot = join(root, "artifacts/validation/platform/reports");
 const mode = process.argv[2] ?? "all";
+const validationRegistry = readJson(
+  "config/validation/platform-validation-registry.json",
+) as PlatformValidationRegistry;
+const runbookMetadata = readJson(
+  validationRegistry.sources.runbookMetadata,
+) as PlatformRunbookMetadataRegistry;
+const missionSloProfiles = readJson(
+  validationRegistry.sources.missionSloProfiles,
+) as PlatformMissionSloProfileRegistry;
+const runbookMetadataById = new Map(
+  runbookMetadata.runbooks.map((runbook) => [runbook.runbookId, runbook]),
+);
 
 mkdirSync(reportRoot, { recursive: true });
 
@@ -140,12 +156,18 @@ function buildResearchValidationReport(): unknown {
     accessPolicyRef: "policy://research/public-paper",
     evidenceRef: "evidence://source-registration/reasoning-rl-paper",
   });
+  const missionSloMeasurement = measurementForMission("research");
+  const missionSloEvaluation = evaluateMissionSlo(
+    "research",
+    missionSloMeasurement,
+  );
   return {
     status:
       score.passed &&
       reviewerAgreement.passed &&
       reviewerDrift.passed &&
-      governanceDecision.accepted
+      governanceDecision.accepted &&
+      missionSloEvaluation.passed
         ? "passed"
         : "failed",
     goldenSetVersion: goldenConfig.version,
@@ -154,6 +176,10 @@ function buildResearchValidationReport(): unknown {
     reviewerAgreement,
     reviewerDrift,
     governanceDecision,
+    missionSloMeasurement,
+    missionSloEvaluation,
+    missionSloBurnRateAlerts: missionSloProfiles.burnRateAlerts,
+    missionSloProfileVersion: missionSloProfiles.version,
   };
 }
 
@@ -190,7 +216,11 @@ function buildGpuReport(): unknown {
 }
 
 function buildScorecardReport(): unknown {
-  return buildPlatformValidationScorecard({
+  const missionSloEvaluation = evaluateMissionSlo(
+    "research",
+    measurementForMission("research"),
+  );
+  const report = buildPlatformValidationScorecard({
     dimensionRatios: perfectDimensions(),
     gates: [
       { gateId: "GATE-STATE-001", severity: "P0", status: "passed" },
@@ -199,24 +229,39 @@ function buildScorecardReport(): unknown {
     registryClosurePassed: true,
     evidenceBundleVerified: true,
     projectionRebuildDiff: 0,
-    researchMissionSloPassed: true,
+    researchMissionSloPassed: missionSloEvaluation.passed,
     externalSignoffRefs: ["signoff://validation/repo-baseline"],
   });
+  return {
+    status: report.decision === "fail" ? "failed" : "passed",
+    report,
+    missionSloEvaluation,
+    gateSummary: buildGateSummary(),
+    runbookSummary: buildRunbookSummary(),
+  };
 }
 
 function buildFreezeReadinessReport(): unknown {
+  const missionSloEvaluation = evaluateMissionSlo(
+    "research",
+    measurementForMission("research"),
+  );
   const report = buildPlatformValidationScorecard({
     dimensionRatios: perfectDimensions(),
     gates: [{ gateId: "GATE-PRIORITY-001", severity: "P0", status: "passed" }],
     registryClosurePassed: true,
     evidenceBundleVerified: true,
     projectionRebuildDiff: 0,
-    researchMissionSloPassed: true,
+    researchMissionSloPassed: missionSloEvaluation.passed,
     externalSignoffRefs: ["signoff://platform-owner/v2-validation-baseline"],
   });
   return {
     status: report.decision === "pass" ? "passed" : "failed",
     report,
+    missionSloEvaluation,
+    missionSloProfileVersion: missionSloProfiles.version,
+    gateSummary: buildGateSummary(),
+    runbookSummary: buildRunbookSummary(),
     requiredEvidence: [
       "registry_closure",
       "evidence_bundle_signature",
@@ -270,8 +315,148 @@ function readJson(relativePath: string): unknown {
   return JSON.parse(readFileSync(join(root, relativePath), "utf8"));
 }
 
+function evaluateMissionSlo(
+  missionType: PlatformMissionSloProfile["missionType"],
+  measurement: PlatformMissionSloMeasurement,
+): PlatformMissionSloEvaluation {
+  const profile = missionSloProfiles.profiles.find(
+    (item) => item.missionType === missionType,
+  );
+  if (profile == null) {
+    throw new Error(`platform_product_validation.mission_slo_missing:${missionType}`);
+  }
+  return evaluatePlatformMissionSlo(profile, measurement);
+}
+
+function measurementForMission(
+  missionType: PlatformMissionSloProfile["missionType"],
+): PlatformMissionSloMeasurement {
+  const base: Record<
+    PlatformMissionSloProfile["missionType"],
+    PlatformMissionSloMeasurement
+  > = {
+    research: {
+      evidenceCoverage: 1,
+      toolReceiptCoverage: 1,
+      budgetAttributionCoverage: 1,
+      harnessCompletion: 0.98,
+      hitlSlaMs: 43_200_000,
+      recoveryRtoMs: 3_600_000,
+      projectionLagP95Ms: 1_500,
+      apiAvailability: 0.9995,
+    },
+    code_agent: {
+      evidenceCoverage: 1,
+      toolReceiptCoverage: 1,
+      budgetAttributionCoverage: 1,
+      harnessCompletion: 0.95,
+      hitlSlaMs: 1_800_000,
+      recoveryRtoMs: 1_200_000,
+      projectionLagP95Ms: 2_000,
+      apiAvailability: 0.9993,
+    },
+    ops: {
+      evidenceCoverage: 1,
+      toolReceiptCoverage: 1,
+      budgetAttributionCoverage: 1,
+      harnessCompletion: 0.99,
+      hitlSlaMs: 600_000,
+      recoveryRtoMs: 480_000,
+      projectionLagP95Ms: 1_000,
+      apiAvailability: 0.9997,
+    },
+  };
+  return base[missionType];
+}
+
+function buildGateSummary(): {
+  readonly totalGateCount: number;
+  readonly p0GateCount: number;
+  readonly p1GateCount: number;
+  readonly gatesWithoutRunbookMetadata: readonly string[];
+} {
+  const gatesWithoutRunbookMetadata = validationRegistry.gates
+    .filter((gate) => !runbookMetadataById.has(gate.runbookId))
+    .map((gate) => gate.gateId);
+  const severities = validationRegistry.gates.map(
+    (gate) => runbookMetadataById.get(gate.runbookId)?.severity ?? "P3",
+  );
+  return {
+    totalGateCount: validationRegistry.gates.length,
+    p0GateCount: severities.filter((severity) => severity === "P0").length,
+    p1GateCount: severities.filter((severity) => severity === "P1").length,
+    gatesWithoutRunbookMetadata,
+  };
+}
+
+function buildRunbookSummary(): {
+  readonly totalRunbookCount: number;
+  readonly missingMetadataCount: number;
+  readonly automationCoverage: Readonly<Record<AutomationMode, number>>;
+} {
+  const automationCoverage: Record<AutomationMode, number> = {
+    none: 0,
+    partial: 0,
+    full: 0,
+  };
+  for (const runbook of runbookMetadata.runbooks) {
+    automationCoverage[runbook.automationAllowed] += 1;
+  }
+  return {
+    totalRunbookCount: validationRegistry.runbooks.length,
+    missingMetadataCount: validationRegistry.runbooks.filter(
+      (runbook) => !runbookMetadataById.has(runbook.runbookId),
+    ).length,
+    automationCoverage,
+  };
+}
+
 function writeReport(name: string, value: unknown): string {
   const path = join(reportRoot, name);
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
   return path;
+}
+
+interface PlatformValidationRegistry {
+  readonly sources: {
+    readonly runbookMetadata: string;
+    readonly missionSloProfiles: string;
+  };
+  readonly gates: ReadonlyArray<{
+    readonly gateId: string;
+    readonly ciJob: string;
+    readonly runbookId: string;
+  }>;
+  readonly runbooks: ReadonlyArray<{
+    readonly runbookId: string;
+    readonly path: string;
+  }>;
+}
+
+type AutomationMode = "none" | "partial" | "full";
+
+interface PlatformRunbookMetadataRegistry {
+  readonly version: string;
+  readonly runbooks: ReadonlyArray<{
+    readonly runbookId: string;
+    readonly title: string;
+    readonly severity: "P0" | "P1" | "P2" | "P3";
+    readonly owner: string;
+    readonly linkedGates: readonly string[];
+    readonly linkedMetrics: readonly string[];
+    readonly automationAllowed: AutomationMode;
+    readonly requiresHumanApproval: boolean;
+    readonly rollbackSupported: boolean;
+    readonly lastReviewedAt: string;
+  }>;
+}
+
+interface PlatformMissionSloProfileRegistry {
+  readonly version: string;
+  readonly profiles: ReadonlyArray<PlatformMissionSloProfile>;
+  readonly burnRateAlerts: ReadonlyArray<{
+    readonly window: "1h" | "6h" | "24h";
+    readonly burnRateThreshold: number;
+    readonly severity: "P0" | "P1" | "P2" | "P3";
+  }>;
 }

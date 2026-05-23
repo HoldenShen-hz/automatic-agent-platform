@@ -1,0 +1,55 @@
+{
+  "version": "2026-05-23",
+  "profiles": [
+    {
+      "missionType": "research",
+      "evidenceCoverageTarget": 1,
+      "toolReceiptCoverageTarget": 1,
+      "budgetAttributionCoverageTarget": 1,
+      "harnessCompletionTarget": 0.95,
+      "hitlSlaMs": 86400000,
+      "recoveryRtoMs": 14400000,
+      "projectionLagP95Ms": 5000,
+      "apiAvailabilityTarget": 0.999
+    },
+    {
+      "missionType": "code_agent",
+      "evidenceCoverageTarget": 1,
+      "toolReceiptCoverageTarget": 1,
+      "budgetAttributionCoverageTarget": 1,
+      "harnessCompletionTarget": 0.9,
+      "hitlSlaMs": 7200000,
+      "recoveryRtoMs": 3600000,
+      "projectionLagP95Ms": 5000,
+      "apiAvailabilityTarget": 0.999
+    },
+    {
+      "missionType": "ops",
+      "evidenceCoverageTarget": 1,
+      "toolReceiptCoverageTarget": 1,
+      "budgetAttributionCoverageTarget": 1,
+      "harnessCompletionTarget": 0.98,
+      "hitlSlaMs": 900000,
+      "recoveryRtoMs": 900000,
+      "projectionLagP95Ms": 2000,
+      "apiAvailabilityTarget": 0.9995
+    }
+  ],
+  "burnRateAlerts": [
+    {
+      "window": "1h",
+      "burnRateThreshold": 14,
+      "severity": "P1"
+    },
+    {
+      "window": "6h",
+      "burnRateThreshold": 6,
+      "severity": "P1"
+    },
+    {
+      "window": "24h",
+      "burnRateThreshold": 3,
+      "severity": "P2"
+    }
+  ]
+}

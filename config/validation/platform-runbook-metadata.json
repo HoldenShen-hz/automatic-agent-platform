@@ -1,0 +1,483 @@
+{
+  "version": "2026-05-23",
+  "runbooks": [
+    {
+      "runbookId": "D.1",
+      "title": "Event / Truth Inconsistency",
+      "severity": "P0",
+      "owner": "State-Evidence Owner",
+      "linkedGates": ["GATE-STATE-001", "GATE-PRIORITY-001"],
+      "linkedMetrics": ["aa.truth.atomicity.violation.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.2",
+      "title": "Budget Missing / Overspend",
+      "severity": "P0",
+      "owner": "FinOps Owner",
+      "linkedGates": ["GATE-BUDGET-001"],
+      "linkedMetrics": [
+        "aa.budget.reservation.missing.count",
+        "aa.cost.attribution.coverage_ratio"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.3",
+      "title": "Stuck NodeRun",
+      "severity": "P1",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-RUNTIME-001"],
+      "linkedMetrics": [
+        "aa.node.run.stuck.count",
+        "aa.node.run.stuck.duration_ms",
+        "aa.node.run.recovery.success_ratio"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": false,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.4",
+      "title": "HITL Timeout / Invalid Decision",
+      "severity": "P0",
+      "owner": "Control Plane Owner",
+      "linkedGates": ["GATE-HITL-001"],
+      "linkedMetrics": [
+        "aa.hitl.unauthorized_decision.count",
+        "aa.hitl.double_decision.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.5",
+      "title": "Plugin Sandbox Violation",
+      "severity": "P0",
+      "owner": "Extension Runtime Owner",
+      "linkedGates": ["GATE-PLUGIN-001"],
+      "linkedMetrics": [
+        "aa.plugin.sandbox_violation.count",
+        "aa.plugin.signature.failed.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.6",
+      "title": "Runtime State Machine Bypass",
+      "severity": "P0",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-RSM-001"],
+      "linkedMetrics": ["aa.rsm.bypass.count"],
+      "automationAllowed": "none",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.7",
+      "title": "CAS Conflict / Bypass",
+      "severity": "P0",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-CAS-001"],
+      "linkedMetrics": ["aa.cas.conflict.rejected.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.8",
+      "title": "Lease Expired Write",
+      "severity": "P0",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-LEASE-001"],
+      "linkedMetrics": ["aa.lease.expired_write.rejected.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.9",
+      "title": "Fencing Stale Write",
+      "severity": "P0",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-FENCING-001"],
+      "linkedMetrics": ["aa.fencing.stale_write.rejected.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.10",
+      "title": "Terminal Reverse Transition",
+      "severity": "P0",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-TERMINAL-001"],
+      "linkedMetrics": ["aa.terminal.reverse_transition.count"],
+      "automationAllowed": "none",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.11",
+      "title": "Evidence Coverage Failure",
+      "severity": "P0",
+      "owner": "Research Owner",
+      "linkedGates": ["GATE-EVIDENCE-001"],
+      "linkedMetrics": ["aa.evidence.ref.coverage_ratio"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": false,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.12",
+      "title": "Evidence Bundle Integrity Failure",
+      "severity": "P0",
+      "owner": "QA Owner",
+      "linkedGates": ["GATE-EVIDENCE-BUNDLE-001"],
+      "linkedMetrics": ["aa.evidence_bundle.signature.invalid.count"],
+      "automationAllowed": "none",
+      "requiresHumanApproval": true,
+      "rollbackSupported": false,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.13",
+      "title": "Tool Registry Bypass",
+      "severity": "P0",
+      "owner": "Extension Runtime Owner",
+      "linkedGates": ["GATE-TOOL-001"],
+      "linkedMetrics": [
+        "aa.tool.direct_invocation.count",
+        "aa.tool.invocation.without_receipt.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.14",
+      "title": "Connector Egress Policy Failure",
+      "severity": "P0",
+      "owner": "Security Owner",
+      "linkedGates": ["GATE-CONNECTOR-001"],
+      "linkedMetrics": ["aa.connector.egress.denied.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.15",
+      "title": "OAPEFLIR Stage Event Missing",
+      "severity": "P0",
+      "owner": "Orchestration Owner",
+      "linkedGates": ["GATE-OAPEFLIR-001"],
+      "linkedMetrics": ["aa.oapeflir.stage.event_missing.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.16",
+      "title": "Linear Plan Detected",
+      "severity": "P0",
+      "owner": "Orchestration Owner",
+      "linkedGates": ["GATE-OAPEFLIR-002"],
+      "linkedMetrics": ["aa.oapeflir.plan.linear_plan.count"],
+      "automationAllowed": "none",
+      "requiresHumanApproval": true,
+      "rollbackSupported": false,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.17",
+      "title": "Feedback Gate Unresolved",
+      "severity": "P1",
+      "owner": "Orchestration Owner",
+      "linkedGates": ["GATE-OAPEFLIR-003"],
+      "linkedMetrics": ["aa.oapeflir.feedback.unresolved.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.18",
+      "title": "Tenant Isolation Breach",
+      "severity": "P0",
+      "owner": "Security Owner",
+      "linkedGates": ["GATE-TENANT-001"],
+      "linkedMetrics": ["aa.tenant.cross_access.denied.count"],
+      "automationAllowed": "none",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.19",
+      "title": "Secret / IAM Audit Failure",
+      "severity": "P0",
+      "owner": "Security Owner",
+      "linkedGates": ["GATE-SECURITY-001"],
+      "linkedMetrics": ["aa.secret.access.without_audit.count"],
+      "automationAllowed": "none",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.20",
+      "title": "SideEffect Duplicate / Missing Record",
+      "severity": "P0",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-SIDEEFFECT-001"],
+      "linkedMetrics": [
+        "aa.side_effect.without_record.count",
+        "aa.side_effect.unknown.count",
+        "aa.side_effect.reconciliation.lag_ms"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.21",
+      "title": "Dispatch Ticket / Worker Claim Failure",
+      "severity": "P0",
+      "owner": "Runtime Owner",
+      "linkedGates": ["GATE-DISPATCH-001"],
+      "linkedMetrics": [
+        "aa.dispatch.ticket.duplicate.count",
+        "aa.worker.claim.without_lease.count",
+        "aa.queue.backpressure.active"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.22",
+      "title": "Config Drift / Rollout Failure",
+      "severity": "P0",
+      "owner": "Control Plane Owner",
+      "linkedGates": [
+        "GATE-CONFIG-001",
+        "GATE-CONFIG-002",
+        "GATE-CONFIG-003",
+        "GATE-CONFIG-004",
+        "GATE-CONFIG-005"
+      ],
+      "linkedMetrics": [
+        "aa.config.impact_analysis.missing.count",
+        "aa.config.security_drift.failopen.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.23",
+      "title": "Model Gateway Provider Failure",
+      "severity": "P1",
+      "owner": "Model Infra Owner",
+      "linkedGates": ["GATE-MODEL-001"],
+      "linkedMetrics": [
+        "aa.model.request.without_budget.count",
+        "aa.model.usage.missing.count",
+        "aa.model.streaming.finish_reason.missing.count",
+        "aa.model.version_lock.missing.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": false,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.24",
+      "title": "Repository Parity / Migration Failure",
+      "severity": "P1",
+      "owner": "Storage Owner",
+      "linkedGates": ["GATE-STORE-001"],
+      "linkedMetrics": ["aa.repository.parity.diff.count"],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.25",
+      "title": "Observability / Runbook Missing",
+      "severity": "P0",
+      "owner": "SRE Owner",
+      "linkedGates": ["GATE-OBS-001"],
+      "linkedMetrics": [
+        "aa.observability.trace_missing.count",
+        "aa.observability.runbook_missing.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": false,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.26",
+      "title": "Data Governance / Retention / Contamination Failure",
+      "severity": "P0",
+      "owner": "Data Governance Owner",
+      "linkedGates": ["GATE-DATA-001"],
+      "linkedMetrics": [
+        "aa.data.source.license_missing.count",
+        "aa.data.source.retention_policy_missing.count",
+        "aa.data.pii.redaction_missing.count",
+        "aa.data.contamination_tag_missing.count",
+        "aa.data.copyright_boundary_violation.count",
+        "aa.data.restricted_access_bypass.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.27",
+      "title": "Test Quality Failure",
+      "severity": "P0",
+      "owner": "QA Owner",
+      "linkedGates": ["GATE-TEST-001", "GATE-TEST-002", "GATE-TEST-003"],
+      "linkedMetrics": [
+        "aa.test.noop_assertion.count",
+        "aa.test.catch_swallow.count",
+        "aa.test.fake_concurrency.count",
+        "aa.test.mutation.score"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": false,
+      "rollbackSupported": false,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.28",
+      "title": "Autonomy Boundary Failure",
+      "severity": "P0",
+      "owner": "Control Plane Owner",
+      "linkedGates": ["GATE-AUTONOMY-001"],
+      "linkedMetrics": [
+        "aa.autonomy.high_risk_full_auto.count",
+        "aa.autonomy.override_without_audit.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.29",
+      "title": "Rollout Gate Failure",
+      "severity": "P1",
+      "owner": "Release Owner",
+      "linkedGates": ["GATE-ROLLOUT-001"],
+      "linkedMetrics": [],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.30",
+      "title": "Documentation / Contract Drift",
+      "severity": "P1",
+      "owner": "Platform Architect",
+      "linkedGates": ["GATE-DOCS-001", "GATE-DOCS-002", "GATE-DOCS-003"],
+      "linkedMetrics": [
+        "aa.docs.noncanonical_reference.count",
+        "aa.docs.unregistered_metric.count",
+        "aa.docs.unregistered_gate.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": false,
+      "rollbackSupported": false,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.31",
+      "title": "Restore / Replay Failure",
+      "severity": "P0",
+      "owner": "SRE Owner",
+      "linkedGates": ["GATE-DR-001"],
+      "linkedMetrics": [
+        "aa.projection.rebuild.diff.count",
+        "aa.dr.restore_success.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.32",
+      "title": "Artifact Integrity Failure",
+      "severity": "P1",
+      "owner": "State-Evidence Owner",
+      "linkedGates": ["GATE-ARTIFACT-001"],
+      "linkedMetrics": [
+        "aa.artifact.hash_mismatch.count",
+        "aa.artifact.recall.propagation_lag_ms",
+        "aa.artifact.access_without_policy.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.33",
+      "title": "Local GPU Capacity Failure",
+      "severity": "P1",
+      "owner": "Infra Owner",
+      "linkedGates": ["GATE-GPU-001"],
+      "linkedMetrics": [
+        "aa.gpu.memory.watermark_ratio",
+        "aa.gpu.oom.count"
+      ],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": false,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    },
+    {
+      "runbookId": "D.34",
+      "title": "Marketplace Premature Enablement",
+      "severity": "P0",
+      "owner": "Platform Owner",
+      "linkedGates": ["GATE-MARKETPLACE-OFF-001"],
+      "linkedMetrics": [],
+      "automationAllowed": "partial",
+      "requiresHumanApproval": true,
+      "rollbackSupported": true,
+      "lastReviewedAt": "2026-05-23"
+    }
+  ]
+}

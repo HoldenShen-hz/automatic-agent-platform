@@ -1,10 +1,12 @@
 {
-  "version": "2026-05-21",
+  "version": "2026-05-23",
   "sources": {
     "eventRegistry": "src/platform/five-plane-state-evidence/events/event-registry.ts",
     "metricMap": "config/validation/platform-monitoring-metric-map.json",
     "lifecycleMatrix": "config/validation/platform-lifecycle-matrix.json",
-    "runbook": "deploy/runbooks/production-alert-runbook.md"
+    "runbook": "deploy/runbooks/production-alert-runbook.md",
+    "runbookMetadata": "config/validation/platform-runbook-metadata.json",
+    "missionSloProfiles": "config/validation/platform-mission-slo-profiles.json"
   },
   "ciJobs": [
     {
