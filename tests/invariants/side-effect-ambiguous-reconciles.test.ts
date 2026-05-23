@@ -34,6 +34,7 @@ test("INV-SIDEEFFECT-001: Ambiguous side effects enter reconciliation-safe state
     status: "committing",
     riskClass: "high",
     preCommitPolicyProofRef: artifact,
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 
   const reconciliation = createReconciliationRecord({
@@ -60,6 +61,7 @@ test("INV-SIDEEFFECT-001: Commit-affecting reconciliation remains fenced", () =>
     status: "reconciling",
     riskClass: "medium",
     preCommitPolicyProofRef: artifact,
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 
   const reconciliation = createReconciliationRecord({
@@ -87,6 +89,7 @@ test("INV-SIDEEFFECT-001: Compensation lifecycle reaches compensated on success"
     status: "compensating",
     riskClass: "high",
     preCommitPolicyProofRef: artifact,
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 
   const compensation = createCompensationRecord({

@@ -10,6 +10,7 @@ import type { SystemSituation } from "../../../../src/platform/shared/observabil
 import type { DashboardDelta, DashboardChange } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
 import type { AttentionItem } from "../../../../src/interaction/dashboard/index.js";
 import type { DashboardProjectionService } from "../../../../src/interaction/dashboard/index.js";
+import type { DashboardChannelSubscription } from "../../../../src/interaction/dashboard/dashboard-websocket-server.js";
 
 // ── TaskBoardItem Factory ─────────────────────────────────────────────────────
 
@@ -85,6 +86,7 @@ export function createDashboardChange(overrides: Partial<DashboardChange> = {}):
 
 export function createAttentionItem(overrides: Partial<AttentionItem> = {}): AttentionItem {
   return {
+    id: "attention-" + Math.random().toString(36).slice(2, 8),
     itemType: "incident",
     priority: "high",
     title: "Test Attention Item",
@@ -124,12 +126,10 @@ export function createMockSystemSource(system: SystemSituation = createSystemSit
 
 // ── Channel Subscription Factory ────────────────────────────────────────────
 
-import type { ChannelSubscription } from "../../../../src/interaction/dashboard/dashboard-websocket-server.js";
-
 export function createChannelSubscription(
   channel: "global" | "task" | "approvals" | "admin" = "global",
   filterId?: string,
-): ChannelSubscription {
+): DashboardChannelSubscription {
   return {
     channel,
     ...(filterId !== undefined ? { filterId } : {}),

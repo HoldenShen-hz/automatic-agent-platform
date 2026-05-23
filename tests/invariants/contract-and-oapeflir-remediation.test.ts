@@ -71,7 +71,7 @@ test("contract remediation sections directly cover T-1 through T-56", () => {
   for (let index = 1; index <= 56; index += 1) {
     const issueId = `T-${index}`;
     const filename = CONTRACT_FILE_BY_ISSUE[issueId];
-    assert.equal(typeof filename, "string", `missing contract map for ${issueId}`);
+    assert.ok(filename != null, `missing contract map for ${issueId}`);
     const file = join("docs_zh/contracts", filename);
     assert.equal(existsSync(file), true, `missing contract file for ${issueId}: ${file}`);
     const text = readFileSync(file, "utf8");

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import {
+  createHarnessRun,
+} from "../../src/platform/contracts/executable-contracts/index.js";
 import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { ValidationError } from "../../src/platform/contracts/errors.js";
@@ -67,6 +70,17 @@ test("INV-STATE-001: TransitionService has architectural coexistence documentati
 
 test("INV-STATE-001: RuntimeStateMachine requires event emission for state transitions", () => {
   const stateMachine = new RuntimeStateMachine();
+  const aggregate = createHarnessRun({
+    harnessRunId: "hrn_test",
+    tenantId: "tenant-test",
+    confirmedTaskSpecId: "ctspec-test",
+    requestEnvelopeId: "req-test",
+    requestHash: "hash-test",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "rvl-test",
+    budgetLedgerId: "bledger-test",
+    status: "created",
+  });
 
   // Any state transition must produce an event
   const result = stateMachine.transition({
@@ -75,11 +89,7 @@ test("INV-STATE-001: RuntimeStateMachine requires event emission for state trans
     entityId: "hrn_test",
     principal: "test-principal",
     aggregateType: "HarnessRun",
-    aggregate: {
-      harnessRunId: "hrn_test",
-      status: "created",
-      tenantId: "tenant-test",
-    },
+    aggregate,
     fromStatus: "created",
     toStatus: "admitted",
     tenantId: "tenant-test",
@@ -101,6 +111,17 @@ test("INV-STATE-001: Terminal states have no valid transitions", () => {
   const terminalStatuses = ["completed", "failed", "aborted"] as const;
 
   for (const terminalStatus of terminalStatuses) {
+    const aggregate = createHarnessRun({
+      harnessRunId: "hrn_terminal",
+      tenantId: "tenant-test",
+      confirmedTaskSpecId: "ctspec-terminal",
+      requestEnvelopeId: "req-terminal",
+      requestHash: "hash-terminal",
+      constraintPackRef: "cp://default/test",
+      versionLockId: "rvl-terminal",
+      budgetLedgerId: "bledger-terminal",
+      status: terminalStatus,
+    });
     // Terminal states cannot transition to non-terminal states
     try {
       stateMachine.transition({
@@ -109,11 +130,7 @@ test("INV-STATE-001: Terminal states have no valid transitions", () => {
         entityId: "hrn_terminal",
         principal: "test-principal",
         aggregateType: "HarnessRun",
-        aggregate: {
-          harnessRunId: "hrn_terminal",
-          status: terminalStatus,
-          tenantId: "tenant-test",
-        },
+        aggregate,
         fromStatus: terminalStatus,
         toStatus: "running", // Invalid - terminal to non-terminal
         tenantId: "tenant-test",

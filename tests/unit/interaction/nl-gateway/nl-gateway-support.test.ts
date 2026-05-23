@@ -36,7 +36,7 @@ import {
   buildStableIdempotencyKey,
   toJsonValue,
 } from "../../../../src/interaction/nl-gateway/nl-gateway-support.js";
-import type { ConversationTurn } from "../../../../src/interaction/nl-gateway/index.js";
+import type { ConversationTurn, ExtractedEntity } from "../../../../src/interaction/nl-gateway/index.js";
 
 test("INTENT_CONFIDENCE_THRESHOLD is 0.8", () => {
   assert.equal(INTENT_CONFIDENCE_THRESHOLD, 0.8);

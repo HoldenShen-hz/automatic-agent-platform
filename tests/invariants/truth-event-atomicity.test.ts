@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import {
+  createBudgetLedger,
+  createHarnessRun,
+  createNodeRun,
+  createSideEffectRecord,
+} from "../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 /**
@@ -14,6 +20,17 @@ import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/run
  */
 test("INV-STATE-001: State transitions require platform fact event append", () => {
   const stateMachine = new RuntimeStateMachine();
+  const aggregate = createHarnessRun({
+    harnessRunId: "run-state-001",
+    tenantId: "tenant-state",
+    confirmedTaskSpecId: "ctspec-state-001",
+    requestEnvelopeId: "req-state-001",
+    requestHash: "hash-state-001",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "rvl-state-001",
+    budgetLedgerId: "bledger-state-001",
+    status: "created",
+  });
 
   const result = stateMachine.transition({
     commandId: "cmd-state-001",
@@ -21,11 +38,7 @@ test("INV-STATE-001: State transitions require platform fact event append", () =
     entityId: "run-state-001",
     principal: "test-principal",
     aggregateType: "HarnessRun",
-    aggregate: {
-      harnessRunId: "run-state-001",
-      status: "created",
-      tenantId: "tenant-state",
-    },
+    aggregate,
     fromStatus: "created",
     toStatus: "admitted",
     tenantId: "tenant-state",
@@ -43,6 +56,17 @@ test("INV-STATE-001: State transitions require platform fact event append", () =
 
 test("INV-STATE-001: Reject truth mutation without event append", () => {
   const stateMachine = new RuntimeStateMachine({ persistEvent: null });
+  const aggregate = createHarnessRun({
+    harnessRunId: "run-state-002",
+    tenantId: "tenant-state",
+    confirmedTaskSpecId: "ctspec-state-002",
+    requestEnvelopeId: "req-state-002",
+    requestHash: "hash-state-002",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "rvl-state-002",
+    budgetLedgerId: "bledger-state-002",
+    status: "created",
+  });
 
   // Attempt to mutate state without proper event context
   // This should be rejected if no event is emitted
@@ -54,11 +78,7 @@ test("INV-STATE-001: Reject truth mutation without event append", () => {
         entityId: "run-state-002",
         principal: "test-principal",
         aggregateType: "HarnessRun",
-        aggregate: {
-          harnessRunId: "run-state-002",
-          status: "created",
-          tenantId: "tenant-state",
-        },
+        aggregate,
         fromStatus: "created",
         toStatus: "admitted",
         tenantId: "tenant-state",
@@ -77,6 +97,16 @@ test("INV-STATE-001: Reject truth mutation without event append", () => {
 
 test("INV-STATE-001: NodeRun transitions require platform fact events", () => {
   const stateMachine = new RuntimeStateMachine();
+  const aggregate = createNodeRun({
+    nodeRunId: "node-state-001",
+    harnessRunId: "run-state-003",
+    planGraphBundleId: "pgb-state-003",
+    graphVersion: 1,
+    nodeId: "node-003",
+    status: "created",
+    leaseId: "lease-node-state",
+    fencingToken: "fence-node-state",
+  });
 
   const result = stateMachine.transition({
     commandId: "cmd-state-003",
@@ -84,14 +114,7 @@ test("INV-STATE-001: NodeRun transitions require platform fact events", () => {
     entityId: "node-state-001",
     principal: "test-principal",
     aggregateType: "NodeRun",
-    aggregate: {
-      nodeRunId: "node-state-001",
-      harnessRunId: "run-state-003",
-      status: "created",
-      tenantId: "tenant-state",
-      leaseId: "lease-node-state",
-      fencingToken: "fence-node-state",
-    },
+    aggregate,
     fromStatus: "created",
     toStatus: "ready",
     tenantId: "tenant-state",
@@ -109,6 +132,22 @@ test("INV-STATE-001: NodeRun transitions require platform fact events", () => {
 
 test("INV-STATE-001: SideEffectRecord transitions emit audit events", () => {
   const stateMachine = new RuntimeStateMachine();
+  const aggregate = createSideEffectRecord({
+    sideEffectId: "se-state-001",
+    harnessRunId: "run-state-004",
+    nodeRunId: "node-state-002",
+    nodeAttemptId: "attempt-state-004",
+    effectKind: "external_api",
+    idempotencyKey: "se-key-001",
+    status: "proposed",
+    riskClass: "low",
+    preCommitPolicyProofRef: {
+      artifactId: "policy-state-004",
+      uri: "policy://test",
+      hash: "sha256:policy-state-004",
+    },
+    deadline: "2026-05-01T01:00:00.000Z",
+  });
 
   const result = stateMachine.transition({
     commandId: "cmd-state-004",
@@ -116,14 +155,7 @@ test("INV-STATE-001: SideEffectRecord transitions emit audit events", () => {
     entityId: "se-state-001",
     principal: "test-principal",
     aggregateType: "SideEffectRecord",
-    aggregate: {
-      sideEffectId: "se-state-001",
-      harnessRunId: "run-state-004",
-      nodeRunId: "node-state-002",
-      status: "proposed",
-      tenantId: "tenant-state",
-      riskClass: "low",
-    },
+    aggregate,
     fromStatus: "proposed",
     toStatus: "approved",
     tenantId: "tenant-state",
@@ -145,6 +177,18 @@ test("INV-STATE-001: SideEffectRecord transitions emit audit events", () => {
 
 test("INV-STATE-001: BudgetLedger transitions emit budget events", () => {
   const stateMachine = new RuntimeStateMachine();
+  const aggregate = createBudgetLedger({
+    budgetLedgerId: "ledger-state-001",
+    tenantId: "tenant-state",
+    harnessRunId: "run-state-005",
+    currency: "USD",
+    hardCap: 100,
+    status: "open",
+    reservedAmount: 50,
+    settledAmount: 0,
+    releasedAmount: 0,
+    version: 0,
+  });
 
   const result = stateMachine.transition({
     commandId: "cmd-state-005",
@@ -152,18 +196,7 @@ test("INV-STATE-001: BudgetLedger transitions emit budget events", () => {
     entityId: "ledger-state-001",
     principal: "test-principal",
     aggregateType: "BudgetLedger",
-    aggregate: {
-      budgetLedgerId: "ledger-state-001",
-      tenantId: "tenant-state",
-      harnessRunId: "run-state-005",
-      currency: "USD",
-      hardCap: 100,
-      status: "open",
-      reservedAmount: 50,
-      settledAmount: 0,
-      releasedAmount: 0,
-      version: 0,
-    },
+    aggregate,
     fromStatus: "open",
     toStatus: "soft_cap_reached",
     tenantId: "tenant-state",

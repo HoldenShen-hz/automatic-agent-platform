@@ -132,9 +132,17 @@ test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budge
 
   const dispatchEvent = new BoundedDispatchQueueEventFactory().create({
     queueName: "create-run",
-    queueDepthBefore: 4,
-    maxQueueDepth: 4,
-    dlqName: "dispatch-dlq",
+    nodeRunId: "node-1",
+    tenantId: "tenant-a",
+    traceId: "trace-1",
+    orderingPolicyVersion: "1.0",
+    queueClass: "create-run",
+    snapshot: {
+      queueName: "create-run",
+      queueDepthBefore: 4,
+      maxQueueDepth: 4,
+      dlqName: "dispatch-dlq",
+    },
   });
   assert.equal(dispatchEvent.eventType, "platform.dispatch.queue.rejected");
   assert.equal(dispatchEvent.queueDepthBefore, 4);

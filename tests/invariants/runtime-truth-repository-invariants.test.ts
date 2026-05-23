@@ -3,7 +3,14 @@ import test from "node:test";
 
 import { RuntimeTruthRepository } from "../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
-import { createBudgetLedger, createHarnessRun, createNodeRun, createSideEffectRecord } from "../../src/platform/contracts/executable-contracts/index.js";
+import {
+  createBudgetLedger,
+  createHarnessRun,
+  createNodeAttemptReceipt,
+  createNodeRun,
+  createRunVersionLock,
+  createSideEffectRecord,
+} from "../../src/platform/contracts/executable-contracts/index.js";
 
 /**
  * RuntimeTruthRepository Invariants
@@ -41,7 +48,7 @@ test("Seed initializes aggregate state", () => {
 
   const snapshot = repo.snapshot();
   assert.equal(snapshot.harnessRuns.length, 1);
-  assert.equal(snapshot.harnessRuns[0].harnessRunId, "hrn_seed_test");
+  assert.equal(snapshot.harnessRuns[0]?.harnessRunId, "hrn_seed_test");
 });
 
 test("Every transition appends event to event log", () => {
@@ -126,51 +133,50 @@ test("Event envelope contains required platform fact fields", () => {
   const latestEvent = snapshot.events[snapshot.events.length - 1];
 
   // PlatformFactEvent must have required fields
-  assert.ok(latestEvent.eventId !== undefined);
-  assert.ok(latestEvent.occurredAt !== undefined);
-  assert.ok(latestEvent.tenantId !== undefined);
-  assert.ok(latestEvent.traceId !== undefined);
+  assert.ok(latestEvent?.eventId !== undefined);
+  assert.ok(latestEvent?.occurredAt !== undefined);
+  assert.ok(latestEvent?.tenantId !== undefined);
+  assert.ok(latestEvent?.traceId !== undefined);
 });
 
 test("NodeAttemptReceipt is appended correctly", () => {
   const repo = new RuntimeTruthRepository();
 
-  const receipt = {
+  const receipt = createNodeAttemptReceipt({
     nodeAttemptReceiptId: "nar_test_receipt",
+    nodeAttemptId: "nattempt_test_receipt",
     nodeRunId: "ndr_test",
     harnessRunId: "hrn_test",
-    attemptNumber: 1,
-    outcome: "succeeded" as const,
-    startedAt: "2026-05-02T00:00:00.000Z",
-    completedAt: "2026-05-02T00:01:00.000Z",
-    artifacts: [],
-    tokenUsage: { promptTokens: 100, completionTokens: 50 },
-  };
+    planGraphId: "pgb_test",
+    graphVersion: 1,
+    receiptKind: "tool",
+    status: "succeeded",
+    duration: 60_000,
+    errorDetail: "",
+  });
 
   repo.appendNodeAttemptReceipt(receipt);
 
   const snapshot = repo.snapshot();
   assert.equal(snapshot.nodeAttemptReceipts.length, 1);
-  assert.equal(snapshot.nodeAttemptReceipts[0].nodeAttemptReceiptId, "nar_test_receipt");
+  assert.equal(snapshot.nodeAttemptReceipts[0]?.nodeAttemptReceiptId, "nar_test_receipt");
 });
 
 test("RunVersionLock is appended correctly", () => {
   const repo = new RuntimeTruthRepository();
 
-  const lock = {
+  const lock = createRunVersionLock({
     runVersionLockId: "rvl_test",
     harnessRunId: "hrn_lock_test",
-    lockedBy: "worker-1",
-    lockedAt: "2026-05-02T00:00:00.000Z",
-    expiresAt: "2026-05-02T00:05:00.000Z",
-    version: 1,
-  };
+    runtimeProfileVersion: "runtime-profile-v1",
+    createdAt: "2026-05-02T00:00:00.000Z",
+  });
 
   repo.appendRunVersionLock(lock);
 
   const snapshot = repo.snapshot();
   assert.equal(snapshot.runVersionLocks.length, 1);
-  assert.equal(snapshot.runVersionLocks[0].runVersionLockId, "rvl_test");
+  assert.equal(snapshot.runVersionLocks[0]?.runVersionLockId, "rvl_test");
 });
 
 test("EvidenceRecord is appended for audit trail", () => {
@@ -263,9 +269,10 @@ test("Multiple aggregates can coexist in repository", () => {
   const nodeRun = createNodeRun({
     nodeRunId: "ndr_multi",
     harnessRunId: "hrn_multi",
-    nodeType: "llm",
+    planGraphBundleId: "pgb_multi",
+    graphVersion: 1,
+    nodeId: "node_multi",
     status: "created",
-    tenantId: "tenant-truth",
   });
 
   repo.seed("HarnessRun", harnessRun);
@@ -297,7 +304,7 @@ test("BudgetLedger transitions emit budget events", () => {
   repo.transition({
     commandId: "cmd_budget_truth",
     entityType: "BudgetLedger",
-    entityId: ledger.ledgerId,
+    entityId: ledger.budgetLedgerId,
     principal: "test-principal",
     aggregateType: "BudgetLedger",
     aggregate: ledger,
@@ -341,6 +348,7 @@ test("SideEffectRecord transitions emit audit trail", () => {
     },
     leaseId: "lease-se-truth",
     fencingToken: "fence-se-truth",
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 
   repo.seed("SideEffectRecord", sideEffect);

@@ -42,7 +42,7 @@ test("R4-25 (INV-BUDGET-001): Budget reservation must precede cost operations", 
     budgetLedgerId: ledger.budgetLedgerId,
     harnessRunId: "hrn-budget-test",
     amount: 50,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: new Date(Date.now() + 60000).toISOString(),
   });
 
@@ -91,7 +91,7 @@ test("R4-25 (INV-BUDGET-001): Execution denied when budget precondition fails", 
     budgetLedgerId: ledger.budgetLedgerId,
     harnessRunId: "hrn-budget-test",
     amount: 100, // Exceeds cap
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: new Date(Date.now() + 60000).toISOString(),
   });
 
@@ -413,9 +413,10 @@ test("R4-28 (INV-STATE-001): NodeRun transitions emit platform fact events", () 
   const nodeRun = createNodeRun({
     nodeRunId,
     harnessRunId: "hrn-state-001",
-    nodeType: "llm",
+    planGraphBundleId: "pgb-state-001",
+    graphVersion: 1,
+    nodeId: "node-state-001",
     status: "created",
-    tenantId: "tenant-state-001",
     leaseId,
     fencingToken,
   });
@@ -599,9 +600,10 @@ test("R4-30 (INV-FENCING): NodeRun execution transitions require lease and fenci
   const nodeRun = createNodeRun({
     nodeRunId,
     harnessRunId: "hrn-fencing-001",
-    nodeType: "llm",
+    planGraphBundleId: "pgb-fencing-001",
+    graphVersion: 1,
+    nodeId: "node-fencing-001",
     status: "ready", // Start at ready so we can transition to leased
-    tenantId: "tenant-fencing-001",
     leaseId,
     fencingToken,
   });
@@ -626,8 +628,7 @@ test("R4-30 (INV-FENCING): NodeRun execution transitions require lease and fenci
   });
   assert.equal(leased.aggregate.status, "leased");
 
-  // Transition to running without leaseId - should fail
-  const nodeRunWithoutLease = { ...leased.aggregate, leaseId: undefined, fencingToken: undefined };
+  // Transition to running without leaseId/fencingToken on the command - should fail
   assert.throws(
     () =>
       stateMachine.transition({
@@ -635,7 +636,7 @@ test("R4-30 (INV-FENCING): NodeRun execution transitions require lease and fenci
         entityType: "NodeRun",
         entityId: nodeRunId,
         aggregateType: "NodeRun",
-        aggregate: nodeRunWithoutLease,
+        aggregate: leased.aggregate,
         fromStatus: "leased",
         toStatus: "running",
         principal: "test-principal",
@@ -705,6 +706,7 @@ test("R4-30 (INV-FENCING): SideEffectRecord commit transitions require fencing",
     status: "approved",
     riskClass: "high",
     preCommitPolicyProofRef: { artifactId: "art-1", uri: "memory://policy" },
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 
   // Transition to committing without fencingToken - should fail
@@ -802,6 +804,7 @@ test("R4-33 (INV-SIDEEFFECT-001): External API calls must create SideEffectRecor
     status: "approved",
     riskClass: "medium",
     preCommitPolicyProofRef: { artifactId: "proof-1", uri: "memory://policy" },
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 
   assert.ok(webSearchEffect.sideEffectId !== undefined, "SideEffectRecord must have ID");
@@ -823,6 +826,7 @@ test("R4-33 (INV-SIDEEFFECT-001): SideEffectRecord transitions emit audit trail"
     preCommitPolicyProofRef: { artifactId: "art-audit", uri: "memory://policy" },
     leaseId: "lease-se-audit",
     fencingToken: "fencing-se-audit",
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 
   const result = stateMachine.transition({
@@ -956,8 +960,8 @@ test("R4-36 (INV-SINGLE-LEADER): Truth writes should verify leader status", () =
 
 test("R4-36 (INV-SINGLE-LEADER): Cross-region writes are rejected for non-leader", () => {
   // Non-leader region attempting to write should be rejected
-  const leaderRegion = "us-east";
-  const writingRegion = "us-west";
+  const leaderRegion: string = "us-east";
+  const writingRegion: string = "us-west";
   const isLeader = writingRegion === leaderRegion;
 
   assert.equal(isLeader, false, "us-west is not leader for us-east tenant");

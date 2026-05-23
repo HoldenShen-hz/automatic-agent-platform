@@ -48,14 +48,14 @@ test("createSeededIntegrationContext creates valid task and execution", () => {
     const tasks = ctx.store.listTasks(10);
     assert.ok(tasks.length >= 1, "should have at least one task");
 
-    const task = tasks[0];
+    const task = tasks[0]!;
     assert.equal(task.id, "task-seeded-001");
     assert.equal(task.title, "Seeded task");
 
     const executions = ctx.store.listExecutionsByTask(task.id);
     assert.ok(executions.length >= 1, "should have at least one execution");
 
-    const exec = executions[0];
+    const exec = executions[0]!;
     assert.equal(exec.id, "exec-seeded-001");
     assert.equal(exec.taskId, task.id);
     assert.equal(exec.status, "executing");

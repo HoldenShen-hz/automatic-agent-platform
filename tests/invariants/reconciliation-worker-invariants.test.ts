@@ -44,6 +44,7 @@ function createTestSideEffect(status: "committing" | "reconciling" | "ambiguous"
     status,
     riskClass: "high",
     preCommitPolicyProofRef: testArtifact,
+    deadline: "2026-05-01T01:00:00.000Z",
   });
 }
 
@@ -250,7 +251,7 @@ test("Probe result evidence refs are captured", () => {
 
   assert.equal(probeResult.result, "confirmed");
   assert.equal(probeResult.evidenceRefs.length, 1);
-  assert.equal(probeResult.evidenceRefs[0].artifactId, "artifact-test");
+  assert.equal(probeResult.evidenceRefs[0]?.artifactId, "artifact-test");
 });
 
 test("Multi-step reconciliation: probe -> determine action -> execute", () => {

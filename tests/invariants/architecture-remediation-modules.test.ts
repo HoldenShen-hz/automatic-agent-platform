@@ -67,7 +67,7 @@ test("scale-ecosystem remediation implements S-1 through S-20 behavior", () => {
     amount: -10,
     reason: "refund",
   }).preservesUsageLedger, true);
-  assert.equal(validateListingDependencies([{ listingId: "a", dependsOnListingId: "b", versionRange: "^1", compatibilityEvidenceRef: "" }]).valid, false);
+  assert.equal(validateListingDependencies([{ entryId: "a", dependsOnEntryId: "b", versionRange: "^1", compatibilityEvidenceRef: "" }]).valid, false);
   assert.ok(compareFairQueueEntries(
     { tenantId: "tenant-b", orgId: "org", domainId: "domain", slaTier: 1, priority: 1 },
     { tenantId: "tenant-a", orgId: "org", domainId: "domain", slaTier: 2, priority: 1 },
@@ -76,7 +76,17 @@ test("scale-ecosystem remediation implements S-1 through S-20 behavior", () => {
 
 test("ops-maturity remediation implements M-1 through M-20 behavior", () => {
   assert.deepEqual(buildOpsMaturityRemediationEvidence(), Array.from({ length: 20 }, (_value, index) => `M-${index + 1}`));
-  assert.deepEqual(validatePanicDirective({ directiveId: "panic-1", scope: "global", requiredApprovers: ["a", "b"], reason: "test" }), []);
+  assert.deepEqual(validatePanicDirective({
+    directiveId: "panic-1",
+    scope: "global",
+    scopeLevel: "global",
+    reasonCode: "test",
+    issuedBy: "ops",
+    issuedAt: "2026-04-27T00:00:00.000Z",
+    freezeModes: [],
+    requiredApprovers: ["a", "b"],
+    severity: "full",
+  }), []);
   assert.deepEqual(validateResumePlan({ resumePlanId: "resume-1", approvedBy: ["a", "b"], approverRoles: ["platform_admin", "platform_admin"], forensicSnapshotRef: "snapshot-1" }), []);
   assert.equal(transitionAgentLifecycle("canary", "paused"), false);
   assert.equal(driftResponse("high"), "pause_agent");
@@ -93,10 +103,10 @@ test("domains and SDK remediation implements D-1 through D-20 behavior", () => {
   assert.deepEqual(buildDomainsSdkRemediationEvidence(), Array.from({ length: 20 }, (_value, index) => `D-${index + 1}`));
   assert.equal(DOMAIN_META_MODEL_QUESTIONS.length, 15);
   assert.equal(DOMAIN_META_MODEL_QUESTIONS.at(-1)?.key, "adversarial_scenarios");
-  assert.equal(canTransitionDomain("Draft", "Active"), false);
+  assert.equal(canTransitionDomain("Draft" as never, "Active" as never), false);
   assert.deepEqual(validateActiveDomainDescriptor({
     domainId: "quant-trading",
-    lifecycleState: "Active",
+    lifecycleState: "active",
     executionMode: "full_auto",
     hotPathMode: "llm_allowed",
     planningMode: "plan_graph_required",

@@ -44,10 +44,16 @@ test("INV-REPLAY-001: ReplayWorker rejects policies that would allow real side e
       new ReplayWorker({
         replayService: {
           buildTaskReplayReport: () => ({
+            generatedAt: "2026-05-01T00:00:00.000Z",
             taskId: "task-1",
+            divisionId: "division-1",
+            activeExecutionId: null,
+            candidateCount: 0,
+            requestedApprovalCount: 0,
+            deadLetterCount: 0,
+            recoveryEventCount: 0,
             outcome: "no_recovery_activity" as const,
-            eventsReplayed: 0,
-            checkpointsRestored: 0,
+            executions: [],
           }),
         },
         listTaskIds: () => ["task-1"],
@@ -176,7 +182,7 @@ test("INV-REPLAY-001: Mixed operations - some blocked, some allowed", () => {
 
   assert.equal(decision.allowed, false);
   assert.equal(decision.reasonCode, "replay.real_side_effect_blocked");
-  assert.deepEqual(decision.blockedOperationIds.sort(), ["op-dangerous-1", "op-dangerous-2"].sort());
+  assert.deepEqual([...decision.blockedOperationIds].sort(), ["op-dangerous-1", "op-dangerous-2"].sort());
 });
 
 test("INV-REPLAY-001: All operations allowed when no side effects", () => {

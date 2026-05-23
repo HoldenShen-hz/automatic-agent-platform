@@ -13,7 +13,6 @@ const context = {
 
 const lockedContext = {
   ...context,
-  leaseId: "lease-budget-001",
   fencingToken: "fence-budget-001",
 } as const;
 
@@ -26,7 +25,7 @@ const lockedContext = {
  * 3. Replay/simulation scenarios must not create real budget commitments
  * 4. Release must properly unwind reserved amounts
  */
-test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
+test("INV-BUDGET-001: Budget reservation must precede cost operations", async () => {
   const allocator = new BudgetAllocator();
 
   // Test 1: Reserve before cost - happy path
@@ -41,7 +40,7 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
   const reserved = allocator.reserve({
     ledger,
     amount: 50,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     expectedVersion: 0,
     nodeRunId: "node-1",
@@ -52,7 +51,7 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
   assert.equal(reserved.ledger.reservedAmount, 50);
 
   // Test 2: Settlement after reserve - correct
-  const settled = allocator.settle({
+  const settled = await allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 40,
@@ -75,7 +74,7 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
   const reserved2 = allocator.reserve({
     ledger: ledger2,
     amount: 10,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     expectedVersion: 0,
     nodeRunId: "node-2",
@@ -96,7 +95,7 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
   );
 });
 
-test("INV-BUDGET-001: Zero-cost settlement does not create real spend", () => {
+test("INV-BUDGET-001: Zero-cost settlement does not create real spend", async () => {
   const allocator = new BudgetAllocator();
 
   const ledger = createBudgetLedger({
@@ -110,19 +109,18 @@ test("INV-BUDGET-001: Zero-cost settlement does not create real spend", () => {
   const reserved = allocator.reserve({
     ledger,
     amount: 50,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     expectedVersion: 0,
     nodeRunId: "node-replay-1",
     context: {
       ...context,
       traceId: "trace-budget-001-replay",
-      leaseId: "lease-budget-002",
       fencingToken: "fence-budget-002",
     },
   });
 
-  const settled = allocator.settle({
+  const settled = await allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 0,
@@ -138,7 +136,7 @@ test("INV-BUDGET-001: Zero-cost settlement does not create real spend", () => {
   assert.equal(settled.ledger.releasedAmount, 50);
 });
 
-test("INV-BUDGET-001: Release properly unwinds reserved amounts", () => {
+test("INV-BUDGET-001: Release properly unwinds reserved amounts", async () => {
   const allocator = new BudgetAllocator();
 
   const ledger = createBudgetLedger({
@@ -159,7 +157,6 @@ test("INV-BUDGET-001: Release properly unwinds reserved amounts", () => {
     context: {
       ...context,
       traceId: "trace-release-001",
-      leaseId: "lease-budget-003",
       fencingToken: "fence-budget-003",
     },
   });
@@ -167,7 +164,7 @@ test("INV-BUDGET-001: Release properly unwinds reserved amounts", () => {
   assert.equal(reserved.ledger.reservedAmount, 75);
 
   // Release without execution
-  const released = allocator.release({
+  const released = await allocator.release({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     context: {
@@ -199,14 +196,13 @@ test("INV-BUDGET-001: Deny execution when budget reservation fails", () => {
       allocator.reserve({
         ledger,
         amount: 50, // Exceeds cap
-        resourceKind: "llm",
+        resourceKind: "token",
         expiresAt: new Date(Date.now() + 60000).toISOString(),
         expectedVersion: 0,
         nodeRunId: "node-deny-1",
         context: {
           ...context,
           traceId: "trace-deny-001",
-          leaseId: "lease-budget-004",
           fencingToken: "fence-budget-004",
         },
       }),

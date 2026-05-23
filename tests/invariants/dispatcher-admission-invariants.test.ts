@@ -32,8 +32,8 @@ test("Admission policy has correct default limits", () => {
   assert.equal(policy.capabilityClassGateEnabled, true);
 
   // Risk class limits
-  assert.equal(policy.maxRiskClassTasks["critical"], 2);
-  assert.equal(policy.maxRiskClassTasks["high"], 5);
+  assert.equal(policy.maxRiskClassTasks?.["critical"], 2);
+  assert.equal(policy.maxRiskClassTasks?.["high"], 5);
   assert.equal(policy.tenantTaskQuota, 50);
 });
 
@@ -117,7 +117,7 @@ test("Budget exceeded requests are rejected", () => {
 
   // Request with cost exceeding budget
   const result = controller.evaluate({
-    priority: "medium",
+    priority: "normal",
     estimatedCostUsd: 100,
     budgetRemainingUsd: 50, // Not enough budget
   });
@@ -148,14 +148,14 @@ test("Risk class isolation limits are enforced", () => {
   const controller = new AdmissionController(mockStore, strictPolicy);
 
   const firstCritical = controller.evaluate({
-    priority: "medium",
+    priority: "normal",
     riskClass: "high",
   });
 
   assert.equal(firstCritical.decision, "allow");
 
   const secondCritical = controller.evaluate({
-    priority: "medium",
+    priority: "normal",
     riskClass: "critical",
   });
 
@@ -188,7 +188,7 @@ test("Tenant quota limits are enforced", () => {
 
   // Fourth task for same tenant should be rejected
   const result = controller.evaluate({
-    priority: "medium",
+    priority: "normal",
     tenantId: "tenant-quota",
   });
 
@@ -205,7 +205,7 @@ test("Tier1 backlog threshold triggers rejection", () => {
 
   const controller = new AdmissionController(mockStore);
 
-  const result = controller.evaluate({ priority: "medium" });
+  const result = controller.evaluate({ priority: "normal" });
 
   assert.equal(result.decision, "reject");
   assert.equal(result.reasonCode, "admission.reject_tier1_backlog");
@@ -227,7 +227,7 @@ test("Sandbox matching is enforced when enabled", () => {
 
   // Request for unavailable sandbox type
   const result = controller.evaluate({
-    priority: "medium",
+    priority: "normal",
     sandboxType: "strict", // Only 2 available per DEFAULT_ADMISSION_POLICY
   });
 
@@ -252,7 +252,7 @@ test("Capability class gating is enforced", () => {
 
   // Request for capability with no capacity
   const result = controller.evaluate({
-    priority: "medium",
+    priority: "normal",
     requiredCapabilities: ["nonexistent"],
   });
 
@@ -269,7 +269,7 @@ test("Active executions at max triggers queue (not reject)", () => {
 
   const controller = new AdmissionController(mockStore);
 
-  const result = controller.evaluate({ priority: "medium" });
+  const result = controller.evaluate({ priority: "normal" });
 
   assert.equal(result.decision, "queue");
   assert.equal(result.reasonCode, "admission.queue_overloaded");

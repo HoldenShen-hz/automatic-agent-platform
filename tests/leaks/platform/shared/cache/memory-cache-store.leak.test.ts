@@ -8,7 +8,7 @@ import { forceFullGc, formatMegabytes, heapUsedBytes } from "../../../../helpers
 function createCacheMeta(): CacheMeta {
   const now = Date.now();
   return {
-    scope: "leak-guard",
+    scope: "memory",
     tags: ["leak-test"],
     version: "1",
     createdAt: now,

@@ -34,13 +34,23 @@ test("fixtures with various statuses", () => {
   const ctx = createIntegrationContext("test-fix-");
   try {
     const statuses = ["queued", "in_progress", "done", "failed", "cancelled"] as const;
+    const executionStatusByTaskStatus = {
+      queued: "created",
+      in_progress: "executing",
+      done: "succeeded",
+      failed: "failed",
+      cancelled: "cancelled",
+    } as const;
 
     for (const status of statuses) {
       const taskId = `status-task-${status}`;
       const execId = `status-exec-${status}`;
 
       ctx.store.insertTask(createMinimalTask({ id: taskId, status }));
-      ctx.store.insertExecution(createMinimalExecution(taskId, { id: execId, status: status === "queued" ? "executing" : status }));
+      ctx.store.insertExecution(createMinimalExecution(taskId, {
+        id: execId,
+        status: executionStatusByTaskStatus[status],
+      }));
     }
 
     const tasks = ctx.store.listTasks(10);

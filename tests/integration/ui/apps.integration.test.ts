@@ -77,7 +77,7 @@ test.describe("IPC channel consistency between electron-win and preload", () => 
       const channelName = channel.name;
       // Convert channel string to API path
       // e.g., "shell:openExternal" -> preloadApi.shell.openExternal
-      const [namespace, method] = channelName.split(":");
+      const [namespace = "", method = ""] = channelName.split(":");
       const namespaceKey = namespace
         .split("-")
         .map((segment, index) => index === 0 ? segment : `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`)
@@ -233,12 +233,13 @@ test.describe("HTML security headers", () => {
 
   test("web security headers are sourced from Vite config rather than duplicated in index.html", async () => {
     const fs = await import("node:fs");
-    const viteConfig = await import("../../../ui/apps/web/vite.config.ts");
+    const viteConfigPath = resolveRepoPath("ui/apps/web/vite.config.ts");
+    const viteConfigSource = fs.readFileSync(viteConfigPath, "utf-8");
     const htmlPath = resolveRepoPath("ui/apps/web/index.html");
     const html = fs.readFileSync(htmlPath, "utf-8");
 
     assert.ok(!html.includes('http-equiv="Content-Security-Policy"'));
-    assert.equal(typeof viteConfig.default, "function");
+    assert.ok(viteConfigSource.includes("export default defineConfig("));
   });
 
   test("web index.html does not hardcode CSRF meta tokens", async () => {

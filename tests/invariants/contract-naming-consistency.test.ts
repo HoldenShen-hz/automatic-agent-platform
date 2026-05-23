@@ -98,6 +98,9 @@ test("R4-64: Canonical contracts do not contain deprecated terms", () => {
 
     for (let lineNum = 0; lineNum < lines.length; lineNum++) {
       const line = lines[lineNum];
+      if (line == null) {
+        continue;
+      }
       for (const term of DEPRECATED_TERMS) {
         if (
           line.includes(term)
