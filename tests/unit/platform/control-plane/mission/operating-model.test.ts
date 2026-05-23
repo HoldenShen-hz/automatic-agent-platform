@@ -12,45 +12,79 @@ import {
   WorkflowRecordingService,
   SkillCandidatePipeline,
   createBuiltinMissionPlaybooks,
-  type MissionFailureMode,
   type MissionFailureModeDetectionInput,
   type MissionFailureModeSuppression,
-  type MissionOutcomeReport,
   type WorkflowRecordingInput,
-  type WorkflowTrace,
-  type MissionPlaybook,
 } from "../../../../../src/platform/five-plane-control-plane/mission/operating-model.js";
 import { AppError } from "../../../../../src/platform/contracts/errors.js";
+import type {
+  MissionRecord,
+  MissionStageInstance,
+  StageExitSnapshot,
+} from "../../../../../src/platform/contracts/mission/index.js";
+import type {
+  MissionFailureMode,
+  WorkflowRecordingPolicy,
+  WorkflowTrace,
+} from "../../../../../src/platform/contracts/mission/operating-model.js";
 
-// Helper to create minimal test data
-function createTestMissionRecord(overrides: Partial<{
-  missionId: string;
-  type: string;
-  tenantId: string;
-}> = {}): { missionId: string; type: string; tenantId: string } {
+function createTestMissionRecord(overrides: Partial<MissionRecord> = {}): MissionRecord {
   return {
     missionId: overrides.missionId ?? "mission-test-001",
-    type: overrides.type ?? "formal",
     tenantId: overrides.tenantId ?? "tenant-test",
+    orgId: overrides.orgId ?? null,
+    type: overrides.type ?? "formal",
+    status: overrides.status ?? "active",
+    priority: overrides.priority ?? "normal",
+    title: overrides.title ?? "Mission Test",
+    description: overrides.description ?? null,
+    objective: overrides.objective ?? "Validate mission operating model",
+    successCriteria: overrides.successCriteria ?? ["all tests pass"],
+    ownerPrincipalId: overrides.ownerPrincipalId ?? "owner-001",
+    accountablePrincipalId: overrides.accountablePrincipalId ?? null,
+    domainId: overrides.domainId ?? "coding",
+    policyRefs: overrides.policyRefs ?? [],
+    riskProfileRef: overrides.riskProfileRef ?? null,
+    budgetEnvelopeRef: overrides.budgetEnvelopeRef ?? null,
+    knowledgeBoundaryRef: overrides.knowledgeBoundaryRef ?? null,
+    defaultWorkflowTemplateRefs: overrides.defaultWorkflowTemplateRefs ?? [],
+    metadata: overrides.metadata ?? {},
+    freezeReason: overrides.freezeReason ?? null,
+    createdAt: overrides.createdAt ?? "2026-01-01T00:00:00.000Z",
+    createdBy: overrides.createdBy ?? "owner-001",
+    updatedAt: overrides.updatedAt ?? "2026-01-01T00:00:00.000Z",
+    updatedBy: overrides.updatedBy ?? "owner-001",
+    archivedAt: overrides.archivedAt ?? null,
+    archivedBy: overrides.archivedBy ?? null,
+    version: overrides.version ?? 1,
+    etag: overrides.etag ?? "mission-test-001:1",
+    ...(overrides.playbookBinding == null ? {} : { playbookBinding: overrides.playbookBinding }),
   };
 }
 
-function createTestStageInstance(overrides: Partial<{
-  stageInstanceId: string;
-  stageId: string;
-}> = {}): { stageInstanceId: string; stageId: string } {
+function createTestStageInstance(overrides: Partial<MissionStageInstance> = {}): MissionStageInstance {
   return {
     stageInstanceId: overrides.stageInstanceId ?? "stage-inst-001",
+    missionId: overrides.missionId ?? "mission-test-001",
+    playbookId: overrides.playbookId ?? "playbook-001",
+    playbookVersion: overrides.playbookVersion ?? "1.0.0",
     stageId: overrides.stageId ?? "design",
+    cycleIndex: overrides.cycleIndex ?? 0,
+    status: overrides.status ?? "active",
+    version: overrides.version ?? 1,
+    enteredAt: overrides.enteredAt ?? "2026-01-01T00:00:00.000Z",
+    ...(overrides.parentStageInstanceId == null ? {} : { parentStageInstanceId: overrides.parentStageInstanceId }),
+    ...(overrides.exitedAt == null ? {} : { exitedAt: overrides.exitedAt }),
   };
 }
 
-function createTestSnapshot(): { metricValues: Record<string, number>; eventCounts: Record<string, number>; evidenceCounts: Record<string, number>; hitlDecisions: Record<string, string> } {
+function createTestSnapshot(): StageExitSnapshot {
   return {
     metricValues: { execution_time_ms: 1000 },
     eventCounts: { "task:completed": 5 },
     evidenceCounts: { "design_doc": 2 },
     hitlDecisions: {},
+    snapshotRefs: ["snapshot-001"],
   };
 }
 

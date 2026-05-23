@@ -60,6 +60,7 @@ function upsertTenantForEnvironment(store: AuthoritativeTaskStore, environmentId
     artifactScope: `tenant.${environmentId}.artifact`,
     isolationMode: "shared_hard_scoped",
     deploymentMode: "private_cloud",
+    quotas: {},
     createdAt: timestamp,
     updatedAt: timestamp,
   });

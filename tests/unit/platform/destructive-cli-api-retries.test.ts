@@ -169,10 +169,12 @@ test("R31-42/R31-46: HarnessSdk no longer defaults stage from nodeRunId and vali
       policyIds: ["policy.audit"],
       approvalMode: "supervised",
       autonomyMode: "supervised",
-      toolPolicy: { allowedTools: ["search"] },
+      tool_policy: { allowedTools: ["search"] },
       risk_policy: { maxRiskScore: 0.4, escalationThreshold: 0.3 },
       output_policy: { requiredEvidence: ["audit"], redactSensitiveData: true },
       budget: { maxSteps: 3, maxCost: 2, maxDurationMs: 60_000 },
+      sandboxRequirement: { sandboxMode: "none", timeoutMs: 60_000 },
+      approvalRequirement: { requiredForRiskClass: [], approverRoles: [], escalationTimeoutMs: 60_000 },
     },
   });
 
@@ -222,9 +224,17 @@ test("R31-50: model routing risk level now reuses the canonical RiskLevel contra
 
 test("R31-53: model-call provider feeds unified-chat usage back into budget settlement", async () => {
   const service = new ModelCallProviderService({});
-  const budgetGuard = (service as unknown as { budgetGuard: Record<string, (...args: unknown[]) => unknown> }).budgetGuard;
+  const budgetGuard = (service as unknown as {
+    budgetGuard: {
+      atomicReserve?: (...args: unknown[]) => unknown;
+      atomicExecute?: (...args: unknown[]) => unknown;
+      atomicSettle?: (...args: unknown[]) => unknown;
+    };
+  }).budgetGuard;
 
   const calls: string[] = [];
+  assert.ok(budgetGuard.atomicReserve);
+  assert.ok(budgetGuard.atomicExecute);
   const originalReserve = budgetGuard.atomicReserve.bind(budgetGuard);
   const originalExecute = budgetGuard.atomicExecute.bind(budgetGuard);
 

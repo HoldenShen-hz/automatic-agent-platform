@@ -212,6 +212,9 @@ test("ExtensionPackageRecord structure is correct", () => {
     manifestChecksum: "sha256:abc123",
     lifecycleState: "enabled",
     reviewRequired: 0,
+    sbomVerified: 1,
+    sandboxCertVerified: 1,
+    egressPolicyCompliant: 1,
     createdAt: "2026-04-14T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
   };
@@ -239,6 +242,9 @@ test("ExtensionPackageRecord allows null tenantId", () => {
     manifestChecksum: "sha256:system",
     lifecycleState: "installed",
     reviewRequired: 0,
+    sbomVerified: 1,
+    sandboxCertVerified: 1,
+    egressPolicyCompliant: 1,
     createdAt: "2026-04-14T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
   };

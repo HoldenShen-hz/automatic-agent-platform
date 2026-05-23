@@ -15,16 +15,17 @@ import {
 } from "../../../../../src/platform/five-plane-control-plane/iam/secret-management-support.js";
 
 // Helper to create a mock provider
+type MockManagedSecretProvider = ManagedSecretProvider & { isConfigured?: () => boolean };
+
 function createMockProvider(config: {
   providerKind: "environment" | "vault" | "kms" | "secret_manager";
   isConfigured?: () => boolean;
   describeSecretResponse: SecretProviderMetadata;
   requireSecretResponse: SecretProviderMetadata & { value: string };
-  issueSecretLeaseResponse?: ReturnType<ManagedSecretProvider["issueSecretLease"]>;
-}): ManagedSecretProvider & { isConfigured?: () => boolean } {
-  return {
+  issueSecretLeaseResponse?: Awaited<ReturnType<NonNullable<ManagedSecretProvider["issueSecretLease"]>>>;
+}): MockManagedSecretProvider {
+  const provider: MockManagedSecretProvider = {
     providerKind: config.providerKind,
-    isConfigured: config.isConfigured,
     async describeSecret(_secretRef: string) {
       return config.describeSecretResponse;
     },
@@ -35,6 +36,10 @@ function createMockProvider(config: {
       return config.issueSecretLeaseResponse ?? null;
     },
   };
+  if (config.isConfigured != null) {
+    provider.isConfigured = config.isConfigured;
+  }
+  return provider;
 }
 
 test("EnvironmentBackedManagedSecretProvider delegates to EnvSecretProvider", async () => {
@@ -257,7 +262,7 @@ test("HybridManagedSecretProvider issueSecretLease delegates to primary when con
       maskedValue: "primary-masked",
       value: "primary-secret",
     },
-    issueSecretLeaseResponse: Promise.resolve({
+    issueSecretLeaseResponse: {
       secretRef: "secret://test/key",
       envName: "AA_SECRET_TEST_KEY",
       scope: "test",
@@ -269,7 +274,7 @@ test("HybridManagedSecretProvider issueSecretLease delegates to primary when con
       expiresAt: "2026-04-28T00:00:00.000Z",
       renewable: true,
       issuedBy: "vault",
-    }),
+    },
   });
 
   const fallback = createMockProvider({

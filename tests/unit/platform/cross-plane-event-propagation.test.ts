@@ -36,7 +36,11 @@ const PLANE_CONSUMERS = {
   P5_EVIDENCE: "p5_evidence_consumer",
 } as const;
 
-type PlaneConsumer = (typeof PLANE_CONSUMERS)[keyof typeof PLANE_CONSUMERS];
+type CorePlaneConsumer = (typeof PLANE_CONSUMERS)[keyof typeof PLANE_CONSUMERS];
+type PlaneConsumer =
+  | CorePlaneConsumer
+  | "truth_projector"
+  | "audit_projection";
 
 async function flushBusFanOut(): Promise<void> {
   for (let iteration = 0; iteration < 8; iteration++) {
@@ -486,7 +490,7 @@ test("P1→P2→P3→P4→P5: Full chain event propagation with runId aggregate 
   const env = await createCrossPlaneTestEnvironment();
 
   try {
-    const allPlaneEvents: Record<PlaneConsumer, string[]> = {
+    const allPlaneEvents: Record<CorePlaneConsumer, string[]> = {
       [PLANE_CONSUMERS.P1_INTERFACE]: [],
       [PLANE_CONSUMERS.P2_CONTROL]: [],
       [PLANE_CONSUMERS.P3_ORCHESTRATION]: [],
@@ -576,7 +580,7 @@ test("P1→P2→P3→P4→P5: Events propagate to all planes without loss", asyn
   const env = await createCrossPlaneTestEnvironment();
 
   try {
-    const eventCounts: Record<PlaneConsumer, number> = {
+    const eventCounts: Record<CorePlaneConsumer, number> = {
       [PLANE_CONSUMERS.P1_INTERFACE]: 0,
       [PLANE_CONSUMERS.P2_CONTROL]: 0,
       [PLANE_CONSUMERS.P3_ORCHESTRATION]: 0,
@@ -744,7 +748,7 @@ test("Tier-1 events (task:status_changed) deliver reliably to all planes", async
   const env = await createCrossPlaneTestEnvironment();
 
   try {
-    const pendingCounts: Record<PlaneConsumer, number> = {
+    const pendingCounts: Record<CorePlaneConsumer, number> = {
       [PLANE_CONSUMERS.P1_INTERFACE]: 0,
       [PLANE_CONSUMERS.P2_CONTROL]: 0,
       [PLANE_CONSUMERS.P3_ORCHESTRATION]: 0,

@@ -10,7 +10,11 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { RolloutScheduler } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/rollout/rollout-scheduler.js";
-import type { RolloutRecord, RolloutStatus } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
+import {
+  parseRolloutRecord,
+  type RolloutRecord,
+  type RolloutStatus,
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 import type { ImprovementCandidate } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
 
 function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
@@ -30,19 +34,31 @@ function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): Imp
 }
 
 function createMockRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord {
-  return {
+  return parseRolloutRecord({
     recordId: "record_test_1",
     candidateId: "candidate_test_1",
     level: "shadow",
     previousLevel: "off",
+    fromLevel: "off",
+    toLevel: "shadow",
     strategyVersionId: null,
     status: "shadow",
     transitionedAt: Date.now() - 600_000, // 10 minutes ago
-    approvedBy: null,
+    triggeredBy: "scheduler",
+    metrics: {
+      errorRate: 0,
+      latencyP99: 0,
+      successRate: 1,
+      sampleCount: 0,
+    },
+    auditContext: {
+      evidenceRefs: [],
+      reasonCodes: [],
+    },
     guardrailReasonCodes: [],
     evidence: [],
     ...overrides,
-  };
+  });
 }
 
 describe("RolloutScheduler", () => {
@@ -251,9 +267,10 @@ describe("RolloutScheduler", () => {
   describe("RolloutSchedulerMetricsProvider", () => {
     test("accepts metrics provider for gate evaluation", async () => {
       const mockMetrics = {
-        healthScore: 0.98,
-        errorRate: 0.01,
-        latencyP99: 150,
+        requestCount: 100,
+        failureRate: 0.01,
+        p99LatencyMs: 150,
+        baselineP99LatencyMs: 100,
       };
       const scheduler = new RolloutScheduler({
         now: () => Date.now(),

@@ -3,117 +3,91 @@ import test from "node:test";
 
 import {
   TenantBoundaryRegistryService,
-  type UserAccount,
   type TenantBoundaryTopologySeed,
-  type TenantAccessDecision,
+  type UserAccount,
 } from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
+import type {
+  DeploymentBindingRecord,
+  OrganizationMembershipRecord,
+  OrganizationRecord,
+  TenantRecord,
+  WorkspaceMembershipRecord,
+  WorkspaceRecord,
+} from "../../../../../src/platform/contracts/types/domain.js";
 
-test("TenantBoundaryRegistryService can be instantiated with no seed", () => {
-  const service = new TenantBoundaryRegistryService();
-  assert.ok(service !== undefined);
-});
-
-test("TenantBoundaryRegistryService can be instantiated with seed", () => {
-  const seed: TenantBoundaryTopologySeed = {
-    users: [{
-      userId: "user-001",
-      displayName: "Test User",
-      status: "active",
-      identityProvider: "idp-001",
-    }],
+function makeOrganization(defaultTenantId: string | null = null): OrganizationRecord {
+  return {
+    organizationId: "org-001",
+    displayName: "Test Org",
+    billingAccountId: null,
+    defaultTenantId,
+    createdAt: "2024-01-15T10:00:00Z",
+    updatedAt: "2024-01-15T10:00:00Z",
   };
-  const service = new TenantBoundaryRegistryService(seed);
-  assert.ok(service !== undefined);
-});
+}
 
-test("TenantBoundaryRegistryService registers user correctly", () => {
-  const service = new TenantBoundaryRegistryService();
-  const user = service.registerUser({
-    userId: "user-001",
-    displayName: "Test User",
-    status: "active",
-    identityProvider: "idp-001",
-  });
-  assert.equal(user.userId, "user-001");
-  assert.equal(user.displayName, "Test User");
-});
-
-test("TenantBoundaryRegistryService sets createdAt when not provided", () => {
-  const service = new TenantBoundaryRegistryService();
-  const user = service.registerUser({
-    userId: "user-002",
-    displayName: "Test User",
-    status: "active",
-    identityProvider: "idp-001",
-  });
-  assert.ok(user.createdAt !== undefined);
-  assert.ok(user.createdAt.length > 0);
-});
-
-test("TenantBoundaryRegistryService uses provided createdAt", () => {
-  const service = new TenantBoundaryRegistryService();
-  const user = service.registerUser({
-    userId: "user-003",
-    displayName: "Test User",
-    status: "active",
-    identityProvider: "idp-001",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  assert.equal(user.createdAt, "2024-01-15T10:00:00Z");
-});
-
-test("TenantBoundaryRegistryService registers workspace correctly", () => {
-  const service = new TenantBoundaryRegistryService();
-  service.registerOrganization({
-    organizationId: "org-001",
-    name: "Test Org",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  const workspace = service.registerWorkspace({
+function makeWorkspace(): WorkspaceRecord {
+  return {
     workspaceId: "ws-001",
+    ownerId: "user-001",
+    displayName: "Test Workspace",
+    planId: "plan-free",
+    defaultPolicySet: "default",
     organizationId: "org-001",
-    name: "Test Workspace",
     createdAt: "2024-01-15T10:00:00Z",
-  });
-  assert.equal(workspace.workspaceId, "ws-001");
-});
+    updatedAt: "2024-01-15T10:00:00Z",
+  };
+}
 
-test("TenantBoundaryRegistryService registers organization correctly", () => {
-  const service = new TenantBoundaryRegistryService();
-  const org = service.registerOrganization({
+function makeTenant(tenantId = "tenant-001"): TenantRecord {
+  return {
+    tenantId,
     organizationId: "org-001",
-    name: "Test Org",
+    displayName: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
+    quotas: {},
     createdAt: "2024-01-15T10:00:00Z",
-  });
-  assert.equal(org.organizationId, "org-001");
-});
+    updatedAt: "2024-01-15T10:00:00Z",
+  };
+}
 
-test("TenantBoundaryRegistryService listTenants returns empty initially", () => {
-  const service = new TenantBoundaryRegistryService();
-  const tenants = service.listTenants();
-  assert.ok(Array.isArray(tenants));
-  assert.equal(tenants.length, 0);
-});
+function makeWorkspaceMembership(): WorkspaceMembershipRecord {
+  return {
+    workspaceId: "ws-001",
+    userId: "user-001",
+    role: "member",
+    joinedAt: "2024-01-15T10:00:00Z",
+  };
+}
 
-test("TenantBoundaryRegistryService listTenants returns registered tenants", () => {
-  const service = new TenantBoundaryRegistryService();
-  service.registerOrganization({
+function makeOrganizationMembership(): OrganizationMembershipRecord {
+  return {
     organizationId: "org-001",
-    name: "Test Org",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  service.registerTenant({
+    userId: "user-001",
+    role: "member",
+    joinedAt: "2024-01-15T10:00:00Z",
+  };
+}
+
+function makeBinding(): DeploymentBindingRecord {
+  return {
+    bindingId: "binding-001",
     tenantId: "tenant-001",
-    organizationId: "org-001",
-    name: "Test Tenant",
+    environmentId: "env-prod",
+    deploymentMode: "cloud_shared",
+    region: "us-east-1",
+    networkBoundary: "shared-vpc",
     createdAt: "2024-01-15T10:00:00Z",
-  });
-  const tenants = service.listTenants();
-  assert.equal(tenants.length, 1);
-  assert.equal(tenants[0].tenantId, "tenant-001");
-});
+    updatedAt: "2024-01-15T10:00:00Z",
+  };
+}
 
-test("UserAccount type is correctly structured", () => {
+test("TenantBoundaryRegistryService accepts topology seed", () => {
   const user: UserAccount = {
     userId: "user-001",
     displayName: "Test User",
@@ -121,125 +95,148 @@ test("UserAccount type is correctly structured", () => {
     identityProvider: "idp-001",
     createdAt: "2024-01-15T10:00:00Z",
   };
-  assert.equal(user.userId, "user-001");
-  assert.equal(user.status, "active");
-});
-
-test("TenantAccessDecision type is correctly structured", () => {
-  const decision: TenantAccessDecision = {
-    decision: "allow",
-    reasonCode: "tenant.member_allowed",
-    userId: "user-001",
-    tenantId: "tenant-001",
-    workspaceId: null,
-    organizationId: "org-001",
-    governanceRef: null,
+  const seed: TenantBoundaryTopologySeed = {
+    users: [user],
+    organizations: [makeOrganization("tenant-001")],
+    workspaces: [makeWorkspace()],
+    tenants: [makeTenant()],
+    workspaceMemberships: [makeWorkspaceMembership()],
+    organizationMemberships: [makeOrganizationMembership()],
+    deploymentBindings: [makeBinding()],
   };
-  assert.equal(decision.decision, "allow");
-  assert.equal(decision.reasonCode, "tenant.member_allowed");
-});
 
-test("TenantBoundaryTopologySeed allows partial inputs", () => {
-  const seed: TenantBoundaryTopologySeed = {};
   const service = new TenantBoundaryRegistryService(seed);
-  assert.ok(service !== undefined);
+  assert.equal(service.listTenants().length, 1);
+  assert.equal(service.listDeploymentBindingsForTenant("tenant-001").length, 1);
 });
 
-test("TenantBoundaryRegistryService adds workspace membership correctly", () => {
+test("TenantBoundaryRegistryService registers topology records using current shapes", () => {
   const service = new TenantBoundaryRegistryService();
+
   service.registerUser({
     userId: "user-001",
     displayName: "Test User",
     status: "active",
     identityProvider: "idp-001",
   });
-  service.registerOrganization({
-    organizationId: "org-001",
-    name: "Test Org",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  service.registerWorkspace({
-    workspaceId: "ws-001",
-    organizationId: "org-001",
-    name: "Test Workspace",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  const membership = service.addWorkspaceMembership({
-    workspaceId: "ws-001",
-    userId: "user-001",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  assert.equal(membership.workspaceId, "ws-001");
-  assert.equal(membership.userId, "user-001");
+  service.registerOrganization(makeOrganization("tenant-001"));
+  service.registerWorkspace(makeWorkspace());
+  service.registerTenant(makeTenant());
+  service.addWorkspaceMembership(makeWorkspaceMembership());
+  service.addOrganizationMembership(makeOrganizationMembership());
+  service.registerDeploymentBinding(makeBinding());
+
+  assert.equal(service.listTenants().length, 1);
+  assert.equal(service.listTenantsForUser("user-001")[0]?.tenantId, "tenant-001");
+  assert.equal(service.listDeploymentBindingsForTenant("tenant-001")[0]?.bindingId, "binding-001");
 });
 
-test("TenantBoundaryRegistryService adds organization membership correctly", () => {
-  const service = new TenantBoundaryRegistryService();
+test("TenantBoundaryRegistryService resolves workspace tenant from organization default", () => {
+  const service = new TenantBoundaryRegistryService({
+    organizations: [makeOrganization("tenant-001")],
+    workspaces: [makeWorkspace()],
+    tenants: [makeTenant()],
+  });
+
+  assert.equal(service.resolveTenantForWorkspace("ws-001")?.tenantId, "tenant-001");
+});
+
+test("TenantBoundaryRegistryService authorizes org and workspace membership access", () => {
+  const service = new TenantBoundaryRegistryService({
+    users: [{
+      userId: "user-001",
+      displayName: "Test User",
+      status: "active",
+      identityProvider: "idp-001",
+      createdAt: "2024-01-15T10:00:00Z",
+    }],
+    organizations: [makeOrganization("tenant-001")],
+    workspaces: [makeWorkspace()],
+    tenants: [makeTenant()],
+    organizationMemberships: [makeOrganizationMembership()],
+    workspaceMemberships: [makeWorkspaceMembership()],
+  });
+
+  assert.equal(
+    service.authorizeTenantAccess({ userId: "user-001", tenantId: "tenant-001" }).decision,
+    "allow",
+  );
+  assert.equal(
+    service.authorizeTenantAccess({ userId: "user-001", tenantId: "tenant-001", workspaceId: "ws-001" }).decision,
+    "allow",
+  );
+});
+
+test("TenantBoundaryRegistryService enforces disabled users, mismatched workspaces, and governance exceptions", () => {
+  const service = new TenantBoundaryRegistryService({
+    users: [{
+      userId: "user-001",
+      displayName: "Test User",
+      status: "disabled",
+      identityProvider: "idp-001",
+      createdAt: "2024-01-15T10:00:00Z",
+    }],
+    organizations: [
+      makeOrganization("tenant-001"),
+      {
+        organizationId: "org-002",
+        displayName: "Other Org",
+        billingAccountId: null,
+        defaultTenantId: "tenant-002",
+        createdAt: "2024-01-15T10:00:00Z",
+        updatedAt: "2024-01-15T10:00:00Z",
+      },
+    ],
+    workspaces: [
+      makeWorkspace(),
+      {
+        workspaceId: "ws-002",
+        ownerId: "user-001",
+        displayName: "Other Workspace",
+        planId: "plan-free",
+        defaultPolicySet: "default",
+        organizationId: "org-002",
+        createdAt: "2024-01-15T10:00:00Z",
+        updatedAt: "2024-01-15T10:00:00Z",
+      },
+    ],
+    tenants: [
+      makeTenant("tenant-001"),
+      {
+        ...makeTenant("tenant-002"),
+        organizationId: "org-002",
+      },
+    ],
+  });
+
+  assert.equal(
+    service.authorizeTenantAccess({ userId: "user-001", tenantId: "tenant-001" }).reasonCode,
+    "tenant.user_disabled",
+  );
+
   service.registerUser({
-    userId: "user-001",
-    displayName: "Test User",
+    userId: "user-002",
+    displayName: "Active User",
     status: "active",
     identityProvider: "idp-001",
   });
-  service.registerOrganization({
-    organizationId: "org-001",
-    name: "Test Org",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  const membership = service.addOrganizationMembership({
-    organizationId: "org-001",
-    userId: "user-001",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  assert.equal(membership.organizationId, "org-001");
-  assert.equal(membership.userId, "user-001");
+  assert.equal(
+    service.authorizeTenantAccess({ userId: "user-002", tenantId: "tenant-001", workspaceId: "ws-002" }).reasonCode,
+    "tenant.workspace_tenant_mismatch",
+  );
+  assert.equal(
+    service.authorizeTenantAccess({
+      userId: "user-002",
+      tenantId: "tenant-001",
+      governanceRef: "gov-exception-001",
+    }).decision,
+    "allow_with_governance_exception",
+  );
 });
 
-test("TenantBoundaryRegistryService registers deployment binding correctly", () => {
+test("TenantBoundaryRegistryService assertSameTenant uses fail-closed behavior", () => {
   const service = new TenantBoundaryRegistryService();
-  service.registerOrganization({
-    organizationId: "org-001",
-    name: "Test Org",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  service.registerTenant({
-    tenantId: "tenant-001",
-    organizationId: "org-001",
-    name: "Test Tenant",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  const binding = service.registerDeploymentBinding({
-    bindingId: "binding-001",
-    tenantId: "tenant-001",
-    deploymentId: "deploy-001",
-    region: "us-east-1",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  assert.equal(binding.bindingId, "binding-001");
-  assert.equal(binding.tenantId, "tenant-001");
-});
-
-test("TenantBoundaryRegistryService listDeploymentBindingsForTenant returns bindings", () => {
-  const service = new TenantBoundaryRegistryService();
-  service.registerOrganization({
-    organizationId: "org-001",
-    name: "Test Org",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  service.registerTenant({
-    tenantId: "tenant-001",
-    organizationId: "org-001",
-    name: "Test Tenant",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  service.registerDeploymentBinding({
-    bindingId: "binding-001",
-    tenantId: "tenant-001",
-    deploymentId: "deploy-001",
-    region: "us-east-1",
-    createdAt: "2024-01-15T10:00:00Z",
-  });
-  const bindings = service.listDeploymentBindingsForTenant("tenant-001");
-  assert.equal(bindings.length, 1);
-  assert.equal(bindings[0].bindingId, "binding-001");
+  service.assertSameTenant({ sourceTenantId: "tenant-001", targetTenantId: "tenant-001" });
+  assert.throws(() => service.assertSameTenant({ sourceTenantId: "tenant-001", targetTenantId: "tenant-002" }));
+  assert.throws(() => service.assertSameTenant({ sourceTenantId: null, targetTenantId: "tenant-001" }));
 });

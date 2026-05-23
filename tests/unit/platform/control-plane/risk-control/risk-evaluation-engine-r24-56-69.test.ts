@@ -43,14 +43,13 @@ function createAdr026CompliantConfig(): RiskConfig {
       priorFailureRate: 2,
       confidence: 1,
     },
-    // ADR-026 values: max value for each factor is 5
-    impactRiskValues: { low: 1, medium: 2, high: 3, critical: 5 },
-    irreversibilityRiskValues: { low: 1, medium: 2, high: 3, critical: 5 },
+    impactValues: { low: 1, medium: 2, high: 3, critical: 5 },
+    irreversibilityValues: { low: 1, medium: 2, high: 3, critical: 5 },
     dataSensitivityValues: { low: 1, medium: 2, high: 3, critical: 5 },
     autonomyModeRiskValues: { low: 1, medium: 2, high: 3, critical: 5 },
     tenantImpactValues: { single_task: 1, workflow: 2, tenant: 3, platform: 5 },
     blastRadiusValues: { single_task: 1, workflow: 2, tenant: 3, platform: 5 },
-    historicalFailureRateValues: {
+    historicalFailureRateThresholds: {
       low: { maxPercent: 10, value: 1 },
       medium: { maxPercent: 30, value: 2 },
       high: { maxPercent: 50, value: 3 },

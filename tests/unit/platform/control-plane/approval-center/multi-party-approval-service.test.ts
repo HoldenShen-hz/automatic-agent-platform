@@ -22,6 +22,30 @@ import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-
 function createMockStore() {
   const approvals = new Map<string, ApprovalRecord>();
   const events: EventRecord[] = [];
+  const buildEventRecord = (
+    event: Omit<EventRecord, "eventTier" | "sessionId"> & { eventTier?: string; sessionId?: string | null },
+  ): EventRecord => ({
+    id: event.id ?? "evt_mock",
+    taskId: event.taskId,
+    sessionId: event.sessionId ?? null,
+    executionId: event.executionId,
+    eventType: event.eventType,
+    eventTier: (event.eventTier as EventTier) ?? "tier_1",
+    payloadJson: event.payloadJson,
+    traceId: event.traceId,
+    createdAt: event.createdAt,
+    schemaVersion: event.schemaVersion ?? "v4.3",
+    aggregateId: event.aggregateId ?? event.taskId ?? event.executionId ?? "aggregate_mock",
+    runId: event.runId ?? event.executionId ?? event.taskId ?? "run_mock",
+    sequence: event.sequence ?? events.length + 1,
+    causationId: event.causationId ?? null,
+    correlationId: event.correlationId ?? event.traceId ?? "corr_mock",
+    payloadHash: event.payloadHash ?? "sha256:mock",
+    idempotencyKey: event.idempotencyKey ?? `idem_${event.id ?? events.length + 1}`,
+    replayBehavior: event.replayBehavior ?? "replay_as_fact",
+    principal: event.principal ?? "system:test",
+    evidenceRefs: event.evidenceRefs ?? [],
+  });
 
   return {
     task: {
@@ -40,17 +64,9 @@ function createMockStore() {
     },
     event: {
       insertEvent(event: Omit<EventRecord, "eventTier" | "sessionId"> & { eventTier?: string; sessionId?: string | null }): EventRecord {
-        return {
-          id: event.id ?? "evt_mock",
-          taskId: event.taskId,
-          sessionId: event.sessionId ?? null,
-          executionId: event.executionId,
-          eventType: event.eventType,
-          eventTier: (event.eventTier as EventTier) ?? "tier_1",
-          payloadJson: event.payloadJson,
-          traceId: event.traceId,
-          createdAt: event.createdAt,
-        };
+        const record = buildEventRecord(event);
+        events.push(record);
+        return record;
       },
     },
     approval: {

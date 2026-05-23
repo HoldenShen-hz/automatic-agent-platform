@@ -624,7 +624,7 @@ test("mapPolicyModeToUnifiedRuntimeMode maps auto to supervised_auto", () => {
   assert.equal(mapPolicyModeToUnifiedRuntimeMode("auto"), "supervised_auto");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps supervised to manual_only", () => {
+test("mapPolicyModeToUnifiedRuntimeMode keeps auto on the canonical supervised_auto lane", () => {
   assert.equal(mapPolicyModeToUnifiedRuntimeMode("auto"), "supervised_auto");
 });
 

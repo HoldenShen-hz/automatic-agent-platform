@@ -277,10 +277,7 @@ test("isPolicyStale handles zero values for optional numeric fields", () => {
 });
 
 test("isPolicyStale handles undefined optional fields", () => {
-  const policy = makeBudgetPolicy({
-    stageBudgets: undefined,
-    costEstimationTemplates: undefined,
-  });
+  const policy = makeBudgetPolicy({});
   const engine = new PolicyEngine({ budgetPolicy: policy });
 
   assert.equal(engine.isPolicyStale(), false);

@@ -382,8 +382,8 @@ test("PolicyMode accepts unified runtime modes and supervised/auto", () => {
     "auto",
     "supervised",
     "supervised_auto",
-    "human_in_the_loop",
-    "full_automation",
+    "manual_only",
+    "full_auto",
   ];
 
   for (const mode of modes) {
@@ -426,7 +426,7 @@ test("PolicyAuditService interface contract", () => {
   });
 
   assert.equal(recordedEvents.length, 1);
-  assert.equal(recordedEvents[0].id, "event-001");
+  assert.equal(recordedEvents[0]?.id, "event-001");
 });
 
 test("PolicyCacheInvalidationHandler interface contract", () => {
@@ -479,6 +479,11 @@ test("PolicyFingerprint with undefined optional fields", () => {
     maxMonthlyCostUsd: 1000,
     warnAtRatio: 0.8,
     mode: "auto",
+    maxPlatformCostUsd: undefined,
+    maxPackCostUsd: undefined,
+    maxStepCostUsd: undefined,
+    stageBudgets: undefined,
+    costEstimationTemplates: undefined,
   };
 
   assert.equal(fingerprint.maxPlatformCostUsd, undefined);

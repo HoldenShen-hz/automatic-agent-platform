@@ -140,8 +140,11 @@ test("RiskFactorsSchema accepts valid complete object", () => {
     evidenceConfidence: "high",
   });
 
-  assert.equal(result.impact, 3);
-  assert.equal(result.historicalFailureRate, 10);
+  assert.ok("impact" in result);
+  if ("impact" in result) {
+    assert.equal(result.impact, 3);
+    assert.equal(result.historicalFailureRate, 10);
+  }
 });
 
 test("RiskFactorsSchema rejects historicalFailureRatePercent outside 0-100", () => {

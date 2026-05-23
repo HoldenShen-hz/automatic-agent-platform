@@ -99,6 +99,8 @@ test("buildRuntimeVersionSnapshot reads extension and feature flag env through n
       currentVersion: 1,
       expectedVersion: 1,
       upToDate: true,
+      pendingVersions: [],
+      checksumMismatches: [],
     });
 
     assert.deepEqual(snapshot.enabledExtensions, ["alpha", "beta"]);

@@ -17,6 +17,24 @@ function createHarness(prefix: string) {
   return { workspace, db, store };
 }
 
+function createStubSecretMetadata(secretRef = "secret://system/test/secret") {
+  return {
+    secretRef,
+    envName: "AA_TEST_SECRET",
+    scope: "system/test/secret",
+    source: "environment" as const,
+    resolved: true,
+    maskedValue: "****",
+  };
+}
+
+function createStubSecretValue(secretRef = "secret://system/test/secret") {
+  return {
+    ...createStubSecretMetadata(secretRef),
+    value: "secret-value",
+  };
+}
+
 test("secret management service throws StorageError when resolving unknown secret", async () => {
   const harness = createHarness("aa-secret-unknown-unit-");
   try {
@@ -44,11 +62,11 @@ test("secret management service throws PolicyDeniedError when resolving disabled
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
       },
@@ -88,11 +106,11 @@ test("secret management service throws PolicyDeniedError when resolving revoked 
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
       },
@@ -134,11 +152,11 @@ test("secret management service throws ProviderError when provider is not regist
         // Only environment provider is configured
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
         // kms provider is not configured, so when we try to resolve a kms secret,
@@ -320,12 +338,12 @@ test("secret management service listSecretLeases returns normalized statuses", a
 
     const leasesBeforeExpiry = service.listSecretLeases("secret://system/leases/test");
     assert.equal(leasesBeforeExpiry.length, 1);
-    assert.equal(leasesBeforeExpiry[0].status, "active");
+    assert.equal(leasesBeforeExpiry[0]?.status, "active");
 
     const expiredTime = new Date(Date.parse(lease.lease.expiresAt) + 1000).toISOString();
     const leasesAfterExpiry = service.listSecretLeases("secret://system/leases/test", expiredTime);
     assert.equal(leasesAfterExpiry.length, 1);
-    assert.equal(leasesAfterExpiry[0].status, "expired");
+    assert.equal(leasesAfterExpiry[0]?.status, "expired");
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -705,11 +723,11 @@ test("secret management service describeSecret throws on disabled secret", async
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
       },
@@ -743,11 +761,11 @@ test("secret management service requireSecret throws on revoked secret", async (
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
       },
@@ -872,11 +890,11 @@ test("secret management service requireSecret throws PolicyDeniedError without a
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
       },
@@ -910,11 +928,11 @@ test("secret management service requireSecret succeeds with valid authContext", 
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
       },
@@ -950,11 +968,11 @@ test("secret management service requireSecret throws PolicyDeniedError for scope
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret() {
-            return { maskedValue: "****", source: "test", envName: "test" };
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
           },
-          async requireSecret() {
-            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
           },
         },
       },

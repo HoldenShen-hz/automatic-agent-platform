@@ -74,8 +74,10 @@ test("control-plane-directive-sink: TestControlPlaneDirectiveSink records operat
   });
 
   sink.emitOperationalDirective(directive);
+  const [recordedDirective] = sink.operationalDirectives;
   assert.equal(sink.operationalDirectives.length, 1);
-  assert.equal(sink.operationalDirectives[0].operationalDirectiveId, directive.operationalDirectiveId);
+  assert.ok(recordedDirective);
+  assert.equal(recordedDirective.operationalDirectiveId, directive.operationalDirectiveId);
 });
 
 test("control-plane-directive-sink: TestControlPlaneDirectiveSink records decision directives", () => {
@@ -90,8 +92,10 @@ test("control-plane-directive-sink: TestControlPlaneDirectiveSink records decisi
   });
 
   sink.emitDecisionDirective(directive);
+  const [recordedDirective] = sink.decisionDirectives;
   assert.equal(sink.decisionDirectives.length, 1);
-  assert.equal(sink.decisionDirectives[0].decisionDirectiveId, directive.decisionDirectiveId);
+  assert.ok(recordedDirective);
+  assert.equal(recordedDirective.decisionDirectiveId, directive.decisionDirectiveId);
 });
 
 test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink can be used in a loop safely", () => {

@@ -9,6 +9,7 @@ import {
   createRestrictedExecPolicy,
   createConfigReadPolicy,
   normalizeSandboxMode,
+  type SandboxPolicy,
 } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("sandbox-policy normalizeSandboxMode maps aliases correctly", () => {
@@ -84,7 +85,7 @@ test("sandbox-policy checkSandboxPath denies path outside allowed roots", () => 
 });
 
 test("sandbox-policy checkSandboxPath denies path in denied root", () => {
-  const policy = {
+  const policy: SandboxPolicy = {
     policyId: "test",
     mode: "workspace_write",
     allowedRoots: ["/workspace"],
@@ -92,6 +93,9 @@ test("sandbox-policy checkSandboxPath denies path in denied root", () => {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
   const result = checkSandboxPath(policy, "/workspace/secrets/passwords.txt");
   assert.equal(result.allowed, false);

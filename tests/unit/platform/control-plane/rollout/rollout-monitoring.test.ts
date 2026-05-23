@@ -23,6 +23,17 @@ function createMockRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord
     strategyVersionId: "sv_test_1",
     status: "canary_5",
     transitionedAt: Date.now(),
+    triggeredBy: "scheduler",
+    metrics: {
+      errorRate: 0,
+      latencyP99: 0,
+      successRate: 1,
+      sampleCount: 0,
+    },
+    auditContext: {
+      evidenceRefs: [],
+      reasonCodes: [],
+    },
     guardrailReasonCodes: [],
     evidence: [],
     ...overrides,

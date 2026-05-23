@@ -286,7 +286,16 @@ test("all platform roles have at least one capability except viewer", () => {
 });
 
 test("roleGrantsCapabilities returns true for platform_admin with all capabilities", () => {
-  const allCapabilities = [
+  const allCapabilities: Array<
+    | "model:invoke"
+    | "tool:invoke"
+    | "fs:write"
+    | "exec:command"
+    | "network:access"
+    | "extension:install"
+    | "org:change"
+    | "execution:dispatch"
+  > = [
     "model:invoke",
     "tool:invoke",
     "fs:write",

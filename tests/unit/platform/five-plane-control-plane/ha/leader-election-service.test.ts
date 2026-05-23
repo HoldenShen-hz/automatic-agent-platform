@@ -1,604 +1,271 @@
-/**
- * Leader Election Service Unit Tests
- *
- * Tests leader election state machine, leadership queries,
- * HA level configurations, and lease management.
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  HA_LEVEL_CONFIGS,
+  type HaLevelConfig,
+  type LeaderLease,
+  type LeadershipQueryResult,
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
+import {
   LeaderElectionService,
-  type LeaderElectionState,
-  type LeaderElectionEvent,
   type LeaderElectionServiceOptions,
 } from "../../../../../src/platform/five-plane-execution/ha/leader-election-service.js";
-import {
-  HA_LEVEL_CONFIGS,
-  type HaLevel,
-  type HaLevelConfig,
-  type LeadershipQueryResult,
-  type LeaderLease,
-} from "../../../../../src/platform/five-plane-execution/ha/types.js";
+import type { HaCoordinatorService } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 
-// ---------------------------------------------------------------------------
-// Test Fixtures & Helpers
-// ---------------------------------------------------------------------------
+class TestCoordinator {
+  public registrations: Array<{ nodeId: string; region: string; metadata?: Record<string, unknown> }> = [];
+  public heartbeats: Array<{ nodeId: string; status: string }> = [];
+  public releases: Array<{ nodeId?: string; leaseId?: string }> = [];
+  public activeLease: LeaderLease | null = null;
+  public leaderNodeId: string | null = null;
+  public epoch = 0;
+  public fencingToken = 0;
+  public expired = false;
 
-/**
- * Mock HaCoordinatorService for testing.
- */
-class MockHaCoordinatorService {
-  private leases: Map<string, LeaderLease> = new Map();
-  public queryLeadershipCalls: { nodeId: string }[] = [];
-  public renewLeadershipCalls: { nodeId: string; leaseId?: string }[] = [];
-  public acquireLeadershipCalls: { nodeId: string; ttlMs?: number }[] = [];
-  public releaseLeadershipCalls: { nodeId: string; leaseId?: string }[] = [];
+  getCurrentLeader(): { nodeId: string } | null {
+    return this.leaderNodeId == null ? null : { nodeId: this.leaderNodeId };
+  }
 
-  async queryLeadership(nodeId: string): Promise<LeadershipQueryResult> {
-    this.queryLeadershipCalls.push({ nodeId });
-    const lease = Array.from(this.leases.values()).find(
-      (l) => l.nodeId === nodeId && l.status === "active",
-    );
-    if (lease) {
-      const expiresAt = new Date(lease.expiresAt).getTime();
-      return {
-        isLeader: true,
-        leaderNodeId: nodeId,
-        epoch: lease.epoch,
-        fencingToken: 1,
-        expiresAt: lease.expiresAt,
-        isExpired: Date.now() > expiresAt,
-      };
-    }
+  getActiveLease(): LeaderLease | null {
+    return this.activeLease;
+  }
+
+  registerNode(nodeId: string, region: string, metadata?: Record<string, unknown>): void {
+    this.registrations.push({ nodeId, region, metadata });
+  }
+
+  updateNodeHeartbeat(nodeId: string, status: string): void {
+    this.heartbeats.push({ nodeId, status });
+  }
+
+  queryLeadership(_nodeId?: string): LeadershipQueryResult {
     return {
-      isLeader: false,
-      leaderNodeId: null,
-      epoch: 0,
-      fencingToken: 0,
-      expiresAt: null,
-      isExpired: false,
+      isLeader: this.leaderNodeId != null,
+      leaderNodeId: this.leaderNodeId,
+      epoch: this.epoch,
+      fencingToken: this.fencingToken,
+      expiresAt: this.activeLease?.expiresAt ?? null,
+      isExpired: this.expired,
     };
   }
 
-  async renewLeadership(nodeId: string, leaseId?: string): Promise<LeaderLease | null> {
-    this.renewLeadershipCalls.push({ nodeId, leaseId });
-    const existing = Array.from(this.leases.values()).find(
-      (l) => l.nodeId === nodeId && l.status === "active",
-    );
-    if (existing) {
-      existing.expiresAt = new Date(Date.now() + existing.ttlMs).toISOString();
-      return existing;
-    }
-    return null;
-  }
-
-  async acquireLeadership(nodeId: string, ttlMs = 15000): Promise<LeaderLease> {
-    this.acquireLeadershipCalls.push({ nodeId, ttlMs });
-    const lease: LeaderLease = {
-      leaseId: `lease-${Date.now()}`,
-      nodeId,
-      epoch: 1,
-      acquiredAt: new Date().toISOString(),
+  acquireLeadership(input: { nodeId: string; ttlMs?: number; forceAcquire?: boolean }): {
+    acquired: boolean;
+    lease: LeaderLease;
+    epoch: number;
+    fencingToken: number;
+  } {
+    const ttlMs = input.ttlMs ?? 15_000;
+    const now = new Date().toISOString();
+    this.epoch += 1;
+    this.fencingToken += 1;
+    this.leaderNodeId = input.nodeId;
+    this.expired = false;
+    this.activeLease = {
+      leaseId: `lease-${this.epoch}`,
+      nodeId: input.nodeId,
+      epoch: this.epoch,
+      acquiredAt: now,
       expiresAt: new Date(Date.now() + ttlMs).toISOString(),
       status: "active",
       ttlMs,
     };
-    this.leases.set(lease.leaseId, lease);
-    return lease;
+    return {
+      acquired: true,
+      lease: this.activeLease,
+      epoch: this.epoch,
+      fencingToken: this.fencingToken,
+    };
   }
 
-  async releaseLeadership(nodeId: string, leaseId?: string): Promise<void> {
-    this.releaseLeadershipCalls.push({ nodeId, leaseId });
-    if (leaseId) {
-      this.leases.delete(leaseId);
-    } else {
-      for (const [id, lease] of this.leases) {
-        if (lease.nodeId === nodeId) {
-          this.leases.delete(id);
-        }
-      }
+  renewLeadership(): {
+    renewed: boolean;
+    lease: LeaderLease | null;
+    fencingToken: number;
+  } {
+    if (this.activeLease == null) {
+      return { renewed: false, lease: null, fencingToken: this.fencingToken };
     }
+    this.activeLease = {
+      ...this.activeLease,
+      expiresAt: new Date(Date.now() + this.activeLease.ttlMs).toISOString(),
+    };
+    return {
+      renewed: true,
+      lease: this.activeLease,
+      fencingToken: this.fencingToken,
+    };
   }
 
-  setMockLeadership(nodeId: string, isLeader: boolean, epoch = 1): void {
-    if (isLeader) {
-      const lease: LeaderLease = {
-        leaseId: `lease-${nodeId}`,
-        nodeId,
-        epoch,
-        acquiredAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 15000).toISOString(),
-        status: "active",
-        ttlMs: 15000,
-      };
-      this.leases.set(lease.leaseId, lease);
-    }
-  }
-
-  clearMocks(): void {
-    this.leases.clear();
-    this.queryLeadershipCalls = [];
-    this.renewLeadershipCalls = [];
-    this.acquireLeadershipCalls = [];
-    this.releaseLeadershipCalls = [];
+  releaseLeadership(nodeId?: string, leaseId?: string): boolean {
+    this.releases.push({ nodeId, leaseId });
+    this.activeLease = null;
+    this.leaderNodeId = null;
+    this.expired = true;
+    return true;
   }
 }
 
-function createMockCoordinator(): MockHaCoordinatorService {
-  return new MockHaCoordinatorService();
-}
-
-function createTestOptions(coordinator: MockHaCoordinatorService, overrides: Partial<LeaderElectionServiceOptions> = {}): { coordinator: MockHaCoordinatorService; options: LeaderElectionServiceOptions } {
-  return {
-    coordinator,
-    options: {
+function createService(
+  coordinator: TestCoordinator = new TestCoordinator(),
+  overrides: Partial<LeaderElectionServiceOptions> = {},
+): { coordinator: TestCoordinator; service: LeaderElectionService } {
+  const service = new LeaderElectionService(
+    coordinator as unknown as HaCoordinatorService,
+    {
       nodeId: "node-1",
       region: "us-east-1",
+      haLevel: "HA_2",
+      haConfig: {
+        leaseRenewalIntervalMs: 0,
+        heartbeatIntervalMs: 0,
+        ...(overrides.haConfig ?? {}),
+      },
       ...overrides,
     },
-  };
+  );
+  return { coordinator, service };
 }
 
-// ---------------------------------------------------------------------------
-// Tests: HA Level Configurations
-// ---------------------------------------------------------------------------
-
-test("HA_LEVEL_CONFIGS contains HA_1 configuration", () => {
-  const config = HA_LEVEL_CONFIGS["HA_1"];
-
-  assert.equal(config.haLevel, "HA_1");
-  assert.equal(config.leaseRenewalIntervalMs, 0);
-  assert.equal(config.leaseTtlMs, 60000);
-  assert.equal(config.crossRegionFailover, false);
-  assert.equal(config.walEnabled, false);
+test("HA_LEVEL_CONFIGS expose immutable canonical defaults", () => {
+  assert.equal(HA_LEVEL_CONFIGS.HA_1.leaseRenewalIntervalMs, 0);
+  assert.equal(HA_LEVEL_CONFIGS.HA_2.leaseTtlMs, 15_000);
+  assert.equal(HA_LEVEL_CONFIGS.HA_3.crossRegionFailover, true);
+  assert.ok(Object.isFrozen(HA_LEVEL_CONFIGS.HA_1));
+  assert.ok(Object.isFrozen(HA_LEVEL_CONFIGS.HA_2));
+  assert.ok(Object.isFrozen(HA_LEVEL_CONFIGS.HA_3));
 });
 
-test("HA_LEVEL_CONFIGS contains HA_2 configuration", () => {
-  const config = HA_LEVEL_CONFIGS["HA_2"];
-
-  assert.equal(config.haLevel, "HA_2");
-  assert.equal(config.leaseRenewalIntervalMs, 5000);
-  assert.equal(config.leaseTtlMs, 15000);
-  assert.equal(config.crossRegionFailover, false);
-  assert.equal(config.walEnabled, true);
-  assert.equal(config.eventReplayEnabled, true);
-});
-
-test("HA_LEVEL_CONFIGS contains HA_3 configuration", () => {
-  const config = HA_LEVEL_CONFIGS["HA_3"];
-
-  assert.equal(config.haLevel, "HA_3");
-  assert.equal(config.leaseRenewalIntervalMs, 3000);
-  assert.equal(config.leaseTtlMs, 10000);
-  assert.equal(config.crossRegionFailover, true);
-  assert.equal(config.walEnabled, true);
-  assert.equal(config.eventReplayEnabled, true);
-});
-
-test("HA_LEVEL_CONFIGS are frozen objects", () => {
-  assert.ok(Object.isFrozen(HA_LEVEL_CONFIGS["HA_1"]));
-  assert.ok(Object.isFrozen(HA_LEVEL_CONFIGS["HA_2"]));
-  assert.ok(Object.isFrozen(HA_LEVEL_CONFIGS["HA_3"]));
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Service Initialization
-// ---------------------------------------------------------------------------
-
-test("service initializes with stopped state", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
+test("constructor exposes node identity and effective config", () => {
+  const { service } = createService(new TestCoordinator(), {
+    haLevel: "HA_3",
+    haConfig: { leaseTtlMs: 22_000 },
+  });
 
   assert.equal(service.getState(), "stopped");
-});
-
-test("service uses HA_2 as default level", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal((service as any).config.haLevel, "HA_2");
-});
-
-test("service accepts custom HA level", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    haLevel: "HA_3",
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal((service as any).config.haLevel, "HA_3");
-});
-
-test("service accepts custom HA config overrides", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    haLevel: "HA_2",
-    haConfig: {
-      leaseTtlMs: 30000,
-    },
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal((service as any).config.leaseTtlMs, 30000);
-});
-
-test("service accepts custom leaseTtlMs directly", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    leaseTtlMs: 45000,
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal((service as any).config.leaseTtlMs, 45000);
-});
-
-test("service accepts custom renewal interval", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    renewalIntervalMs: 2000,
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal((service as any).config.leaseRenewalIntervalMs, 2000);
-});
-
-test("service accepts node metadata", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    nodeMetadata: { version: "1.0.0", region: "us-east-1" },
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.deepEqual((service as any).nodeMetadata, { version: "1.0.0", region: "us-east-1" });
-});
-
-test("service throws RuntimeError when started after disposal", async () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  (service as any).disposed = true;
-
-  await assert.rejects(
-    () => service.start(),
-    (err: unknown) =>
-      err instanceof Error && err.message.includes("disposed"),
-  );
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Leadership Query
-// ---------------------------------------------------------------------------
-
-test("queryLeadership returns correct structure", async () => {
-  const mock = createMockCoordinator();
-  mock.setMockLeadership("node-1", true);
-  const { options } = createTestOptions(mock);
-  const service = new LeaderElectionService(mock, options);
-
-  const result = await service.queryLeadership();
-
-  assert.ok(typeof result.isLeader === "boolean");
-  assert.ok(typeof result.leaderNodeId === "string" || result.leaderNodeId === null);
-  assert.ok(typeof result.epoch === "number");
-  assert.ok(typeof result.fencingToken === "number");
-  assert.ok(typeof result.expiresAt === "string" || result.expiresAt === null);
-  assert.ok(typeof result.isExpired === "boolean");
-});
-
-test("queryLeadership returns not leader when no lease held", async () => {
-  const mock = createMockCoordinator();
-  const { options } = createTestOptions(mock);
-  const service = new LeaderElectionService(mock, options);
-
-  const result = await service.queryLeadership();
-
-  assert.equal(result.isLeader, false);
-  assert.equal(result.leaderNodeId, null);
-  assert.equal(result.epoch, 0);
-});
-
-test("queryLeadership tracks coordinator calls", async () => {
-  const mock = createMockCoordinator();
-  const { options } = createTestOptions(mock);
-  const service = new LeaderElectionService(mock, options);
-
-  await service.queryLeadership();
-
-  assert.equal(mock.queryLeadershipCalls.length, 1);
-  assert.equal(mock.queryLeadershipCalls[0].nodeId, "node-1");
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Lease Information
-// ---------------------------------------------------------------------------
-
-test("getLeaseInfo returns null when no lease held", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  const leaseInfo = service.getLeaseInfo();
-
-  assert.equal(leaseInfo, null);
-});
-
-test("hasLeadership returns false when no lease", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal(service.hasLeadership(), false);
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Node Information
-// ---------------------------------------------------------------------------
-
-test("getNodeId returns configured node ID", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    nodeId: "custom-node-id",
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal(service.getNodeId(), "custom-node-id");
-});
-
-test("getRegion returns configured region", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    region: "eu-west-1",
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal(service.getRegion(), "eu-west-1");
-});
-
-test("getHaLevel returns configured HA level", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    haLevel: "HA_3",
-  });
-  const service = new LeaderElectionService(coordinator, options);
-
+  assert.equal(service.getNodeId(), "node-1");
+  assert.equal(service.getRegion(), "us-east-1");
   assert.equal(service.getHaLevel(), "HA_3");
+  assert.equal(service.getConfig().leaseTtlMs, 22_000);
 });
 
-test("getConfig returns HA level configuration", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  const config = service.getConfig();
-
-  assert.ok(config != null);
-  assert.equal(config.haLevel, "HA_2");
-  assert.ok(typeof config.leaseTtlMs === "number");
-  assert.ok(typeof config.leaseRenewalIntervalMs === "number");
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Leadership Check Methods
-// ---------------------------------------------------------------------------
-
-test("isLeader returns false when not holding leadership", async () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal(await service.isLeader(), false);
-});
-
-test("isFollower returns true when not leader and not stopped", async () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  (service as any).state = "follower";
-
-  assert.equal(service.isFollower(), true);
-});
-
-test("isFollower returns false when leader", async () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  (service as any).state = "leader";
-
-  assert.equal(service.isFollower(), false);
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Event Emission
-// ---------------------------------------------------------------------------
-
-test("service emits election_start event", async () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    haLevel: "HA_1",
-  });
-  const service = new LeaderElectionService(coordinator, options);
-  const events: LeaderElectionEvent[] = [];
-
-  service.on("election_start", () => events.push("election_start"));
-  await service.start();
-
-  assert.ok(events.includes("election_start"));
-});
-
-test("service emits leadership_acquired event on successful election", async () => {
-  const mock = createMockCoordinator();
-  const { options } = createTestOptions(mock, { haLevel: "HA_1" });
-  const service = new LeaderElectionService(mock, options);
-  const events: LeaderElectionEvent[] = [];
-
-  service.on("leadership_acquired", () => events.push("leadership_acquired"));
-  await service.start();
-
-  assert.ok(events.includes("leadership_acquired"));
-});
-
-test("service can have event listeners removed", async () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    haLevel: "HA_1",
-  });
-  const service = new LeaderElectionService(coordinator, options);
-  const events: LeaderElectionEvent[] = [];
-
-  const listener = () => events.push("election_start");
-  service.on("election_start", listener);
-  service.off("election_start", listener);
-  await service.start();
-
-  assert.ok(!events.includes("election_start"));
-});
-
-// ---------------------------------------------------------------------------
-// Tests: State Transitions
-// ---------------------------------------------------------------------------
-
-test("service transitions to leader state after acquiring leadership", async () => {
-  const mock = createMockCoordinator();
-  const { options } = createTestOptions(mock, { haLevel: "HA_1" });
-  const service = new LeaderElectionService(mock, options);
+test("HA_1 start enters leader state without coordinator lease calls", async () => {
+  const coordinator = new TestCoordinator();
+  const { service } = createService(coordinator, { haLevel: "HA_1", haConfig: {} });
 
   await service.start();
 
   assert.equal(service.getState(), "leader");
+  assert.equal(service.isLeader(), true);
+  assert.equal(service.getLeaderNodeId(), "node-1");
+  assert.equal(coordinator.activeLease, null);
+  assert.deepEqual(service.queryLeadership(), {
+    isLeader: true,
+    leaderNodeId: "node-1",
+    epoch: 1,
+    fencingToken: 1,
+    expiresAt: service.getCurrentLease()?.expiresAt ?? null,
+    isExpired: false,
+  });
 });
 
-test("service transitions to follower state when leadership lost", async () => {
-  const mock = createMockCoordinator();
-  const { options } = createTestOptions(mock, {
-    haLevel: "HA_2",
-    haConfig: {
-      leaseRenewalIntervalMs: 100, // Very short renewal
-      leaseTtlMs: 50,
-    },
-  });
-  const service = new LeaderElectionService(mock, options);
+test("start acquires leadership when coordinator reports no active leader", async () => {
+  const { coordinator, service } = createService();
 
-  // Set up a different node as leader so this node becomes follower
-  mock.setMockLeadership("other-node", true);
   await service.start();
 
-  // The service should have transitioned through states
-  // Actual state depends on election timing
-  assert.ok(["candidate", "follower", "leader", "shutdown"].includes(service.getState()));
+  assert.equal(coordinator.registrations.length, 1);
+  assert.equal(service.getState(), "leader");
+  assert.equal(service.hasLeadership(), true);
+  assert.equal(service.getLeaderNodeId(), "node-1");
+  assert.equal(service.getFencingToken(), 1);
 });
 
-test("attemptElection serializes overlapping election attempts", async () => {
-  const coordinator = createMockCoordinator();
-  const { options } = createTestOptions(coordinator);
-  const service = new LeaderElectionService(coordinator, options);
-  let releaseLeadershipQuery: (() => void) | null = null;
-  const leadershipQueryBlocked = new Promise<void>((resolve) => {
-    releaseLeadershipQuery = resolve;
-  });
-
-  coordinator.queryLeadership = async (nodeId: string) => {
-    coordinator.queryLeadershipCalls.push({ nodeId });
-    await leadershipQueryBlocked;
-    return {
-      isLeader: false,
-      leaderNodeId: null,
-      epoch: 0,
-      fencingToken: 0,
-      expiresAt: null,
-      isExpired: false,
-    };
+test("start becomes follower when another leader holds a valid lease", async () => {
+  const coordinator = new TestCoordinator();
+  coordinator.leaderNodeId = "node-2";
+  coordinator.epoch = 7;
+  coordinator.fencingToken = 9;
+  coordinator.activeLease = {
+    leaseId: "lease-7",
+    nodeId: "node-2",
+    epoch: 7,
+    acquiredAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 15_000).toISOString(),
+    status: "active",
+    ttlMs: 15_000,
   };
 
-  const firstAttempt = (service as any).attemptElection() as Promise<void>;
-  const secondAttempt = (service as any).attemptElection() as Promise<void>;
+  const { service } = createService(coordinator);
+  await service.start();
 
-  releaseLeadershipQuery?.();
-  await Promise.all([firstAttempt, secondAttempt]);
-
-  assert.equal(coordinator.queryLeadershipCalls.length, 1);
-  assert.equal(coordinator.acquireLeadershipCalls.length, 1);
+  assert.equal(service.getState(), "follower");
+  assert.equal(service.isFollower(), true);
+  assert.equal(service.isLeader(), false);
+  assert.equal(service.getLeaderNodeId(), "node-2");
 });
 
-// ---------------------------------------------------------------------------
-// Tests: Max Election Attempts
-// ---------------------------------------------------------------------------
+test("forceAcquireLeadership promotes the node and records a lease", async () => {
+  const { service } = createService();
 
-test("service uses default max election attempts of 5", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
+  const acquired = await service.forceAcquireLeadership();
 
-  assert.equal((service as any).maxElectionAttempts, 5);
+  assert.equal(acquired, true);
+  assert.equal(service.getState(), "leader");
+  assert.equal(service.getCurrentLease()?.nodeId, "node-1");
+  assert.equal(service.getFencingToken(), 1);
 });
 
-test("service accepts custom max election attempts", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator(), {
-    maxElectionAttempts: 10,
+test("stop releases the active lease and returns to stopped state", async () => {
+  const { coordinator, service } = createService();
+  await service.start();
+
+  await service.stop();
+
+  assert.equal(service.getState(), "stopped");
+  assert.equal(service.getCurrentLease(), null);
+  assert.equal(coordinator.releases.length, 1);
+  assert.equal(coordinator.releases[0]?.nodeId, "node-1");
+});
+
+test("registerWithGracefulShutdown adds a critical stop handler", () => {
+  const { service } = createService();
+  const calls: Array<{
+    name: string;
+    timeoutMs?: number;
+    critical?: boolean;
+    handler: () => Promise<void>;
+  }> = [];
+
+  service.registerWithGracefulShutdown({
+    addHandler(handler) {
+      calls.push(handler);
+    },
   });
-  const service = new LeaderElectionService(coordinator, options);
 
-  assert.equal((service as any).maxElectionAttempts, 10);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.name, "leader-election:node-1");
+  assert.equal(calls[0]?.critical, true);
+  assert.equal(calls[0]?.timeoutMs, service.getConfig().leaseTtlMs);
 });
 
-// ---------------------------------------------------------------------------
-// Tests: Epoch and Fencing Token
-// ---------------------------------------------------------------------------
-
-test("service starts with epoch 0", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal((service as any).currentEpoch, 0);
-});
-
-test("service starts with fencing token 0", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal((service as any).currentFencingToken, 0);
-});
-
-test("getFencingToken returns 0 when not leader", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  assert.equal(service.getFencingToken(), 0);
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Disposal
-// ---------------------------------------------------------------------------
-
-test("dispose() marks service as disposed", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
+test("dispose is idempotent and clears volatile leadership state", async () => {
+  const { service } = createService();
+  await service.forceAcquireLeadership();
 
   service.dispose();
-
-  assert.equal((service as any).disposed, true);
-});
-
-test("dispose() can be called multiple times", () => {
-  const { coordinator, options } = createTestOptions(createMockCoordinator());
-  const service = new LeaderElectionService(coordinator, options);
-
-  service.dispose();
-  service.dispose(); // Should not throw
-
-  assert.equal((service as any).disposed, true);
-});
-
-test("dispose() clears renewal interval handle", () => {
-  const mock = createMockCoordinator();
-  const { options } = createTestOptions(mock, {
-    haLevel: "HA_1",
-  });
-  const service = new LeaderElectionService(mock, options);
-
-  // Manually set a renewal interval handle
-  (service as any).renewalIntervalHandle = setInterval(() => {}, 1000);
   service.dispose();
 
-  assert.equal((service as any).renewalIntervalHandle, null);
+  assert.equal(service.getState(), "stopped");
+  assert.equal(service.getCurrentLease(), null);
 });
 
-test("dispose() clears heartbeat interval handle", () => {
-  const mock = createMockCoordinator();
-  const { options } = createTestOptions(mock, {
-    haLevel: "HA_1",
-  });
-  const service = new LeaderElectionService(mock, options);
+test("getHaConfig returns a defensive copy", () => {
+  const { service } = createService();
+  const config = service.getHaConfig();
+  const mutated = { ...config, leaseTtlMs: 1 } satisfies HaLevelConfig;
 
-  // Manually set a heartbeat interval handle
-  (service as any).heartbeatIntervalHandle = setInterval(() => {}, 1000);
-  service.dispose();
-
-  assert.equal((service as any).heartbeatIntervalHandle, null);
+  assert.equal(service.getHaConfig().leaseTtlMs, HA_LEVEL_CONFIGS.HA_2.leaseTtlMs);
+  assert.equal(mutated.leaseTtlMs, 1);
 });

@@ -12,6 +12,26 @@ import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult, Release
 import { AutonomyBoundaryPolicy, type AutonomyBoundaryDecision, type AutonomyTarget } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/autonomy-boundary-policy.js";
 import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
+const CANONICAL_TRAFFIC_ALLOCATION: ReleasePolicy["trafficAllocation"] = {
+  L0_off: 0,
+  L1_evaluate: 0,
+  L2_canary: 5,
+  L3_partial: 25,
+  L4_stable: 75,
+  L5_full: 100,
+  off: 0,
+  suggest: 0,
+  shadow: 0,
+  evaluate_0: 0,
+  canary_5: 5,
+  partial_25: 25,
+  partial_50: 50,
+  partial_75: 75,
+  stable: 100,
+  stable_75: 75,
+  stable_100: 100,
+};
+
 function createMockLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {
     learningObjectId: "lo_test_1",
@@ -47,14 +67,7 @@ describe("ReleasePolicy", () => {
         name: "Test Policy",
         description: "Test description",
         targetLevels: ["L2_canary", "L3_partial"],
-        trafficAllocation: {
-          L0_off: 0,
-          L1_evaluate: 0,
-          L2_canary: 5,
-          L3_partial: 25,
-          L4_stable: 75,
-          L5_full: 100,
-        },
+        trafficAllocation: CANONICAL_TRAFFIC_ALLOCATION,
         minimumObservationWindowMs: 60_000,
         rollbackFailureRateThreshold: 0.05,
         rollbackLatencyMultiplierThreshold: 2,
@@ -74,14 +87,7 @@ describe("ReleasePolicy", () => {
         name: "Strict Policy",
         description: "Stricter thresholds",
         targetLevels: ["L4_stable"],
-        trafficAllocation: {
-          L0_off: 0,
-          L1_evaluate: 0,
-          L2_canary: 5,
-          L3_partial: 25,
-          L4_stable: 75,
-          L5_full: 100,
-        },
+        trafficAllocation: CANONICAL_TRAFFIC_ALLOCATION,
         minimumObservationWindowMs: 120_000, // Longer window
         rollbackFailureRateThreshold: 0.02, // Stricter 2%
         rollbackLatencyMultiplierThreshold: 1.5, // Stricter 1.5x
@@ -101,14 +107,7 @@ describe("ReleasePolicy", () => {
         name: "Eval Policy",
         description: "For evaluation",
         targetLevels: ["L2_canary"],
-        trafficAllocation: {
-          L0_off: 0,
-          L1_evaluate: 0,
-          L2_canary: 5,
-          L3_partial: 25,
-          L4_stable: 75,
-          L5_full: 100,
-        },
+        trafficAllocation: CANONICAL_TRAFFIC_ALLOCATION,
         minimumObservationWindowMs: 60_000,
         rollbackFailureRateThreshold: 0.05,
         rollbackLatencyMultiplierThreshold: 2,
@@ -147,14 +146,7 @@ describe("ReleasePolicy", () => {
             name: "Action Test",
             description: "Test",
             targetLevels: ["L2_canary"],
-            trafficAllocation: {
-              L0_off: 0,
-              L1_evaluate: 0,
-              L2_canary: 5,
-              L3_partial: 25,
-              L4_stable: 75,
-              L5_full: 100,
-            },
+            trafficAllocation: CANONICAL_TRAFFIC_ALLOCATION,
             minimumObservationWindowMs: 60_000,
             rollbackFailureRateThreshold: 0.05,
             rollbackLatencyMultiplierThreshold: 2,
@@ -264,7 +256,7 @@ describe("AutonomyBoundaryPolicy", () => {
     test("blocks routing_policy when learning objects are not validated", () => {
       const policy = new AutonomyBoundaryPolicy();
       const learningObjects = [
-        createMockLearningObject({ evidenceRefs: ["signal_1"], promotionStatus: "pending" }),
+        createMockLearningObject({ evidenceRefs: ["signal_1"], promotionStatus: "draft" }),
       ];
 
       const decision = policy.decide("routing_policy", learningObjects);
@@ -289,7 +281,7 @@ describe("AutonomyBoundaryPolicy", () => {
       const policy = new AutonomyBoundaryPolicy();
       const learningObjects = [
         createMockLearningObject({ evidenceRefs: ["signal_1"], promotionStatus: "validated" }),
-        createMockLearningObject({ evidenceRefs: ["signal_2"], promotionStatus: "pending" }), // Not validated
+        createMockLearningObject({ evidenceRefs: ["signal_2"], promotionStatus: "draft" }), // Not validated
       ];
 
       const decision = policy.decide("routing_policy", learningObjects);

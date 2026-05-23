@@ -298,7 +298,7 @@ test("ReplayRepairControlService.planRepairActions preserves candidateId relatio
 test("ReplayRepairControlService.assertCanOpenForTraffic does not throw for open_for_traffic", () => {
   const service = new ReplayRepairControlService();
   const findings: StartupConsistencyFinding[] = [makeFinding({ severity: "info" })];
-  const report = service.buildStartupConsistencyReport({ findings, status: "open_for_traffic" });
+  const report = service.buildStartupConsistencyReport({ findings });
 
   service.assertCanOpenForTraffic(report); // should not throw
 });
@@ -306,7 +306,7 @@ test("ReplayRepairControlService.assertCanOpenForTraffic does not throw for open
 test("ReplayRepairControlService.assertCanOpenForTraffic does not throw for repair_required", () => {
   const service = new ReplayRepairControlService();
   const findings: StartupConsistencyFinding[] = [makeFinding({ recoverable: true })];
-  const report = service.buildStartupConsistencyReport({ findings, status: "repair_required" });
+  const report = service.buildStartupConsistencyReport({ findings });
 
   service.assertCanOpenForTraffic(report); // should not throw
 });
@@ -314,7 +314,7 @@ test("ReplayRepairControlService.assertCanOpenForTraffic does not throw for repa
 test("ReplayRepairControlService.assertCanOpenForTraffic throws for fail_closed", () => {
   const service = new ReplayRepairControlService();
   const findings: StartupConsistencyFinding[] = [makeFinding({ severity: "p0" })];
-  const report = service.buildStartupConsistencyReport({ findings, status: "fail_closed" });
+  const report = service.buildStartupConsistencyReport({ findings });
 
   assert.throws(
     () => service.assertCanOpenForTraffic(report),

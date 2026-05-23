@@ -40,12 +40,19 @@ function generateTotpCode(secret: string, timestamp: number = Date.now()): strin
   counterBuffer.writeBigInt64BE(BigInt(counter));
   const hmac = createHmac("sha1", Buffer.from(secret, "utf8"));
   const hash = hmac.update(counterBuffer).digest();
-  const offset = hash[hash.length - 1] & 0x0f;
+  const lastByte = hash[hash.length - 1];
+  assert.ok(lastByte !== undefined);
+  const offset = lastByte & 0x0f;
+  const byte0 = hash[offset];
+  const byte1 = hash[offset + 1];
+  const byte2 = hash[offset + 2];
+  const byte3 = hash[offset + 3];
+  assert.ok(byte0 !== undefined && byte1 !== undefined && byte2 !== undefined && byte3 !== undefined);
   const binary =
-    ((hash[offset] & 0x7f) << 24) |
-    ((hash[offset + 1] & 0xff) << 16) |
-    ((hash[offset + 2] & 0xff) << 8) |
-    (hash[offset + 3] & 0xff);
+    ((byte0 & 0x7f) << 24) |
+    ((byte1 & 0xff) << 16) |
+    ((byte2 & 0xff) << 8) |
+    (byte3 & 0xff);
   const otp = binary % 10 ** MFA_CODE_LENGTH;
   return otp.toString().padStart(MFA_CODE_LENGTH, "0");
 }

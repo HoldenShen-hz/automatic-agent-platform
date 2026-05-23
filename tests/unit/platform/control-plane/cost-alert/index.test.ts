@@ -515,8 +515,8 @@ test("CostAlertService recordCost emits exceeded event when budget exceeded", ()
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
-    events.push(event);
+  service.on("cost:limit_reached", (event: unknown) => {
+    events.push(event as CostThresholdExceededEvent);
   });
 
   // Record cost to cross the limit
@@ -559,8 +559,8 @@ test("CostAlertService recordCost emits critical event when entering critical zo
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
-    events.push(event);
+  service.on("cost:limit_reached", (event: unknown) => {
+    events.push(event as CostThresholdExceededEvent);
   });
 
   // Record cost to cross 95% threshold (critical)
@@ -962,8 +962,8 @@ test("CostAlertService emits event with correct eventTier for exceeded", () => {
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
-    events.push(event);
+  service.on("cost:limit_reached", (event: unknown) => {
+    events.push(event as CostThresholdExceededEvent);
   });
 
   service.recordCost({
@@ -997,8 +997,8 @@ test("CostAlertService emits event with correct eventTier for critical", () => {
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
-    events.push(event);
+  service.on("cost:limit_reached", (event: unknown) => {
+    events.push(event as CostThresholdExceededEvent);
   });
 
   service.recordCost({

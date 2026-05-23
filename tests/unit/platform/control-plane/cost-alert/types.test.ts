@@ -114,6 +114,8 @@ test("CostAccumulator interface structure is correct", () => {
     scopeId: "tenant-123",
     accumulatedCostUsd: 500.50,
     accumulatedTokens: 5000,
+    pendingProjectedCostUsd: 0,
+    pendingProjectedTokens: 0,
     periodStart: now,
     periodEnd: now,
     lastUpdatedAt: now,
@@ -172,6 +174,7 @@ test("CostThresholdExceededEvent interface structure is correct", () => {
     limitCostUsd: 100,
     accumulatedTokens: 9500,
     limitTokens: 10000,
+    thresholdMetric: "cost_usd",
     periodStart: now,
     periodEnd: now,
     triggeredAt: now,
@@ -203,6 +206,7 @@ test("CostThresholdExceededEvent with null optional fields", () => {
     limitCostUsd: 10000,
     accumulatedTokens: 80000,
     limitTokens: 100000,
+    thresholdMetric: "cost_usd",
     periodStart: now,
     periodEnd: now,
     triggeredAt: now,
@@ -240,7 +244,9 @@ test("CostAlertConfig interface structure is correct", () => {
       },
     },
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.8,
+    minAlertIntervalMs: 60_000,
   };
 
   assert.equal(config.enabled, true);
@@ -255,7 +261,9 @@ test("CostAlertConfig with null platform policy", () => {
     platformBudgetPolicy: null,
     tenantBudgetPolicies: {},
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.9,
+    minAlertIntervalMs: 60_000,
   };
 
   assert.equal(config.platformBudgetPolicy, null);

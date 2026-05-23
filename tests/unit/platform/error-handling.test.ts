@@ -257,7 +257,7 @@ test("R25-08 and R25-11 WebSocketBridge heartbeat sweep drops dead clients and s
         return { actorId: "actor-1", tenantId: "tenant-a", roles: ["tasks:read"] };
       },
     } as never,
-    () => ({ tenantId: "tenant-b", requiredScopes: ["tasks:read"] }),
+    (taskId) => ({ taskId, tenantId: "tenant-b", requiredScopes: ["tasks:read"] }),
     { heartbeatIntervalMs: 60_000 },
   );
 

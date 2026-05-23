@@ -30,12 +30,14 @@ function createValidBudgetPolicy(): {
   maxDailyCostUsd: number;
   maxMonthlyCostUsd: number;
   warnAtRatio: number;
+  mode: "supervised";
 } {
   return {
     maxTaskCostUsd: 100,
     maxDailyCostUsd: 1000,
     maxMonthlyCostUsd: 10000,
     warnAtRatio: 0.8,
+    mode: "supervised",
   };
 }
 
@@ -197,6 +199,7 @@ test("PolicyEngine denies when estimated cost exceeds budget", () => {
       maxDailyCostUsd: 1000,
       maxMonthlyCostUsd: 10000,
       warnAtRatio: 0.8,
+      mode: "supervised",
     },
   });
   const request = createValidRequest();
@@ -215,6 +218,7 @@ test("PolicyEngine allows when estimated cost is within budget", () => {
       maxDailyCostUsd: 10000,
       maxMonthlyCostUsd: 100000,
       warnAtRatio: 0.8,
+      mode: "supervised",
     },
   });
   const request = createValidRequest();
@@ -233,6 +237,7 @@ test("PolicyEngine uses metadata currentTaskCostUsd for budget check", () => {
       maxDailyCostUsd: 1000,
       maxMonthlyCostUsd: 10000,
       warnAtRatio: 0.8,
+      mode: "supervised",
     },
   });
   const request = createValidRequest();

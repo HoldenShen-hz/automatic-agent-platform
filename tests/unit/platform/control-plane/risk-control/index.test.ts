@@ -108,7 +108,7 @@ test("All types are exported", () => {
   };
 
   assert.equal(request.taskId, "test-task");
-  assert.equal(request.factors.impact, 3);
+  assert.equal(factors.impact, 3);
 });
 
 test("RiskConfig type can be constructed", () => {

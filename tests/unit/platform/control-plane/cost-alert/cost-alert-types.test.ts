@@ -109,6 +109,8 @@ test("CostAccumulator interface structure", () => {
     scopeId: "tenant-abc",
     accumulatedCostUsd: 150.50,
     accumulatedTokens: 75000,
+    pendingProjectedCostUsd: 0,
+    pendingProjectedTokens: 0,
     periodStart: now,
     periodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     lastUpdatedAt: now,
@@ -217,6 +219,7 @@ test("CostThresholdExceededEvent interface structure", () => {
     limitCostUsd: 1000,
     accumulatedTokens: 500000,
     limitTokens: 600000,
+    thresholdMetric: "cost_usd",
     periodStart: now,
     periodEnd: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     triggeredAt: now,
@@ -250,6 +253,7 @@ test("CostThresholdExceededEvent eventTier values", () => {
       limitCostUsd: null,
       accumulatedTokens: 0,
       limitTokens: null,
+      thresholdMetric: "cost_usd",
       periodStart: new Date().toISOString(),
       periodEnd: new Date().toISOString(),
       triggeredAt: new Date().toISOString(),
@@ -286,12 +290,14 @@ test("CostAlertConfig interface structure", () => {
       },
     },
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.8,
+    minAlertIntervalMs: 60_000,
   };
 
   assert.equal(config.enabled, true);
   assert.ok(config.platformBudgetPolicy !== null);
-  assert.equal(config.tenantBudgetPolicies["tenant-1"].scope, "tenant");
+  assert.equal(config.tenantBudgetPolicies["tenant-1"]?.scope, "tenant");
   assert.equal(config.defaultWarningThreshold, 0.8);
 });
 
@@ -301,7 +307,9 @@ test("CostAlertConfig allows null platform budget", () => {
     platformBudgetPolicy: null,
     tenantBudgetPolicies: {},
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.9,
+    minAlertIntervalMs: 60_000,
   };
 
   assert.equal(config.enabled, false);
@@ -406,6 +414,8 @@ test("CostAccumulator period tracking", () => {
     scopeId: "tenant-weekly",
     accumulatedCostUsd: 50,
     accumulatedTokens: 25000,
+    pendingProjectedCostUsd: 0,
+    pendingProjectedTokens: 0,
     periodStart,
     periodEnd,
     lastUpdatedAt: now.toISOString(),

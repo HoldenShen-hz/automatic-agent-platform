@@ -24,7 +24,7 @@ function createTestIncident(overrides: Partial<IncidentDetection> = {}): Inciden
     incidentId: "incident_test_123",
     detectedAt: new Date().toISOString(),
     category: "availability",
-    severity: "p2",
+    severity: "SEV2",
     status: "open",
     title: "Test incident",
     description: "Test description",
@@ -59,14 +59,14 @@ test("IncidentDetector createIncident generates unique IDs for multiple calls", 
 
   const incident1 = detector.createIncident({
     category: "availability",
-    severity: "p2",
+    severity: "SEV2",
     title: "Test 1",
     description: "Description 1",
   });
 
   const incident2 = detector.createIncident({
     category: "availability",
-    severity: "p2",
+    severity: "SEV2",
     title: "Test 2",
     description: "Description 2",
   });
@@ -79,7 +79,7 @@ test("IncidentDetector createIncident with all optional fields", () => {
 
   const incident = detector.createIncident({
     category: "security",
-    severity: "p1",
+    severity: "SEV1",
     title: "Security breach",
     description: "Unauthorized access detected",
     sourceCheckId: "audit_integrity",
@@ -141,32 +141,27 @@ test("IncidentDetector shouldAutoEscalate handles exactly at threshold", () => {
   const exactlyAtThreshold = new Date(Date.now() - 300 * 1000).toISOString();
 
   // Exactly at threshold should return true (elapsed >= threshold)
-  assert.equal(detector.shouldAutoEscalate(exactlyAtThreshold, "p1"), true);
+  assert.equal(detector.shouldAutoEscalate(exactlyAtThreshold, "SEV1"), true);
 });
 
 test("IncidentDetector shouldAutoEscalate handles just under threshold", () => {
   const detector = new IncidentDetector({ autoEscalateP1AfterSeconds: 300 });
   const justUnderThreshold = new Date(Date.now() - 299 * 1000).toISOString();
 
-  assert.equal(detector.shouldAutoEscalate(justUnderThreshold, "p1"), false);
+  assert.equal(detector.shouldAutoEscalate(justUnderThreshold, "SEV1"), false);
 });
 
 test("IncidentDetector classifyUrgency handles all severity levels", () => {
   const detector = new IncidentDetector();
+  const cases: ReadonlyArray<readonly [IncidentSeverity, "critical" | "high" | "medium" | "low"]> = [
+    ["SEV1", "critical"],
+    ["SEV2", "high"],
+    ["SEV3", "medium"],
+    ["SEV4", "low"],
+  ];
 
-  const urgencyMap: Record<IncidentSeverity, "critical" | "high" | "medium" | "low"> = {
-    p1: "critical",
-    p2: "high",
-    p3: "medium",
-    p4: "low",
-  };
-
-  for (const [severity, expectedUrgency] of Object.entries(urgencyMap)) {
-    assert.equal(
-      detector.classifyUrgency(severity as IncidentSeverity),
-      expectedUrgency,
-      `Failed for severity ${severity}`,
-    );
+  for (const [severity, expectedUrgency] of cases) {
+    assert.equal(detector.classifyUrgency(severity), expectedUrgency, `Failed for severity ${severity}`);
   }
 });
 
@@ -175,7 +170,7 @@ test("IncidentDetector handles empty findings array", () => {
 
   const incident = detector.createIncident({
     category: "performance",
-    severity: "p3",
+    severity: "SEV3",
     title: "Latency issue",
     description: "High latency detected",
     symptoms: [],
@@ -189,7 +184,7 @@ test("IncidentDetector handles empty metrics", () => {
 
   const incident = detector.createIncident({
     category: "performance",
-    severity: "p3",
+    severity: "SEV3",
     title: "Issue",
     description: "Description",
     metrics: {},
@@ -203,7 +198,7 @@ test("IncidentDetector handles null values in metrics", () => {
 
   const incident = detector.createIncident({
     category: "performance",
-    severity: "p3",
+    severity: "SEV3",
     title: "Issue",
     description: "Description",
     metrics: { value: null, count: null },
@@ -259,7 +254,7 @@ test("IncidentResolver determineStrategy for system_health category", () => {
 
 test("IncidentResolver determineStrategy for P2 security category", () => {
   const resolver = new IncidentResolver();
-  const incident = createTestIncident({ severity: "p2", category: "security" });
+  const incident = createTestIncident({ severity: "SEV2", category: "security" });
 
   // Security incidents are always manual regardless of severity
   const strategy = resolver.determineStrategy(incident);
@@ -424,7 +419,7 @@ test("IncidentResolver failResolution sets error message", () => {
 
 test("IncidentResolver handles P4 severity", () => {
   const resolver = new IncidentResolver();
-  const incident = createTestIncident({ severity: "p4", category: "configuration" });
+  const incident = createTestIncident({ severity: "SEV4", category: "configuration" });
 
   const strategy = resolver.determineStrategy(incident);
 
@@ -435,7 +430,7 @@ test("IncidentResolver handles P4 severity", () => {
 test("IncidentResolver handles P3 availability with symptoms", () => {
   const resolver = new IncidentResolver();
   const incident = createTestIncident({
-    severity: "p3",
+    severity: "SEV3",
     category: "availability",
     symptoms: ["service_degraded"],
   });
@@ -448,7 +443,7 @@ test("IncidentResolver handles P3 availability with symptoms", () => {
 
 test("IncidentResolver handles P3 performance", () => {
   const resolver = new IncidentResolver();
-  const incident = createTestIncident({ severity: "p3", category: "performance" });
+  const incident = createTestIncident({ severity: "SEV3", category: "performance" });
 
   const strategy = resolver.determineStrategy(incident);
 
@@ -459,7 +454,7 @@ test("IncidentResolver handles P3 performance", () => {
 test("IncidentResolver handles all combinations of severity and category", () => {
   const resolver = new IncidentResolver();
 
-  const severities: IncidentSeverity[] = ["p1", "p2", "p3", "p4"];
+  const severities: IncidentSeverity[] = ["SEV1", "SEV2", "SEV3", "SEV4"];
   const categories: IncidentCategory[] = [
     "system_health",
     "security",

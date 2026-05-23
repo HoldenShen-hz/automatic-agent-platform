@@ -10,8 +10,8 @@ import {
   IncidentResolver,
   type IncidentResolution,
   type ResolutionStrategy,
-  type IncidentDetection,
 } from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-resolver.js";
+import type { IncidentDetection } from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 
 // ============================================================================
 // Helper Functions
@@ -22,7 +22,7 @@ function createMockIncident(overrides: Partial<IncidentDetection> = {}): Inciden
     incidentId: "incident-test-123",
     detectedAt: new Date().toISOString(),
     category: "system_health",  // Use system_health to get default assisted strategy
-    severity: "p2",
+    severity: "SEV2",
     status: "open",
     title: "Test incident",
     description: "Test description",
@@ -40,7 +40,7 @@ function createMockIncident(overrides: Partial<IncidentDetection> = {}): Inciden
 
 test("IncidentResolver determineStrategy for p1 returns manual", () => {
   const resolver = new IncidentResolver();
-  const incident = createMockIncident({ severity: "p1" });
+  const incident = createMockIncident({ severity: "SEV1" });
 
   const strategy = resolver.determineStrategy(incident);
 
@@ -49,7 +49,7 @@ test("IncidentResolver determineStrategy for p1 returns manual", () => {
 
 test("IncidentResolver determineStrategy for p2 returns assisted", () => {
   const resolver = new IncidentResolver();
-  const incident = createMockIncident({ severity: "p2" });
+  const incident = createMockIncident({ severity: "SEV2" });
 
   const strategy = resolver.determineStrategy(incident);
 
@@ -59,7 +59,7 @@ test("IncidentResolver determineStrategy for p2 returns assisted", () => {
 
 test("IncidentResolver determineStrategy for p3 returns assisted", () => {
   const resolver = new IncidentResolver();
-  const incident = createMockIncident({ severity: "p3" });
+  const incident = createMockIncident({ severity: "SEV3" });
 
   const strategy = resolver.determineStrategy(incident);
 
@@ -68,7 +68,7 @@ test("IncidentResolver determineStrategy for p3 returns assisted", () => {
 
 test("IncidentResolver determineStrategy for p4 returns assisted", () => {
   const resolver = new IncidentResolver();
-  const incident = createMockIncident({ severity: "p4" });
+  const incident = createMockIncident({ severity: "SEV4" });
 
   const strategy = resolver.determineStrategy(incident);
 
@@ -77,7 +77,7 @@ test("IncidentResolver determineStrategy for p4 returns assisted", () => {
 
 test("IncidentResolver determineStrategy for security category returns manual", () => {
   const resolver = new IncidentResolver();
-  const incident = createMockIncident({ category: "security", severity: "p2" });
+  const incident = createMockIncident({ category: "security", severity: "SEV2" });
 
   const strategy = resolver.determineStrategy(incident);
 

@@ -107,12 +107,14 @@ test("loadRiskConfig parses priorFailureRateThresholds correctly", () => {
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
     const config = loadRiskConfig(configPath);
+    const thresholds = config.priorFailureRateThresholds;
+    assert.ok(thresholds);
 
-    assert.equal(config.priorFailureRateThresholds.low.maxPercent, 5);
-    assert.equal(config.priorFailureRateThresholds.low.value, 0.25);
-    assert.equal(config.priorFailureRateThresholds.medium.maxPercent, 15);
-    assert.equal(config.priorFailureRateThresholds.high.maxPercent, 40);
-    assert.equal(config.priorFailureRateThresholds.critical.maxPercent, 100);
+    assert.equal(thresholds.low.maxPercent, 5);
+    assert.equal(thresholds.low.value, 0.25);
+    assert.equal(thresholds.medium.maxPercent, 15);
+    assert.equal(thresholds.high.maxPercent, 40);
+    assert.equal(thresholds.critical.maxPercent, 100);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -199,9 +201,11 @@ test("loadRiskConfig parses all confidence levels", () => {
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
     const config = loadRiskConfig(configPath);
-    assert.equal(config.confidenceValues.high, 1.0);
-    assert.equal(config.confidenceValues.medium, 0.7);
-    assert.equal(config.confidenceValues.low, 0.4);
+    const confidenceValues = config.confidenceValues;
+    assert.ok(confidenceValues);
+    assert.equal(confidenceValues.high, 1.0);
+    assert.equal(confidenceValues.medium, 0.7);
+    assert.equal(confidenceValues.low, 0.4);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -304,10 +308,12 @@ test("loadRiskConfig parses stepTypeRiskValues correctly", () => {
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
     const config = loadRiskConfig(configPath);
-    assert.equal(config.stepTypeRiskValues.read, 1);
-    assert.equal(config.stepTypeRiskValues.write, 3);
-    assert.equal(config.stepTypeRiskValues.delete, 5);
-    assert.equal(config.stepTypeRiskValues.external_call, 4);
+    const stepTypeRiskValues = config.stepTypeRiskValues;
+    assert.ok(stepTypeRiskValues);
+    assert.equal(stepTypeRiskValues.read, 1);
+    assert.equal(stepTypeRiskValues.write, 3);
+    assert.equal(stepTypeRiskValues.delete, 5);
+    assert.equal(stepTypeRiskValues.external_call, 4);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -350,9 +356,11 @@ test("loadRiskConfig parses targetSystemRiskValues correctly", () => {
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
     const config = loadRiskConfig(configPath);
-    assert.equal(config.targetSystemRiskValues.internal, 1);
-    assert.equal(config.targetSystemRiskValues.staging, 2);
-    assert.equal(config.targetSystemRiskValues.production, 4);
+    const targetSystemRiskValues = config.targetSystemRiskValues;
+    assert.ok(targetSystemRiskValues);
+    assert.equal(targetSystemRiskValues.internal, 1);
+    assert.equal(targetSystemRiskValues.staging, 2);
+    assert.equal(targetSystemRiskValues.production, 4);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

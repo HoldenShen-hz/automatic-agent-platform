@@ -25,7 +25,27 @@ const TEST_EVENT_BASE: Omit<EventRecord, "id" | "createdAt"> = {
   eventTier: "tier_1",
   payloadJson: '{"status":"running"}',
   traceId: "trace-1",
+  schemaVersion: "v4.3",
+  aggregateId: "task-1",
+  runId: "exec-1",
+  sequence: 1,
+  causationId: null,
+  correlationId: "trace-1",
+  payloadHash: "sha256:audit",
+  idempotencyKey: "idem_base",
+  replayBehavior: "replay_as_fact",
+  principal: "system:test",
+  evidenceRefs: [],
 };
+
+function createAuditEvent(id: string, createdAt: string, overrides: Partial<EventRecord> = {}): EventRecord {
+  return {
+    id,
+    createdAt,
+    ...TEST_EVENT_BASE,
+    ...overrides,
+  };
+}
 
 /**
  * R12-16: Helper to compute expected HMAC-SHA256 checksum (mirrors implementation)
@@ -69,17 +89,7 @@ function expectedChainHash(input: {
 }
 
 test("computeTier1AuditEventChecksum uses HMAC-SHA256 (not plain SHA-256)", () => {
-  const event: EventRecord = {
-    id: "evt-hmac-test-1",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
-    payloadJson: '{"status":"running"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:00:00.000Z",
-  };
+  const event = createAuditEvent("evt-hmac-test-1", "2026-04-07T00:00:00.000Z");
 
   const computedChecksum = computeTier1AuditEventChecksum(event);
 
@@ -141,22 +151,10 @@ test("computeTier1AuditChainHash uses HMAC-SHA256 (not plain SHA-256)", () => {
 });
 
 test("verifyTier1AuditIntegrity detects tampering with event payload", () => {
-  const originalEvent: EventRecord = {
-    id: "evt-tamper-1",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
-    payloadJson: '{"status":"running"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:00:00.000Z",
-  };
-
-  const tamperedEvent: EventRecord = {
-    ...originalEvent,
+  const originalEvent = createAuditEvent("evt-tamper-1", "2026-04-07T00:00:00.000Z");
+  const tamperedEvent = createAuditEvent("evt-tamper-1", "2026-04-07T00:00:00.000Z", {
     payloadJson: '{"status":"tampered","admin":"evil"}',
-  };
+  });
 
   const eventChecksum = computeTier1AuditEventChecksum(originalEvent);
   const chainHash = computeTier1AuditChainHash({
@@ -193,29 +191,12 @@ test("verifyTier1AuditIntegrity detects tampering with event payload", () => {
 });
 
 test("verifyTier1AuditIntegrity detects broken hash chain", () => {
-  const firstEvent: EventRecord = {
-    id: "evt-chain-1",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
-    payloadJson: '{"status":"running"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:00:00.000Z",
-  };
-
-  const secondEvent: EventRecord = {
-    id: "evt-chain-2",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
+  const firstEvent = createAuditEvent("evt-chain-1", "2026-04-07T00:00:00.000Z");
+  const secondEvent = createAuditEvent("evt-chain-2", "2026-04-07T00:01:00.000Z", {
     payloadJson: '{"status":"completed"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:01:00.000Z",
-  };
+    sequence: 2,
+    idempotencyKey: "idem_chain_2",
+  });
 
   const firstChecksum = computeTier1AuditEventChecksum(firstEvent);
   const firstChainHash = computeTier1AuditChainHash({
@@ -283,39 +264,19 @@ test("verifyTier1AuditIntegrity detects broken hash chain", () => {
 
 test("verifyTier1AuditIntegrity verifies intact multi-event HMAC chain", () => {
   const events: EventRecord[] = [
-    {
-      id: "evt-intact-1",
-      taskId: "task-1",
-      sessionId: "sess-1",
-      executionId: "exec-1",
-      eventType: "task:status_changed",
-      eventTier: "tier_1",
+    createAuditEvent("evt-intact-1", "2026-04-07T00:00:00.000Z", {
       payloadJson: '{"status":"queued"}',
-      traceId: "trace-1",
-      createdAt: "2026-04-07T00:00:00.000Z",
-    },
-    {
-      id: "evt-intact-2",
-      taskId: "task-1",
-      sessionId: "sess-1",
-      executionId: "exec-1",
-      eventType: "task:status_changed",
-      eventTier: "tier_1",
+    }),
+    createAuditEvent("evt-intact-2", "2026-04-07T00:01:00.000Z", {
+      sequence: 2,
       payloadJson: '{"status":"running"}',
-      traceId: "trace-1",
-      createdAt: "2026-04-07T00:01:00.000Z",
-    },
-    {
-      id: "evt-intact-3",
-      taskId: "task-1",
-      sessionId: "sess-1",
-      executionId: "exec-1",
-      eventType: "task:status_changed",
-      eventTier: "tier_1",
+      idempotencyKey: "idem_intact_2",
+    }),
+    createAuditEvent("evt-intact-3", "2026-04-07T00:02:00.000Z", {
+      sequence: 3,
       payloadJson: '{"status":"completed"}',
-      traceId: "trace-1",
-      createdAt: "2026-04-07T00:02:00.000Z",
-    },
+      idempotencyKey: "idem_intact_3",
+    }),
   ];
 
   const entries: Tier1AuditIntegrityVerificationEntry[] = [];
@@ -323,6 +284,7 @@ test("verifyTier1AuditIntegrity verifies intact multi-event HMAC chain", () => {
 
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
+    assert.ok(event);
     const chainPosition = i + 1;
     const eventChecksum = computeTier1AuditEventChecksum(event);
     const chainHash = computeTier1AuditChainHash({
@@ -365,17 +327,7 @@ test("HMAC key change invalidates entire chain (tamper-evident)", () => {
   // This test verifies that if someone tries to re-compute checksums with
   // a different key, verification will fail - proving the chain is tamper-evident
 
-  const event: EventRecord = {
-    id: "evt-key-change-1",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
-    payloadJson: '{"status":"running"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:00:00.000Z",
-  };
+  const event = createAuditEvent("evt-key-change-1", "2026-04-07T00:00:00.000Z");
 
   // Original checksum using the real HMAC key
   const originalChecksum = computeTier1AuditEventChecksum(event);
@@ -426,29 +378,12 @@ test("HMAC key change invalidates entire chain (tamper-evident)", () => {
 });
 
 test("verifyTier1AuditIntegrity detects missing event in chain", () => {
-  const firstEvent: EventRecord = {
-    id: "evt-missing-1",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
-    payloadJson: '{"status":"running"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:00:00.000Z",
-  };
-
-  const thirdEvent: EventRecord = {
-    id: "evt-missing-3",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
+  const firstEvent = createAuditEvent("evt-missing-1", "2026-04-07T00:00:00.000Z");
+  const thirdEvent = createAuditEvent("evt-missing-3", "2026-04-07T00:02:00.000Z", {
+    sequence: 3,
     payloadJson: '{"status":"completed"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:02:00.000Z",
-  };
+    idempotencyKey: "idem_missing_3",
+  });
 
   const firstChecksum = computeTier1AuditEventChecksum(firstEvent);
   const firstChainHash = computeTier1AuditChainHash({
@@ -507,17 +442,7 @@ test("verifyTier1AuditIntegrity detects missing event in chain", () => {
 });
 
 test("algorithm field is correctly set to HMAC-SHA256 in integrity records", () => {
-  const event: EventRecord = {
-    id: "evt-algo-check",
-    taskId: "task-1",
-    sessionId: "sess-1",
-    executionId: "exec-1",
-    eventType: "task:status_changed",
-    eventTier: "tier_1",
-    payloadJson: '{"status":"running"}',
-    traceId: "trace-1",
-    createdAt: "2026-04-07T00:00:00.000Z",
-  };
+  const event = createAuditEvent("evt-algo-check", "2026-04-07T00:00:00.000Z");
 
   const eventChecksum = computeTier1AuditEventChecksum(event);
   const chainHash = computeTier1AuditChainHash({

@@ -20,6 +20,12 @@ import {
   type SandboxMode,
 } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
+const SANDBOX_LIMITS: Pick<SandboxPolicy, "timeLimitMs" | "memoryLimitBytes" | "cpuLimitFraction"> = {
+  timeLimitMs: 0,
+  memoryLimitBytes: 0,
+  cpuLimitFraction: 0,
+};
+
 // ============================================================================
 // Sandbox Mode Normalization Tests
 // ============================================================================
@@ -88,6 +94,7 @@ test("checkSandboxPath allows path within allowed roots", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/myfile.txt");
@@ -105,6 +112,7 @@ test("checkSandboxPath denies path outside allowed roots", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/etc/passwd");
@@ -121,6 +129,7 @@ test("checkSandboxPath denies path in denied roots", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/secrets/file.txt");
@@ -137,6 +146,7 @@ test("checkSandboxPath rejects null bytes in path", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/file\0.txt");
@@ -153,6 +163,7 @@ test("checkSandboxPath handles normalized unicode paths", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   // Path with unicode normalization
@@ -174,6 +185,7 @@ test("checkSandboxPath denies exact match to denied root", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/home/.ssh");
@@ -190,6 +202,7 @@ test("checkSandboxPath denies subpath of denied root", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/home/.ssh/id_rsa");
@@ -210,6 +223,7 @@ test("checkSandboxPath allows path within any allowed root", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result1 = checkSandboxPath(policy, "/tmp/file.txt");
@@ -231,6 +245,7 @@ test("checkSandboxPath denies path not in any allowed root", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/home/user/file.txt");
@@ -321,6 +336,7 @@ test("checkSandboxPath returns normalizedPath in result", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/file.txt");
@@ -337,6 +353,7 @@ test("checkSandboxPath sets reasonCode to null when allowed", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/file.txt");
@@ -352,6 +369,7 @@ test("checkSandboxPath sets reasonCode when denied", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/etc/passwd");
@@ -372,6 +390,7 @@ test("checkSandboxPath handles empty allowed roots", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/file.txt");
@@ -388,6 +407,7 @@ test("checkSandboxPath handles paths with trailing slash", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/file.txt");
@@ -403,6 +423,7 @@ test("checkSandboxPath handles relative paths", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "file.txt");
@@ -420,6 +441,7 @@ test("checkSandboxPath handles paths with .. traversal", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/tmp/../tmp/file.txt");
@@ -435,6 +457,7 @@ test("checkSandboxPath handles realpathEnforced flag", () => {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const policyWithoutRealpath: SandboxPolicy = {
@@ -445,6 +468,7 @@ test("checkSandboxPath handles realpathEnforced flag", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   const resultWith = checkSandboxPath(policyWithRealpath, "/tmp/file.txt");
@@ -464,6 +488,7 @@ test("checkSandboxPath handles symlinkPolicy allow_explicit", () => {
     realpathEnforced: false,
     symlinkPolicy: "allow_explicit",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   // With allow_explicit, symlink checks are skipped
@@ -484,6 +509,7 @@ test("checkSandboxPath handles various riskCategory values through mode", () => 
       realpathEnforced: false,
       symlinkPolicy: "deny",
       processRuleMode: "deny",
+      ...SANDBOX_LIMITS,
     };
 
     const result = checkSandboxPath(policy, "/tmp/file.txt");

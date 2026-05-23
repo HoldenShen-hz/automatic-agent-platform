@@ -30,6 +30,7 @@ function makeTenant(tenantId: string, orgId: string): TenantRecord {
     artifactScope: "tenant",
     isolationMode: "shared_logical",
     deploymentMode: "cloud_shared",
+    quotas: {},
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
   };

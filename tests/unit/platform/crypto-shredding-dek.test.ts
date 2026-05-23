@@ -35,6 +35,7 @@ test("R26-13 and R26-24 field protection and DEK encryption use authenticated en
     keyRef: "kms://tenant-a/key-1",
   });
   const ciphertext = (protectedResult.protectedRecord.customer as Record<string, string>).email;
+  assert.ok(ciphertext);
   assert.match(ciphertext, /^enc:[a-f0-9]+:[a-f0-9]+:[a-f0-9]+:[a-f0-9]+$/);
   assert.equal(encryption.revealField({ ciphertext, keyRef: "kms://tenant-a/key-1" }), "alice@example.com");
 
@@ -124,6 +125,7 @@ test("R26-17 metric aggregator maintains rolling window counts and percentile-st
         totalEnqueuedPerMinute: 20,
         totalDequeuedPerMinute: 18,
         totalFailedJobs: 1,
+        overallSuccessRate: 0.95,
         averageWaitTimeMs: 120,
         p95WaitTimeMs: 200,
       },

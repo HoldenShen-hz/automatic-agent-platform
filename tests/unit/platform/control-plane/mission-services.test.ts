@@ -130,6 +130,7 @@ test("Mission P1/P2 support services enforce observability, learning, and region
 
 test("LegacyMissionBackfillService batch backfills Task and Session mission refs with unresolved accounting", () => {
   const service = new LegacyMissionBackfillService();
+  type LegacyBackfillRecord = { id: string; missionRef?: unknown };
   const missionRef = {
     missionId: "mis_001",
     missionSnapshotId: "msnap_001",
@@ -137,9 +138,11 @@ test("LegacyMissionBackfillService batch backfills Task and Session mission refs
     boundAt: "2026-05-21T00:00:00.000Z",
     boundBy: principal.principalId,
   };
+  const tasks: readonly LegacyBackfillRecord[] = [{ id: "task_missing" }, { id: "task_existing", missionRef }];
+  const sessions: readonly LegacyBackfillRecord[] = [{ id: "session_missing" }, { id: "session_unresolved" }];
   const result = service.backfillBatch({
-    tasks: [{ id: "task_missing" }, { id: "task_existing", missionRef }],
-    sessions: [{ id: "session_missing" }, { id: "session_unresolved" }],
+    tasks,
+    sessions,
     resolveMissionRef(record) {
       return record.id === "session_unresolved" ? null : missionRef;
     },
@@ -190,7 +193,7 @@ test("MissionResolver handles explicit, ad hoc, and high-risk fail-closed paths"
   const base: MissionResolutionRequest = {
     tenantId: "tenant_001",
     confirmedTaskSpecId: "ctspec_001",
-    principal,
+    principal: { ...principal, roles: [...principal.roles] },
     goal: "Do coding task",
     domainId: "coding",
     riskClass: "low",

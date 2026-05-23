@@ -6,6 +6,7 @@ import {
   inferCapabilitiesForAction,
   listPlatformRoles,
   PlatformPrincipalType,
+  PlatformCapability,
   PlatformRole,
   roleGrantsCapabilities,
 } from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
@@ -346,7 +347,7 @@ test("evaluateAuthorizationContext confidential data without full-auto does not 
 
 test("roleGrantsCapabilities works with all roles", () => {
   for (const role of ALL_ROLES) {
-    const caps: PlatformRole[] = [];
+    const caps: PlatformCapability[] = [];
     const result = roleGrantsCapabilities([role], caps);
     assert.equal(result, true, `roleGrantsCapabilities([${role}], []) should return true`);
   }

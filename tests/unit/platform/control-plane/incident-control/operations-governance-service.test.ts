@@ -141,6 +141,7 @@ function createHarness(prefix: string) {
     queueAffinity: "default",
     runtimeInstanceId: "runtime-ops-1",
     restartedFromRuntimeInstanceId: null,
+    version: 1,
     restartGeneration: 0,
     cpuPct: 18,
     memoryMb: 96,

@@ -29,6 +29,7 @@ function createTestDb(): AuthoritativeSqlDatabase {
     backendType: "sqlite",
     connection: db as Pick<DatabaseSync, "exec" | "prepare">,
     migrate: () => {},
+    close: () => db.close(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getSchemaStatus: (): any => ({ currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: [] }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

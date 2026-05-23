@@ -156,7 +156,9 @@ test("loadCostAlertConfig loads valid config from custom path", () => {
       },
       tenantBudgetPolicies: {},
       packBudgetPolicies: {},
+      stepBudgetPolicies: {},
       defaultWarningThreshold: 0.9,
+      minAlertIntervalMs: 60_000,
     };
 
     createFile(validPath, JSON.stringify(validConfig, null, 2));

@@ -6,10 +6,48 @@ import {
   createNoOpDirectiveSink,
   type ControlPlaneDirectiveSink,
 } from "../../../../src/platform/five-plane-control-plane/control-plane-directive-sink.js";
-import type {
-  DecisionDirective,
-  OperationalDirective,
+import {
+  createDecisionDirective,
+  createOperationalDirective,
+  type DecisionDirective,
+  type OperationalDirective,
 } from "../../../../src/platform/contracts/control-directive/index.js";
+
+function makeOperationalDirective(
+  overrides: Partial<OperationalDirective> = {},
+): OperationalDirective {
+  return createOperationalDirective({
+    type: "pause",
+    scope: { tenantId: "tenant-1" },
+    issuedBy: {
+      principalId: "principal-1",
+      tenantId: "tenant-1",
+      roles: ["operator"],
+    },
+    reason: "test directive",
+    params: {},
+    ...overrides,
+  });
+}
+
+function makeDecisionDirective(
+  overrides: Partial<DecisionDirective> = {},
+): DecisionDirective {
+  return createDecisionDirective({
+    type: "approve",
+    scope: { tenantId: "tenant-1" },
+    issuedBy: {
+      principalId: "principal-1",
+      tenantId: "tenant-1",
+      roles: ["approver"],
+    },
+    targetRef: "task-123",
+    payload: { approved: true },
+    reason: "test decision",
+    riskAcknowledged: true,
+    ...overrides,
+  });
+}
 
 test("NoOpControlPlaneDirectiveSink implements ControlPlaneDirectiveSink interface", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
@@ -18,116 +56,38 @@ test("NoOpControlPlaneDirectiveSink implements ControlPlaneDirectiveSink interfa
   assert.ok(typeof sink.emitDecisionDirective === "function");
 });
 
-test("NoOpControlPlaneDirectiveSink.emitOperationalDirective does not throw", () => {
+test("NoOpControlPlaneDirectiveSink accepts canonical directives", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-  const directive: OperationalDirective = {
-    operationalDirectiveId: "opdir-123",
-    type: "pause",
-    scope: { tenantId: "tenant-1" },
-    issuedBy: {
-      principalId: "principal-1",
-      tenantId: "tenant-1",
-      roles: ["admin"],
-    },
-    reason: "test pause",
-    params: {},
-    createdAt: "2024-01-01T00:00:00.000Z",
-  };
-  assert.doesNotThrow(() => sink.emitOperationalDirective(directive));
+  assert.doesNotThrow(() => sink.emitOperationalDirective(makeOperationalDirective()));
+  assert.doesNotThrow(() => sink.emitDecisionDirective(makeDecisionDirective()));
 });
 
-test("NoOpControlPlaneDirectiveSink.emitDecisionDirective does not throw", () => {
+test("NoOpControlPlaneDirectiveSink returns undefined for both emit methods", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-  const directive: DecisionDirective = {
-    decisionDirectiveId: "decDir-123",
-    type: "approve",
-    scope: { tenantId: "tenant-1" },
-    issuedBy: {
-      principalId: "principal-1",
-      tenantId: "tenant-1",
-      roles: ["admin"],
-    },
-    targetRef: "task-123",
-    payload: { approved: true },
-    reason: "test approval",
-    riskAcknowledged: true,
-    createdAt: "2024-01-01T00:00:00.000Z",
-  };
-  assert.doesNotThrow(() => sink.emitDecisionDirective(directive));
+  assert.equal(sink.emitOperationalDirective(makeOperationalDirective({ type: "kill", reason: "emergency" })), undefined);
+  assert.equal(
+    sink.emitDecisionDirective(
+      makeDecisionDirective({
+        type: "deny",
+        payload: { denied: true, reason: "policy violation" },
+        reason: "policy violation",
+        riskAcknowledged: false,
+      }),
+    ),
+    undefined,
+  );
 });
 
-test("NoOpControlPlaneDirectiveSink.emitOperationalDirective returns undefined", () => {
-  const sink = new NoOpControlPlaneDirectiveSink();
-  const directive: OperationalDirective = {
-    operationalDirectiveId: "opdir-456",
-    type: "kill",
-    scope: {},
-    issuedBy: {
-      principalId: "principal-1",
-      tenantId: "tenant-1",
-      roles: ["operator"],
-    },
-    reason: "emergency kill",
-    params: { force: true },
-    createdAt: "2024-01-01T00:00:00.000Z",
-  };
-  const result = sink.emitOperationalDirective(directive);
-  assert.equal(result, undefined);
-});
-
-test("NoOpControlPlaneDirectiveSink.emitDecisionDirective returns undefined", () => {
-  const sink = new NoOpControlPlaneDirectiveSink();
-  const directive: DecisionDirective = {
-    decisionDirectiveId: "decDir-456",
-    type: "deny",
-    scope: {},
-    issuedBy: {
-      principalId: "principal-1",
-      tenantId: "tenant-1",
-      roles: ["approver"],
-    },
-    targetRef: "task-456",
-    payload: { denied: true, reason: "policy violation" },
-    reason: "policy violation",
-    riskAcknowledged: false,
-    createdAt: "2024-01-01T00:00:00.000Z",
-  };
-  const result = sink.emitDecisionDirective(directive);
-  assert.equal(result, undefined);
-});
-
-test("createNoOpDirectiveSink returns NoOpControlPlaneDirectiveSink instance", () => {
-  const sink = createNoOpDirectiveSink();
-  assert.ok(sink instanceof NoOpControlPlaneDirectiveSink);
-});
-
-test("createNoOpDirectiveSink returns working directive sink", () => {
-  const sink = createNoOpDirectiveSink();
-  const directive: OperationalDirective = {
-    operationalDirectiveId: "opdir-789",
-    type: "resume",
-    scope: { tenantId: "tenant-2" },
-    issuedBy: {
-      principalId: "principal-2",
-      tenantId: "tenant-2",
-      roles: ["operator"],
-    },
-    reason: "resume operation",
-    params: {},
-    createdAt: "2024-01-01T00:00:00.000Z",
-  };
-  assert.doesNotThrow(() => sink.emitOperationalDirective(directive));
-});
-
-test("multiple calls to createNoOpDirectiveSink return independent instances", () => {
+test("createNoOpDirectiveSink returns independent sink instances", () => {
   const sink1 = createNoOpDirectiveSink();
   const sink2 = createNoOpDirectiveSink();
-  assert.ok(sink1 !== sink2, "each call should return a new instance");
+  assert.ok(sink1 instanceof NoOpControlPlaneDirectiveSink);
+  assert.ok(sink2 instanceof NoOpControlPlaneDirectiveSink);
+  assert.notEqual(sink1, sink2);
 });
 
-test("NoOpControlPlaneDirectiveSink handles directive with all directive types", () => {
+test("NoOpControlPlaneDirectiveSink handles all canonical operational directive types", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-
   const directiveTypes: OperationalDirective["type"][] = [
     "mode_switch",
     "pause",
@@ -138,29 +98,12 @@ test("NoOpControlPlaneDirectiveSink handles directive with all directive types",
   ];
 
   for (const type of directiveTypes) {
-    const directive: OperationalDirective = {
-      operationalDirectiveId: `opdir-${type}`,
-      type,
-      scope: {},
-      issuedBy: {
-        principalId: "principal-1",
-        tenantId: "tenant-1",
-        roles: ["admin"],
-      },
-      reason: `test ${type}`,
-      params: {},
-      createdAt: "2024-01-01T00:00:00.000Z",
-    };
-    assert.doesNotThrow(
-      () => sink.emitOperationalDirective(directive),
-      `emitOperationalDirective should not throw for type ${type}`,
-    );
+    assert.doesNotThrow(() => sink.emitOperationalDirective(makeOperationalDirective({ type, reason: `test ${type}` })));
   }
 });
 
-test("NoOpControlPlaneDirectiveSink handles decision directive types", () => {
+test("NoOpControlPlaneDirectiveSink handles all canonical decision directive types", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-
   const directiveTypes: DecisionDirective["type"][] = [
     "approve",
     "deny",
@@ -171,33 +114,13 @@ test("NoOpControlPlaneDirectiveSink handles decision directive types", () => {
   ];
 
   for (const type of directiveTypes) {
-    const directive: DecisionDirective = {
-      decisionDirectiveId: `decDir-${type}`,
-      type,
-      scope: {},
-      issuedBy: {
-        principalId: "principal-1",
-        tenantId: "tenant-1",
-        roles: ["admin"],
-      },
-      targetRef: "task-123",
-      payload: {},
-      reason: `test ${type}`,
-      riskAcknowledged: false,
-      createdAt: "2024-01-01T00:00:00.000Z",
-    };
-    assert.doesNotThrow(
-      () => sink.emitDecisionDirective(directive),
-      `emitDecisionDirective should not throw for type ${type}`,
-    );
+    assert.doesNotThrow(() => sink.emitDecisionDirective(makeDecisionDirective({ type, reason: `test ${type}` })));
   }
 });
 
-test("NoOpControlPlaneDirectiveSink handles directives with complex scope", () => {
+test("NoOpControlPlaneDirectiveSink handles directives with full scope", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-
-  const directive: OperationalDirective = {
-    operationalDirectiveId: "opdir-complex",
+  assert.doesNotThrow(() => sink.emitOperationalDirective(makeOperationalDirective({
     type: "quota_adjust",
     scope: {
       tenantId: "tenant-1",
@@ -210,20 +133,11 @@ test("NoOpControlPlaneDirectiveSink handles directives with complex scope", () =
       tenantId: "tenant-1",
       roles: ["admin", "operator"],
     },
-    reason: "adjust quota for production",
+    reason: "adjust quota",
     params: { quotaIncrease: 100 },
-    createdAt: "2024-01-01T00:00:00.000Z",
     expiresAt: "2024-12-31T23:59:59.000Z",
-  };
-
-  assert.doesNotThrow(() => sink.emitOperationalDirective(directive));
-});
-
-test("NoOpControlPlaneDirectiveSink handles decision directive with full scope", () => {
-  const sink = new NoOpControlPlaneDirectiveSink();
-
-  const directive: DecisionDirective = {
-    decisionDirectiveId: "decDir-complex",
+  })));
+  assert.doesNotThrow(() => sink.emitDecisionDirective(makeDecisionDirective({
     type: "takeover",
     scope: {
       tenantId: "tenant-1",
@@ -240,31 +154,14 @@ test("NoOpControlPlaneDirectiveSink handles decision directive with full scope",
     targetRef: "execution-123",
     payload: { reason: "human takeover required" },
     reason: "safety review required",
-    riskAcknowledged: true,
-    createdAt: "2024-01-01T00:00:00.000Z",
-  };
-
-  assert.doesNotThrow(() => sink.emitDecisionDirective(directive));
+  })));
 });
 
-test("createNoOpDirectiveSink can be used where ControlPlaneDirectiveSink is expected", () => {
+test("createNoOpDirectiveSink can be consumed as ControlPlaneDirectiveSink", () => {
   function consumeSink(sink: ControlPlaneDirectiveSink): void {
-    const directive: OperationalDirective = {
-      operationalDirectiveId: "opdir-test",
-      type: "pause",
-      scope: {},
-      issuedBy: {
-        principalId: "principal-1",
-        tenantId: "tenant-1",
-        roles: [],
-      },
-      reason: "test",
-      params: {},
-      createdAt: "2024-01-01T00:00:00.000Z",
-    };
-    sink.emitOperationalDirective(directive);
+    sink.emitOperationalDirective(makeOperationalDirective());
+    sink.emitDecisionDirective(makeDecisionDirective());
   }
 
-  const sink = createNoOpDirectiveSink();
-  assert.doesNotThrow(() => consumeSink(sink));
+  assert.doesNotThrow(() => consumeSink(createNoOpDirectiveSink()));
 });

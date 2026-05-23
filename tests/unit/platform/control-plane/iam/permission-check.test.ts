@@ -21,6 +21,9 @@ function makeSandboxPolicy(overrides: Partial<SandboxPolicy> = {}): SandboxPolic
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
     ...overrides,
   };
 }

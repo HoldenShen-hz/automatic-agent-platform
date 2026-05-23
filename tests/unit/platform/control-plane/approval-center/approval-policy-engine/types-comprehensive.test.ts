@@ -255,10 +255,12 @@ describe("ApprovalPolicyEngine Types", () => {
         ],
         warnings: [],
       };
+      const [firstError] = lintResult.errors;
 
       assert.strictEqual(lintResult.valid, false);
       assert.strictEqual(lintResult.errors.length, 1);
-      assert.strictEqual(lintResult.errors[0].code, "duplicate_rule_id");
+      assert.ok(firstError);
+      assert.strictEqual(firstError.code, "duplicate_rule_id");
     });
 
     it("should have warnings array with suggestion", () => {
@@ -274,9 +276,10 @@ describe("ApprovalPolicyEngine Types", () => {
           },
         ],
       };
+      const [firstWarning] = lintResult.warnings;
 
       assert.strictEqual(lintResult.warnings.length, 1);
-      assert.ok(lintResult.warnings[0].suggestion);
+      assert.ok(firstWarning?.suggestion);
     });
   });
 

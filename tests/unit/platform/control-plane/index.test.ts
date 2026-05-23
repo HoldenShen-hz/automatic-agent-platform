@@ -82,8 +82,8 @@ test("control-plane barrel exports tenant", async () => {
 
 test("control-plane barrel exports baseline types", async () => {
   const mod = await import("../../../../src/platform/five-plane-control-plane/index.js");
-  // control-plane-baseline.ts exports types and functions via export *
-  assert.ok(typeof mod.ControlPlaneCapabilityId !== "undefined" || mod.listControlPlaneCapabilityBaselines != null);
+  assert.equal(typeof mod.listControlPlaneCapabilityBaselines, "function");
+  assert.equal(typeof mod.resolveControlPlaneCapabilityBaseline, "function");
 });
 
 test("control-plane barrel exports bootstrap functions", async () => {

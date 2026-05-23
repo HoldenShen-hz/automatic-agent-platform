@@ -17,6 +17,12 @@ import {
   type SandboxPathCheckResult,
 } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
+const SANDBOX_LIMITS: Pick<SandboxPolicy, "timeLimitMs" | "memoryLimitBytes" | "cpuLimitFraction"> = {
+  timeLimitMs: 0,
+  memoryLimitBytes: 0,
+  cpuLimitFraction: 0,
+};
+
 test("createWorkspaceWritePolicy creates valid policy", () => {
   const policy = createWorkspaceWritePolicy("/workspace/root");
 
@@ -100,6 +106,7 @@ test("checkSandboxPath denied root takes precedence over allowed root", () => {
     realpathEnforced: false,
     symlinkPolicy: "allow_explicit",
     processRuleMode: "allow",
+    ...SANDBOX_LIMITS,
   };
 
   // Path is within allowed root but also in denied root
@@ -162,6 +169,7 @@ test("checkSandboxPath with symlink policy allow_explicit permits symlinks", () 
     realpathEnforced: false,
     symlinkPolicy: "allow_explicit",
     processRuleMode: "allow",
+    ...SANDBOX_LIMITS,
   };
 
   // When symlink policy is allow_explicit, symlink check is skipped
@@ -179,6 +187,7 @@ test("SandboxPolicy structure requires all fields", () => {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
 
   assert.equal(policy.policyId, "complete-policy");
@@ -207,6 +216,7 @@ test("SandboxMode type accepts all valid values", () => {
       realpathEnforced: false,
       symlinkPolicy: "deny",
       processRuleMode: "allow",
+      ...SANDBOX_LIMITS,
     };
     assert.equal(policy.mode, mode);
   });
@@ -263,6 +273,7 @@ test("checkSandboxPath with multiple allowed roots", () => {
     realpathEnforced: false,
     symlinkPolicy: "allow_explicit",
     processRuleMode: "allow",
+    ...SANDBOX_LIMITS,
   };
 
   const primaryResult = checkSandboxPath(policy, "/workspace/primary/file.txt");
@@ -284,6 +295,7 @@ test("checkSandboxPath with multiple denied roots", () => {
     realpathEnforced: false,
     symlinkPolicy: "allow_explicit",
     processRuleMode: "allow",
+    ...SANDBOX_LIMITS,
   };
 
   const denied1Result = checkSandboxPath(policy, "/workspace/denied1/file");
@@ -352,6 +364,7 @@ test("sandbox policy with empty denied roots array", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    ...SANDBOX_LIMITS,
   };
 
   const result = checkSandboxPath(policy, "/workspace/file.txt");
@@ -370,6 +383,7 @@ test("sandbox policy with realpathEnforced false skips symlink resolution", () =
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    ...SANDBOX_LIMITS,
   };
 
   // Should return resolved path without realpath resolution
@@ -398,6 +412,7 @@ test("processRuleMode values are accepted", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    ...SANDBOX_LIMITS,
   };
   assert.equal(allowPolicy.processRuleMode, "allow");
 
@@ -409,6 +424,7 @@ test("processRuleMode values are accepted", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    ...SANDBOX_LIMITS,
   };
   assert.equal(denyPolicy.processRuleMode, "deny");
 });

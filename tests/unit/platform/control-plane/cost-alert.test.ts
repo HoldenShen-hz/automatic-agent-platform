@@ -140,6 +140,8 @@ test("CostAccumulator tracks accumulated cost and tokens", () => {
     scopeId: "tenant-test",
     accumulatedCostUsd: 50.5,
     accumulatedTokens: 10000,
+    pendingProjectedCostUsd: 0,
+    pendingProjectedTokens: 0,
     periodStart: "2024-01-01T00:00:00.000Z",
     periodEnd: "2024-02-01T00:00:00.000Z",
     lastUpdatedAt: "2024-01-15T12:00:00.000Z",
@@ -201,6 +203,7 @@ test("CostThresholdExceededEvent has correct structure", () => {
     limitCostUsd: 100,
     accumulatedTokens: 20000,
     limitTokens: null,
+    thresholdMetric: "cost_usd",
     periodStart: "2024-01-01T00:00:00.000Z",
     periodEnd: "2024-02-01T00:00:00.000Z",
     triggeredAt: "2024-01-15T12:00:00.000Z",
@@ -226,7 +229,9 @@ test("CostAlertConfig has correct default structure", () => {
     platformBudgetPolicy: null,
     tenantBudgetPolicies: {},
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.8,
+    minAlertIntervalMs: 60_000,
   };
 
   assert.equal(config.enabled, true);
@@ -261,7 +266,9 @@ test("CostAlertConfig supports multiple tenant policies", () => {
       },
     },
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.8,
+    minAlertIntervalMs: 60_000,
   };
 
   assert.equal(Object.keys(config.tenantBudgetPolicies).length, 2);
@@ -390,8 +397,8 @@ test("CostAlertService emits warning event via EventEmitter", () => {
   const service = new CostAlertService(mockDb, mockStore, config);
   const events: CostThresholdExceededEvent[] = [];
 
-  service.on("cost:limit_reached", (event: CostThresholdExceededEvent) => {
-    events.push(event);
+  service.on("cost:limit_reached", (event: unknown) => {
+    events.push(event as CostThresholdExceededEvent);
   });
 
   // Record cost to cross the warning threshold (80%)

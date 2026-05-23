@@ -6,9 +6,29 @@ import {
   computeTier1AuditEventChecksum,
   verifyTier1AuditIntegrity,
 } from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
+import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
+
+function createAuditEvent(
+  input: Pick<EventRecord, "id" | "taskId" | "sessionId" | "executionId" | "eventType" | "eventTier" | "payloadJson" | "traceId" | "createdAt">,
+): EventRecord {
+  return {
+    ...input,
+    schemaVersion: "v4.3",
+    aggregateId: input.taskId ?? input.executionId ?? input.id,
+    runId: input.executionId ?? input.taskId ?? input.id,
+    sequence: 1,
+    causationId: null,
+    correlationId: input.traceId ?? input.id,
+    payloadHash: "sha256:audit",
+    idempotencyKey: `idem_${input.id}`,
+    replayBehavior: "replay_as_fact",
+    principal: "system:test",
+    evidenceRefs: [],
+  };
+}
 
 test("verifyTier1AuditIntegrity accepts an intact Tier 1 event chain", () => {
-  const event = {
+  const event = createAuditEvent({
     id: "evt-1",
     taskId: "task-1",
     sessionId: "sess-1",
@@ -18,7 +38,7 @@ test("verifyTier1AuditIntegrity accepts an intact Tier 1 event chain", () => {
     payloadJson: "{\"status\":\"running\"}",
     traceId: "trace-1",
     createdAt: "2026-04-07T00:00:00.000Z",
-  };
+  });
   const eventChecksum = computeTier1AuditEventChecksum(event);
   const chainHash = computeTier1AuditChainHash({
     chainPosition: 1,
@@ -53,7 +73,7 @@ test("verifyTier1AuditIntegrity accepts an intact Tier 1 event chain", () => {
 });
 
 test("verifyTier1AuditIntegrity reports tampered payload and broken hash chain", () => {
-  const firstEvent = {
+  const firstEvent = createAuditEvent({
     id: "evt-1",
     taskId: "task-1",
     sessionId: null,
@@ -63,7 +83,7 @@ test("verifyTier1AuditIntegrity reports tampered payload and broken hash chain",
     payloadJson: "{\"status\":\"queued\"}",
     traceId: "trace-1",
     createdAt: "2026-04-07T00:00:00.000Z",
-  };
+  });
   const firstChecksum = computeTier1AuditEventChecksum(firstEvent);
   const firstChainHash = computeTier1AuditChainHash({
     chainPosition: 1,
@@ -72,7 +92,7 @@ test("verifyTier1AuditIntegrity reports tampered payload and broken hash chain",
     eventId: firstEvent.id,
   });
 
-  const secondEvent = {
+  const secondEvent = createAuditEvent({
     id: "evt-2",
     taskId: "task-1",
     sessionId: null,
@@ -82,7 +102,7 @@ test("verifyTier1AuditIntegrity reports tampered payload and broken hash chain",
     payloadJson: "{\"stepId\":\"analyze_request\"}",
     traceId: "trace-1",
     createdAt: "2026-04-07T00:01:00.000Z",
-  };
+  });
   const secondChecksum = computeTier1AuditEventChecksum(secondEvent);
   const secondChainHash = computeTier1AuditChainHash({
     chainPosition: 2,

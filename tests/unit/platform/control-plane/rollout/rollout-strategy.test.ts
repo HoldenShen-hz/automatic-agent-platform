@@ -13,6 +13,7 @@ import { PolicyRolloutService } from "../../../../../src/platform/five-plane-orc
 import { AutoRollbackService } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/auto-rollback-service.js";
 import type { ImprovementCandidate } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
 import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
+import { parseRolloutRecord } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 
 function createMockLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {
@@ -246,7 +247,7 @@ describe("PolicyRolloutService", () => {
       const autoRollback = new AutoRollbackService();
       const service = new PolicyRolloutService(autoRollback);
       const candidate = createMockCandidate({ status: "canary_5" });
-      const currentRecord = {
+      const currentRecord = parseRolloutRecord({
         recordId: "record_1",
         candidateId: candidate.candidateId,
         level: "L2_canary",
@@ -256,9 +257,20 @@ describe("PolicyRolloutService", () => {
         strategyVersionId: "sv_1",
         status: "canary_5" as const,
         transitionedAt: Date.now(),
+        triggeredBy: "scheduler" as const,
+        metrics: {
+          errorRate: 0,
+          latencyP99: 0,
+          successRate: 1,
+          sampleCount: 0,
+        },
+        auditContext: {
+          evidenceRefs: [],
+          reasonCodes: [],
+        },
         guardrailReasonCodes: [],
         evidence: [],
-      };
+      });
 
       const promoted = service.promote(candidate, currentRecord, "partial_25", {
         requestCount: 100,
@@ -275,7 +287,7 @@ describe("PolicyRolloutService", () => {
     test("requires metrics for progressive statuses", () => {
       const autoRollback = new AutoRollbackService();
       const service = new PolicyRolloutService(autoRollback);
-      const record = {
+      const record = parseRolloutRecord({
         recordId: "record_1",
         candidateId: "cand_1",
         level: "L2_canary",
@@ -285,9 +297,20 @@ describe("PolicyRolloutService", () => {
         strategyVersionId: "sv_1",
         status: "canary_5" as const,
         transitionedAt: Date.now(),
+        triggeredBy: "scheduler" as const,
+        metrics: {
+          errorRate: 0,
+          latencyP99: 0,
+          successRate: 1,
+          sampleCount: 0,
+        },
+        auditContext: {
+          evidenceRefs: [],
+          reasonCodes: [],
+        },
         guardrailReasonCodes: [],
         evidence: [],
-      };
+      });
 
       const gate = service.evaluateMetricsGate(record, "partial_25");
 
@@ -298,7 +321,7 @@ describe("PolicyRolloutService", () => {
     test("allows promotion when metrics pass", () => {
       const autoRollback = new AutoRollbackService();
       const service = new PolicyRolloutService(autoRollback);
-      const record = {
+      const record = parseRolloutRecord({
         recordId: "record_1",
         candidateId: "cand_1",
         level: "L2_canary",
@@ -308,9 +331,20 @@ describe("PolicyRolloutService", () => {
         strategyVersionId: "sv_1",
         status: "canary_5" as const,
         transitionedAt: Date.now(),
+        triggeredBy: "scheduler" as const,
+        metrics: {
+          errorRate: 0,
+          latencyP99: 0,
+          successRate: 1,
+          sampleCount: 0,
+        },
+        auditContext: {
+          evidenceRefs: [],
+          reasonCodes: [],
+        },
         guardrailReasonCodes: [],
         evidence: [],
-      };
+      });
       const metrics = {
         requestCount: 100,
         failureRate: 0.01,

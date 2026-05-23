@@ -12,8 +12,8 @@ import {
   resolveSubjectCapabilities,
   validateSubjectPermissions,
   validatePolicyRequest,
-  type PolicyAction,
 } from "../../../../../src/platform/five-plane-control-plane/iam/policy-engine-support.js";
+import type { PolicyAction } from "../../../../../src/platform/five-plane-control-plane/iam/policy-engine-model.js";
 
 test("MUTATING_POLICY_ACTIONS contains expected write and execution actions", () => {
   const expectedMutatingActions: PolicyAction[] = [
@@ -45,8 +45,8 @@ test("normalizePolicyMode converts auto to supervised_auto", () => {
 });
 
 test("normalizePolicyMode passes through unified runtime modes", () => {
-  assert.equal(normalizePolicyMode("full_automation"), "full_automation");
-  assert.equal(normalizePolicyMode("human_in_the_loop"), "human_in_the_loop");
+  assert.equal(normalizePolicyMode("full_auto"), "full_auto");
+  assert.equal(normalizePolicyMode("manual_only"), "manual_only");
 });
 
 test("ACTION_REQUIRED_ROLES maps actions to required roles", () => {
@@ -305,7 +305,7 @@ test("validatePolicyRequest throws for invalid riskCategory", () => {
         subjectType: "agent",
         subjectId: "a1",
         action: "invoke_tool",
-        riskCategory: "",
+        riskCategory: "" as any,
         mode: "auto",
       });
     },
@@ -323,7 +323,7 @@ test("validatePolicyRequest throws for invalid mode", () => {
         subjectId: "a1",
         action: "invoke_tool",
         riskCategory: "sensitive_data",
-        mode: "",
+        mode: "" as any,
       });
     },
     (err: any) => err.code === "policy.invalid_mode",

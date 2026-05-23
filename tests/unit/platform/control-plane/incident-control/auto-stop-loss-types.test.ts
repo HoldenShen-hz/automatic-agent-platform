@@ -12,6 +12,7 @@ import type {
   SystemHealthSnapshot,
   ConditionMatchContext,
   ActionContext,
+  ActionHandler,
   ActionResult,
   PendingApprovalExecution,
 } from "../../../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-types.js";

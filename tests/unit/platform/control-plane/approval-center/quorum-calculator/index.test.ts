@@ -159,8 +159,10 @@ test("mergeVotes adds new vote when not exists", () => {
   ];
   const newVote: QuorumVote = { approverId: "user2", voteType: VoteType.REJECT, votedAt: "2026-04-26T00:01:00.000Z" };
   const merged = mergeVotes(existing, newVote);
+  const [, secondVote] = merged;
   assert.equal(merged.length, 2);
-  assert.equal(merged[1].approverId, "user2");
+  assert.ok(secondVote);
+  assert.equal(secondVote.approverId, "user2");
 });
 
 test("mergeVotes rejects duplicate immutable vote", () => {
