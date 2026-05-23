@@ -197,7 +197,7 @@ test("Domain registry: onboarding advances through phases", () => {
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
         securityLevel: "restricted",
       },
-      status: "testing",
+      status: "validated",
       externalAdapters: [],
       pluginBindings: [],
     });
@@ -267,7 +267,7 @@ test("Domain registry: descriptor review validates domain", () => {
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
         securityLevel: "standard",
       },
-      status: "testing",
+      status: "validated",
       externalAdapters: [],
       pluginBindings: [],
     });

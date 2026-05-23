@@ -4,6 +4,12 @@ import test from "node:test";
 import { PromptRendererService } from "../../../../src/platform/prompt-engine/renderer/index.js";
 import { PromptTemplateRegistryService } from "../../../../src/platform/prompt-engine/registry/index.js";
 
+function errorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
+    ? error.code
+    : undefined;
+}
+
 test("prompt renderer produces prompt with all segments joined by newlines", () => {
   const registry = new PromptTemplateRegistryService();
   const renderer = new PromptRendererService();
@@ -68,7 +74,7 @@ test("prompt renderer throws ValidationError for missing required variables", ()
 
   assert.throws(
     () => renderer.render({ template, variables: {} }),
-    (err) => err.code === "prompt_renderer.missing_required_variables:task_name",
+    (err) => errorCode(err) === "prompt_renderer.missing_required_variables:task_name",
   );
 });
 

@@ -205,8 +205,9 @@ test("lifecycle hooks receive correct context with null domainId", async () => {
 
   await hooks.onActivate!(contextWithNullDomain);
 
-  assert.equal(capturedContext?.domainId, null);
-  assert.equal(capturedContext?.bindingId, null);
+  const context = capturedContext as unknown as PluginLifecycleContext;
+  assert.equal(context.domainId, null);
+  assert.equal(context.bindingId, null);
 });
 
 test("lifecycle hooks receive correct context with empty capabilityIds", async () => {
@@ -228,5 +229,6 @@ test("lifecycle hooks receive correct context with empty capabilityIds", async (
 
   await hooks.onLoad!(contextWithEmptyCaps);
 
-  assert.deepEqual(capturedContext?.capabilityIds, []);
+  const context = capturedContext as unknown as PluginLifecycleContext;
+  assert.deepEqual(context.capabilityIds, []);
 });

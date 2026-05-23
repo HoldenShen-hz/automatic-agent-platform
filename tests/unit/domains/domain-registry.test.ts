@@ -138,7 +138,7 @@ function domainWithCircularDeps(): DomainDefinition {
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
       securityLevel: "restricted",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   };
@@ -186,7 +186,7 @@ function domainWithMissingRequiredTool(): DomainDefinition {
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   };

@@ -17,6 +17,7 @@ test("CONSOLE_APP_MANIFEST defaultPort is a number", () => {
 });
 
 test("CONSOLE_APP_MANIFEST healthEndpoint is a non-empty string", () => {
+  assert.ok(CONSOLE_APP_MANIFEST.healthEndpoint != null);
   assert.equal(typeof CONSOLE_APP_MANIFEST.healthEndpoint, "string");
   assert.ok(CONSOLE_APP_MANIFEST.healthEndpoint.length > 0);
   assert.equal(CONSOLE_APP_MANIFEST.healthEndpoint, "/api/health");

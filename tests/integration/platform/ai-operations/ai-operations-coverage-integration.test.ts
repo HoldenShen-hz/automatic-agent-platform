@@ -237,6 +237,8 @@ test("integration: ai operations coverage tests compliance cross-region artifact
             active: true,
             metadata: {},
             costCenter: "",
+            effectivePolicies: {},
+            status: "active",
           },
           {
             orgNodeId: "dept_coverage",
@@ -247,6 +249,8 @@ test("integration: ai operations coverage tests compliance cross-region artifact
             active: true,
             metadata: {},
             costCenter: "COV-001",
+            effectivePolicies: {},
+            status: "active",
           },
         ],
         {

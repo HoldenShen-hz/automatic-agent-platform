@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import { createTaskRoutes } from "../../../../../src/platform/five-plane-interface/api/http-server/task-routes.js";
-import type { RouteDefinition } from "../../../../../src/platform/five-plane-interface/api/http-server/types.js";
+import type { RouteContext, RouteDefinition } from "../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 import type { MissionControlService } from "../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
 import { InMemoryMissionRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
@@ -25,7 +25,7 @@ function authHeaders() {
 }
 
 async function invokeRoute(routes: RouteDefinition[], body: Record<string, unknown>) {
-  const ctx = {
+  const ctx: RouteContext = {
     requestId: "req_task_mission",
     principal: null,
     route: { pathname: "/v1/tasks", segments: ["v1", "tasks"] },
@@ -35,7 +35,7 @@ async function invokeRoute(routes: RouteDefinition[], body: Record<string, unkno
       headers: authHeaders(),
       body: JSON.stringify(body),
     },
-  } as const;
+  };
 
   for (const route of routes) {
     if (route.method !== "POST") {
@@ -87,7 +87,7 @@ test("POST /v1/tasks binds task creation to explicit Mission snapshot when repos
   } as unknown as MissionControlService;
   const routes = createTaskRoutes({
     authService,
-    inspectService: new InspectService(),
+    inspectService: new InspectService(taskStore),
     missionControlService,
     taskStore,
     missionRepository,
@@ -117,7 +117,7 @@ test("POST /v1/tasks rejects high-risk task without Mission when repository is c
   } as unknown as MissionControlService;
   const routes = createTaskRoutes({
     authService,
-    inspectService: new InspectService(),
+    inspectService: new InspectService(taskStore),
     missionControlService,
     taskStore,
     missionRepository: new InMemoryMissionRepository(),

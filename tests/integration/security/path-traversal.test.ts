@@ -27,6 +27,9 @@ function createReadOnlySandboxPolicy(workspace: string): SandboxPolicy {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
 }
 
@@ -39,6 +42,9 @@ function createWorkspaceWriteSandboxPolicy(workspace: string): SandboxPolicy {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
 }
 
@@ -57,6 +63,7 @@ test("command-executor blocks path traversal via ../ in command arguments", asyn
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -65,7 +72,6 @@ test("command-executor blocks path traversal via ../ in command arguments", asyn
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -90,6 +96,7 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -98,7 +105,6 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -121,6 +127,7 @@ test("command-executor blocks null-byte injection in path arguments", async () =
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -129,7 +136,6 @@ test("command-executor blocks null-byte injection in path arguments", async () =
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -161,6 +167,7 @@ test("command-executor blocks symlink-based sandbox escape", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -169,7 +176,6 @@ test("command-executor blocks symlink-based sandbox escape", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -198,6 +204,7 @@ test("command-executor blocks realpath evasion via nested symlinks", async () =>
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -206,7 +213,6 @@ test("command-executor blocks realpath evasion via nested symlinks", async () =>
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -231,6 +237,7 @@ test("command-executor blocks path with double-encoded traversal", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -239,7 +246,6 @@ test("command-executor blocks path with double-encoded traversal", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -262,6 +268,7 @@ test("command-executor blocks path traversal using backslash (Windows-style)", a
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -270,7 +277,6 @@ test("command-executor blocks path traversal using backslash (Windows-style)", a
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -293,6 +299,7 @@ test("command-executor blocks traversal with unicode normalization attack", asyn
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -301,7 +308,6 @@ test("command-executor blocks traversal with unicode normalization attack", asyn
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -325,6 +331,7 @@ test("command-executor allows safe paths within sandbox boundary", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -333,7 +340,6 @@ test("command-executor allows safe paths within sandbox boundary", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -362,6 +368,9 @@ test("sandbox policy denies access to explicitly denied roots", async () => {
       realpathEnforced: true,
       symlinkPolicy: "deny",
       processRuleMode: "allow",
+      timeLimitMs: 0,
+      memoryLimitBytes: 0,
+      cpuLimitFraction: 0,
     };
 
     const { checkSandboxPath } = await import("../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js");

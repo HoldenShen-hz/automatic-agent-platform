@@ -25,6 +25,8 @@ import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import type { PostgresAuthoritativeStorageBackendHandle } from "../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import type { RuntimeContextSnapshot } from "../../../src/platform/shared/context/runtime-context.js";
+import { createSqliteCasService } from "../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
+import { SqliteCasRepository } from "../../../src/platform/five-plane-state-evidence/events/cas/sqlite-cas-repository.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -88,6 +90,7 @@ function createPostgresHandleWithShadow(shadowDb: SqliteDatabase): PostgresAutho
       close: async () => undefined,
     } as never,
     asyncRepos: {} as never,
+    cas: createSqliteCasService(new SqliteCasRepository(shadowDb.connection)),
     postgres: {
       filePath: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require",
     } as never,

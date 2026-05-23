@@ -29,10 +29,7 @@ describe("DomainEvaluationGateService", () => {
         blocking: false,
       },
     ],
-    fewShotExamples: [
-      { input: "test", expected: "result" },
-      { input: "test2", expected: "result2" },
-    ],
+    fewShotExamples: ["test", "test2"],
     releaseGates: {
       minFewShotCount: 2,
       minRegressionCaseCount: 3,
@@ -188,10 +185,7 @@ describe("DomainEvaluationGateService", () => {
           minRegressionCaseCount: 1,
           requirePromptInjectionCoverage: false,
         },
-        fewShotExamples: [
-          { input: "1", expected: "1" },
-          { input: "2", expected: "2" },
-        ],
+        fewShotExamples: ["1", "2"],
       });
       const run = createMockRun({
         cases: [
@@ -209,7 +203,7 @@ describe("DomainEvaluationGateService", () => {
           minRegressionCaseCount: 1,
           requirePromptInjectionCoverage: false,
         },
-        fewShotExamples: [{ input: "1", expected: "1" }],
+        fewShotExamples: ["1"],
       });
       const run = createMockRun({
         cases: [

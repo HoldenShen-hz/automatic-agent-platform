@@ -55,7 +55,7 @@ function registerTestDomain(service: DomainRegistryService, domainId = "coding")
         llmInHotPathAllowed: false,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive" as const,
+      latencyTier: "near_realtime" as const,
       compiledArtifactRef: null as string | null,
     },
   });
@@ -125,7 +125,7 @@ test("DomainOnboardingService.rollback returns domain to earlier phase", () => {
   const session = service.rollback("rollback_test", "domain_modeling", "checkpoint_artifact", "test rollback");
   assert.equal(session.activePhase, "domain_modeling");
   assert.ok(session.rollbackHistory.length > 0);
-  assert.equal(session.rollbackHistory[0].phase, "pack_development");
+  assert.equal(session.rollbackHistory[0]!.phase, "pack_development");
 });
 
 test("DomainOnboardingService.list returns all onboarding sessions", () => {
@@ -190,7 +190,7 @@ test("DomainOnboardingService tracks rollback history", () => {
 
   const session = service.get("history_test");
   assert.ok(session.rollbackHistory.length > 0);
-  assert.equal(session.rollbackHistory[0].phase, "pack_development");
-  assert.equal(session.rollbackHistory[0].checkpointArtifactId, "checkpoint");
-  assert.equal(session.rollbackHistory[0].reason, "testing");
+  assert.equal(session.rollbackHistory[0]!.phase, "pack_development");
+  assert.equal(session.rollbackHistory[0]!.checkpointArtifactId, "checkpoint");
+  assert.equal(session.rollbackHistory[0]!.reason, "testing");
 });

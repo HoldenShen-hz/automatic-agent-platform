@@ -8,24 +8,23 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type {
-  SandboxPolicy,
   PolicyDecisionRequest,
   PolicyDecisionResult,
-  PolicyEffect,
-} from "../../../../src/platform/five-plane-control-plane/iam/policy-engine.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/policy-engine-model.js";
+import type { SandboxPolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 import type {
   DataClassificationLevel,
-  DataClassificationService,
   ClassificationResult,
   HandlingDecision,
 } from "../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
 
 import type {
-  SecretManagementService,
-  StoredSecret,
-  Lease,
+  ManagedSecretLease,
 } from "../../../../src/platform/five-plane-control-plane/iam/secret-management-service.js";
+import type { SecretLeaseRecord, SecretRegistryRecord } from "../../../../src/platform/contracts/types/domain.js";
+
+type PolicyEffect = PolicyDecisionResult["decision"];
 
 // ============================================================================
 // Type Validation Tests
@@ -74,7 +73,7 @@ test("integration: PolicyDecisionRequest type structure", () => {
     action: "invoke_model",
     riskCategory: "cost_sensitive",
     mode: "auto",
-    stage: "execute",
+    stageViewRef: "execute",
   };
 
   assert.equal(request.decisionId, "dec_001");
@@ -83,11 +82,16 @@ test("integration: PolicyDecisionRequest type structure", () => {
 
 test("integration: PolicyDecisionResult type structure", () => {
   const result: PolicyDecisionResult = {
-    decisionId: "dec_001",
     decision: "allow",
     reasonCode: "policy.allowed",
     requiresApproval: false,
     enforcedConstraints: {},
+    killSwitchApplied: false,
+    auditPayload: {},
+    evaluatedPolicyVersion: "policy-engine.v1",
+    decisionTtlMs: 5000,
+    matchedRuleRefs: ["default_allow"],
+    explainSummary: "Action allowed by policy engine.",
   };
 
   assert.equal(result.decision, "allow");
@@ -95,48 +99,114 @@ test("integration: PolicyDecisionResult type structure", () => {
 });
 
 test("integration: PolicyEffect union values", () => {
-  const effects: PolicyEffect[] = ["allow", "deny", "escalate"];
+  const effects: PolicyEffect[] = ["allow", "deny", "escalate_for_approval"];
   assert.equal(effects.length, 3);
 });
 
 test("integration: SandboxPolicy type structure", () => {
   const policy: SandboxPolicy = {
-    allowedPaths: ["/workspace"],
-    deniedPaths: ["/etc", "/var"],
-    maxFileSizeBytes: 1024 * 1024,
-    allowNetworkAccess: false,
+    policyId: "sandbox_001",
+    mode: "read_only",
+    allowedRoots: ["/workspace"],
+    deniedRoots: ["/etc", "/var"],
+    realpathEnforced: true,
+    symlinkPolicy: "deny",
+    processRuleMode: "allow",
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
 
-  assert.ok(policy.allowedPaths.length > 0);
-  assert.ok(policy.deniedPaths.length > 0);
+  assert.ok(policy.allowedRoots.length > 0);
+  assert.ok(policy.deniedRoots.length > 0);
 });
 
-test("integration: StoredSecret type structure", () => {
-  const secret: StoredSecret = {
-    secretId: "secret_001",
-    tenantId: "tenant_001",
-    name: "api_key",
-    secretType: "api_key",
+test("integration: SecretRegistryRecord type structure", () => {
+  const secret: SecretRegistryRecord = {
+    secretRef: "secret://tenant_001/api_key",
+    displayName: "api_key",
+    category: "provider_api_key",
+    providerKind: "environment",
+    scopeType: "tenant",
+    scopeRef: "tenant_001",
+    status: "active",
+    rotationPolicyJson: "{\"cadenceDays\":30}",
+    metadataJson: null,
+    currentVersion: "v1",
+    lastRotatedAt: null,
+    nextRotationDueAt: null,
     createdAt: "2026-04-01T00:00:00.000Z",
-    expiresAt: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   };
 
-  assert.equal(secret.secretId, "secret_001");
-  assert.equal(secret.name, "api_key");
+  assert.equal(secret.scopeType, "tenant");
+  assert.equal(secret.displayName, "api_key");
 });
 
-test("integration: Lease type structure", () => {
-  const lease: Lease = {
-    leaseId: "lease_001",
-    secretId: "secret_001",
-    issuedAt: "2026-04-15T12:00:00.000Z",
-    expiresAt: "2026-04-15T13:00:00.000Z",
-    ttlSeconds: 3600,
-    purpose: "api_access",
+test("integration: ManagedSecretLease type structure", () => {
+  const lease: ManagedSecretLease = {
+    lease: {
+      leaseId: "lease_001",
+      secretRef: "secret://tenant_001/api_key",
+      providerKind: "environment",
+      taskId: null,
+      executionId: null,
+      requestedBy: "system",
+      grantedTo: "worker_001",
+      usagePurpose: "api_access",
+      issuedAt: "2026-04-15T12:00:00.000Z",
+      expiresAt: "2026-04-15T13:00:00.000Z",
+      status: "active",
+      revokedAt: null,
+      revokedBy: null,
+      revocationReasonCode: null,
+      sourceVersion: "v1",
+      maskedValue: "****",
+      metadataJson: null,
+    } satisfies SecretLeaseRecord,
+    metadata: {
+      secretRef: "secret://tenant_001/api_key",
+      envName: "AA_SECRET_TENANT_001_API_KEY",
+      scope: "tenant_001",
+      source: "environment",
+      resolved: true,
+      maskedValue: "****",
+      providerKind: "environment",
+      registryStatus: "active",
+      lastRotatedAt: null,
+      nextRotationDueAt: null,
+      auditId: null,
+      leaseId: "lease_001",
+      leaseStatus: "active",
+      leaseSource: "provider_issued",
+      providerLeaseId: null,
+      issuedAt: "2026-04-15T12:00:00.000Z",
+      expiresAt: "2026-04-15T13:00:00.000Z",
+      revokedAt: null,
+      renewable: true,
+      issuedBy: "system",
+    },
+    value: "secret-value",
+    registry: {
+      secretRef: "secret://tenant_001/api_key",
+      displayName: "api_key",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "tenant",
+      scopeRef: "tenant_001",
+      status: "active",
+      rotationPolicyJson: "{\"cadenceDays\":30}",
+      metadataJson: null,
+      currentVersion: "v1",
+      lastRotatedAt: null,
+      nextRotationDueAt: null,
+      createdAt: "2026-04-01T00:00:00.000Z",
+      updatedAt: "2026-04-01T00:00:00.000Z",
+    },
   };
 
-  assert.equal(lease.leaseId, "lease_001");
-  assert.ok(lease.ttlSeconds > 0);
+  assert.equal(lease.lease.leaseId, "lease_001");
+  assert.equal(lease.metadata.leaseStatus, "active");
 });
 
 test("integration: policy action types", () => {
@@ -150,9 +220,9 @@ test("integration: policy action types", () => {
       subjectType: "user",
       subjectId: "user_001",
       action,
-      riskCategory: "low",
+      riskCategory: "cost_sensitive",
       mode: "auto",
-      stage: "execute",
+      stageViewRef: "execute",
     };
     assert.equal(request.action, action);
   }
@@ -185,12 +255,16 @@ test("integration: secret types", () => {
 
 test("integration: policy decision escalation", () => {
   const result: PolicyDecisionResult = {
-    decisionId: "dec_escalate",
     decision: "escalate_for_approval",
     reasonCode: "policy.prod_affecting",
     requiresApproval: true,
     enforcedConstraints: { breakGlass: false },
     killSwitchApplied: false,
+    auditPayload: {},
+    evaluatedPolicyVersion: "policy-engine.v1",
+    decisionTtlMs: 5000,
+    matchedRuleRefs: ["approval_required"],
+    explainSummary: "Action requires approval.",
   };
 
   assert.equal(result.requiresApproval, true);
@@ -199,12 +273,16 @@ test("integration: policy decision escalation", () => {
 
 test("integration: policy kill switch result", () => {
   const result: PolicyDecisionResult = {
-    decisionId: "dec_kill",
     decision: "deny",
     reasonCode: "policy.kill_switch",
     requiresApproval: false,
     enforcedConstraints: {},
     killSwitchApplied: true,
+    auditPayload: {},
+    evaluatedPolicyVersion: "policy-engine.v1",
+    decisionTtlMs: 5000,
+    matchedRuleRefs: ["kill_switch"],
+    explainSummary: "Kill switch denied the action.",
   };
 
   assert.equal(result.decision, "deny");
@@ -232,19 +310,25 @@ test("integration: PII types", () => {
 
 test("integration: sandbox policy path validation", () => {
   const policy: SandboxPolicy = {
-    allowedPaths: ["/workspace", "/tmp"],
-    deniedPaths: ["/etc", "/var", "/root"],
-    maxFileSizeBytes: 10 * 1024 * 1024,
-    allowNetworkAccess: false,
+    policyId: "sandbox_002",
+    mode: "workspace_write",
+    allowedRoots: ["/workspace", "/tmp"],
+    deniedRoots: ["/etc", "/var", "/root"],
+    realpathEnforced: true,
+    symlinkPolicy: "deny",
+    processRuleMode: "allow",
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
 
   const isAllowed = (path: string): boolean => {
     // Check denied paths first
-    for (const denied of policy.deniedPaths) {
+    for (const denied of policy.deniedRoots) {
       if (path.startsWith(denied)) return false;
     }
     // Then check allowed paths
-    for (const allowed of policy.allowedPaths) {
+    for (const allowed of policy.allowedRoots) {
       if (path.startsWith(allowed)) return true;
     }
     return false;

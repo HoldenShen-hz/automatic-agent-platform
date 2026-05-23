@@ -137,7 +137,7 @@ test("proposeRelease throws when approval ticket required but missing", () => {
   const service = new DomainPromptGovernanceService();
   const library = createTestLibrary();
   // prompt_plan has guardrails, so approval is required
-  const draft = createTestDraft({ approvalTicketId: undefined });
+  const draft = createTestDraft();
 
   assert.throws(
     () => service.proposeRelease(library, draft),
@@ -274,7 +274,7 @@ test("rollback uses rollbackVersion from draft when not specified", () => {
 test("rollback throws when rollback version not specified and not in draft", () => {
   const service = new DomainPromptGovernanceService();
   const library = createTestLibrary();
-  const draft = createTestDraft({ promptId: "prompt_execute", rollbackVersion: undefined });
+  const draft = createTestDraft({ promptId: "prompt_execute" });
   const release = service.proposeRelease(library, draft);
 
   assert.throws(

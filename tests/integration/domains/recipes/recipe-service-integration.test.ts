@@ -5,19 +5,32 @@ import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { DomainRecipeService } from "../../../../src/domains/domain-recipe-service.js";
 import type { DomainRecipe } from "../../../../src/domains/recipes/index.js";
 
-test("integration: DomainRecipeService registers and retrieves recipes", () => {
-  const service = new DomainRecipeService();
-
-  const recipe: DomainRecipe = {
+function createRecipe(overrides: Partial<DomainRecipe> = {}): DomainRecipe {
+  return {
     recipeId: newId("recipe"),
     domainId: "recipe-domain",
     name: "Test Recipe",
     description: "A test recipe",
-    triggerPhrases: ["test", "run", "execute"],
+    riskProfileRef: "recipe-domain.risk",
+    guardrailOverlay: {},
+    triggerPhrases: ["test"],
     defaultWorkflowId: "test_workflow",
-    defaultToolBundleIds: ["tools1", "tools2"],
+    recommendedWorkflowIds: ["test_workflow"],
+    defaultToolBundleIds: [],
+    defaultPromptBundleRef: "recipe-domain.prompt",
+    acceptanceChecklistRef: "recipe-domain.acceptance",
     archetype: "conversational",
+    ...overrides,
   };
+}
+
+test("integration: DomainRecipeService registers and retrieves recipes", () => {
+  const service = new DomainRecipeService();
+
+  const recipe = createRecipe({
+    triggerPhrases: ["test", "run", "execute"],
+    defaultToolBundleIds: ["tools1", "tools2"],
+  });
 
   service.register(recipe);
 
@@ -30,38 +43,32 @@ test("integration: DomainRecipeService registers and retrieves recipes", () => {
 test("integration: DomainRecipeService retrieves recipes by domain", () => {
   const service = new DomainRecipeService();
 
-  service.register({
-    recipeId: newId("recipe"),
+  service.register(createRecipe({
     domainId: "multi-domain",
     name: "Recipe 1",
     description: "",
     triggerPhrases: ["test1"],
     defaultWorkflowId: "wf1",
-    defaultToolBundleIds: [],
-    archetype: "conversational",
-  });
+    recommendedWorkflowIds: ["wf1"],
+  }));
 
-  service.register({
-    recipeId: newId("recipe"),
+  service.register(createRecipe({
     domainId: "multi-domain",
     name: "Recipe 2",
     description: "",
     triggerPhrases: ["test2"],
     defaultWorkflowId: "wf2",
-    defaultToolBundleIds: [],
-    archetype: "conversational",
-  });
+    recommendedWorkflowIds: ["wf2"],
+  }));
 
-  service.register({
-    recipeId: newId("recipe"),
+  service.register(createRecipe({
     domainId: "other-domain",
     name: "Recipe 3",
     description: "",
     triggerPhrases: ["test3"],
     defaultWorkflowId: "wf3",
-    defaultToolBundleIds: [],
-    archetype: "conversational",
-  });
+    recommendedWorkflowIds: ["wf3"],
+  }));
 
   const domainRecipes = service.getRecipesByDomain("multi-domain");
   assert.equal(domainRecipes.length, 2);
@@ -71,27 +78,23 @@ test("integration: DomainRecipeService retrieves recipes by domain", () => {
 test("integration: DomainRecipeService matches recipe by trigger phrase", () => {
   const service = new DomainRecipeService();
 
-  service.register({
-    recipeId: newId("recipe"),
+  service.register(createRecipe({
     domainId: "match-domain",
     name: "Analysis Recipe",
     description: "For analysis tasks",
     triggerPhrases: ["analyze", "examine", "investigate"],
     defaultWorkflowId: "analysis_wf",
-    defaultToolBundleIds: [],
-    archetype: "conversational",
-  });
+    recommendedWorkflowIds: ["analysis_wf"],
+  }));
 
-  service.register({
-    recipeId: newId("recipe"),
+  service.register(createRecipe({
     domainId: "match-domain",
     name: "Implementation Recipe",
     description: "For implementation tasks",
     triggerPhrases: ["implement", "create", "build"],
     defaultWorkflowId: "impl_wf",
-    defaultToolBundleIds: [],
-    archetype: "conversational",
-  });
+    recommendedWorkflowIds: ["impl_wf"],
+  }));
 
   const matched = service.matchRecipe("match-domain", "Please analyze this data");
   assert.notEqual(matched, null);
@@ -217,30 +220,31 @@ test("integration: DomainRecipeService creates recipes from prototype", () => {
 test("integration: DomainRecipeService validates recipes", () => {
   const service = new DomainRecipeService();
 
-  const validRecipe: DomainRecipe = {
+  const validRecipe = createRecipe({
     recipeId: "valid-id",
     domainId: "valid-domain",
     name: "Valid",
     description: "Valid recipe",
     triggerPhrases: ["valid", "test"],
     defaultWorkflowId: "wf",
-    defaultToolBundleIds: [],
-    archetype: "conversational",
-  };
+    recommendedWorkflowIds: ["wf"],
+  });
 
   const errors = service.validate(validRecipe);
   assert.equal(errors.length, 0);
 
-  const invalidRecipe: DomainRecipe = {
+  const invalidRecipe = createRecipe({
     recipeId: "",
     domainId: "",
     name: "Invalid",
     description: "",
     triggerPhrases: [],
     defaultWorkflowId: "",
-    defaultToolBundleIds: [],
-    archetype: "conversational",
-  };
+    recommendedWorkflowIds: [],
+    defaultPromptBundleRef: "",
+    acceptanceChecklistRef: "",
+    riskProfileRef: "",
+  });
 
   const validationErrors = service.validate(invalidRecipe);
   assert.ok(validationErrors.length > 0);

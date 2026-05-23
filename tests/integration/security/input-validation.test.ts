@@ -28,6 +28,9 @@ function createSandboxPolicy(workspace: string) {
     realpathEnforced: true,
     symlinkPolicy: "deny" as const,
     processRuleMode: "allow" as const,
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
 }
 
@@ -42,18 +45,7 @@ test("tool-argument-coercion blocks object coercion in command args", () => {
 
   const trace = ToolArgumentCoercion.coerce({
     request: {
-      callId: newId("call"),
-      taskId: newId("task"),
-      traceId: newId("trace"),
-      executionId: null,
-      toolName: "bash",
-      command: "echo",
       args: coercedArgs as unknown as readonly string[],
-      cwd: "/tmp",
-      timeoutMs: 5000,
-      sandboxPolicy: createSandboxPolicy("/tmp"),
-      allowedTools: ["echo"],
-      allowedPathRoots: ["/tmp"],
     },
     traceId: newId("trace"),
   });
@@ -71,18 +63,7 @@ test("tool-argument-coercion blocks array-like object pollution", () => {
 
   const trace = ToolArgumentCoercion.coerce({
     request: {
-      callId: newId("call"),
-      taskId: newId("task"),
-      traceId: newId("trace"),
-      executionId: null,
-      toolName: "bash",
-      command: "cat",
       args: pollutedArray as unknown as readonly string[],
-      cwd: "/tmp",
-      timeoutMs: 5000,
-      sandboxPolicy: createSandboxPolicy("/tmp"),
-      allowedTools: ["cat"],
-      allowedPathRoots: ["/tmp"],
     },
     traceId: newId("trace"),
   });
@@ -95,18 +76,7 @@ test("tool-argument-coercion blocks symbol keys in args", () => {
 
   const trace = ToolArgumentCoercion.coerce({
     request: {
-      callId: newId("call"),
-      taskId: newId("task"),
-      traceId: newId("trace"),
-      executionId: null,
-      toolName: "bash",
-      command: "echo",
       args: argsWithSymbol as unknown as readonly string[],
-      cwd: "/tmp",
-      timeoutMs: 5000,
-      sandboxPolicy: createSandboxPolicy("/tmp"),
-      allowedTools: ["echo"],
-      allowedPathRoots: ["/tmp"],
     },
     traceId: newId("trace"),
   });
@@ -119,18 +89,7 @@ test("tool-argument-coercion blocks non-string elements in args array", () => {
 
   const trace = ToolArgumentCoercion.coerce({
     request: {
-      callId: newId("call"),
-      taskId: newId("task"),
-      traceId: newId("trace"),
-      executionId: null,
-      toolName: "bash",
-      command: "echo",
       args: mixedArray as unknown as readonly string[],
-      cwd: "/tmp",
-      timeoutMs: 5000,
-      sandboxPolicy: createSandboxPolicy("/tmp"),
-      allowedTools: ["echo"],
-      allowedPathRoots: ["/tmp"],
     },
     traceId: newId("trace"),
   });
@@ -149,6 +108,7 @@ test("command-executor blocks undefined in args array", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -157,7 +117,6 @@ test("command-executor blocks undefined in args array", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -179,6 +138,7 @@ test("command-executor blocks null in args array", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -187,7 +147,6 @@ test("command-executor blocks null in args array", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -209,6 +168,7 @@ test("command-executor blocks function in args array", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -217,7 +177,6 @@ test("command-executor blocks function in args array", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -237,6 +196,7 @@ test("command-executor blocks negative timeout (boundary attack)", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -245,7 +205,6 @@ test("command-executor blocks negative timeout (boundary attack)", async () => {
       cwd: workspace,
       timeoutMs: -1000, // Negative timeout is invalid
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -265,6 +224,7 @@ test("command-executor blocks extremely large timeout (boundary attack)", async 
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -273,7 +233,6 @@ test("command-executor blocks extremely large timeout (boundary attack)", async 
       cwd: workspace,
       timeoutMs: Number.MAX_SAFE_INTEGER, // Way too large
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -293,6 +252,7 @@ test("command-executor blocks non-numeric timeout", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -301,7 +261,6 @@ test("command-executor blocks non-numeric timeout", async () => {
       cwd: workspace,
       timeoutMs: "five seconds" as unknown as number, // Non-numeric string instead of number
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -321,6 +280,7 @@ test("command-executor blocks invalid sandbox mode", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -336,8 +296,10 @@ test("command-executor blocks invalid sandbox mode", async () => {
         realpathEnforced: true,
         symlinkPolicy: "deny" as const,
         processRuleMode: "allow" as const,
+        timeLimitMs: 0,
+        memoryLimitBytes: 0,
+        cpuLimitFraction: 0,
       },
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -357,6 +319,7 @@ test("command-executor blocks empty command string", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -365,7 +328,6 @@ test("command-executor blocks empty command string", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -385,6 +347,7 @@ test("command-executor blocks whitespace-only command", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -393,7 +356,6 @@ test("command-executor blocks whitespace-only command", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -416,6 +378,7 @@ test("command-executor blocks command with control characters", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -424,7 +387,6 @@ test("command-executor blocks command with control characters", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -444,6 +406,7 @@ test("command-executor blocks empty args array", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -452,7 +415,6 @@ test("command-executor blocks empty args array", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -474,6 +436,7 @@ test("command-executor blocks numeric command name", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -482,7 +445,6 @@ test("command-executor blocks numeric command name", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["12345"],
       allowedPathRoots: [workspace],
     };
 
@@ -503,6 +465,7 @@ test("command-executor blocks script path with flag injection", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -511,7 +474,6 @@ test("command-executor blocks script path with flag injection", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["python"],
       allowedPathRoots: [workspace],
     };
 

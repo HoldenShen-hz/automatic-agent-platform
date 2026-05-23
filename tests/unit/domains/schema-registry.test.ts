@@ -80,8 +80,8 @@ test("SchemaRegistry.listVersions returns all versions sorted by createdAt", () 
 
   const versions = registry.listVersions("domain_d", "contract", "contract_schema");
   assert.equal(versions.length, 3);
-  assert.equal(versions[0].version, "1.0.0");
-  assert.equal(versions[2].version, "3.0.0");
+  assert.equal(versions[0]!.version, "1.0.0");
+  assert.equal(versions[2]!.version, "3.0.0");
 });
 
 test("SchemaRegistry.checkCompatibility detects no changes for same version", () => {

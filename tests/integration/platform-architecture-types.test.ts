@@ -145,6 +145,7 @@ test("integration: BudgetIntent works with BudgetReservation", () => {
     status: "reserved",
     expiresAt: "2026-01-01T01:00:00Z",
     createdAt: "2026-01-01T00:00:00Z",
+    version: 1,
   };
 
   assert.equal(reservation.amount, budgetIntent.amount);

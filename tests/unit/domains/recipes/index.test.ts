@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainRecipeSchema, matchDomainRecipe } from "../../../../src/domains/recipes/index.js";
+import {
+  DomainRecipeSchema,
+  matchDomainRecipe,
+  type DomainRecipe,
+} from "../../../../src/domains/recipes/index.js";
 
-function makeRecipe(overrides: Record<string, unknown>) {
-  return {
+function makeRecipe(overrides: Partial<DomainRecipe>): DomainRecipe {
+  return DomainRecipeSchema.parse({
     recipeId: "recipe_default",
     domainId: "coding",
     archetype: "crud_heavy",
@@ -17,7 +21,7 @@ function makeRecipe(overrides: Record<string, unknown>) {
     defaultPromptBundleRef: "coding.default-prompt",
     acceptanceChecklistRef: "coding.acceptance",
     ...overrides,
-  };
+  });
 }
 
 test("DomainRecipeSchema parses valid recipe", () => {
@@ -73,22 +77,18 @@ test("DomainRecipeSchema requires defaultWorkflowId to be non-empty", () => {
 
 test("matchDomainRecipe returns recipe when input matches trigger phrase", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["write code", "implement"],
       defaultWorkflowId: "workflow_1",
-      defaultToolBundleIds: [],
-    },
-    {
+    }),
+    makeRecipe({
       recipeId: "recipe_2",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["deploy", "release"],
       defaultWorkflowId: "workflow_2",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "Please write code for me");
@@ -98,14 +98,12 @@ test("matchDomainRecipe returns recipe when input matches trigger phrase", () =>
 
 test("matchDomainRecipe is case insensitive", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["Write Code", "Implement"],
       defaultWorkflowId: "workflow_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "please WRITE CODE for me");
@@ -115,22 +113,18 @@ test("matchDomainRecipe is case insensitive", () => {
 
 test("matchDomainRecipe returns first matching recipe", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_1",
-      defaultToolBundleIds: [],
-    },
-    {
+    }),
+    makeRecipe({
       recipeId: "recipe_2",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_2",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "write some code");
@@ -140,14 +134,12 @@ test("matchDomainRecipe returns first matching recipe", () => {
 
 test("matchDomainRecipe returns null when no recipe matches", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["write code"],
       defaultWorkflowId: "workflow_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "deploy the application");
@@ -161,14 +153,12 @@ test("matchDomainRecipe returns null for empty recipes array", () => {
 
 test("matchDomainRecipe matches partial phrase (substring)", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["implement feature"],
       defaultWorkflowId: "workflow_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "I need to implement feature X");
@@ -178,14 +168,12 @@ test("matchDomainRecipe matches partial phrase (substring)", () => {
 
 test("matchDomainRecipe handles empty trigger phrases array", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "coding",
-      archetype: "crud_heavy" as const,
       triggerPhrases: [],
       defaultWorkflowId: "workflow_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "any input");

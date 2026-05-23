@@ -198,9 +198,9 @@ test("nextOnboardingPhase returns null for gray_rollout (last phase)", () => {
 });
 
 test("nextOnboardingPhase handles aliases correctly", () => {
-  assert.equal(nextOnboardingPhase("modeling"), "pack_development");
-  assert.equal(nextOnboardingPhase("development_validation"), "security_certification");
-  assert.equal(nextOnboardingPhase("canary_launch"), null);
+  assert.equal(nextOnboardingPhase("modeling" as DomainOnboardingPhase), "pack_development");
+  assert.equal(nextOnboardingPhase("development_validation" as DomainOnboardingPhase), "security_certification");
+  assert.equal(nextOnboardingPhase("canary_launch" as DomainOnboardingPhase), null);
 });
 
 test("nextOnboardingPhase is deterministic - same input gives same output", () => {

@@ -184,7 +184,7 @@ test("domain transitions from registered to active after activation", () => {
   const service = new DomainRegistryService();
   service.register(makeMinimalDefinition({
     domainId: "lifecycle",
-    status: "testing",
+    status: "validated",
     capabilities: {
       supportedTaskTypes: [],
       requiredTools: [],
@@ -201,8 +201,8 @@ test("domain transitions from registered to active after activation", () => {
 
 test("active domains appear in listActive", () => {
   const service = new DomainRegistryService();
-  service.register(makeMinimalDefinition({ domainId: "active_one", status: "testing", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
-  service.register(makeMinimalDefinition({ domainId: "active_two", status: "testing", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
+  service.register(makeMinimalDefinition({ domainId: "active_one", status: "validated", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
+  service.register(makeMinimalDefinition({ domainId: "active_two", status: "validated", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
   service.register(makeMinimalDefinition({ domainId: "still_draft", status: "draft", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
 
   service.activate("active_one");
@@ -257,7 +257,7 @@ test("activate fails for draft domain with no workflows", () => {
   const service = new DomainRegistryService();
   service.register(makeMinimalDefinition({
     domainId: "empty_wf",
-    status: "testing",
+    status: "validated",
     workflows: [],
   }), { skipSmokeTest: true });
 

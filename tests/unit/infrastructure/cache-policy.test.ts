@@ -90,8 +90,8 @@ describe("Cache Policy", () => {
     });
 
     it("tool policies have smaller payload limits than prompt policies", () => {
-      const toolReadMax = DEFAULT_CACHE_POLICIES["tool.read"].maxPayloadBytes;
-      const promptFullMax = DEFAULT_CACHE_POLICIES["prompt.full"].maxPayloadBytes;
+      const toolReadMax = DEFAULT_CACHE_POLICIES["tool.read"]!.maxPayloadBytes;
+      const promptFullMax = DEFAULT_CACHE_POLICIES["prompt.full"]!.maxPayloadBytes;
 
       assert.ok(toolReadMax < promptFullMax);
     });

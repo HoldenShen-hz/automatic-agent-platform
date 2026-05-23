@@ -334,12 +334,18 @@ test("DomainEvaluationGateService.evaluateSuite handles costUsd and latencyMs in
 test("DomainEvaluationGateService.evaluateSuite handles releaseType variations", () => {
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test");
-  const runDaily = createRun("test", Array(20).fill(createCase()));
-  runDaily.releaseType = "daily";
-  const runPreRelease = createRun("test", Array(20).fill(createCase()));
-  runPreRelease.releaseType = "pre_release";
-  const runCanary = createRun("test", Array(20).fill(createCase()));
-  runCanary.releaseType = "canary";
+  const runDaily = {
+    ...createRun("test", Array(20).fill(createCase())),
+    releaseType: "daily" as const,
+  };
+  const runPreRelease = {
+    ...createRun("test", Array(20).fill(createCase())),
+    releaseType: "pre_release" as const,
+  };
+  const runCanary = {
+    ...createRun("test", Array(20).fill(createCase())),
+    releaseType: "canary" as const,
+  };
 
   const reportDaily = service.evaluateSuite(framework, runDaily);
   const reportPreRelease = service.evaluateSuite(framework, runPreRelease);
@@ -353,8 +359,10 @@ test("DomainEvaluationGateService.evaluateSuite handles releaseType variations",
 test("DomainEvaluationGateService.evaluateSuite handles executionMode variations", () => {
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test");
-  const run = createRun("test", Array(20).fill(createCase()));
-  run.executionMode = "full_auto";
+  const run = {
+    ...createRun("test", Array(20).fill(createCase())),
+    executionMode: "full_auto" as const,
+  };
 
   const report = service.evaluateSuite(framework, run);
   assert.equal(report.overallPass, true);
@@ -364,12 +372,18 @@ test("DomainEvaluationGateService.evaluateSuite handles storageMode variations",
   const service = new DomainEvaluationGateService();
   const framework = createFramework("test");
 
-  const runSqlite = createRun("test", Array(20).fill(createCase()));
-  runSqlite.storageMode = "sqlite";
-  const runPostgres = createRun("test", Array(20).fill(createCase()));
-  runPostgres.storageMode = "postgres";
-  const runMixed = createRun("test", Array(20).fill(createCase()));
-  runMixed.storageMode = "mixed";
+  const runSqlite = {
+    ...createRun("test", Array(20).fill(createCase())),
+    storageMode: "sqlite" as const,
+  };
+  const runPostgres = {
+    ...createRun("test", Array(20).fill(createCase())),
+    storageMode: "postgres" as const,
+  };
+  const runMixed = {
+    ...createRun("test", Array(20).fill(createCase())),
+    storageMode: "mixed" as const,
+  };
 
   const reportSqlite = service.evaluateSuite(framework, runSqlite);
   const reportPostgres = service.evaluateSuite(framework, runPostgres);

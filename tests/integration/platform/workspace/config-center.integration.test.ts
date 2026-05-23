@@ -43,7 +43,7 @@ test("integration: ConfigAuditEntry type structure", () => {
     timestamp: "2026-04-15T12:00:00.000Z",
     beforeHash: "hash_before",
     afterHash: "hash_after",
-    changes: [{ path: "value", before: "10", after: "25" }],
+    changes: [{ path: "value", changeType: "changed", beforeValue: "10", afterValue: "25" }],
     reason: "Increase pool size",
     approvalRequired: false,
     approvalStatus: null,
@@ -155,7 +155,7 @@ test("integration: audit entry with approval required", () => {
     timestamp: "2026-04-15T12:00:00.000Z",
     beforeHash: "hash_before",
     afterHash: "hash_after",
-    changes: [{ path: "value", before: "8", after: "12" }],
+    changes: [{ path: "value", changeType: "changed", beforeValue: "8", afterValue: "12" }],
     reason: "Increase minimum password length",
     approvalRequired: true,
     approvalStatus: "pending",
@@ -181,7 +181,7 @@ test("integration: audit entry with approval granted", () => {
     timestamp: "2026-04-15T12:00:00.000Z",
     beforeHash: "hash_before",
     afterHash: "hash_after",
-    changes: [{ path: "value", before: "8", after: "12" }],
+    changes: [{ path: "value", changeType: "changed", beforeValue: "8", afterValue: "12" }],
     reason: "Increase minimum password length",
     approvalRequired: true,
     approvalStatus: "approved",
@@ -199,18 +199,19 @@ test("integration: audit entry with approval granted", () => {
 test("integration: config diff entry structure", () => {
   interface ConfigDiffEntry {
     path: string;
-    before: unknown;
-    after: unknown;
+    changeType: "added" | "removed" | "changed";
+    beforeValue?: unknown;
+    afterValue?: unknown;
   }
 
   const diff: ConfigDiffEntry[] = [
-    { path: "pool_size", before: 10, after: 25 },
-    { path: "timeout_ms", before: 1000, after: 5000 },
+    { path: "pool_size", changeType: "changed", beforeValue: 10, afterValue: 25 },
+    { path: "timeout_ms", changeType: "changed", beforeValue: 1000, afterValue: 5000 },
   ];
 
   assert.equal(diff.length, 2);
-  assert.equal(diff[0]!.before, 10);
-  assert.equal(diff[0]!.after, 25);
+  assert.equal(diff[0]!.beforeValue, 10);
+  assert.equal(diff[0]!.afterValue, 25);
 });
 
 test("integration: hierarchical config layer precedence", () => {

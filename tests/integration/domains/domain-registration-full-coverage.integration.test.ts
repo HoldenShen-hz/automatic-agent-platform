@@ -110,11 +110,11 @@ test("cannot activate domain from deprecated state", async () => {
   const service = new DomainRegistryService();
 
   service.register(createTestDomain({ domainId: "transition-test", status: "registered" }));
-  service.activate("transition-test", false);
+  service.activate("transition-test");
   service.deprecate("transition-test");
 
   assert.throws(
-    () => service.activate("transition-test", false),
+    () => service.activate("transition-test"),
     (err: unknown) => err instanceof ValidationError,
   );
 });
@@ -332,7 +332,7 @@ test("valid transition: registered -> active (standard)", async () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "standard-active", status: "registered" }));
 
-  const activated = service.activate("standard-active", false);
+  const activated = service.activate("standard-active");
 
   assert.equal(activated.status, "active");
 });
@@ -341,7 +341,7 @@ test("valid transition: canary -> active (canary)", async () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "canary-active", status: "canary" }));
 
-  const activated = service.activate("canary-active", true);
+  const activated = service.activate("canary-active");
 
   assert.equal(activated.status, "active");
 });
@@ -381,7 +381,7 @@ test("valid transition: registered -> active -> deprecated -> archived", async (
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "full-transition", status: "registered" }));
 
-  service.activate("full-transition", false);
+  service.activate("full-transition");
   service.deprecate("full-transition");
   const archived = service.archive("full-transition");
 
@@ -524,7 +524,7 @@ test("domain:activated event has occurredAt timestamp", async () => {
   });
   service.register(createTestDomain({ domainId: "event-timestamp", status: "registered" }));
 
-  service.activate("event-timestamp", false);
+  service.activate("event-timestamp");
 
   const event = events.find((e) => e.eventType === "domain:activated");
   assert.ok(event);
@@ -596,7 +596,7 @@ test("get returns updated domain after state transition", async () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "lookup-transition", status: "registered" }));
 
-  service.activate("lookup-transition", false);
+  service.activate("lookup-transition");
 
   const domain = service.get("lookup-transition");
   assert.ok(domain !== null);
@@ -627,7 +627,7 @@ test("listActive excludes domain after archiving", async () => {
 test("getWorkflow returns workflow from updated domain", async () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "workflow-transition", status: "registered" }));
-  service.activate("workflow-transition", false);
+  service.activate("workflow-transition");
 
   const workflow = service.getWorkflow("workflow-transition", "wf_integration");
 
@@ -638,7 +638,7 @@ test("getWorkflow returns workflow from updated domain", async () => {
 test("getToolBundle returns bundle from updated domain", async () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "bundle-transition", status: "registered" }));
-  service.activate("bundle-transition", false);
+  service.activate("bundle-transition");
 
   const bundle = service.getToolBundle("bundle-transition", "integration_tools");
 

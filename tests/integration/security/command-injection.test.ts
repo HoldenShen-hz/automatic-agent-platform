@@ -25,6 +25,9 @@ function createSandboxPolicy(workspace: string) {
     realpathEnforced: true,
     symlinkPolicy: "deny" as const,
     processRuleMode: "allow" as const,
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
 }
 
@@ -39,6 +42,7 @@ test("command-executor blocks semicolon injection (;)", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -47,7 +51,6 @@ test("command-executor blocks semicolon injection (;)", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["cat"],
       allowedPathRoots: [workspace],
     };
 
@@ -71,6 +74,7 @@ test("command-executor blocks double-ampersand injection (&&)", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -79,7 +83,6 @@ test("command-executor blocks double-ampersand injection (&&)", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -99,6 +102,7 @@ test("command-executor blocks double-pipe injection (||)", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -107,7 +111,6 @@ test("command-executor blocks double-pipe injection (||)", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -127,6 +130,7 @@ test("command-executor blocks pipe injection (|)", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -135,7 +139,6 @@ test("command-executor blocks pipe injection (|)", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -155,6 +158,7 @@ test("command-executor blocks command substitution ($())", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -163,7 +167,6 @@ test("command-executor blocks command substitution ($())", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -183,6 +186,7 @@ test("command-executor blocks backtick command substitution", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -191,7 +195,6 @@ test("command-executor blocks backtick command substitution", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -211,6 +214,7 @@ test("command-executor blocks inline code execution via -c flag", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -219,7 +223,6 @@ test("command-executor blocks inline code execution via -c flag", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["bash"],
       allowedPathRoots: [workspace],
     };
 
@@ -243,6 +246,7 @@ test("command-executor blocks inline code execution via -e flag", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -251,7 +255,6 @@ test("command-executor blocks inline code execution via -e flag", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["python"],
       allowedPathRoots: [workspace],
     };
 
@@ -276,6 +279,7 @@ test("command-executor blocks curl to shell pipe", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -284,7 +288,6 @@ test("command-executor blocks curl to shell pipe", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["curl"],
       allowedPathRoots: [workspace],
     };
 
@@ -309,6 +312,7 @@ test("command-executor blocks wget to shell pipe", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -317,7 +321,6 @@ test("command-executor blocks wget to shell pipe", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["wget"],
       allowedPathRoots: [workspace],
     };
 
@@ -342,6 +345,7 @@ test("command-executor blocks fork bomb pattern", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -350,7 +354,6 @@ test("command-executor blocks fork bomb pattern", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["bash"],
       allowedPathRoots: [workspace],
     };
 
@@ -371,6 +374,7 @@ test("command-executor blocks dollar-brace expansion ${}", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -379,7 +383,6 @@ test("command-executor blocks dollar-brace expansion ${}", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -399,6 +402,7 @@ test("command-executor blocks newlines to bypass checks", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -407,7 +411,6 @@ test("command-executor blocks newlines to bypass checks", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -427,6 +430,7 @@ test("command-executor blocks-carriage return injection", async () => {
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -435,7 +439,6 @@ test("command-executor blocks-carriage return injection", async () => {
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 
@@ -455,6 +458,7 @@ test("command-executor allows safe commands with legitimate arguments", async ()
     const request = {
       callId: newId("call"),
       taskId: newId("task"),
+      agentId: newId("agent"),
       traceId: newId("trace"),
       executionId: null,
       toolName: "bash",
@@ -463,7 +467,6 @@ test("command-executor allows safe commands with legitimate arguments", async ()
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createSandboxPolicy(workspace),
-      allowedTools: ["echo"],
       allowedPathRoots: [workspace],
     };
 

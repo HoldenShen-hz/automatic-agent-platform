@@ -161,7 +161,7 @@ test("WorkflowRegistry supports multiple steps with dependencies", () => {
   const retrieved = registry.get("wf_multi");
   assert.notEqual(retrieved, null);
   assert.equal(retrieved!.steps.length, 2);
-  assert.equal(retrieved!.steps[1].dependsOn[0], "step_a");
+  assert.equal(retrieved!.steps[1]!.dependsOn[0], "step_a");
 });
 
 test("ContractRegistry handles empty schema", () => {

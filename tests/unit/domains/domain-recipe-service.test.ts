@@ -5,15 +5,22 @@ import { DomainRecipeService } from "../../../src/domains/domain-recipe-service.
 import type { DomainRecipe } from "../../../src/domains/recipes/index.js";
 
 function createTestRecipe(overrides?: Partial<DomainRecipe>): DomainRecipe {
+  const domainId = overrides?.domainId ?? "coding";
+  const defaultWorkflowId = overrides?.defaultWorkflowId ?? "wf_test";
   return {
     recipeId: "recipe_test",
-    domainId: "coding",
+    domainId,
     archetype: "crud_heavy",
     name: "Test Recipe",
     description: "Test recipe description",
+    riskProfileRef: `${domainId}.risk`,
+    guardrailOverlay: {},
     triggerPhrases: ["test", "debug"],
-    defaultWorkflowId: "wf_test",
+    defaultWorkflowId,
+    recommendedWorkflowIds: [defaultWorkflowId],
     defaultToolBundleIds: ["tools_test"],
+    defaultPromptBundleRef: `${domainId}.default-prompt`,
+    acceptanceChecklistRef: `${domainId}.acceptance`,
     ...overrides,
   };
 }

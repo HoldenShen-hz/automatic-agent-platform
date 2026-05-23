@@ -7,6 +7,7 @@ import {
   listPlatformApps,
   resolvePlatformAppManifest,
 } from "../../../src/apps/index.js";
+import type { PlatformAppKind } from "../../../src/platform-architecture-types.js";
 
 test("listPlatformApps returns array with exactly 3 apps", () => {
   const apps = listPlatformApps();
@@ -74,7 +75,7 @@ test("getPlatformAppManifestByKind returns worker manifest by kind", () => {
 
 test("getPlatformAppManifestByKind throws for invalid kind", () => {
   assert.throws(
-    () => getPlatformAppManifestByKind("invalid"),
+    () => getPlatformAppManifestByKind("invalid" as unknown as PlatformAppKind),
     /^Error: Unknown platform app kind: invalid$/
   );
 });

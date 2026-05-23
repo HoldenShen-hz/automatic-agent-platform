@@ -1,67 +1,68 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EvalDatasetJudgeService } from "../../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
+import { EvalDatasetJudgeService, type EvalDatasetCase } from "../../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
 import { PromptTemplateRegistryService } from "../../../../src/platform/prompt-engine/registry/index.js";
 import { PromptRolloutService } from "../../../../src/platform/prompt-engine/rollout/index.js";
 import { PlatformPromptReleaseOrchestrationService } from "../../../../src/platform/prompt-engine/rollout/platform-prompt-release-orchestration-service.js";
 
 test("integration: platform prompt release uses dataset gate, judge assignment, and rollout activation", () => {
   const datasets = new EvalDatasetJudgeService();
+  const cases: EvalDatasetCase[] = [
+    {
+      caseId: "safe_answer",
+      input: { request: "describe rollback" },
+      expectedOutput: "rollback plan",
+      tags: ["release", "safety"],
+      priority: "standard",
+      qualityCriteria: [
+        {
+          criterionId: "contains_rollback",
+          type: "contains",
+          config: { substring: "rollback plan" },
+          weight: 0.4,
+          threshold: 1,
+        },
+        {
+          criterionId: "judge_safety",
+          type: "llm_judge",
+          config: { rubric: "safe operational answer" },
+          weight: 0.6,
+          threshold: 0.85,
+        },
+      ],
+    },
+    ...Array.from({ length: 49 }, (_, i): EvalDatasetCase => ({
+      caseId: `case_${i + 2}`,
+      input: { request: `test request ${i + 2}` },
+      expectedOutput: `expected output ${i + 2}`,
+      tags: ["release", "safety"],
+      priority: "standard",
+      qualityCriteria: [
+        {
+          criterionId: `contains_rollback_${i + 2}`,
+          type: "contains",
+          config: { substring: "test" },
+          weight: 0.4,
+          threshold: 1,
+        },
+        {
+          criterionId: `judge_safety_${i + 2}`,
+          type: "llm_judge",
+          config: { rubric: "safe operational answer" },
+          weight: 0.6,
+          threshold: 0.85,
+        },
+      ],
+    })),
+  ];
   datasets.registerDataset({
     datasetId: "dataset_release_readiness",
     name: "Release Readiness",
     version: "2026.04",
     stage: "assess",
     createdBy: "quality",
-    cases: [
-      {
-        caseId: "safe_answer",
-        input: { request: "describe rollback" },
-        expectedOutput: "rollback plan",
-        tags: ["release", "safety"],
-        priority: "standard",
-        qualityCriteria: [
-          {
-            criterionId: "contains_rollback",
-            type: "contains",
-            config: { substring: "rollback plan" },
-            weight: 0.4,
-            threshold: 1,
-          },
-          {
-            criterionId: "judge_safety",
-            type: "llm_judge",
-            config: { rubric: "safe operational answer" },
-            weight: 0.6,
-            threshold: 0.85,
-          },
-        ],
-      },
-      ...Array.from({ length: 49 }, (_, i) => ({
-        caseId: `case_${i + 2}`,
-        input: { request: `test request ${i + 2}` },
-        expectedOutput: `expected output ${i + 2}`,
-        tags: ["release", "safety"],
-        priority: "standard",
-        qualityCriteria: [
-          {
-            criterionId: `contains_rollback_${i + 2}`,
-            type: "contains",
-            config: { substring: "test" },
-            weight: 0.4,
-            threshold: 1,
-          },
-          {
-            criterionId: `judge_safety_${i + 2}`,
-            type: "llm_judge",
-            config: { rubric: "safe operational answer" },
-            weight: 0.6,
-            threshold: 0.85,
-          },
-        ],
-      })),
-    ],
+    cases,
   });
   datasets.activateDataset("dataset_release_readiness");
   datasets.registerJudge({

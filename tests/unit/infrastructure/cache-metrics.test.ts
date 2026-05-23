@@ -54,10 +54,12 @@ describe("CacheMetrics", () => {
       metrics.record({ hit: false, namespace: "tool.glob" });
 
       const snapshot = metrics.snapshot();
-      assert.equal(snapshot.byNamespace["tool.read"].hits, 2);
-      assert.equal(snapshot.byNamespace["tool.read"].misses, 0);
-      assert.equal(snapshot.byNamespace["tool.glob"].hits, 0);
-      assert.equal(snapshot.byNamespace["tool.glob"].misses, 1);
+      const toolRead = snapshot.byNamespace["tool.read"]!;
+      const toolGlob = snapshot.byNamespace["tool.glob"]!;
+      assert.equal(toolRead.hits, 2);
+      assert.equal(toolRead.misses, 0);
+      assert.equal(toolGlob.hits, 0);
+      assert.equal(toolGlob.misses, 1);
     });
 
     it("tracks by layer", () => {
@@ -66,8 +68,9 @@ describe("CacheMetrics", () => {
       metrics.record({ hit: true, namespace: "tool.read", layer: "L1" });
 
       const snapshot = metrics.snapshot();
-      assert.equal(snapshot.byNamespace["tool.read"].byLayer["L1"], 2);
-      assert.equal(snapshot.byNamespace["tool.read"].byLayer["L2"], 1);
+      const toolRead = snapshot.byNamespace["tool.read"]!;
+      assert.equal(toolRead.byLayer["L1"], 2);
+      assert.equal(toolRead.byLayer["L2"], 1);
     });
 
     it("tracks miss reasons", () => {
@@ -76,8 +79,9 @@ describe("CacheMetrics", () => {
       metrics.record({ hit: false, namespace: "tool.read", reason: "not_found" });
 
       const snapshot = metrics.snapshot();
-      assert.equal(snapshot.byNamespace["tool.read"].byReason["not_found"], 2);
-      assert.equal(snapshot.byNamespace["tool.read"].byReason["expired"], 1);
+      const toolRead = snapshot.byNamespace["tool.read"]!;
+      assert.equal(toolRead.byReason["not_found"], 2);
+      assert.equal(toolRead.byReason["expired"], 1);
     });
 
     it("uses 'unknown' namespace when not provided", () => {
@@ -85,8 +89,9 @@ describe("CacheMetrics", () => {
       metrics.record({ hit: false });
 
       const snapshot = metrics.snapshot();
-      assert.equal(snapshot.byNamespace["unknown"].hits, 1);
-      assert.equal(snapshot.byNamespace["unknown"].misses, 1);
+      const unknown = snapshot.byNamespace["unknown"]!;
+      assert.equal(unknown.hits, 1);
+      assert.equal(unknown.misses, 1);
     });
   });
 
@@ -130,7 +135,7 @@ describe("CacheMetrics", () => {
       metrics.record({ hit: false, namespace: "tool.read" });
 
       const snapshot = metrics.snapshot();
-      assert.equal(snapshot.byNamespace["tool.read"].hitRate, 0.5);
+      assert.equal(snapshot.byNamespace["tool.read"]!.hitRate, 0.5);
     });
 
     it("returns empty byNamespace when no records", () => {
@@ -201,9 +206,10 @@ describe("CacheMetrics", () => {
       }
 
       const snapshot = metrics.snapshot();
-      assert.ok(snapshot.byNamespace["tool.read"].byLayer["L1"]);
-      assert.ok(snapshot.byNamespace["tool.read"].byLayer["L2"]);
-      assert.ok(snapshot.byNamespace["tool.read"].byLayer["L3"]);
+      const toolRead = snapshot.byNamespace["tool.read"]!;
+      assert.ok(toolRead.byLayer["L1"]);
+      assert.ok(toolRead.byLayer["L2"]);
+      assert.ok(toolRead.byLayer["L3"]);
     });
 
     it("handles all miss reasons", () => {
@@ -222,7 +228,7 @@ describe("CacheMetrics", () => {
       }
 
       const snapshot = metrics.snapshot();
-      const byReason = snapshot.byNamespace["tool.read"].byReason;
+      const byReason = snapshot.byNamespace["tool.read"]!.byReason;
 
       for (const reason of reasons) {
         assert.equal(byReason[reason], 1);

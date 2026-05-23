@@ -55,6 +55,7 @@ function createTestDatabase(): AuthoritativeSqlDatabase {
     getSchemaStatus: () => ({ currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: [] }),
     assertSchemaCurrent: () => {},
     integrityCheck: () => [],
+    close: () => db.close(),
     transaction: ((work: () => unknown) => work()) as <T>(work: () => T) => T,
     readTransaction: ((work: () => unknown) => work()) as <T>(work: () => T) => T,
     backendType: "sqlite" as const,

@@ -12,7 +12,7 @@ import type {
   PlatformAppManifest,
   PlatformStartupTarget,
   PlatformStartupTargetKind,
-} from "../../../src/apps/index.js";
+} from "../../../src/platform-architecture-types.js";
 
 test("PlatformAppKind type accepts api, console, worker", () => {
   const kinds: PlatformAppKind[] = ["api", "console", "worker"];

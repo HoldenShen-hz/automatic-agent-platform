@@ -139,7 +139,9 @@ test("integration: CostAlertConfig structure", () => {
       },
     },
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.8,
+    minAlertIntervalMs: 60_000,
   };
 
   assert.equal(config.enabled, true);

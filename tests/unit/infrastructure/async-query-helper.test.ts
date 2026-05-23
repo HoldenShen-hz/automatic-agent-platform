@@ -21,6 +21,10 @@ import {
 
 // ── Mock AsyncSqlConnection Factory ───────────────────────────────────────────
 
+function getMockCalls(fn: unknown): Array<{ arguments: unknown[] }> {
+  return ((fn as { mock: { calls: Array<{ arguments: unknown[] }> } }).mock.calls);
+}
+
 function createMockConnection(
   overrides: Partial<AsyncSqlConnection> = {},
 ): AsyncSqlConnection {
@@ -68,7 +72,7 @@ describe("asyncQueryAll", () => {
       { id: 1, name: "Alice" },
       { id: 2, name: "Bob" },
     ];
-    conn.query = mock.fn(async () => ({ rows: expectedRows, rowCount: 2 }));
+    conn.query = mock.fn(async () => ({ rows: expectedRows, rowCount: 2 })) as never;
 
     const result = await asyncQueryAll<{ id: number; name: string }>(
       conn,
@@ -76,11 +80,11 @@ describe("asyncQueryAll", () => {
     );
 
     assert.deepEqual(result, expectedRows);
-    assert.equal(conn.query.mock.calls.length, 1);
+    assert.equal(getMockCalls(conn.query).length, 1);
   });
 
   it("returns empty array when query returns no rows", async () => {
-    conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 }));
+    conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 })) as never;
 
     const result = await asyncQueryAll<{ id: number }>(
       conn,
@@ -91,7 +95,7 @@ describe("asyncQueryAll", () => {
   });
 
   it("passes sql and params to connection query", async () => {
-    conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 }));
+    conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 })) as never;
 
     await asyncQueryAll(
       conn,
@@ -100,7 +104,7 @@ describe("asyncQueryAll", () => {
       "active",
     );
 
-    const call = conn.query.mock.calls[0];
+    const call = getMockCalls(conn.query)[0]!;
     assert.equal(
       call.arguments[0],
       "SELECT * FROM users WHERE age > ? AND status = ?",
@@ -118,7 +122,7 @@ describe("asyncQueryAll", () => {
       { id: 1, email: "alice@example.com", active: true },
       { id: 2, email: "bob@example.com", active: false },
     ];
-    conn.query = mock.fn(async () => ({ rows: users, rowCount: 2 }));
+    conn.query = mock.fn(async () => ({ rows: users, rowCount: 2 })) as never;
 
     const result = await asyncQueryAll<UserRecord>(conn, "SELECT * FROM users");
 
@@ -142,7 +146,7 @@ describe("asyncQueryAllOrEmpty", () => {
 
   it("returns rows from query result", async () => {
     const rows = [{ id: 1 }, { id: 2 }];
-    conn.query = mock.fn(async () => ({ rows, rowCount: 2 }));
+    conn.query = mock.fn(async () => ({ rows, rowCount: 2 })) as never;
 
     const result = await asyncQueryAllOrEmpty<{ id: number }>(
       conn,
@@ -153,7 +157,7 @@ describe("asyncQueryAllOrEmpty", () => {
   });
 
   it("returns empty array when no results", async () => {
-    conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 }));
+    conn.query = mock.fn(async () => ({ rows: [], rowCount: 0 })) as never;
 
     const result = await asyncQueryAllOrEmpty<{ id: number }>(
       conn,
@@ -165,7 +169,7 @@ describe("asyncQueryAllOrEmpty", () => {
 
   it("behaves same as asyncQueryAll for non-empty results", async () => {
     const rows = [{ id: 1, name: "test" }];
-    conn.query = mock.fn(async () => ({ rows, rowCount: 1 }));
+    conn.query = mock.fn(async () => ({ rows, rowCount: 1 })) as never;
 
     const allResult = await asyncQueryAll<{ id: number; name: string }>(
       conn,
@@ -195,7 +199,7 @@ describe("asyncQueryOne", () => {
 
   it("returns single row from queryOne", async () => {
     const row = { id: 42, name: "Special" };
-    conn.queryOne = mock.fn(async () => row);
+    conn.queryOne = mock.fn(async () => row) as never;
 
     const result = await asyncQueryOne<{ id: number; name: string }>(
       conn,
@@ -206,7 +210,7 @@ describe("asyncQueryOne", () => {
   });
 
   it("returns undefined when queryOne returns undefined", async () => {
-    conn.queryOne = mock.fn(async () => undefined);
+    conn.queryOne = mock.fn(async () => undefined) as never;
 
     const result = await asyncQueryOne<{ id: number }>(
       conn,
@@ -217,7 +221,7 @@ describe("asyncQueryOne", () => {
   });
 
   it("passes sql and params to connection queryOne", async () => {
-    conn.queryOne = mock.fn(async () => undefined);
+    conn.queryOne = mock.fn(async () => undefined) as never;
 
     await asyncQueryOne(
       conn,
@@ -225,7 +229,7 @@ describe("asyncQueryOne", () => {
       "test@example.com",
     );
 
-    const call = conn.queryOne.mock.calls[0];
+    const call = getMockCalls(conn.queryOne)[0]!;
     assert.equal(call.arguments[0], "SELECT * FROM users WHERE email = ?");
     assert.deepEqual(call.arguments.slice(1), ["test@example.com"]);
   });
@@ -245,7 +249,7 @@ describe("asyncExecute", () => {
   });
 
   it("returns affected row count from execute", async () => {
-    conn.execute = mock.fn(async () => 5);
+    conn.execute = mock.fn(async () => 5) as never;
 
     const result = await asyncExecute(
       conn,
@@ -256,7 +260,7 @@ describe("asyncExecute", () => {
   });
 
   it("returns 0 when no rows affected", async () => {
-    conn.execute = mock.fn(async () => 0);
+    conn.execute = mock.fn(async () => 0) as never;
 
     const result = await asyncExecute(conn, "DELETE FROM users WHERE id = 999");
 
@@ -264,7 +268,7 @@ describe("asyncExecute", () => {
   });
 
   it("passes sql and params to connection execute", async () => {
-    conn.execute = mock.fn(async () => 1);
+    conn.execute = mock.fn(async () => 1) as never;
 
     await asyncExecute(
       conn,
@@ -273,7 +277,7 @@ describe("asyncExecute", () => {
       "alice@example.com",
     );
 
-    const call = conn.execute.mock.calls[0];
+    const call = getMockCalls(conn.execute)[0]!;
     assert.equal(
       call.arguments[0],
       "INSERT INTO users (name, email) VALUES (?, ?)",
@@ -289,7 +293,7 @@ describe("asyncExecuteBatch", () => {
 
   beforeEach(() => {
     conn = createMockConnection({
-      execute: mock.fn(async () => 1),
+      execute: mock.fn(async () => 1) as never,
     });
   });
 
@@ -298,7 +302,7 @@ describe("asyncExecuteBatch", () => {
   });
 
   it("executes statements sequentially and returns change counts", async () => {
-    conn.execute = mock.fn(async () => 1);
+    conn.execute = mock.fn(async () => 1) as never;
 
     const statements = [
       { sql: "INSERT INTO logs (msg) VALUES ('first')" },
@@ -314,7 +318,7 @@ describe("asyncExecuteBatch", () => {
 
   it("returns varying change counts per statement", async () => {
     let nextCount = 0;
-    conn.execute = mock.fn(async () => [10, 5][nextCount++] ?? 0);
+    conn.execute = mock.fn(async () => [10, 5][nextCount++] ?? 0) as never;
 
     const results = await asyncExecuteBatch(conn, [
       { sql: "DELETE FROM table_a" }, // returns 10
@@ -328,11 +332,11 @@ describe("asyncExecuteBatch", () => {
     const results = await asyncExecuteBatch(conn, []);
 
     assert.deepEqual(results, []);
-    assert.equal(conn.execute.mock.calls.length, 0);
+    assert.equal(getMockCalls(conn.execute).length, 0);
   });
 
   it("passes params for statements that have them", async () => {
-    conn.execute = mock.fn(async () => 1);
+    conn.execute = mock.fn(async () => 1) as never;
 
     await asyncExecuteBatch(conn, [
       {
@@ -345,18 +349,18 @@ describe("asyncExecuteBatch", () => {
       },
     ]);
 
-    const call1 = conn.execute.mock.calls[0];
-    const call2 = conn.execute.mock.calls[1];
+    const call1 = getMockCalls(conn.execute)[0]!;
+    const call2 = getMockCalls(conn.execute)[1]!;
     assert.deepEqual(call1.arguments.slice(1), ["Alice", "alice@example.com"]);
     assert.deepEqual(call2.arguments.slice(1), ["Bob", "bob@example.com"]);
   });
 
   it("handles statements with no params", async () => {
-    conn.execute = mock.fn(async () => 0);
+    conn.execute = mock.fn(async () => 0) as never;
 
     await asyncExecuteBatch(conn, [{ sql: "DELETE FROM audit_log" }]);
 
-    const call = conn.execute.mock.calls[0];
+    const call = getMockCalls(conn.execute)[0]!;
     assert.deepEqual(call.arguments.slice(1), []);
   });
 });

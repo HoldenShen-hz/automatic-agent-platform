@@ -362,7 +362,9 @@ test("PluginSpiRegistry invokes presenter plugins through isolated runtime path"
     async formatOutput(input) {
       return {
         summary: `presented:${input.audience}`,
-        sections: input.machineOutputs.map((output) => output.stepId),
+        sections: input.machineOutputs.flatMap((output) =>
+          output.stepId == null ? [] : [output.stepId],
+        ),
         citations: input.artifacts,
       };
     },

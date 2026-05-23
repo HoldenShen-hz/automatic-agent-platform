@@ -85,7 +85,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "near_realtime",
       compiledArtifactRef: null,
     },
     status: "validated",
@@ -174,7 +174,7 @@ test("getPluginBindings sorts by priority descending", () => {
 
   if (bindings.length >= 2) {
     for (let i = 1; i < bindings.length; i++) {
-      assert.ok(bindings[i - 1].priority >= bindings[i].priority);
+      assert.ok(bindings[i - 1]!.priority >= bindings[i]!.priority);
     }
   }
 });
@@ -584,7 +584,7 @@ test("activate publishes domain:activated event", () => {
   });
   service.register(createTestDomain({ status: "registered" }));
 
-  service.activate("test-domain", true);
+  service.activate("test-domain");
 
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
 });
@@ -643,7 +643,7 @@ test("resolvePlugins returns empty array when no plugin registry", () => {
 });
 
 test("resolvePlugins returns empty array for unknown plugin type", () => {
-  const service = new DomainRegistryService({ pluginRegistry: undefined });
+  const service = new DomainRegistryService();
   service.register(createTestDomain());
 
   const plugins = service.resolvePlugins("test-domain", "evaluator");
@@ -659,7 +659,7 @@ test("activate throws ValidationError for unknown domain", () => {
   const service = new DomainRegistryService();
 
   assert.throws(
-    () => service.activate("unknown-domain", false),
+    () => service.activate("unknown-domain"),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.domain_not_found",
   );
 });

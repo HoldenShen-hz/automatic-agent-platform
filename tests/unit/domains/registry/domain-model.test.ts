@@ -109,8 +109,8 @@ test("ToolBundleConfigSchema parses valid bundle", () => {
 
 test("ToolBundleConfigSchema applies defaults to tools", () => {
   const result = ToolBundleConfigSchema.parse({ bundleId: "b1", tools: [{ toolName: "t1" }] });
-  assert.equal(result.tools[0].enabled, true);
-  assert.deepEqual(result.tools[0].configOverrides, {});
+  assert.equal(result.tools[0]!.enabled, true);
+  assert.deepEqual(result.tools[0]!.configOverrides, {});
 });
 
 test("OutputContractConfigSchema parses valid contract", () => {

@@ -9,12 +9,15 @@ import {
   bootstrapVerticalDomainBaselines,
   getVerticalDomainBaseline,
 } from "../../../src/domains/domain-baseline-catalog.js";
+import type { DomainDefinition } from "../../../src/domains/registry/domain-model.js";
+
+type TestDomainStatus = DomainDefinition["status"] | "testing";
 
 function registerTestDomain(
   registry: DomainRegistryService,
   domainId: string,
   displayName: string,
-  status: "draft" | "testing" = "testing",
+  status: TestDomainStatus = "testing",
 ): void {
   registry.register({
     domainId,
@@ -56,7 +59,7 @@ function registerTestDomain(
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status,
+    status: status === "testing" ? "validated" : status,
     externalAdapters: [],
     pluginBindings: [],
   });

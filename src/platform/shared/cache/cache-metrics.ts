@@ -22,8 +22,8 @@ export interface CacheMetricsSnapshot {
     hits: number;
     misses: number;
     hitRate: number;
-    byLayer?: Record<string, number>;
-    byReason?: Record<string, number>;
+    byLayer: Record<string, number>;
+    byReason: Record<string, number>;
   }>;
 }
 

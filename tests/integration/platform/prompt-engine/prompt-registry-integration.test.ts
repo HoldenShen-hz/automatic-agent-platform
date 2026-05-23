@@ -3,6 +3,12 @@ import test from "node:test";
 
 import { PromptTemplateRegistryService, hashPromptPrefix } from "../../../../src/platform/prompt-engine/registry/index.js";
 
+function errorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
+    ? error.code
+    : undefined;
+}
+
 test("prompt registry registers a template and retrieves it by key and version", () => {
   const registry = new PromptTemplateRegistryService();
 
@@ -25,7 +31,7 @@ test("prompt registry registers a template and retrieves it by key and version",
   assert.equal(registered.domainBlock, "Domain: general");
   assert.equal(registered.variableSuffixTemplate, "Question: {{question}}");
   assert.equal(registered.variableSpecs.length, 1);
-  assert.equal(registered.variableSpecs[0].key, "question");
+  assert.equal(registered.variableSpecs[0]!.key, "question");
   assert.equal(registered.compatibilityTags.length, 2);
   assert.ok(registered.fixedPrefixHash.length > 0);
   assert.ok(registered.createdAt.length > 0);
@@ -57,7 +63,7 @@ test("prompt registry throws on duplicate version for same template key", () => 
         fixedPrefix: "Different prefix",
         domainBlock: "Different domain",
       }),
-    (err) => err.code === "prompt_template.version_conflict:test_reg_duplicate:v1",
+    (err) => errorCode(err) === "prompt_template.version_conflict:test_reg_duplicate:v1",
   );
 });
 
@@ -83,8 +89,8 @@ test("prompt registry lists all versions for a template key", () => {
   const versions = registry.listVersions("test_reg_versions");
   assert.equal(versions.length, 2);
   const sorted = [...versions].sort((a, b) => a.version.localeCompare(b.version));
-  assert.equal(sorted[0].version, "v1");
-  assert.equal(sorted[1].version, "v2");
+  assert.equal(sorted[0]!.version, "v1");
+  assert.equal(sorted[1]!.version, "v2");
 });
 
 test("prompt registry lists all templates", () => {
@@ -190,7 +196,7 @@ test("prompt registry throws on empty required fields", () => {
         fixedPrefix: "Prefix",
         domainBlock: "Domain",
       }),
-    (err) => err.code === "prompt_template.invalid_templateKey",
+    (err) => errorCode(err) === "prompt_template.invalid_templateKey",
   );
 
   assert.throws(
@@ -202,7 +208,7 @@ test("prompt registry throws on empty required fields", () => {
         fixedPrefix: "Prefix",
         domainBlock: "Domain",
       }),
-    (err) => err.code === "prompt_template.invalid_version",
+    (err) => errorCode(err) === "prompt_template.invalid_version",
   );
 
   assert.throws(
@@ -214,7 +220,7 @@ test("prompt registry throws on empty required fields", () => {
         fixedPrefix: "Prefix",
         domainBlock: "Domain",
       }),
-    (err) => err.code === "prompt_template.invalid_owner",
+    (err) => errorCode(err) === "prompt_template.invalid_owner",
   );
 });
 

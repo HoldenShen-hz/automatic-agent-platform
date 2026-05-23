@@ -16,11 +16,17 @@ import {
   type DomainRiskSpec,
 } from "../../../src/domains/domain-specs.js";
 
-function assertZodFailurePath(result: { success: boolean; error?: { issues: Array<{ path: Array<string | number> }> } }, path: string[]): void {
+function assertZodFailurePath(
+  result:
+    | { success: true }
+    | { success: false; error: { issues: Array<{ path: Array<string | number> }> } },
+  path: string[],
+): void {
   assert.equal(result.success, false);
-  if (!result.success) {
-    assert.deepEqual(result.error.issues[0]?.path, path);
+  if (result.success) {
+    return;
   }
+  assert.deepEqual(result.error.issues[0]?.path, path);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

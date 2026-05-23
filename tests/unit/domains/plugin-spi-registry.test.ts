@@ -3,21 +3,13 @@ import test from "node:test";
 
 import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-registry.js";
 import { PluginManifestSchema } from "../../../src/domains/registry/plugin-spi.js";
+import type { RegisteredPlugin } from "../../../src/domains/registry/plugin-spi.js";
 
-function makeMinimalPlugin(pluginId: string, spiType: "adapter" | "retriever" | "planner" | "presenter" | "validator" = "planner") {
-  const plugin: {
-    pluginId: string;
-    spiType: string;
-    onLoad: () => Promise<void>;
-    onActivate: () => Promise<void>;
-    onDeactivate: () => Promise<void>;
-    onUnload: () => Promise<void>;
-    healthCheck: () => Promise<boolean>;
-    capabilityIds: string[];
-    domainId?: string;
-  } = {
-    pluginId,
-    spiType,
+function makeMinimalPlugin(
+  pluginId: string,
+  spiType: "adapter" | "retriever" | "planner" | "presenter" | "validator" = "planner",
+): RegisteredPlugin {
+  const sharedHooks = {
     onLoad: async () => {},
     onActivate: async () => {},
     onDeactivate: async () => {},
@@ -25,10 +17,59 @@ function makeMinimalPlugin(pluginId: string, spiType: "adapter" | "retriever" | 
     healthCheck: async () => true,
     capabilityIds: [],
   };
-  if (spiType === "retriever" || spiType === "validator") {
-    plugin.domainId = "test-domain";
+
+  switch (spiType) {
+    case "adapter":
+      return {
+        pluginId,
+        spiType,
+        adapterType: "github",
+        authenticate: async () => {},
+        execute: async () => ({}),
+        ...sharedHooks,
+      };
+    case "retriever":
+      return {
+        pluginId,
+        spiType,
+        domainId: "test-domain",
+        retrieve: async () => [],
+        ...sharedHooks,
+      };
+    case "validator":
+      return {
+        pluginId,
+        spiType,
+        domainId: "test-domain",
+        validate: async () => ({
+          valid: true,
+          errors: [],
+          suggestions: [],
+        }),
+        ...sharedHooks,
+      };
+    case "presenter":
+      return {
+        pluginId,
+        spiType,
+        domainId: "test-domain",
+        formatOutput: async () => ({
+          summary: "ok",
+          sections: [],
+          citations: [],
+        }),
+        ...sharedHooks,
+      };
+    case "planner":
+    default:
+      return {
+        pluginId,
+        spiType: "planner",
+        domainId: "test-domain",
+        suggestWorkflow: async () => null,
+        ...sharedHooks,
+      };
   }
-  return plugin;
 }
 
 test("PluginSpiRegistry.register stores plugin record", () => {
@@ -90,9 +131,9 @@ test("PluginSpiRegistry.listByDomain filters by domain", () => {
   const domainBetaPlugins = registry.listByDomain("domain_beta");
 
   assert.equal(domainAlphaPlugins.length, 1);
-  assert.equal(domainAlphaPlugins[0].manifest.pluginId, "plugin_domain_a");
+  assert.equal(domainAlphaPlugins[0]!.manifest.pluginId, "plugin_domain_a");
   assert.equal(domainBetaPlugins.length, 1);
-  assert.equal(domainBetaPlugins[0].manifest.pluginId, "plugin_domain_b");
+  assert.equal(domainBetaPlugins[0]!.manifest.pluginId, "plugin_domain_b");
 });
 
 test("PluginSpiRegistry.listByDomain filters by spiType", () => {
@@ -102,7 +143,7 @@ test("PluginSpiRegistry.listByDomain filters by spiType", () => {
 
   const retrievers = registry.listByDomain("", "retriever");
   assert.equal(retrievers.length, 1);
-  assert.equal(retrievers[0].manifest.pluginId, "retriever_plugin");
+  assert.equal(retrievers[0]!.manifest.pluginId, "retriever_plugin");
 });
 
 test("PluginSpiRegistry.resolve returns plugin from record", () => {

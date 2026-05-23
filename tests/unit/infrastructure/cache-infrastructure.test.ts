@@ -321,22 +321,24 @@ describe("CacheMetrics", () => {
     metrics.record({ hit: true, namespace: "ns1", layer: "L2" });
     metrics.record({ hit: true, namespace: "ns1", layer: "L1" });
     const snapshot = metrics.snapshot();
+    const ns1 = snapshot.byNamespace["ns1"]!;
     assert.equal(snapshot.totalHits, 3);
     assert.equal(snapshot.totalMisses, 0);
     assert.equal(snapshot.hitRate, 1.0);
-    assert.equal(snapshot.byNamespace["ns1"].hits, 3);
+    assert.equal(ns1.hits, 3);
   });
 
   it("records misses correctly", () => {
     metrics.record({ hit: false, namespace: "ns1", reason: "not_found" });
     metrics.record({ hit: false, namespace: "ns1", reason: "expired" });
     const snapshot = metrics.snapshot();
+    const ns1 = snapshot.byNamespace["ns1"]!;
     assert.equal(snapshot.totalHits, 0);
     assert.equal(snapshot.totalMisses, 2);
     assert.equal(snapshot.hitRate, 0);
-    assert.equal(snapshot.byNamespace["ns1"].misses, 2);
-    assert.equal(snapshot.byNamespace["ns1"].byReason["not_found"], 1);
-    assert.equal(snapshot.byNamespace["ns1"].byReason["expired"], 1);
+    assert.equal(ns1.misses, 2);
+    assert.equal(ns1.byReason["not_found"], 1);
+    assert.equal(ns1.byReason["expired"], 1);
   });
 
   it("calculates hit rate correctly", () => {
@@ -355,10 +357,12 @@ describe("CacheMetrics", () => {
     metrics.record({ hit: true, namespace: "ns2" });
     metrics.record({ hit: false, namespace: "ns1" });
     const snapshot = metrics.snapshot();
+    const ns1 = snapshot.byNamespace["ns1"]!;
+    const ns2 = snapshot.byNamespace["ns2"]!;
     assert.equal(snapshot.totalHits, 2);
     assert.equal(snapshot.totalMisses, 1);
-    assert.equal(snapshot.byNamespace["ns1"].hitRate, 0.5);
-    assert.equal(snapshot.byNamespace["ns2"].hitRate, 1.0);
+    assert.equal(ns1.hitRate, 0.5);
+    assert.equal(ns2.hitRate, 1.0);
   });
 
   it("reset clears all metrics", () => {

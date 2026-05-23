@@ -10,86 +10,88 @@ import {
   type DomainDescriptorProfile,
 } from "../../../src/domains/architecture-remediation.js";
 
+const legacyState = (state: string): DomainLifecycleState => state as DomainLifecycleState;
+
 // ---------------------------------------------------------------------------
 // canTransitionDomain Tests
 // ---------------------------------------------------------------------------
 
 test("canTransitionDomain returns true for valid Draft transitions", () => {
-  assert.equal(canTransitionDomain("Draft", "Validated"), true);
-  assert.equal(canTransitionDomain("Draft", "Archived"), true);
+  assert.equal(canTransitionDomain(legacyState("Draft"), legacyState("Validated")), true);
+  assert.equal(canTransitionDomain(legacyState("Draft"), legacyState("Archived")), true);
 });
 
 test("canTransitionDomain returns false for invalid Draft transitions", () => {
-  assert.equal(canTransitionDomain("Draft", "Active"), false);
-  assert.equal(canTransitionDomain("Draft", "Updating"), false);
-  assert.equal(canTransitionDomain("Draft", "Deprecated"), false);
+  assert.equal(canTransitionDomain(legacyState("Draft"), legacyState("Active")), false);
+  assert.equal(canTransitionDomain(legacyState("Draft"), legacyState("Updating")), false);
+  assert.equal(canTransitionDomain(legacyState("Draft"), legacyState("Deprecated")), false);
 });
 
 test("canTransitionDomain returns true for valid Validated transitions", () => {
-  assert.equal(canTransitionDomain("Validated", "Registered"), true);
-  assert.equal(canTransitionDomain("Validated", "Draft"), true);
+  assert.equal(canTransitionDomain(legacyState("Validated"), legacyState("Registered")), true);
+  assert.equal(canTransitionDomain(legacyState("Validated"), legacyState("Draft")), true);
 });
 
 test("canTransitionDomain returns false for invalid Validated transitions", () => {
-  assert.equal(canTransitionDomain("Validated", "Active"), false);
-  assert.equal(canTransitionDomain("Validated", "Archived"), false);
+  assert.equal(canTransitionDomain(legacyState("Validated"), legacyState("Active")), false);
+  assert.equal(canTransitionDomain(legacyState("Validated"), legacyState("Archived")), false);
 });
 
 test("canTransitionDomain returns true for valid Registered transitions", () => {
-  assert.equal(canTransitionDomain("Registered", "Active"), true);
-  assert.equal(canTransitionDomain("Registered", "Deprecated"), true);
+  assert.equal(canTransitionDomain(legacyState("Registered"), legacyState("Active")), true);
+  assert.equal(canTransitionDomain(legacyState("Registered"), legacyState("Deprecated")), true);
 });
 
 test("canTransitionDomain returns false for invalid Registered transitions", () => {
-  assert.equal(canTransitionDomain("Registered", "Draft"), false);
-  assert.equal(canTransitionDomain("Registered", "Updating"), false);
+  assert.equal(canTransitionDomain(legacyState("Registered"), legacyState("Draft")), false);
+  assert.equal(canTransitionDomain(legacyState("Registered"), legacyState("Updating")), false);
 });
 
 test("canTransitionDomain returns true for valid Active transitions", () => {
-  assert.equal(canTransitionDomain("Active", "Updating"), true);
-  assert.equal(canTransitionDomain("Active", "Deprecated"), true);
+  assert.equal(canTransitionDomain(legacyState("Active"), legacyState("Updating")), true);
+  assert.equal(canTransitionDomain(legacyState("Active"), legacyState("Deprecated")), true);
 });
 
 test("canTransitionDomain returns false for invalid Active transitions", () => {
-  assert.equal(canTransitionDomain("Active", "Draft"), false);
-  assert.equal(canTransitionDomain("Active", "Registered"), false);
+  assert.equal(canTransitionDomain(legacyState("Active"), legacyState("Draft")), false);
+  assert.equal(canTransitionDomain(legacyState("Active"), legacyState("Registered")), false);
 });
 
 test("canTransitionDomain returns true for valid Updating transitions", () => {
-  assert.equal(canTransitionDomain("Updating", "Active"), true);
-  assert.equal(canTransitionDomain("Updating", "Deprecated"), true);
+  assert.equal(canTransitionDomain(legacyState("Updating"), legacyState("Active")), true);
+  assert.equal(canTransitionDomain(legacyState("Updating"), legacyState("Deprecated")), true);
 });
 
 test("canTransitionDomain returns false for invalid Updating transitions", () => {
-  assert.equal(canTransitionDomain("Updating", "Draft"), false);
-  assert.equal(canTransitionDomain("Updating", "Registered"), false);
+  assert.equal(canTransitionDomain(legacyState("Updating"), legacyState("Draft")), false);
+  assert.equal(canTransitionDomain(legacyState("Updating"), legacyState("Registered")), false);
 });
 
 test("canTransitionDomain returns true for valid Deprecated transition", () => {
-  assert.equal(canTransitionDomain("Deprecated", "Archived"), true);
+  assert.equal(canTransitionDomain(legacyState("Deprecated"), legacyState("Archived")), true);
 });
 
 test("canTransitionDomain returns false for invalid Deprecated transitions", () => {
-  assert.equal(canTransitionDomain("Deprecated", "Active"), false);
-  assert.equal(canTransitionDomain("Deprecated", "Draft"), false);
-  assert.equal(canTransitionDomain("Deprecated", "Registered"), false);
+  assert.equal(canTransitionDomain(legacyState("Deprecated"), legacyState("Active")), false);
+  assert.equal(canTransitionDomain(legacyState("Deprecated"), legacyState("Draft")), false);
+  assert.equal(canTransitionDomain(legacyState("Deprecated"), legacyState("Registered")), false);
 });
 
 test("canTransitionDomain returns false for Archived transitions (terminal state)", () => {
-  const states: DomainLifecycleState[] = ["Draft", "Validated", "Registered", "Active", "Updating", "Deprecated", "Archived"];
+  const states = ["Draft", "Validated", "Registered", "Active", "Updating", "Deprecated", "Archived"] as const;
   for (const to of states) {
-    assert.equal(canTransitionDomain("Archived", to), false, `Archived -> ${to} should be false`);
+    assert.equal(canTransitionDomain(legacyState("Archived"), legacyState(to)), false, `Archived -> ${to} should be false`);
   }
 });
 
 test("canTransitionDomain covers all state pairs exhaustively", () => {
-  const states: DomainLifecycleState[] = ["Draft", "Validated", "Registered", "Active", "Updating", "Deprecated", "Archived"];
+  const states = ["Draft", "Validated", "Registered", "Active", "Updating", "Deprecated", "Archived"] as const;
   for (const from of states) {
     for (const to of states) {
       if (from === "Archived") {
-        assert.equal(canTransitionDomain(from, to), false);
+        assert.equal(canTransitionDomain(legacyState(from), legacyState(to)), false);
       } else if (from === to) {
-        assert.equal(canTransitionDomain(from, to), false, `same-state transition ${from} -> ${to} should be false`);
+        assert.equal(canTransitionDomain(legacyState(from), legacyState(to)), false, `same-state transition ${from} -> ${to} should be false`);
       }
     }
   }
@@ -102,7 +104,7 @@ test("canTransitionDomain covers all state pairs exhaustively", () => {
 test("validateActiveDomainDescriptor returns empty array for valid Active descriptor", () => {
   const descriptor: DomainDescriptorProfile = {
     domainId: "test-domain",
-    lifecycleState: "Active",
+    lifecycleState: "active",
     executionMode: "supervised",
     hotPathMode: "deterministic_only",
     planningMode: "plan_graph_required",
@@ -113,7 +115,7 @@ test("validateActiveDomainDescriptor returns empty array for valid Active descri
 test("validateActiveDomainDescriptor returns empty array for full_auto with deterministic_only hot path", () => {
   const descriptor: DomainDescriptorProfile = {
     domainId: "test-domain",
-    lifecycleState: "Active",
+    lifecycleState: "active",
     executionMode: "full_auto",
     hotPathMode: "deterministic_only",
     planningMode: "plan_graph_required",
@@ -124,7 +126,7 @@ test("validateActiveDomainDescriptor returns empty array for full_auto with dete
 test("validateActiveDomainDescriptor returns empty array for auto execution with deterministic_only hot path", () => {
   const descriptor: DomainDescriptorProfile = {
     domainId: "test-domain",
-    lifecycleState: "Active",
+    lifecycleState: "active",
     executionMode: "auto",
     hotPathMode: "deterministic_only",
     planningMode: "plan_graph_required",
@@ -133,7 +135,7 @@ test("validateActiveDomainDescriptor returns empty array for auto execution with
 });
 
 test("validateActiveDomainDescriptor detects non-Active lifecycleState", () => {
-  const states: DomainLifecycleState[] = ["Draft", "Validated", "Registered", "Updating", "Deprecated", "Archived"];
+  const states: DomainLifecycleState[] = ["validating", "certified", "canary", "deprecated", "retired"];
   for (const state of states) {
     const descriptor: DomainDescriptorProfile = {
       domainId: "test-domain",
@@ -150,7 +152,7 @@ test("validateActiveDomainDescriptor detects non-Active lifecycleState", () => {
 test("validateActiveDomainDescriptor detects non-plan_graph_required planningMode", () => {
   const descriptor: DomainDescriptorProfile = {
     domainId: "test-domain",
-    lifecycleState: "Active",
+    lifecycleState: "active",
     executionMode: "supervised",
     hotPathMode: "deterministic_only",
     planningMode: "legacy_projection",
@@ -162,7 +164,7 @@ test("validateActiveDomainDescriptor detects non-plan_graph_required planningMod
 test("validateActiveDomainDescriptor detects full_auto with llm_allowed hot path (conflict)", () => {
   const descriptor: DomainDescriptorProfile = {
     domainId: "test-domain",
-    lifecycleState: "Active",
+    lifecycleState: "active",
     executionMode: "full_auto",
     hotPathMode: "llm_allowed",
     planningMode: "plan_graph_required",
@@ -174,7 +176,7 @@ test("validateActiveDomainDescriptor detects full_auto with llm_allowed hot path
 test("validateActiveDomainDescriptor detects auto with llm_allowed (not flagged for full_auto)", () => {
   const descriptor: DomainDescriptorProfile = {
     domainId: "test-domain",
-    lifecycleState: "Active",
+    lifecycleState: "active",
     executionMode: "auto",
     hotPathMode: "llm_allowed",
     planningMode: "plan_graph_required",
@@ -186,7 +188,7 @@ test("validateActiveDomainDescriptor detects auto with llm_allowed (not flagged 
 test("validateActiveDomainDescriptor returns multiple findings when multiple issues exist", () => {
   const descriptor: DomainDescriptorProfile = {
     domainId: "test-domain",
-    lifecycleState: "Draft",
+    lifecycleState: "validating",
     executionMode: "full_auto",
     hotPathMode: "llm_allowed",
     planningMode: "legacy_projection",
@@ -203,7 +205,7 @@ test("validateActiveDomainDescriptor handles all executionMode values", () => {
   for (const mode of modes) {
     const descriptor: DomainDescriptorProfile = {
       domainId: "test-domain",
-      lifecycleState: "Active",
+      lifecycleState: "active",
       executionMode: mode,
       hotPathMode: "deterministic_only",
       planningMode: "plan_graph_required",
@@ -219,7 +221,7 @@ test("validateActiveDomainDescriptor handles all hotPathMode values", () => {
   for (const mode of modes) {
     const descriptor: DomainDescriptorProfile = {
       domainId: "test-domain",
-      lifecycleState: "Active",
+      lifecycleState: "active",
       executionMode: "supervised",
       hotPathMode: mode,
       planningMode: "plan_graph_required",

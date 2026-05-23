@@ -7,12 +7,26 @@ import {
   ConversationTemplateExecutor,
   ConversationTemplateRegistry,
   ConversationTemplateSchema,
+  type ConversationTemplate,
 } from "../../../../src/platform/prompt-engine/conversation-template-service.js";
 import {
   loadConversationTemplateConfig,
   getTemplatesFromConfig,
   type ConversationTemplateConfig,
 } from "../../../../src/platform/prompt-engine/conversation-template-config-loader.js";
+
+function createTemplate(
+  input: Pick<ConversationTemplate, "templateId" | "name" | "description" | "intent" | "steps">
+    & Partial<Omit<ConversationTemplate, "templateId" | "name" | "description" | "intent" | "steps">>,
+): ConversationTemplate {
+  return ConversationTemplateSchema.parse({
+    version: "1.0",
+    estimatedDurationMinutes: 5,
+    tags: [],
+    isActive: true,
+    ...input,
+  });
+}
 
 test("integration: loadConversationTemplateConfig loads valid config file", () => {
   const configPath = resolve(
@@ -55,7 +69,7 @@ test("integration: loadConversationTemplateConfig loads valid config file", () =
     assert.equal(config.maxStepsPerTemplate, 10);
     assert.equal(config.enableTemplateAutoSelection, true);
     assert.equal(config.templates.length, 1);
-    assert.equal(config.templates[0].templateId, "integration_test_template");
+    assert.equal(config.templates[0]!.templateId, "integration_test_template");
   } finally {
     unlinkSync(configPath);
   }
@@ -102,20 +116,20 @@ test("integration: loadConversationTemplateConfig validates schema on load", () 
 test("integration: getTemplatesFromConfig extracts templates from config", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      {
+      createTemplate({
         templateId: "extract_test",
         name: "Extract Test",
         description: "Testing extraction",
         intent: "task_query",
         steps: [],
-      },
-      {
+      }),
+      createTemplate({
         templateId: "extract_test_2",
         name: "Extract Test 2",
         description: "Testing extraction 2",
         intent: "task_create",
         steps: [],
-      },
+      }),
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: false,
@@ -379,7 +393,7 @@ test("integration: templates loaded from real config file work with executor", (
   );
   const executor = new ConversationTemplateExecutor(registry);
 
-  const firstTemplate = config.templates[0];
+  const firstTemplate = config.templates[0]!;
   const conversation = executor.start(firstTemplate.templateId);
 
   if (conversation) {

@@ -8,7 +8,8 @@ test("PackMigrationService records canonical nodeId in execution trace and rollb
   service.seedPackState("pack-src", { prompts: 2 });
 
   const plan = service.createMigrationPlan("pack-src", "pack-dst");
-  (plan.steps as Array<{ nodeId?: string; stepId: string }>)[0] = {
+  const mutableSteps = plan.steps as unknown as Array<{ nodeId?: string; stepId: string }>;
+  mutableSteps[0] = {
     ...plan.steps[0]!,
     nodeId: "canonical_export_state",
     stepId: "legacy_export_state",

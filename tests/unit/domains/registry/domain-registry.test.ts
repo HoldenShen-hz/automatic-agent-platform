@@ -142,9 +142,9 @@ test("Domain has correct workflow after registration", () => {
   assert.equal(workflow?.workflowId, "wf_primary");
   assert.equal(workflow?.name, "Primary Workflow");
   assert.equal(workflow?.steps.length, 1);
-  assert.equal(workflow?.steps[0].stepName, "execute");
-  assert.equal(workflow?.steps[0].retryPolicy.maxRetries, 3);
-  assert.equal(workflow?.steps[0].requiresReview, true);
+  assert.equal(workflow?.steps[0]!.stepName, "execute");
+  assert.equal(workflow?.steps[0]!.retryPolicy.maxRetries, 3);
+  assert.equal(workflow?.steps[0]!.requiresReview, true);
 });
 
 test("Domain has correct tool bundle after registration", () => {
@@ -204,7 +204,7 @@ test("register publishes domain:registered event", () => {
   const service = new DomainRegistryService({
     eventPublisher: {
       publish(input) {
-        events.push(input);
+        events.push(input as { eventType: string; payload: Record<string, unknown> });
       },
     },
   });
@@ -212,8 +212,8 @@ test("register publishes domain:registered event", () => {
   service.register(createMinimalDomain({ domainId: "event-domain" }));
 
   assert.equal(events.length, 1);
-  assert.equal(events[0].eventType, "domain:registered");
-  assert.equal(events[0].payload.domainId, "event-domain");
+  assert.equal(events[0]!.eventType, "domain:registered");
+  assert.equal(events[0]!.payload.domainId, "event-domain");
 });
 
 test("domain registration with multiple workflows", () => {

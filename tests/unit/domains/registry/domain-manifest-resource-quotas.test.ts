@@ -21,13 +21,22 @@ function createDomain(overrides: Partial<DomainDefinition> = {}): DomainDefiniti
         workflowId: "quota.main",
         name: "Quota Main",
         triggerConditions: {},
-        steps: [{ stepName: "step-1", dependsOn: [] }],
+        steps: [{
+          stepName: "step-1",
+          toolHints: [],
+          modelHints: {},
+          outputSchema: null,
+          retryPolicy: { maxRetries: 0, backoffMs: 0 },
+          requiresReview: false,
+          timeoutMs: 60000,
+          dependsOn: [],
+        }],
       },
     ],
     toolBundles: [
       {
         bundleId: "quota.tools",
-        tools: [{ toolName: "read" }],
+        tools: [{ toolName: "read", enabled: true, configOverrides: {} }],
       },
     ],
     outputContracts: [],
@@ -98,7 +107,7 @@ test("DomainSmokeTestRunner enforces restricted-tool sandbox compatibility", () 
     toolBundles: [
       {
         bundleId: "quota.tools",
-        tools: [{ toolName: "bash" }],
+        tools: [{ toolName: "bash", enabled: true, configOverrides: {} }],
       },
     ],
     capabilities: {

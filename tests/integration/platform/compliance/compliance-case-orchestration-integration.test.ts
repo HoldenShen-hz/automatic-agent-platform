@@ -17,6 +17,8 @@ test("integration: compliance orchestration aligns export control and subject er
         active: true,
         metadata: {},
         costCenter: "",
+        effectivePolicies: {},
+        status: "active",
       },
       {
         orgNodeId: "dept_privacy",
@@ -27,6 +29,8 @@ test("integration: compliance orchestration aligns export control and subject er
         active: true,
         metadata: {},
         costCenter: "PRIV-001",
+        effectivePolicies: {},
+        status: "active",
       },
     ],
     {

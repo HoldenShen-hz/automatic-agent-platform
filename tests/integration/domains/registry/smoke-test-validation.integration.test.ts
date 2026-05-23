@@ -67,7 +67,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "near_realtime",
       compiledArtifactRef: null,
     },
     ...overrides,
@@ -220,7 +220,7 @@ test("smoke test: executionProfile fails when hotPathMode=deterministic_only but
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "near_realtime",
       compiledArtifactRef: null,
     } as DomainExecutionProfile,
   });
@@ -244,7 +244,7 @@ test("smoke test: executionProfile fails when planningMode=deterministic_only wi
         llmInHotPathAllowed: false,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "near_realtime",
       compiledArtifactRef: null,
     } as DomainExecutionProfile,
   });

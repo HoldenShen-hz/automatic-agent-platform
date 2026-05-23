@@ -68,7 +68,13 @@ export function expect<T>(value: T) {
         });
         return;
       }
-      assert.throws(value as Throwable, expected);
+      if (expected instanceof RegExp) {
+        assert.throws(value as Throwable, (error) => {
+          return error instanceof Error && expected.test(error.message);
+        });
+        return;
+      }
+      assert.throws(value as Throwable);
     },
     not: {
       toBe(expected: unknown): void {

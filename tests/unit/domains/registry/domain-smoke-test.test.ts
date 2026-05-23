@@ -220,7 +220,7 @@ test("DomainSmokeTestRunner validates deterministic-only planning requires compi
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "near_realtime",
       compiledArtifactRef: null,
     },
   };
@@ -243,7 +243,7 @@ test("DomainSmokeTestRunner validates deterministic hot path disables llm in hot
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 500,
       },
-      latencyTier: "interactive",
+      latencyTier: "near_realtime",
       compiledArtifactRef: "artifact://compiled/domain",
     },
   };

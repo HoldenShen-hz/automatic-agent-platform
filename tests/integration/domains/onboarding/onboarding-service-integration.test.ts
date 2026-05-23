@@ -11,8 +11,11 @@ import test from "node:test";
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { DomainOnboardingService, type DomainOnboardingPhase } from "../../../../src/domains/operations/index.js";
+import type { DomainDefinition } from "../../../../src/domains/registry/domain-model.js";
 
-function registerMinimalDomain(registry: DomainRegistryService, domainId: string, status: "draft" | "testing" | "active" = "testing"): void {
+type TestDomainStatus = DomainDefinition["status"] | "testing";
+
+function registerMinimalDomain(registry: DomainRegistryService, domainId: string, status: TestDomainStatus = "testing"): void {
   registry.register({
     domainId,
     name: `${domainId} domain`,
@@ -53,7 +56,7 @@ function registerMinimalDomain(registry: DomainRegistryService, domainId: string
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status,
+    status: status === "testing" ? "validated" : status,
     externalAdapters: [],
     pluginBindings: [],
   });

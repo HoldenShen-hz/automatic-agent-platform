@@ -8,7 +8,7 @@ import { ValidationError } from "../../../src/platform/contracts/errors.js";
 function registerTestDomain(
   registry: DomainRegistryService,
   domainId: string,
-  status: "draft" | "testing" | "active" = "testing",
+  status: "draft" | "validated" | "active" = "validated",
 ): void {
   registry.register({
     domainId,

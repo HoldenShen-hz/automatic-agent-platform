@@ -13,7 +13,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DomainRecipeSchema, matchDomainRecipe, type DomainRecipe } from "../../../../src/domains/recipes/index.js";
-import { RecipeExecutor, type RecipeExecutionContext } from "../../../../src/domains/recipes/recipe-executor.js";
+import {
+  RecipeExecutor,
+  type RecipeExecutionContext,
+  type RecipeExecutionMetrics,
+} from "../../../../src/domains/recipes/recipe-executor.js";
 import { RecipeRegistry } from "../../../../src/domains/recipes/recipe-registry.js";
 import { WorkflowRegistry } from "../../../../src/domains/registry/workflow-registry.js";
 
@@ -194,14 +198,12 @@ test("DomainRecipeSchema rejects invalid archetype value", () => {
 
 test("matchDomainRecipe handles trigger phrase with special regex characters", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_special",
       domainId: "test",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["file (.*).js", "search [query]"],
       defaultWorkflowId: "wf_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   // The function does substring matching, not regex
@@ -212,14 +214,12 @@ test("matchDomainRecipe handles trigger phrase with special regex characters", (
 
 test("matchDomainRecipe handles trigger phrase containing unicode", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_unicode",
       domainId: "test",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["你好世界", "こんにちは世界"],
       defaultWorkflowId: "wf_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "我想说你好世界");
@@ -229,14 +229,12 @@ test("matchDomainRecipe handles trigger phrase containing unicode", () => {
 
 test("matchDomainRecipe returns null for whitespace-only input", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "test",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["code"],
       defaultWorkflowId: "wf_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "   ");
@@ -245,14 +243,12 @@ test("matchDomainRecipe returns null for whitespace-only input", () => {
 
 test("matchDomainRecipe returns null for empty input", () => {
   const recipes = [
-    {
+    makeRecipe({
       recipeId: "recipe_1",
       domainId: "test",
-      archetype: "crud_heavy" as const,
       triggerPhrases: ["code"],
       defaultWorkflowId: "wf_1",
-      defaultToolBundleIds: [],
-    },
+    }),
   ];
 
   const result = matchDomainRecipe(recipes, "");
@@ -492,7 +488,7 @@ test("RecipeExecutor.execute handles non-array defaultToolBundleIds in catch", a
 });
 
 test("RecipeExecutor.execute records metrics even when workflow not found", async () => {
-  let recordedMetrics = null;
+  let recordedMetrics: RecipeExecutionMetrics | null = null;
   const executor = new RecipeExecutor(null, {
     metricsCollector: {
       recordExecution: (metrics) => { recordedMetrics = metrics; },
@@ -508,10 +504,10 @@ test("RecipeExecutor.execute records metrics even when workflow not found", asyn
   const result = await executor.execute(recipe, makeContext({ executionId: "exec_no_workflow" }));
 
   assert.equal(result.success, false);
-  assert.ok(recordedMetrics !== null);
-  assert.equal(recordedMetrics.executionId, "exec_no_workflow");
-  assert.equal(recordedMetrics.success, false);
-  assert.equal(recordedMetrics.recipeId, "recipe_no_workflow");
+  const metrics = recordedMetrics as unknown as RecipeExecutionMetrics;
+  assert.equal(metrics.executionId, "exec_no_workflow");
+  assert.equal(metrics.success, false);
+  assert.equal(metrics.recipeId, "recipe_no_workflow");
 });
 
 test("RecipeExecutor.execute uses workflowQuery for async existsWorkflow", async () => {
@@ -778,7 +774,7 @@ test("RecipeExecutor.execute error message for missing workflow", () => {
 });
 
 test("RecipeExecutor.execute records durationMs in metrics", async () => {
-  let recordedMetrics = null;
+  let recordedMetrics: RecipeExecutionMetrics | null = null;
   const executor = new RecipeExecutor(null, {
     metricsCollector: {
       recordExecution: (metrics) => { recordedMetrics = metrics; },
@@ -793,9 +789,9 @@ test("RecipeExecutor.execute records durationMs in metrics", async () => {
 
   await executor.execute(recipe, makeContext());
 
-  assert.ok(recordedMetrics !== null);
-  assert.ok(typeof recordedMetrics.durationMs === "number");
-  assert.ok(recordedMetrics.durationMs >= 0);
+  const metrics = recordedMetrics as unknown as RecipeExecutionMetrics;
+  assert.ok(typeof metrics.durationMs === "number");
+  assert.ok(metrics.durationMs >= 0);
 });
 
 test("RecipeExecutor records metrics in finally block even after error", async () => {
@@ -815,7 +811,7 @@ test("RecipeExecutor records metrics in finally block even after error", async (
   assert.ok(metricsOrder.includes("record:unknown_recipe"));
 });
 
-test("RecipeExecutor.execute with all archetypes succeeds when workflow exists", () => {
+test("RecipeExecutor.execute with all archetypes succeeds when workflow exists", async () => {
   const archetypes = [
     "crud_heavy", "analytics", "creative", "realtime", "trading",
     "compliance", "research", "adversarial", "moderation",
@@ -824,7 +820,7 @@ test("RecipeExecutor.execute with all archetypes succeeds when workflow exists",
 
   const executor = new RecipeExecutor(null, {}, { existsWorkflow: () => true });
 
-  return Promise.all(archetypes.map(async (archetype) => {
+  await Promise.all(archetypes.map(async (archetype) => {
     const recipe = makeRecipe({
       recipeId: `recipe_${archetype}`,
       domainId: "test",

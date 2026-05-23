@@ -41,7 +41,7 @@ function createTestDomain(registry: DomainRegistryService, domainId: string): vo
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   });

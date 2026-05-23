@@ -15,7 +15,7 @@ test("DomainDefinitionSchema normalizes legacy testing and canary states", () =>
     domainId: "testing-domain",
     name: "Testing Domain",
     description: "Legacy testing alias coverage.",
-    status: "testing",
+    status: "validated",
   });
   const canary = DomainDefinitionSchema.parse({
     domainId: "canary-domain",

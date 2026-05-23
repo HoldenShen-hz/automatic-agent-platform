@@ -252,7 +252,7 @@ test("2007: definePlugin accepts signing information when provided", async () =>
         outputSchema: { type: "object" },
       },
     ],
-    spiTypes: ["tool"],
+    spiTypes: ["tool"] as Array<"tool">,
     domainIds: [],
   };
   const signature = sign(null, Buffer.from(JSON.stringify(canonicalPayload)), privateKey).toString("base64url");

@@ -8,7 +8,7 @@ import type { DomainOnboardingSession } from "../../../../src/domains/operations
 function registerTestDomain(
   registry: DomainRegistryService,
   domainId: string,
-  status: "draft" | "testing" | "active" = "testing",
+  status: "draft" | "validated" | "active" = "validated",
 ): void {
   registry.register({
     domainId,
@@ -212,7 +212,7 @@ test("DomainOnboardingService.rollback adds checkpoint to target phase evidence"
   service.advance("rollback_checkpoint_test", ["modeling"]);
 
   // Rollback to domain_modeling with checkpoint
-  const session = service.rollback("rollback_checkpoint_test", "domain_modeling", "rollback_checkpoint", "testing");
+  const session = service.rollback("rollback_checkpoint_test", "domain_modeling", "rollback_checkpoint", "validated");
 
   const modelingRecord = session.records.find((r) => r.phase === "domain_modeling");
   assert.ok(modelingRecord?.evidenceArtifactIds.includes("rollback_checkpoint"));
@@ -280,7 +280,7 @@ test("DomainOnboardingService.completed is true only after all phases done", () 
 
 test("DomainOnboardingService.activatedDomainStatus reflects registry state", () => {
   const registry = new DomainRegistryService();
-  registerTestDomain(registry, "activation_status_test", "testing");
+  registerTestDomain(registry, "activation_status_test", "validated");
 
   const service = new DomainOnboardingService(registry);
   service.start("activation_status_test");

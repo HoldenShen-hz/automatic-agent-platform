@@ -47,7 +47,7 @@ function makeMinimalDomain(overrides: Record<string, unknown> = {}) {
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
       securityLevel: "standard" as const,
     },
-    status: "testing" as const,
+    status: "validated" as const,
     externalAdapters: [],
     pluginBindings: [],
     ...overrides,

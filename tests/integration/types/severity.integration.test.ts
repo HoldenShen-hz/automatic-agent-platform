@@ -152,12 +152,17 @@ test("integration: severity flows through event classification correctly", () =>
   ];
 
   const results = events.map((e) => classifyAnomalyEvent(e));
+  const [sev1Event, sev2Event, sev3Event, sev4Event] = results;
 
   // Verify severity escalation
-  assert.strictEqual(results[0].unifiedSeverity, "SEV1");
-  assert.strictEqual(results[1].unifiedSeverity, "SEV2");
-  assert.strictEqual(results[2].unifiedSeverity, "SEV3");
-  assert.strictEqual(results[3].unifiedSeverity, "SEV4");
+  assert.ok(sev1Event);
+  assert.ok(sev2Event);
+  assert.ok(sev3Event);
+  assert.ok(sev4Event);
+  assert.strictEqual(sev1Event.unifiedSeverity, "SEV1");
+  assert.strictEqual(sev2Event.unifiedSeverity, "SEV2");
+  assert.strictEqual(sev3Event.unifiedSeverity, "SEV3");
+  assert.strictEqual(sev4Event.unifiedSeverity, "SEV4");
 });
 
 test("integration: multiple events can be processed with consistent severity", () => {

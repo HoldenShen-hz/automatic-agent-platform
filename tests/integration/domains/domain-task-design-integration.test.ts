@@ -13,6 +13,11 @@ test("integration: domain support modules flow into a single domain task design 
         defaultWorkflowId: "wf_bugfix",
         defaultToolBundleIds: ["repo_tools", "test_tools"],
         archetype: "conversational",
+        riskProfileRef: "risk_coding",
+        guardrailOverlay: {},
+        recommendedWorkflowIds: ["wf_bugfix"],
+        defaultPromptBundleRef: "prompt_bugfix",
+        acceptanceChecklistRef: "coding.acceptance",
       },
     ],
     promptLibrary: {

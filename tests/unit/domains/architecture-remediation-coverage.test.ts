@@ -5,64 +5,67 @@ import {
   validateActiveDomainDescriptor,
   buildDomainsSdkRemediationEvidence,
   DOMAIN_META_MODEL_QUESTIONS,
+  type DomainLifecycleState,
   type DomainPluginType,
   type DomainRecipeArchetype,
   type DomainDescriptorProfile,
 } from "../../../src/domains/architecture-remediation.js";
 
+const legacyState = (state: string): DomainLifecycleState => state as DomainLifecycleState;
+
 describe("architecture-remediation", () => {
   describe("canTransitionDomain", () => {
     it("should allow Draft to Validated transition", () => {
-      expect(canTransitionDomain("Draft", "Validated")).toBe(true);
+      expect(canTransitionDomain(legacyState("Draft"), legacyState("Validated"))).toBe(true);
     });
 
     it("should allow Draft to Archived transition", () => {
-      expect(canTransitionDomain("Draft", "Archived")).toBe(true);
+      expect(canTransitionDomain(legacyState("Draft"), legacyState("Archived"))).toBe(true);
     });
 
     it("should allow Validated to Registered transition", () => {
-      expect(canTransitionDomain("Validated", "Registered")).toBe(true);
+      expect(canTransitionDomain(legacyState("Validated"), legacyState("Registered"))).toBe(true);
     });
 
     it("should allow Validated to Draft transition", () => {
-      expect(canTransitionDomain("Validated", "Draft")).toBe(true);
+      expect(canTransitionDomain(legacyState("Validated"), legacyState("Draft"))).toBe(true);
     });
 
     it("should allow Registered to Active transition", () => {
-      expect(canTransitionDomain("Registered", "Active")).toBe(true);
+      expect(canTransitionDomain(legacyState("Registered"), legacyState("Active"))).toBe(true);
     });
 
     it("should allow Registered to Deprecated transition", () => {
-      expect(canTransitionDomain("Registered", "Deprecated")).toBe(true);
+      expect(canTransitionDomain(legacyState("Registered"), legacyState("Deprecated"))).toBe(true);
     });
 
     it("should allow Active to Updating transition", () => {
-      expect(canTransitionDomain("Active", "Updating")).toBe(true);
+      expect(canTransitionDomain(legacyState("Active"), legacyState("Updating"))).toBe(true);
     });
 
     it("should allow Active to Deprecated transition", () => {
-      expect(canTransitionDomain("Active", "Deprecated")).toBe(true);
+      expect(canTransitionDomain(legacyState("Active"), legacyState("Deprecated"))).toBe(true);
     });
 
     it("should allow Updating to Active transition", () => {
-      expect(canTransitionDomain("Updating", "Active")).toBe(true);
+      expect(canTransitionDomain(legacyState("Updating"), legacyState("Active"))).toBe(true);
     });
 
     it("should allow Updating to Deprecated transition", () => {
-      expect(canTransitionDomain("Updating", "Deprecated")).toBe(true);
+      expect(canTransitionDomain(legacyState("Updating"), legacyState("Deprecated"))).toBe(true);
     });
 
     it("should allow Deprecated to Archived transition", () => {
-      expect(canTransitionDomain("Deprecated", "Archived")).toBe(true);
+      expect(canTransitionDomain(legacyState("Deprecated"), legacyState("Archived"))).toBe(true);
     });
 
     it("should not allow Draft to Active transition", () => {
-      expect(canTransitionDomain("Draft", "Active")).toBe(false);
+      expect(canTransitionDomain(legacyState("Draft"), legacyState("Active"))).toBe(false);
     });
 
     it("should not allow Archived to any transition", () => {
-      expect(canTransitionDomain("Archived", "Draft")).toBe(false);
-      expect(canTransitionDomain("Archived", "Validated")).toBe(false);
+      expect(canTransitionDomain(legacyState("Archived"), legacyState("Draft"))).toBe(false);
+      expect(canTransitionDomain(legacyState("Archived"), legacyState("Validated"))).toBe(false);
     });
 
     it("should allow validating to certified transition", () => {
@@ -156,7 +159,7 @@ describe("architecture-remediation", () => {
     it("should return multiple findings when multiple issues exist", () => {
       const descriptor: DomainDescriptorProfile = {
         domainId: "test_domain",
-        lifecycleState: "draft",
+        lifecycleState: "validating",
         executionMode: "full_auto",
         hotPathMode: "llm_allowed",
         planningMode: "legacy_projection",
@@ -209,7 +212,7 @@ describe("architecture-remediation", () => {
 
     it("should have valid question IDs (Q1 through Q15)", () => {
       for (let i = 0; i < 15; i++) {
-        expect(DOMAIN_META_MODEL_QUESTIONS[i].questionId).toBe(`Q${i + 1}`);
+        expect(DOMAIN_META_MODEL_QUESTIONS[i]!.questionId).toBe(`Q${i + 1}`);
       }
     });
 

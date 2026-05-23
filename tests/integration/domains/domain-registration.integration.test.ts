@@ -113,7 +113,7 @@ test("Domain registration flow: create -> validate -> activate -> deprecate", as
   assert.equal(validation.passed, true);
 
   // Step 3: Activate domain
-  const activated = service.activate("flow-test-1", false);
+  const activated = service.activate("flow-test-1");
   assert.equal(activated.status, "active");
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
 
@@ -214,7 +214,7 @@ test("Domain activation fails smoke test with invalid workflow", async () => {
   service.register(domain);
 
   assert.throws(
-    () => service.activate("invalid-workflow-domain", false),
+    () => service.activate("invalid-workflow-domain"),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });
@@ -316,7 +316,7 @@ test("Full lifecycle: draft -> registered -> active -> updating -> active -> dep
   service.register(domain);
 
   // Activate
-  let result = service.activate("full-lifecycle-integration", false);
+  let result = service.activate("full-lifecycle-integration");
   assert.equal(result.status, "active");
 
   // Enter updating state
@@ -343,8 +343,8 @@ test("Canary lifecycle: canary -> active -> deprecated -> archived", async () =>
   const domain = createTestDomain({ domainId: "canary-lifecycle-integration", status: "canary" });
   service.register(domain);
 
-  // Activate with canary flag
-  let result = service.activate("canary-lifecycle-integration", true);
+  // Activate from explicit canary state
+  let result = service.activate("canary-lifecycle-integration");
   assert.equal(result.status, "active");
 
   // Deprecate
@@ -434,7 +434,7 @@ test("Activation publishes domain:activated event", async () => {
   });
 
   service.register(createTestDomain({ domainId: "event-activation-test" }));
-  service.activate("event-activation-test", false);
+  service.activate("event-activation-test");
 
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
   const event = events.find((e) => e.eventType === "domain:activated")!;

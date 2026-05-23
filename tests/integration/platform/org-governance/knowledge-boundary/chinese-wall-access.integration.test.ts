@@ -20,6 +20,13 @@ function mockBoundary(overrides: Partial<KnowledgeBoundary> = {}): KnowledgeBoun
     allowedOrgNodeIds: [],
     fieldAllowlist: [],
     ...overrides,
+    classificationRules: overrides.classificationRules ?? [],
+    sharePolicy: overrides.sharePolicy ?? {
+      mode: "explicit_grant",
+      allowCrossTenant: false,
+      requireAudit: true,
+      allowOrgNodeIds: [],
+    },
   };
 }
 

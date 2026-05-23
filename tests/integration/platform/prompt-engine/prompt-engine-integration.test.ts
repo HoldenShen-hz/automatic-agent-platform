@@ -14,6 +14,19 @@ import {
   type ConversationTemplateConfig,
 } from "../../../../src/platform/prompt-engine/conversation-template-config-loader.js";
 
+function createTemplate(
+  input: Pick<ConversationTemplate, "templateId" | "name" | "description" | "intent" | "steps">
+    & Partial<Omit<ConversationTemplate, "templateId" | "name" | "description" | "intent" | "steps">>,
+): ConversationTemplate {
+  return ConversationTemplateSchema.parse({
+    version: "1.0",
+    estimatedDurationMinutes: 5,
+    tags: [],
+    isActive: true,
+    ...input,
+  });
+}
+
 test("ConversationTemplateRegistry and ConfigLoader integration", () => {
   const config: ConversationTemplateConfig = {
     templates: [
@@ -149,26 +162,22 @@ test("ConversationTemplateExecutor with config-loaded templates", () => {
 test("ConversationTemplateRegistry search across config-loaded templates", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      {
+      createTemplate({
         templateId: "search_template_1",
         name: "Searchable Template One",
         description: "This template is designed for searching",
-        version: "1.0",
         intent: "task_create",
         steps: [],
         tags: ["search", "one"],
-        isActive: true,
-      },
-      {
+      }),
+      createTemplate({
         templateId: "search_template_2",
         name: "Searchable Template Two",
         description: "Another template for searching",
-        version: "1.0",
         intent: "task_query",
         steps: [],
         tags: ["search", "two"],
-        isActive: true,
-      },
+      }),
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: true,
@@ -187,33 +196,27 @@ test("ConversationTemplateRegistry search across config-loaded templates", () =>
 test("ConversationTemplateRegistry filter by intent across config", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      {
+      createTemplate({
         templateId: "intent_create",
         name: "Create Intent",
         description: "For creating tasks",
-        version: "1.0",
         intent: "task_create",
         steps: [],
-        isActive: true,
-      },
-      {
+      }),
+      createTemplate({
         templateId: "intent_query",
         name: "Query Intent",
         description: "For querying tasks",
-        version: "1.0",
         intent: "task_query",
         steps: [],
-        isActive: true,
-      },
-      {
+      }),
+      createTemplate({
         templateId: "intent_modify",
         name: "Modify Intent",
         description: "For modifying tasks",
-        version: "1.0",
         intent: "task_modify",
         steps: [],
-        isActive: true,
-      },
+      }),
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: true,
@@ -239,9 +242,9 @@ test("ConversationTemplateRegistry filter by intent across config", () => {
 test("ConversationTemplateRegistry filter by tag across config", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      { templateId: "tag_test_1", name: "Tag Test 1", description: "d", intent: "task_create", steps: [], tags: ["priority", "urgent"], isActive: true },
-      { templateId: "tag_test_2", name: "Tag Test 2", description: "d", intent: "task_create", steps: [], tags: ["priority", "normal"], isActive: true },
-      { templateId: "tag_test_3", name: "Tag Test 3", description: "d", intent: "task_create", steps: [], tags: ["low-priority"], isActive: true },
+      createTemplate({ templateId: "tag_test_1", name: "Tag Test 1", description: "d", intent: "task_create", steps: [], tags: ["priority", "urgent"] }),
+      createTemplate({ templateId: "tag_test_2", name: "Tag Test 2", description: "d", intent: "task_create", steps: [], tags: ["priority", "normal"] }),
+      createTemplate({ templateId: "tag_test_3", name: "Tag Test 3", description: "d", intent: "task_create", steps: [], tags: ["low-priority"] }),
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: true,
@@ -261,11 +264,10 @@ test("ConversationTemplateRegistry filter by tag across config", () => {
 test("ConversationTemplateExecutor skip functionality with config templates", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      {
+      createTemplate({
         templateId: "skip_test",
         name: "Skip Test",
         description: "Testing skip functionality",
-        version: "1.0",
         intent: "task_create",
         steps: [
           {
@@ -290,8 +292,7 @@ test("ConversationTemplateExecutor skip functionality with config templates", ()
             expectedEntities: [],
           },
         ],
-        isActive: true,
-      },
+      }),
     ],
     maxStepsPerTemplate: 10,
     enableTemplateAutoSelection: true,
@@ -352,11 +353,10 @@ test("ConversationTemplateSchema validation integration", () => {
 test("ConversationTemplateExecutor progress calculation with config", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      {
+      createTemplate({
         templateId: "progress_test",
         name: "Progress Test",
         description: "Testing progress calculation",
-        version: "1.0",
         intent: "task_create",
         steps: [
           { stepId: "s1", prompt: "Step 1", isRequired: true, expectedEntities: [], allowSkip: false },
@@ -365,8 +365,7 @@ test("ConversationTemplateExecutor progress calculation with config", () => {
           { stepId: "s4", prompt: "Step 4", isRequired: true, expectedEntities: [], allowSkip: false },
           { stepId: "s5", prompt: "Step 5", isRequired: true, expectedEntities: [], allowSkip: false },
         ],
-        isActive: true,
-      },
+      }),
     ],
     maxStepsPerTemplate: 10,
     enableTemplateAutoSelection: true,
@@ -388,12 +387,12 @@ test("ConversationTemplateExecutor progress calculation with config", () => {
 test("Multiple templates with different intents integration", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      { templateId: "milti_1", name: "N1", description: "d", intent: "task_create", steps: [], isActive: true },
-      { templateId: "milti_2", name: "N2", description: "d", intent: "task_query", steps: [], isActive: true },
-      { templateId: "milti_3", name: "N3", description: "d", intent: "task_modify", steps: [], isActive: true },
-      { templateId: "milti_4", name: "N4", description: "d", intent: "status_inquiry", steps: [], isActive: true },
-      { templateId: "milti_5", name: "N5", description: "d", intent: "approval_action", steps: [], isActive: true },
-      { templateId: "milti_6", name: "N6", description: "d", intent: "system_config", steps: [], isActive: true },
+      createTemplate({ templateId: "milti_1", name: "N1", description: "d", intent: "task_create", steps: [] }),
+      createTemplate({ templateId: "milti_2", name: "N2", description: "d", intent: "task_query", steps: [] }),
+      createTemplate({ templateId: "milti_3", name: "N3", description: "d", intent: "task_modify", steps: [] }),
+      createTemplate({ templateId: "milti_4", name: "N4", description: "d", intent: "status_inquiry", steps: [] }),
+      createTemplate({ templateId: "milti_5", name: "N5", description: "d", intent: "approval_action", steps: [] }),
+      createTemplate({ templateId: "milti_6", name: "N6", description: "d", intent: "system_config", steps: [] }),
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: true,
@@ -424,7 +423,7 @@ test("Multiple templates with different intents integration", () => {
 test("ConversationTemplateRegistry update and retrieve integration", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      { templateId: "update_test", name: "Original", description: "Original description", intent: "task_create", steps: [], isActive: true },
+      createTemplate({ templateId: "update_test", name: "Original", description: "Original description", intent: "task_create", steps: [] }),
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: true,
@@ -453,19 +452,17 @@ test("ConversationTemplateRegistry update and retrieve integration", () => {
 test("ConversationTemplateExecutor context preservation across steps", () => {
   const config: ConversationTemplateConfig = {
     templates: [
-      {
+      createTemplate({
         templateId: "context_preserve",
         name: "Context Preserve",
         description: "Testing context preservation",
-        version: "1.0",
         intent: "task_create",
         steps: [
           { stepId: "title", prompt: "Title:", isRequired: true, expectedEntities: [], allowSkip: false },
           { stepId: "desc", prompt: "Description:", isRequired: false, expectedEntities: [], allowSkip: true },
           { stepId: "confirm", prompt: "Confirm:", isRequired: true, expectedEntities: [], allowSkip: false },
         ],
-        isActive: true,
-      },
+      }),
     ],
     maxStepsPerTemplate: 10,
     enableTemplateAutoSelection: true,

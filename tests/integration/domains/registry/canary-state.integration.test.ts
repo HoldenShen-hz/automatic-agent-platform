@@ -69,8 +69,10 @@ test("canary: activate from registered state with canary=true succeeds", async (
   const domain = createTestDomain({ domainId: "canary-activate-from-registered", status: "registered" });
   service.register(domain);
 
-  const activated = service.activate("canary-activate-from-registered", true);
+  const canary = service.promoteToCanary("canary-activate-from-registered");
+  const activated = service.activate("canary-activate-from-registered");
 
+  assert.equal(canary.status, "canary");
   assert.equal(activated.status, "active");
 });
 
@@ -91,7 +93,7 @@ test("canary: standard activation (canary=false) from registered succeeds", asyn
   const domain = createTestDomain({ domainId: "standard-activate", status: "registered" as DomainDefinition["status"] });
   service.register(domain);
 
-  const activated = service.activate("standard-activate", false);
+  const activated = service.activate("standard-activate");
 
   assert.equal(activated.status, "active");
 });
@@ -102,7 +104,7 @@ test("canary: standard activation (canary=false) from updating fails", async () 
   service.register(domain);
 
   assert.throws(
-    () => service.activate("standard-activate-updating", false),
+    () => service.activate("standard-activate-updating"),
     (err: unknown) =>
       err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
   );
@@ -114,7 +116,7 @@ test("canary: activate from active state fails for both modes", async () => {
   service.register(domain);
 
   assert.throws(
-    () => service.activate("activate-from-active", true),
+    () => service.promoteToCanary("activate-from-active"),
     (err: unknown) =>
       err instanceof ValidationError &&
       (err.code === "domain_registry.invalid_canary_state" ||
@@ -122,7 +124,7 @@ test("canary: activate from active state fails for both modes", async () => {
   );
 
   assert.throws(
-    () => service.activate("activate-from-active", false),
+    () => service.activate("activate-from-active"),
     (err: unknown) =>
       err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
   );
@@ -134,7 +136,7 @@ test("canary: activate from deprecated state fails for both modes", async () => 
   service.register(domain);
 
   assert.throws(
-    () => service.activate("activate-from-deprecated", true),
+    () => service.promoteToCanary("activate-from-deprecated"),
     (err: unknown) =>
       err instanceof ValidationError &&
       (err.code === "domain_registry.invalid_canary_state" ||
@@ -142,7 +144,7 @@ test("canary: activate from deprecated state fails for both modes", async () => 
   );
 
   assert.throws(
-    () => service.activate("activate-from-deprecated", false),
+    () => service.activate("activate-from-deprecated"),
     (err: unknown) =>
       err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
   );
@@ -186,7 +188,7 @@ test("canary: smoke test failure blocks activation", async () => {
   service.register(domain);
 
   assert.throws(
-    () => service.activate("canary-smoke-fail", true),
+    () => service.promoteToCanary("canary-smoke-fail"),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });
@@ -203,7 +205,8 @@ test("canary: events published on canary activation", async () => {
 
   const domain = createTestDomain({ domainId: "canary-event-test", status: "registered" as DomainDefinition["status"] });
   service.register(domain);
-  service.activate("canary-event-test", true);
+  service.promoteToCanary("canary-event-test");
+  service.activate("canary-event-test");
 
   assert.ok(events.some((e) => e.eventType === "domain:activated"), "Should publish domain:activated event");
   const activatedEvent = events.find((e) => e.eventType === "domain:activated")!;

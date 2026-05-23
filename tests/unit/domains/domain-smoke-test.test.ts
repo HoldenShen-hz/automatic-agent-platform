@@ -78,7 +78,7 @@ test("DomainSmokeTestRunner.run passes for valid domain", () => {
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive" as const,
+      latencyTier: "near_realtime" as const,
       compiledArtifactRef: null as string | null,
     },
     externalAdapters: [],
@@ -203,7 +203,7 @@ test("DomainSmokeTestRunner.run records dependency, sandbox, and quota checks fo
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive" as const,
+      latencyTier: "near_realtime" as const,
       compiledArtifactRef: null as string | null,
     },
   };
@@ -263,7 +263,7 @@ test("DomainSmokeTestRunner.run validates dependency graph", () => {
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive" as const,
+      latencyTier: "near_realtime" as const,
       compiledArtifactRef: null as string | null,
     },
   };
@@ -311,7 +311,7 @@ test("DomainSmokeTestRunner.run validates resource quotas", () => {
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive" as const,
+      latencyTier: "near_realtime" as const,
       compiledArtifactRef: null as string | null,
     },
   };
@@ -360,7 +360,7 @@ test("DomainSmokeTestRunner.run validates sandbox compatibility for restricted t
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive" as const,
+      latencyTier: "near_realtime" as const,
       compiledArtifactRef: null as string | null,
     },
   };
@@ -409,7 +409,7 @@ test("DomainSmokeTestRunner.run passes sandbox compatibility for restricted tool
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive" as const,
+      latencyTier: "near_realtime" as const,
       compiledArtifactRef: null as string | null,
     },
   };

@@ -21,15 +21,13 @@ import type {
 } from "../../../../src/platform/five-plane-control-plane/incident-control/incident-resolver.js";
 
 import type {
-  HumanTakeoverService,
-  TakeoverRequest,
-  TakeoverStatus,
+  TakeoverActionResult,
 } from "../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service.js";
+import type { TakeoverSessionStatus } from "../../../../src/platform/contracts/types/domain.js";
 
 import type {
-  DoctorService,
   DoctorCheckId,
-  DoctorCheckResult,
+  DoctorCheckReport,
 } from "../../../../src/platform/five-plane-control-plane/incident-control/doctor-service.js";
 
 // ============================================================================
@@ -80,39 +78,37 @@ test("integration: IncidentDetection type structure", () => {
 
 test("integration: IncidentResolution type structure", () => {
   const resolution: IncidentResolution = {
-    resolutionType: "requeued_execution",
+    resolutionId: "resolution_001",
+    incidentId: "incident_001",
+    status: "completed",
+    strategy: "automated",
+    startedAt: "2026-04-15T13:00:00.000Z",
+    completedAt: "2026-04-15T14:00:00.000Z",
+    rootCause: "Transient queue stall",
+    actions: [],
+    resolutionNotes: "Execution requeued",
     resolvedBy: "system",
-    resolvedAt: "2026-04-15T14:00:00.000Z",
-    notes: "Execution requeued",
   };
 
-  assert.equal(resolution.resolutionType, "requeued_execution");
+  assert.equal(resolution.strategy, "automated");
   assert.equal(resolution.resolvedBy, "system");
 });
 
-test("integration: TakeoverStatus enum values", () => {
-  const statuses: TakeoverStatus[] = ["PENDING", "IN_PROGRESS", "COMPLETED", "EXPIRED", "CANCELLED"];
-  assert.equal(statuses.length, 5);
+test("integration: TakeoverSessionStatus union values", () => {
+  const statuses: TakeoverSessionStatus[] = ["open", "closed"];
+  assert.equal(statuses.length, 2);
 });
 
-test("integration: TakeoverRequest type structure", () => {
-  const request: TakeoverRequest = {
-    takeoverId: "takeover_001",
-    executionId: "exec_001",
+test("integration: TakeoverActionResult type structure", () => {
+  const request: TakeoverActionResult = {
     taskId: "task_001",
-    reason: "High-risk operation",
-    requestedBy: "system",
-    urgency: "high",
-    status: "PENDING",
-    requestedAt: "2026-04-15T12:00:00.000Z",
-    acknowledgedAt: null,
-    completedAt: null,
-    operatorId: null,
-    actionTaken: null,
+    executionId: "exec_001",
+    takeoverSessionId: "takeover_001",
+    operatorActionId: "opact_001",
   };
 
-  assert.equal(request.takeoverId, "takeover_001");
-  assert.equal(request.status, "PENDING");
+  assert.equal(request.takeoverSessionId, "takeover_001");
+  assert.equal(request.executionId, "exec_001");
 });
 
 test("integration: DoctorCheckId union values", () => {
@@ -120,18 +116,18 @@ test("integration: DoctorCheckId union values", () => {
   assert.equal(checkIds.length, 8);
 });
 
-test("integration: DoctorCheckResult type structure", () => {
-  const result: DoctorCheckResult = {
+test("integration: DoctorCheckReport type structure", () => {
+  const result: DoctorCheckReport = {
     checkId: "db",
-    status: "pass",
+    label: "Database",
+    status: "ok",
     summary: "Database healthy",
     findings: [],
-    checkedAt: "2026-04-15T12:00:00.000Z",
-    durationMs: 100,
+    metrics: { latencyMs: 100 },
   };
 
   assert.equal(result.checkId, "db");
-  assert.equal(result.status, "pass");
+  assert.equal(result.status, "ok");
 });
 
 test("integration: IncidentDetectionRule type structure", () => {
@@ -163,6 +159,7 @@ test("integration: incident severity to urgency mapping", () => {
       case "SEV2": return "high";
       case "SEV3": return "medium";
       case "SEV4": return "low";
+      default: return "low";
     }
   };
 
@@ -215,6 +212,7 @@ test("integration: incident detector urgency classification", () => {
       case "SEV2": return "high";
       case "SEV3": return "medium";
       case "SEV4": return "low";
+      default: return "low";
     }
   };
 
@@ -230,13 +228,13 @@ test("integration: SEV1 auto-escalation threshold", () => {
 });
 
 test("integration: incident resolution types", () => {
-  const resolutionTypes = ["requeued_execution", "workflow_restart", "config_rollback", "scale_up", "manual_intervention"] as const;
-  assert.ok(resolutionTypes.length >= 5);
+  const resolutionTypes = ["self_heal", "automated", "assisted", "manual"] as const;
+  assert.equal(resolutionTypes.length, 4);
 });
 
 test("integration: check status types", () => {
-  const checkStatuses = ["pass", "fail_closed", "degraded", "unknown"] as const;
-  assert.equal(checkStatuses.length, 4);
+  const checkStatuses = ["ok", "degraded", "fail_closed"] as const;
+  assert.equal(checkStatuses.length, 3);
 });
 
 test("integration: incident detection metrics", () => {

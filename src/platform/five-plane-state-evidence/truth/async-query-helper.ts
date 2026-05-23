@@ -5,7 +5,17 @@
  * They work with AsyncSqlConnection and return properly typed results.
  */
 
-import type { AsyncSqlConnection, AsyncSqlDatabase } from "./async-sql-database.js";
+import type {
+  AsyncQueryResult,
+  AsyncSqlConnection,
+  AsyncSqlDatabase,
+} from "./async-sql-database.js";
+
+export type {
+  AsyncQueryResult,
+  AsyncSqlConnection,
+  AsyncSqlDatabase,
+} from "./async-sql-database.js";
 
 /**
  * Execute a query and return all rows as the target type.

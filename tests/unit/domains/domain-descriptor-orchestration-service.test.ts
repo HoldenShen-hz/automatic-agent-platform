@@ -3,6 +3,28 @@ import assert from "node:assert/strict";
 import { DomainDescriptorOrchestrationService } from "../../../src/domains/domain-descriptor-orchestration-service.js";
 import type { DomainDescriptorInput } from "../../../src/domains/domain-descriptor-orchestration-service.js";
 
+function createPrompt(promptId: string, stage: "plan" | "execute" | "assess", template: string) {
+  return { promptId, stage, version: "1.0", template, guardrails: [] };
+}
+
+function createRecipe(recipeId: string, triggerPhrases: string[], defaultWorkflowId: string, defaultToolBundleIds: string[]) {
+  return {
+    recipeId,
+    name: recipeId,
+    archetype: "crud_heavy" as const,
+    domainId: "test-domain",
+    description: `${recipeId} description`,
+    riskProfileRef: "test-domain.risk",
+    guardrailOverlay: {},
+    triggerPhrases,
+    defaultWorkflowId,
+    recommendedWorkflowIds: [defaultWorkflowId],
+    defaultToolBundleIds,
+    defaultPromptBundleRef: "test-domain.default-prompt",
+    acceptanceChecklistRef: "test-domain.acceptance",
+  };
+}
+
 function createMinimalInput(overrides: Partial<DomainDescriptorInput> = {}): DomainDescriptorInput {
   return {
     domainId: "test-domain",
@@ -63,7 +85,7 @@ describe("DomainDescriptorOrchestrationService", () => {
         promptLibrary: {
           libraryId: "prompt-test",
           domainId: "test-domain",
-          prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+          prompts: [createPrompt("p1", "plan", "Test")],
         },
         evalFramework: {
           frameworkId: "eval-test",
@@ -73,7 +95,7 @@ describe("DomainDescriptorOrchestrationService", () => {
           onlineMetrics: [],
           releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
         },
-        recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+        recipes: [createRecipe("r1", ["test"], "wf-1", ["bundle-1"])],
         knowledgeSchema: {
           schemaId: "knowledge-test",
           domainId: "test-domain",
@@ -246,7 +268,7 @@ describe("DomainDescriptorOrchestrationService", () => {
         promptLibrary: {
           libraryId: "prompt-test",
           domainId: "test-domain",
-          prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+          prompts: [createPrompt("p1", "plan", "Test")],
         },
         evalFramework: {
           frameworkId: "eval-test",
@@ -256,7 +278,7 @@ describe("DomainDescriptorOrchestrationService", () => {
           onlineMetrics: [],
           releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
         },
-        recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+        recipes: [createRecipe("r1", ["test"], "wf-1", ["bundle-1"])],
         knowledgeSchema: {
           schemaId: "knowledge-test",
           domainId: "test-domain",
@@ -308,9 +330,9 @@ describe("DomainDescriptorOrchestrationService", () => {
           libraryId: "prompt-test",
           domainId: "test-domain",
           prompts: [
-            { promptId: "plan-prompt", stage: "plan", version: "1.0", template: "Plan" },
-            { promptId: "execute-prompt", stage: "execute", version: "1.0", template: "Execute" },
-            { promptId: "assess-prompt", stage: "assess", version: "1.0", template: "Assess" },
+            createPrompt("plan-prompt", "plan", "Plan"),
+            createPrompt("execute-prompt", "execute", "Execute"),
+            createPrompt("assess-prompt", "assess", "Assess"),
           ],
         },
       });
@@ -324,8 +346,8 @@ describe("DomainDescriptorOrchestrationService", () => {
     it("should list recipe IDs from recipes", () => {
       const input = createMinimalInput({
         recipes: [
-          { recipeId: "recipe-1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: [] },
-          { recipeId: "recipe-2", domainId: "test-domain", triggerPhrases: ["run"], defaultWorkflowId: "wf-2", defaultToolBundleIds: [] },
+          createRecipe("recipe-1", ["test"], "wf-1", []),
+          createRecipe("recipe-2", ["run"], "wf-2", []),
         ],
       });
 
@@ -358,20 +380,18 @@ describe("DomainDescriptorOrchestrationService", () => {
       const input = createMinimalInput({
         interactionRules: [
           { sourceDomainId: "domain-a", targetDomainId: "domain-b", mode: "approval_required", maxConcurrentWorkflows: 1, compensationRequired: true },
-          { sourceDomainId: "domain-a", targetDomainId: "domain-c", mode: "supervised", maxConcurrentWorkflows: 5, compensationRequired: false },
+          { sourceDomainId: "domain-a", targetDomainId: "domain-c", mode: "allow", maxConcurrentWorkflows: 5, compensationRequired: false },
         ],
       });
 
       const review = service.review(input);
 
       assert.strictEqual(review.crossDomainModes["domain-a->domain-b"], "approval_required");
-      assert.strictEqual(review.crossDomainModes["domain-a->domain-c"], "supervised");
+      assert.strictEqual(review.crossDomainModes["domain-a->domain-c"], "allow");
     });
 
     it("should return empty cross-domain modes when no interaction rules", () => {
-      const input = createMinimalInput({
-        interactionRules: undefined,
-      });
+      const input = createMinimalInput({});
 
       const review = service.review(input);
 

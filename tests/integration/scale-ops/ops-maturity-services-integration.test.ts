@@ -25,6 +25,17 @@ import {
   type ManagedAgentDefinition,
 } from "../../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
 
+function createComponentSnapshot() {
+  return {
+    packVersion: "1.0",
+    promptBundleVersion: "1.0",
+    modelBindingHash: "model-hash",
+    trustProfileHash: "trust-hash",
+    triggerSetHash: "trigger-hash",
+    autonomyConfigHash: "autonomy-hash",
+  };
+}
+
 test("ScaleOpsRuntimeCatalog build returns catalog with scale ecosystem and ops maturity", () => {
   const catalog = buildScaleOpsRuntimeCatalog();
 
@@ -138,8 +149,10 @@ test("AgentLifecycleService and ExplanationPipelineService integrate for agent d
     agentId: "coding-agent-001",
     versionId: "v1.0.0",
     semver: "1.0.0",
+    componentSnapshot: createComponentSnapshot(),
     createdAt: new Date().toISOString(),
-    releaseNotes: [],
+    createdBy: "system",
+    releaseNote: "Initial release",
   });
 
   // Bind a task to the agent
@@ -217,15 +230,19 @@ test("OpsMaturityScoreService and AgentLifecycleService integrate for agent-leve
     agentId: "agent-alpha",
     versionId: "v2.0.0",
     semver: "2.0.0",
+    componentSnapshot: createComponentSnapshot(),
     createdAt: new Date().toISOString(),
-    releaseNotes: [],
+    createdBy: "system",
+    releaseNote: "Alpha release",
   });
   lifecycleService.addVersion({
     agentId: "agent-beta",
     versionId: "v1.5.0",
     semver: "1.5.0",
+    componentSnapshot: createComponentSnapshot(),
     createdAt: new Date().toISOString(),
-    releaseNotes: [],
+    createdBy: "system",
+    releaseNote: "Beta staging release",
   });
 
   // Assess each agent's maturity
@@ -376,8 +393,10 @@ test("Multiple services work together for platform operations workflow", async (
     agentId: "ops-agent-001",
     versionId: "v0.9.0",
     semver: "0.9.0",
+    componentSnapshot: createComponentSnapshot(),
     createdAt: new Date().toISOString(),
-    releaseNotes: [],
+    createdBy: "system",
+    releaseNote: "Ops pre-release",
   });
 
   // 2. Record cost for agent operations

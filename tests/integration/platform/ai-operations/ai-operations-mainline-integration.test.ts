@@ -215,6 +215,8 @@ test("integration: ai operations mainline composes prompt governance, model roll
             active: true,
             metadata: {},
             costCenter: "",
+            effectivePolicies: {},
+            status: "active",
           },
           {
             orgNodeId: "dept_ops",
@@ -225,6 +227,8 @@ test("integration: ai operations mainline composes prompt governance, model roll
             active: true,
             metadata: {},
             costCenter: "OPS-001",
+            effectivePolicies: {},
+            status: "active",
           },
         ],
         {

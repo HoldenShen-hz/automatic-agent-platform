@@ -96,7 +96,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "near_realtime",
       compiledArtifactRef: null,
     },
     status: "validated",

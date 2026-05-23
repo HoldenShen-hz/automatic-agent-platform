@@ -46,7 +46,7 @@ function registerTestDomain(service: DomainRegistryService, domainId = "coding")
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   });

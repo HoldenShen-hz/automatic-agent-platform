@@ -43,9 +43,17 @@ test("integration: ErasureRequest type structure", () => {
     status: "pending",
     requestedBy: "privacy_team",
     reason: "GDPR request",
+    legalBasis: "gdpr_article_17",
     createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
+    processedAt: null,
     completedAt: null,
+    failedAt: null,
+    failureReason: null,
+    traceId: "trace_erasure_001",
     evidenceRefs: [],
+    notes: null,
+    metadataJson: null,
   };
 
   assert.equal(request.erasureId, "erasure_001");
@@ -53,8 +61,8 @@ test("integration: ErasureRequest type structure", () => {
 });
 
 test("integration: ErasureStatus union values", () => {
-  const statuses: ErasureStatus[] = ["pending", "processing", "completed", "failed"];
-  assert.equal(statuses.length, 4);
+  const statuses: ErasureStatus[] = ["pending", "processing", "completed", "failed", "cancelled"];
+  assert.equal(statuses.length, 5);
 });
 
 test("integration: ErasureReport type structure", () => {
@@ -62,45 +70,65 @@ test("integration: ErasureReport type structure", () => {
     reportId: "report_001",
     erasureId: "erasure_001",
     tenantId: "tenant_001",
-    subjectType: "user",
-    subjectId: "user_001",
-    status: "completed",
+    subjects: [
+      {
+        subjectType: "user",
+        subjectId: "user_001",
+        dataCategories: ["personal"],
+        erased: true,
+      },
+    ],
+    traceId: "trace_erasure_001",
+    verificationStatus: "verified",
+    verifiedAt: "2026-04-15T00:00:00.000Z",
     generatedAt: "2026-04-15T00:00:00.000Z",
-    generatedBy: "system",
-    evidenceRefs: [],
+    updatedAt: "2026-04-15T00:00:00.000Z",
+    evidenceRefs: [
+      {
+        evidenceType: "dek_destruction",
+        referenceId: "key_001",
+        description: "Destroyed tenant key",
+        timestamp: "2026-04-15T00:00:00.000Z",
+      },
+    ],
+    notes: null,
+    metadataJson: null,
   };
 
   assert.equal(report.reportId, "report_001");
-  assert.equal(report.status, "completed");
+  assert.equal(report.verificationStatus, "verified");
 });
 
 test("integration: CryptoShreddingVerificationSummary type structure", () => {
   const summary: CryptoShreddingVerificationSummary = {
-    verificationId: "verify_001",
-    dekId: "dek_001",
-    versionsChecked: 3,
-    allVersionsDestroyed: true,
-    verificationTimestamp: "2026-04-15T12:00:00.000Z",
-    details: "All DEK versions successfully destroyed",
+    totalDekDestroyed: 3,
+    verifiedDekDestroyed: 3,
+    failedDekDestroyed: 0,
+    status: "verified",
+    messages: ["All DEK versions successfully destroyed"],
   };
 
-  assert.equal(summary.allVersionsDestroyed, true);
-  assert.ok(summary.versionsChecked > 0);
+  assert.equal(summary.status, "verified");
+  assert.ok(summary.verifiedDekDestroyed > 0);
 });
 
 test("integration: DataEncryptionKey type structure", () => {
   const dek: DataEncryptionKey = {
     keyId: "key_001",
-    dekId: "dek_001",
     tenantId: "tenant_001",
+    version: 1,
+    status: "active",
     encryptedKeyMaterial: "encrypted_material_here",
     algorithm: "AES-256-GCM",
-    status: "active",
-    version: 1,
-    createdBy: "system",
+    externalKeyId: null,
     createdAt: "2026-04-01T00:00:00.000Z",
-    rotatedAt: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
     destroyedAt: null,
+    createdBy: "system",
+    destroyedBy: null,
+    destructionReason: null,
+    traceId: "trace_dek_001",
+    metadataJson: null,
   };
 
   assert.equal(dek.status, "active");
@@ -121,17 +149,17 @@ test("integration: CreateDekInput type structure", () => {
 
 test("integration: DataResidencyRule type structure", () => {
   const rule: DataResidencyRule = {
-    ruleId: "rule_001",
-    tenantId: "tenant_001",
     jurisdiction: "EU",
-    allowedRegions: ["EU-WEST-1", "EU-CENTRAL-1"],
-    dataCategories: ["PII", "FINANCIAL"],
-    enforcementLevel: "strict",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    retentionDays: 365,
+    encryptionStandard: "AES-256",
+    crossBorderTransfersAllowed: false,
+    allowedTransferJurisdictions: [],
+    dataLocalizationRequired: true,
+    metadataJson: null,
   };
 
   assert.equal(rule.jurisdiction, "EU");
-  assert.ok(rule.allowedRegions.length > 0);
+  assert.equal(rule.dataLocalizationRequired, true);
 });
 
 test("integration: Jurisdiction union values", () => {
@@ -140,32 +168,33 @@ test("integration: Jurisdiction union values", () => {
 });
 
 test("integration: DataRegion type", () => {
-  const regions: DataRegion[] = ["US-EAST-1", "EU-WEST-1", "APAC-EAST-1"];
+  const regions: DataRegion[] = ["us-east-1", "eu-west-1", "ap-southeast-1"];
   assert.equal(regions.length, 3);
 });
 
 test("integration: DataCategory union values", () => {
-  const categories: DataCategory[] = ["PII", "FINANCIAL", "HEALTH", "GENERAL"];
+  const categories: DataCategory[] = ["personal", "financial", "health", "business"];
   assert.equal(categories.length, 4);
 });
 
 test("integration: CheckResidencyInput type structure", () => {
   const input: CheckResidencyInput = {
     tenantId: "tenant_001",
-    dataCategory: "PII",
-    currentRegion: "EU-WEST-1",
-    requestedRegion: "EU-WEST-1",
+    category: "personal",
+    currentRegion: "eu-west-1",
   };
 
   assert.equal(input.tenantId, "tenant_001");
-  assert.equal(input.dataCategory, "PII");
+  assert.equal(input.category, "personal");
 });
 
 test("integration: ResidencyCheckResult type structure", () => {
   const result: ResidencyCheckResult = {
     isCompliant: true,
-    currentRegion: "EU-WEST-1",
-    requestedRegion: "EU-WEST-1",
+    currentRegion: "eu-west-1",
+    currentJurisdiction: "EU",
+    targetJurisdiction: "EU",
+    rule: null,
     violations: [],
   };
 
@@ -177,9 +206,12 @@ test("integration: DataPlacement type structure", () => {
   const placement: DataPlacement = {
     placementId: "placement_001",
     tenantId: "tenant_001",
-    dataCategory: "PII",
-    region: "EU-WEST-1",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    category: "personal",
+    currentRegion: "eu-west-1",
+    currentJurisdiction: "EU",
+    isCompliant: true,
+    recordedAt: "2026-04-01T00:00:00.000Z",
+    metadataJson: null,
   };
 
   assert.equal(placement.placementId, "placement_001");

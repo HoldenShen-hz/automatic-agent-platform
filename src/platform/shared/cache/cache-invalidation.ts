@@ -5,10 +5,13 @@
  * file changes, session close, instruction updates, etc.
  */
 
-import type { CacheFacade } from './cache-facade.js';
+export interface CacheInvalidationTarget {
+  invalidateByTag(tag: string): Promise<number>;
+  invalidateNamespace(namespace: string): Promise<number>;
+}
 
 export class CacheInvalidationEngine {
-  constructor(private readonly cache: CacheFacade) {}
+  constructor(private readonly cache: CacheInvalidationTarget) {}
 
   /**
    * Called when a file is modified.

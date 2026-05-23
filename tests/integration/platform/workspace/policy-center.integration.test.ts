@@ -208,7 +208,7 @@ test("integration: read-only mode blocks mutating actions", () => {
     subjectType: "user",
     subjectId: "user_001",
     action: "write_file",
-    riskCategory: "low",
+    riskCategory: "destructive",
     mode: "read-only",
     stage: "execute",
   };
@@ -271,8 +271,8 @@ test("integration: OAPEFLIR stages", () => {
 
 test("integration: role-based action control", () => {
   const allowedActionsByRole: Record<string, PolicyAction[]> = {
-    developer: ["invoke_model", "invoke_tool", "read_file", "write_file"],
-    admin: ["invoke_model", "invoke_tool", "read_file", "write_file", "exec_command", "dispatch_execution", "org_change"],
+    developer: ["invoke_model", "invoke_tool", "write_file"],
+    admin: ["invoke_model", "invoke_tool", "write_file", "exec_command", "dispatch_execution", "org_change"],
   };
 
   // Developer can invoke model

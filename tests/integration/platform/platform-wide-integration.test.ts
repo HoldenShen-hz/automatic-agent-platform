@@ -162,6 +162,7 @@ test("platform-wide: health service reports system status based on DB and worker
     // Record a worker heartbeat
     store.upsertWorkerSnapshot({
       workerId: "worker-health-test",
+      version: 0,
       status: "idle",
       capabilitiesJson: JSON.stringify(["bash"]),
       runningExecutionsJson: JSON.stringify([]),

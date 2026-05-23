@@ -6,6 +6,28 @@ import {
   type DomainDescriptorInput,
 } from "../../../src/domains/domain-descriptor-orchestration-service.js";
 
+function createPrompt(promptId: string, stage: "plan" | "execute" | "assess", template: string) {
+  return { promptId, stage, version: "1.0", template, guardrails: [] };
+}
+
+function createRecipe(recipeId: string, triggerPhrases: string[], defaultWorkflowId: string, defaultToolBundleIds: string[]) {
+  return {
+    recipeId,
+    name: recipeId,
+    archetype: "crud_heavy" as const,
+    domainId: "test-domain",
+    description: `${recipeId} description`,
+    riskProfileRef: "test-domain.risk",
+    guardrailOverlay: {},
+    triggerPhrases,
+    defaultWorkflowId,
+    recommendedWorkflowIds: [defaultWorkflowId],
+    defaultToolBundleIds,
+    defaultPromptBundleRef: "test-domain.default-prompt",
+    acceptanceChecklistRef: "test-domain.acceptance",
+  };
+}
+
 function createMinimalInput(overrides: Partial<DomainDescriptorInput> = {}): DomainDescriptorInput {
   return {
     domainId: "test-domain",
@@ -59,7 +81,7 @@ test("DomainDescriptorOrchestrationService.review returns ready when all require
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
+      prompts: [createPrompt("p1", "plan", "Test")],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -69,7 +91,7 @@ test("DomainDescriptorOrchestrationService.review returns ready when all require
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [createRecipe("r1", ["test"], "wf-1", ["bundle-1"])],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -246,7 +268,7 @@ test("DomainDescriptorOrchestrationService.review determines onboardingReadiness
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
+      prompts: [createPrompt("p1", "plan", "Test")],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -256,7 +278,7 @@ test("DomainDescriptorOrchestrationService.review determines onboardingReadiness
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [createRecipe("r1", ["test"], "wf-1", ["bundle-1"])],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -310,9 +332,9 @@ test("DomainDescriptorOrchestrationService.review lists prompt IDs and stage cov
       libraryId: "prompt-test",
       domainId: "test-domain",
       prompts: [
-        { promptId: "plan-prompt", stage: "plan", version: "1.0", template: "Plan", guardrails: [] },
-        { promptId: "execute-prompt", stage: "execute", version: "1.0", template: "Execute", guardrails: [] },
-        { promptId: "assess-prompt", stage: "assess", version: "1.0", template: "Assess", guardrails: [] },
+        createPrompt("plan-prompt", "plan", "Plan"),
+        createPrompt("execute-prompt", "execute", "Execute"),
+        createPrompt("assess-prompt", "assess", "Assess"),
       ],
     },
   });
@@ -327,8 +349,8 @@ test("DomainDescriptorOrchestrationService.review lists recipe IDs from recipes"
   const service = new DomainDescriptorOrchestrationService();
   const input = createMinimalInput({
     recipes: [
-      { recipeId: "recipe-1", name: "recipe-1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: [] },
-      { recipeId: "recipe-2", name: "recipe-2", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["run"], defaultWorkflowId: "wf-2", defaultToolBundleIds: [] },
+      createRecipe("recipe-1", ["test"], "wf-1", []),
+      createRecipe("recipe-2", ["run"], "wf-2", []),
     ],
   });
 
@@ -442,7 +464,7 @@ test("DomainDescriptorOrchestrationService.review normalizes validating lifecycl
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
+      prompts: [createPrompt("p1", "plan", "Test")],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -452,7 +474,7 @@ test("DomainDescriptorOrchestrationService.review normalizes validating lifecycl
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [createRecipe("r1", ["test"], "wf-1", ["bundle-1"])],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -480,7 +502,7 @@ test("DomainDescriptorOrchestrationService.review normalizes canary lifecycle st
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
+      prompts: [createPrompt("p1", "plan", "Test")],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -490,7 +512,7 @@ test("DomainDescriptorOrchestrationService.review normalizes canary lifecycle st
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [createRecipe("r1", ["test"], "wf-1", ["bundle-1"])],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -523,7 +545,7 @@ test("DomainDescriptorOrchestrationService.review includes reviewRequiredTaskTyp
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
+      prompts: [createPrompt("p1", "plan", "Test")],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -533,7 +555,7 @@ test("DomainDescriptorOrchestrationService.review includes reviewRequiredTaskTyp
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [createRecipe("r1", ["test"], "wf-1", ["bundle-1"])],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",

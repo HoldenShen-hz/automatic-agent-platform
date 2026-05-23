@@ -54,7 +54,7 @@ test("bootstrapConfiguredRegistries loads domain, plugin, and knowledge config l
           budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
           securityLevel: "standard",
         },
-        status: "testing",
+        status: "validated",
         externalAdapters: [],
         pluginBindings: [{
           bindingId: "binding.retriever",

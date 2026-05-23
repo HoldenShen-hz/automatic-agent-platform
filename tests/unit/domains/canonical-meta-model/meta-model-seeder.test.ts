@@ -108,8 +108,8 @@ test("seedDomainMetaModels creates multiple models", () => {
   const models = seedDomainMetaModels(inputs);
 
   assert.equal(models.length, 2);
-  assert.equal(models[0].domainId, "domain-a");
-  assert.equal(models[1].domainId, "domain-b");
+  assert.equal(models[0]!.domainId, "domain-a");
+  assert.equal(models[1]!.domainId, "domain-b");
 });
 
 test("seedDomainMetaModels returns array of models", () => {
@@ -118,7 +118,7 @@ test("seedDomainMetaModels returns array of models", () => {
   ]);
 
   assert.ok(models[0]);
-  assert.equal(models[0].domainId, "d1");
+  assert.equal(models[0]!.domainId, "d1");
 });
 
 test("seedDomainMetaModel Q10 includes human governance mention", () => {

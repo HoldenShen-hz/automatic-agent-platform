@@ -17,6 +17,8 @@ function mockOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
     costCenter: "",
     metadata: {},
     ...overrides,
+    effectivePolicies: overrides.effectivePolicies ?? {},
+    status: overrides.status ?? "active",
   };
 }
 

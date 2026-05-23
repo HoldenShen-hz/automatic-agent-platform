@@ -30,6 +30,20 @@ function listCompiledTestFiles(rootPath) {
   return files;
 }
 
+function summarizeTypeScriptDiagnostics(output) {
+  const lines = output.split(/\r?\n/u);
+  const diagnosticLines = lines.filter((line) => /error TS\d+:/u.test(line));
+  const diagnosticFiles = new Set(
+    diagnosticLines
+      .map((line) => line.match(/^([^(:]+\.(?:ts|tsx))\(/u)?.[1])
+      .filter((value) => value != null),
+  );
+  return {
+    diagnosticCount: diagnosticLines.length,
+    diagnosticFiles: [...diagnosticFiles].slice(0, 10),
+  };
+}
+
 function emitCompiledTestsForCoverage() {
   const distTestsRoot = path.join(process.cwd(), "dist", "tests");
   rmSync(distTestsRoot, { recursive: true, force: true });
@@ -51,6 +65,8 @@ function emitCompiledTestsForCoverage() {
           incremental: false,
           noEmitOnError: false,
         },
+        include: [],
+        exclude: ["dist", "node_modules"],
         files: selectedTestFiles,
       },
       null,
@@ -66,7 +82,6 @@ function emitCompiledTestsForCoverage() {
     {
       cwd: process.cwd(),
       encoding: "utf8",
-      stdio: "inherit",
     },
   );
 
@@ -76,7 +91,14 @@ function emitCompiledTestsForCoverage() {
   }
 
   if (result.status !== 0) {
-    console.warn("coverage report: test emit reported TypeScript errors; continuing with emitted dist/tests bundle");
+    const diagnosticsOutput = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+    const { diagnosticCount, diagnosticFiles } = summarizeTypeScriptDiagnostics(diagnosticsOutput);
+    console.warn(
+      `coverage report: TypeScript emit reported ${diagnosticCount} non-blocking diagnostics across ${diagnosticFiles.length} curated test files; continuing with emitted dist/tests bundle`,
+    );
+    for (const file of diagnosticFiles) {
+      console.warn(`- ${file}`);
+    }
   }
 }
 

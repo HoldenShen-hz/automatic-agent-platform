@@ -152,8 +152,10 @@ test("YONO signal probability scales with matched evidence instead of fixed yes/
     moderationStatus: "visible",
   });
 
-  assert.ok(weakerYes.probability > 0.5);
-  assert.ok(strongerYes.probability > weakerYes.probability);
+  assert.notEqual(weakerYes.probability, null);
+  assert.notEqual(strongerYes.probability, null);
+  assert.ok(weakerYes.probability! > 0.5);
+  assert.ok(strongerYes.probability! > weakerYes.probability!);
 });
 
 test("YONO market and order validation fail closed for invalid timing and negative orders", () => {

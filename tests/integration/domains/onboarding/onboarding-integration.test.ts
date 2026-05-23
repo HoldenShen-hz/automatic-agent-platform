@@ -16,6 +16,26 @@ import { DomainSmokeTestRunner } from "../../../../src/domains/registry/domain-s
 import { DomainTaskDesignService } from "../../../../src/domains/domain-task-design-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import type { DomainRecipe } from "../../../../src/domains/recipes/index.js";
+
+function createRecipe(overrides: Partial<DomainRecipe> = {}): DomainRecipe {
+  return {
+    recipeId: "recipe_default",
+    domainId: "design_test",
+    name: "Default recipe",
+    description: "Default recipe for onboarding tests",
+    riskProfileRef: "risk_1",
+    guardrailOverlay: {},
+    triggerPhrases: ["design"],
+    defaultWorkflowId: "design_test.primary",
+    recommendedWorkflowIds: ["design_test.primary"],
+    defaultToolBundleIds: ["design_tools"],
+    defaultPromptBundleRef: "design_test.prompt",
+    acceptanceChecklistRef: "design_test.acceptance",
+    archetype: "conversational",
+    ...overrides,
+  };
+}
 
 function createOnboardingContext(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -170,14 +190,10 @@ test("Onboarding: task design service creates workflow for domain", () => {
 
     const taskDesignService = new DomainTaskDesignService({
       recipes: [
-        {
+        createRecipe({
           recipeId: "recipe_design",
-          domainId: "design_test",
           triggerPhrases: ["design", "workflow"],
-          defaultWorkflowId: "design_test.primary",
-          defaultToolBundleIds: ["design_tools"],
-          archetype: "conversational",
-        },
+        }),
       ],
       promptLibrary: {
         libraryId: "prompt_lib",
@@ -248,7 +264,7 @@ test("Onboarding: persists task and execution during onboarding", () => {
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
         securityLevel: "standard",
       },
-      status: "testing",
+      status: "validated",
       externalAdapters: [],
       pluginBindings: [],
     });

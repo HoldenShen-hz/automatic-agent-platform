@@ -12,11 +12,15 @@ import { createIntegrationContext } from "../../../helpers/integration-context.j
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { DomainOnboardingService } from "../../../../src/domains/operations/index.js";
 import { DomainDescriptorOrchestrationService } from "../../../../src/domains/domain-descriptor-orchestration-service.js";
+import type { DomainDefinition } from "../../../../src/domains/registry/domain-model.js";
+import type { DomainRecipe } from "../../../../src/domains/recipes/index.js";
+
+type TestDomainStatus = DomainDefinition["status"] | "testing";
 
 function registerTestDomain(
   registry: DomainRegistryService,
   domainId: string,
-  status: "draft" | "testing" | "active" = "testing",
+  status: TestDomainStatus = "testing",
 ): void {
   registry.register({
     domainId,
@@ -58,10 +62,29 @@ function registerTestDomain(
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status,
+    status: status === "testing" ? "validated" : status,
     externalAdapters: [],
     pluginBindings: [],
   });
+}
+
+function createReviewRecipe(overrides: Partial<DomainRecipe> = {}): DomainRecipe {
+  return {
+    recipeId: "test_recipe",
+    domainId: "test_review",
+    name: "Test review recipe",
+    description: "Descriptor review recipe fixture",
+    archetype: "conversational",
+    riskProfileRef: "risk_review",
+    guardrailOverlay: {},
+    triggerPhrases: ["test"],
+    defaultWorkflowId: "wf_test",
+    recommendedWorkflowIds: ["wf_test"],
+    defaultToolBundleIds: ["tools_test"],
+    defaultPromptBundleRef: "test_review.prompt",
+    acceptanceChecklistRef: "test_review.acceptance",
+    ...overrides,
+  };
 }
 
 test("DomainRegistration: register stores domain and can be retrieved", () => {
@@ -200,7 +223,7 @@ test("DomainRegistration: filterAllowedTools returns enabled and required tools"
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
         securityLevel: "standard",
       },
-      status: "testing",
+      status: "validated",
       externalAdapters: [],
       pluginBindings: [],
     });
@@ -352,7 +375,7 @@ test("DomainDescriptor: review produces onboardingReadiness", () => {
         domainId: "test_review",
         prompts: [{ promptId: "test_prompt", stage: "execute", version: "1.0", template: "Test", guardrails: [] }],
       },
-      recipes: [{ recipeId: "test_recipe", domainId: "test_review", archetype: "conversational", triggerPhrases: ["test"], defaultWorkflowId: "wf_test", defaultToolBundleIds: ["tools_test"] }],
+      recipes: [createReviewRecipe()],
       defaultToolBundleIds: ["tools_test"],
       defaultWorkflowIds: ["wf_test"],
     });

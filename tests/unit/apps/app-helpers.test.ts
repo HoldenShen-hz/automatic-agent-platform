@@ -9,6 +9,10 @@ import {
   resolvePlatformAppManifest,
   resolvePlatformStartupTarget,
 } from "../../../src/apps/index.js";
+import type {
+  PlatformAppKind,
+  PlatformStartupTargetKind,
+} from "../../../src/platform-architecture-types.js";
 
 test("listPlatformAppKinds returns correct order: api, console, worker", () => {
   const kinds = listPlatformAppKinds();
@@ -38,7 +42,7 @@ test("resolvePlatformAppManifest with whitespace returns null", () => {
 
 test("getPlatformAppManifestByKind error message is descriptive", () => {
   try {
-    getPlatformAppManifestByKind("invalid-kind");
+    getPlatformAppManifestByKind("invalid-kind" as unknown as PlatformAppKind);
     assert.fail("Should have thrown");
   } catch (err) {
     assert.ok(err instanceof Error);
@@ -49,7 +53,7 @@ test("getPlatformAppManifestByKind error message is descriptive", () => {
 
 test("resolvePlatformStartupTarget error message is descriptive", () => {
   try {
-    resolvePlatformStartupTarget("invalid-target");
+    resolvePlatformStartupTarget("invalid-target" as unknown as PlatformStartupTargetKind);
     assert.fail("Should have thrown");
   } catch (err) {
     assert.ok(err instanceof Error);

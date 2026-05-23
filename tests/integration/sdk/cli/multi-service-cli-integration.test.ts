@@ -132,6 +132,7 @@ test("CLI integration: ops-governance CLI validates environment and reports stat
 
     store.insertWorkerSnapshot({
       workerId: "worker-ops-cli",
+      version: 0,
       status: "idle",
       capabilitiesJson: JSON.stringify(["bash"]),
       runningExecutionsJson: JSON.stringify([]),
@@ -329,6 +330,7 @@ test("CLI integration: multiple CLIs coordinate on same database", () => {
 
     store.insertWorkerSnapshot({
       workerId: "worker-multi-cli",
+      version: 0,
       status: "idle",
       capabilitiesJson: JSON.stringify(["bash"]),
       runningExecutionsJson: JSON.stringify([]),

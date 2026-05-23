@@ -8,7 +8,10 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyAnomalyEvent } from "../../../src/platform/contracts/types/anomaly-event-classification.js";
+import {
+  classifyAnomalyEvent,
+  type ObservabilitySeverity,
+} from "../../../src/platform/contracts/types/anomaly-event-classification.js";
 import { UNIFIED_SEVERITY_SLA } from "../../../src/platform/contracts/types/unified-severity.js";
 import { newId } from "../../../src/platform/contracts/types/ids.js";
 
@@ -66,14 +69,20 @@ test("integration: multiple anomalies can be classified in sequence", () => {
     { metricName: "database_connection_pool", legacySeverity: "warning" },
     { metricName: "approval_queue_growth", legacySeverity: "info" },
     { metricName: "workflow_queue_depth", legacySeverity: "critical" },
-  ];
+  ] satisfies ReadonlyArray<{ metricName: string; legacySeverity: ObservabilitySeverity }>;
 
   const results = metrics.map((m) => classifyAnomalyEvent(m));
+  const [credentialEvent, databaseEvent, approvalEvent, workflowEvent] = results;
 
-  assert.strictEqual(results[0].anomalyEventClass, "E4_SECURITY"); // credential -> security
-  assert.strictEqual(results[1].anomalyEventClass, "E5_DATA"); // database -> data
-  assert.strictEqual(results[2].anomalyEventClass, "E6_GOVERNANCE"); // approval -> governance
-  assert.strictEqual(results[3].anomalyEventClass, "E2_EXECUTION"); // workflow -> execution
+  assert.ok(credentialEvent);
+  assert.ok(databaseEvent);
+  assert.ok(approvalEvent);
+  assert.ok(workflowEvent);
+
+  assert.strictEqual(credentialEvent.anomalyEventClass, "E4_SECURITY"); // credential -> security
+  assert.strictEqual(databaseEvent.anomalyEventClass, "E5_DATA"); // database -> data
+  assert.strictEqual(approvalEvent.anomalyEventClass, "E6_GOVERNANCE"); // approval -> governance
+  assert.strictEqual(workflowEvent.anomalyEventClass, "E2_EXECUTION"); // workflow -> execution
 });
 
 test("integration: context helps classify ambiguous metrics", () => {
@@ -139,7 +148,9 @@ test("integration: multiple events can be correlated", () => {
   assert.strictEqual(allSecurity, true);
 
   // All have same severity
-  const sameSeverity = events.every((e) => e.unifiedSeverity === events[0].unifiedSeverity);
+  const [firstEvent] = events;
+  assert.ok(firstEvent);
+  const sameSeverity = events.every((e) => e.unifiedSeverity === firstEvent.unifiedSeverity);
   assert.strictEqual(sameSeverity, true);
 
   // Can be used for correlation
@@ -150,8 +161,11 @@ test("integration: multiple events can be correlated", () => {
     sequence: i,
   }));
 
-  assert.strictEqual(correlatedEvents[0].correlationId, correlationId);
-  assert.strictEqual(correlatedEvents[2].sequence, 2);
+  const [firstCorrelatedEvent, , thirdCorrelatedEvent] = correlatedEvents;
+  assert.ok(firstCorrelatedEvent);
+  assert.ok(thirdCorrelatedEvent);
+  assert.strictEqual(firstCorrelatedEvent.correlationId, correlationId);
+  assert.strictEqual(thirdCorrelatedEvent.sequence, 2);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -163,11 +177,16 @@ test("integration: security events escalate severity correctly", () => {
   const results = severityLevels.map((sev) =>
     classifyAnomalyEvent({ metricName: "auth_failure_rate", legacySeverity: sev })
   );
+  const [infoEvent, warningEvent, criticalEvent, emergencyEvent] = results;
 
-  assert.strictEqual(results[0].unifiedSeverity, "SEV4"); // info -> SEV4
-  assert.strictEqual(results[1].unifiedSeverity, "SEV3"); // warning -> SEV3
-  assert.strictEqual(results[2].unifiedSeverity, "SEV2"); // critical -> SEV2
-  assert.strictEqual(results[3].unifiedSeverity, "SEV1"); // emergency -> SEV1
+  assert.ok(infoEvent);
+  assert.ok(warningEvent);
+  assert.ok(criticalEvent);
+  assert.ok(emergencyEvent);
+  assert.strictEqual(infoEvent.unifiedSeverity, "SEV4"); // info -> SEV4
+  assert.strictEqual(warningEvent.unifiedSeverity, "SEV3"); // warning -> SEV3
+  assert.strictEqual(criticalEvent.unifiedSeverity, "SEV2"); // critical -> SEV2
+  assert.strictEqual(emergencyEvent.unifiedSeverity, "SEV1"); // emergency -> SEV1
 });
 
 test("integration: SEV1 events always get security classification regardless of metric name", () => {
@@ -229,8 +248,7 @@ test("integration: execution events workflow correctly", () => {
   assert.strictEqual(event.unifiedSeverity, "SEV2");
 
   // Determine if we need to pause non-critical tasks
-  const shouldPause = event.anomalyEventClass === "E2_EXECUTION" &&
-    (event.unifiedSeverity === "SEV1" || event.unifiedSeverity === "SEV2");
+  const shouldPause = event.anomalyEventClass === "E2_EXECUTION";
 
   assert.strictEqual(shouldPause, true);
 });

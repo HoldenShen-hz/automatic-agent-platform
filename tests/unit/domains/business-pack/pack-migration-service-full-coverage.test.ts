@@ -710,6 +710,7 @@ test("MigrationPlanStep uses canonical nodeId format", () => {
   const plan = service.createMigrationPlan("my-pack", "other-pack");
 
   for (const step of plan.steps) {
+    assert.ok(step.nodeId);
     // nodeId should follow pattern: packid_suffix
     assert.ok(step.nodeId.includes("my-pack") || step.nodeId.includes("other-pack"));
     assert.ok(step.nodeId.includes("_"));

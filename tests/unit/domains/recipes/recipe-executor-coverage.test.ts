@@ -16,9 +16,7 @@ describe("RecipeExecutor", () => {
     });
 
     it("should accept options object", () => {
-      const executor = new RecipeExecutor(null, {
-        metricsCollector: undefined,
-      });
+      const executor = new RecipeExecutor(null, {});
       expect(executor).toBeDefined();
     });
   });
