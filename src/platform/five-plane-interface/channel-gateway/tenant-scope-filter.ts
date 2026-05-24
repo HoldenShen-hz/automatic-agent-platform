@@ -1,6 +1,8 @@
 export interface PrincipalScope {
   readonly actorId: string;
   readonly tenantId: string | null;
+  readonly actorType?: "user" | "service";
+  readonly namespace?: string | null;
   readonly scopes?: readonly string[];
 }
 
@@ -28,6 +30,10 @@ export class TenantScopeFilter {
     const taskScope = this.resolveTaskScope(taskId);
     if (taskScope == null) {
       return { allowed: false, reasonCode: "scope.task_unknown" };
+    }
+
+    if (principal.actorType === "service" && principal.tenantId == null) {
+      return { allowed: false, reasonCode: "scope.tenant_mismatch" };
     }
 
     if (principal.tenantId !== taskScope.tenantId) {

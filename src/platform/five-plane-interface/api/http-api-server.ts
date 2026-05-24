@@ -321,10 +321,16 @@ export class HttpApiServer {
       payload.headers["x-api-version"] = versionDecision.version;
     } else if (method === "OPTIONS") {
       const endpoint = this.extractEndpointKey(options.url);
-      payload = await this.handlePreflightRequest(requestId, headers.origin, `inject:${endpoint}`);
+      payload = await this.handlePreflightRequest(
+        requestId,
+        headers.origin,
+        this.buildRateLimitBucket({ method, url: options.url, headers, body: options.body ?? null }, endpoint),
+      );
     } else if (this.rateLimiter != null) {
       const endpoint = this.extractEndpointKey(options.url);
-      const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(`inject:${endpoint}`);
+      const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(
+        this.buildRateLimitBucket({ method, url: options.url, headers, body: options.body ?? null }, endpoint),
+      );
       payload = !result.allowed
         ? this.attachRateLimitHeaders(this.buildJsonErrorResponse(requestId, 429, {
           code: "api.rate_limit_exceeded",
@@ -407,15 +413,29 @@ export class HttpApiServer {
       }
       // 1. Preflight (CORS OPTIONS) — no rate limit, no body
       else if ((request.method ?? "GET") === "OPTIONS") {
-        const clientIp = this.resolveClientIp(headers, request.socket?.remoteAddress);
         const endpoint = this.extractEndpointKey(request.url ?? "/");
-        payload = await this.handlePreflightRequest(requestId, headers.origin, `${clientIp}:${endpoint}`);
+        payload = await this.handlePreflightRequest(
+          requestId,
+          headers.origin,
+          this.buildRateLimitBucket({
+            method: request.method ?? "GET",
+            url: request.url ?? "/",
+            headers,
+            body: null,
+          }, endpoint, request.socket?.remoteAddress),
+        );
       }
       // 2. Rate limiting check (non-OPTIONS only)
       else if (this.rateLimiter != null) {
-        const clientIp = this.resolveClientIp(headers, request.socket?.remoteAddress);
         const endpoint = this.extractEndpointKey(request.url ?? "/");
-        const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(`${clientIp}:${endpoint}`);
+        const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(
+          this.buildRateLimitBucket({
+            method: request.method ?? "GET",
+            url: request.url ?? "/",
+            headers,
+            body: null,
+          }, endpoint, request.socket?.remoteAddress),
+        );
         if (!result.allowed) {
           payload = this.buildJsonErrorResponse(requestId, 429, {
             code: "api.rate_limit_exceeded",
@@ -515,19 +535,20 @@ export class HttpApiServer {
     return `/${segments.join("/")}`;
   }
 
+  private buildRateLimitBucket(
+    request: ApiRequestLike,
+    endpoint: string,
+    fallbackClientIp?: string | null,
+  ): string {
+    const principal = authenticateOptionalPrincipal(request, this.options.authService ?? null);
+    if (principal?.tenantId != null) {
+      return `tenant:${principal.tenantId}:endpoint:${endpoint}`;
+    }
+    const clientIp = this.resolveClientIp(request.headers, fallbackClientIp);
+    return `ip:${clientIp}:endpoint:${endpoint}`;
+  }
+
   private resolveClientIp(headers: Record<string, string | undefined>, fallback: string | undefined | null): string {
-    const forwardedFor = headers["x-forwarded-for"]?.split(",")[0]?.trim();
-    if (forwardedFor != null && forwardedFor.length > 0) {
-      return forwardedFor;
-    }
-    const realIp = headers["x-real-ip"]?.trim();
-    if (realIp != null && realIp.length > 0) {
-      return realIp;
-    }
-    const forwarded = headers.forwarded?.match(/for=(?:"?)([^;,"]+)/i)?.[1]?.trim();
-    if (forwarded != null && forwarded.length > 0) {
-      return forwarded;
-    }
     return fallback?.trim() || "unknown";
   }
 

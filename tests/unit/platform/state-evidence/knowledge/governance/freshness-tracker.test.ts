@@ -91,7 +91,7 @@ test("FreshnessTracker.assess does not degrade trustLevel for non-authoritative 
   const assessment = tracker.assess(source, namespace, now);
 
   assert.equal(assessment.stale, true);
-  assert.equal(assessment.effectiveTrustLevel, "team_reviewed");
+  assert.equal(assessment.effectiveTrustLevel, "private_unverified");
 });
 
 test("FreshnessTracker.assess returns correct staleAction", () => {

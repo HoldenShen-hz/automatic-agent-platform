@@ -57,12 +57,21 @@ export interface WebhookDispatchEnvelope {
   dispatchState: WebhookDispatchState;
 }
 
+const SIGNED_REQUEST_REPLAY_TTL_MS = 5 * 60 * 1000;
+const MAX_SIGNED_REQUEST_REPLAY_CACHE_ENTRIES = 10_000;
+
+interface SignedRequestReplayCacheEntry {
+  readonly signatureKey: string;
+  readonly idempotencyKey: string;
+  readonly expiresAtMs: number;
+}
+
 export class WebhookIngressService {
   private readonly endpoints = new Map<string, WebhookEndpointRegistration>();
   private readonly envelopesByIdempotencyKey = new Map<string, WebhookDispatchEnvelope>();
   private readonly acceptedEnvelopes: WebhookDispatchEnvelope[] = [];
   private readonly failureCounts = new Map<string, number>();
-  private readonly signedRequestReplayCache = new Map<string, { signatureKey: string; idempotencyKey: string }>();
+  private readonly signedRequestReplayCache = new Map<string, SignedRequestReplayCacheEntry>();
 
   public registerEndpoint(input: WebhookEndpointRegistration): WebhookEndpointRegistration {
     assertNonEmpty(input.endpointId, "webhook.invalid_endpoint_id");
@@ -119,6 +128,7 @@ export class WebhookIngressService {
         details: { endpointId: input.endpointId, eventType },
       });
     }
+    pruneSignedRequestReplayCache(this.signedRequestReplayCache, Date.now());
     const signatureVerified = verifySignature({
       endpoint,
       headers: input.headers,
@@ -210,10 +220,14 @@ function verifySignature(input: {
   headers: Record<string, string | string[] | undefined>;
   body: string;
   idempotencyKey: string;
-  replayCache: Map<string, { signatureKey: string; idempotencyKey: string }>;
+  replayCache: Map<string, SignedRequestReplayCacheEntry>;
 }): boolean {
   if (input.endpoint.algorithm === "none") {
-    return false;
+    throw new ValidationError(
+      "webhook.signature_algorithm_invalid",
+      "webhook.signature_algorithm_invalid: Unsigned webhook endpoints are not accepted for inbound delivery.",
+      { details: { endpointId: input.endpoint.endpointId } },
+    );
   }
   const signingSecret = input.endpoint.signingSecret?.trim();
   if (signingSecret == null || signingSecret.length === 0) {
@@ -251,11 +265,32 @@ function verifySignature(input: {
       details: { endpointId: input.endpoint.endpointId },
     });
   }
+  const nowMs = Date.now();
   input.replayCache.set(replayCacheKey, {
     signatureKey: replayCacheKey,
     idempotencyKey: input.idempotencyKey,
+    expiresAtMs: nowMs + SIGNED_REQUEST_REPLAY_TTL_MS,
   });
+  enforceSignedRequestReplayCacheLimit(input.replayCache);
   return true;
+}
+
+function pruneSignedRequestReplayCache(cache: Map<string, SignedRequestReplayCacheEntry>, nowMs: number): void {
+  for (const [cacheKey, entry] of cache.entries()) {
+    if (entry.expiresAtMs <= nowMs) {
+      cache.delete(cacheKey);
+    }
+  }
+}
+
+function enforceSignedRequestReplayCacheLimit(cache: Map<string, SignedRequestReplayCacheEntry>): void {
+  while (cache.size > MAX_SIGNED_REQUEST_REPLAY_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey == null) {
+      return;
+    }
+    cache.delete(oldestKey);
+  }
 }
 
 function parseWebhookPayload(body: string): Record<string, unknown> {

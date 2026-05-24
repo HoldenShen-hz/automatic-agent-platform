@@ -294,8 +294,7 @@ export class SemverValidator {
     // ~1.2.3 means >=1.2.3 <1.3.0
     // ~1.2 means >=1.2.0 <1.3.0
     if (version.major !== constraint.major) return false;
-    // minor must be >= constraint.minor AND < constraint.minor + 1
-    if (version.minor < constraint.minor || version.minor > constraint.minor) return false;
+    if (version.minor !== constraint.minor) return false;
     // minor == constraint.minor, check patch lower bound
     if (version.patch < constraint.patch) return false;
     return true;

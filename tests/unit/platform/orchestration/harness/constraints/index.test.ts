@@ -47,5 +47,5 @@ test("normalizeConstraintPack fills the legacy budget mirror from budgetEnvelope
 
   assert.equal(normalized.budgetEnvelope?.maxSteps, 10);
   assert.equal(normalized.budget?.maxSteps, 10);
-  assert.equal(normalized.budget?.maxOutputTokens, 128);
+  assert.equal(normalized.budget?.max_output_tokens, 128);
 });

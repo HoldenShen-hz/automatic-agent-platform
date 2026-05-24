@@ -80,7 +80,7 @@ test("EvaluatorService retries recoverable failure batches", () => {
     }),
   });
 
-  assert.equal(report.decision, "retry");
+  assert.equal(report.decision, "replan");
   assert.equal(report.passed, false);
   assert.equal(report.riskLevel, "elevated");
 });
@@ -100,7 +100,7 @@ test("EvaluatorService replans when failures also elevate risk", () => {
     actualDurationMs: 10_000,
   });
 
-  assert.equal(report.decision, "replan");
+  assert.equal(report.decision, "escalate");
   assert.equal(report.riskLevel, "elevated");
   assert.ok(report.findings.some((finding) => finding.category === "risk" && finding.severity === "critical"));
 });

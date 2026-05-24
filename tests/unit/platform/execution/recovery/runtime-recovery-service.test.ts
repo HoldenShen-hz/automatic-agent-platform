@@ -19,7 +19,10 @@ function createMockStore(overrides: {
   event?: { listEventsForTask?: () => Array<{ id: string; eventType: string; payloadJson: string; createdAt: string; traceId?: string | null }> };
   artifact?: { listArtifactsByTask?: () => Array<{ artifactId: string; artifactType: string; createdAt: string }> };
   approval?: { listApprovalsByTask?: () => Array<{ id: string; status: string }> };
-  dispatch?: { listDeadLettersByTask?: () => Array<{ id: string }> };
+  dispatch?: {
+    listDeadLettersByTask?: () => Array<{ id: string }>;
+    getExecution?: (executionId: string, tenantId?: string | null) => { id: string; taskId: string } | null;
+  };
   task?: { getTask?: (id: string) => { id: string; divisionId?: string | null; status: string } | null };
 } = {}) {
   return {
@@ -46,6 +49,7 @@ function createMockStore(overrides: {
     },
     dispatch: {
       listDeadLettersByTask: overrides.dispatch?.listDeadLettersByTask ?? (() => []),
+      getExecution: overrides.dispatch?.getExecution ?? (() => null),
     },
   } as unknown as ReturnType<typeof RuntimeRecoveryService> extends { store: infer S } ? S : never;
 }
@@ -504,4 +508,39 @@ test("RuntimeRecoveryService handles precheck with allowed true", () => {
   assert.equal(results[0]!.latestPrecheck?.allowed, true);
   // No error code, so reason should be active_execution
   assert.equal(results[0]!.reason, "active_execution");
+});
+
+test("RuntimeRecoveryService.buildCompensationPlan resolves task via execution lookup", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-1",
+    taskId: "task-from-execution",
+    status: "failed",
+    latestErrorCode: "runtime.failed",
+    latestPrecheck: {
+      allowed: 1,
+      reasonCode: null,
+      resolvedBudgetUsd: 42,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "standard",
+      resolvedToolsJson: null,
+      resolvedPathsJson: null,
+      checkedAt: "2026-01-01T00:00:00.000Z",
+    },
+  });
+  const store = createMockStore({
+    operations: {
+      buildRuntimeRecoveryView: () => [record],
+    },
+    dispatch: {
+      getExecution: (executionId: string) => executionId === "exec-1" ? { id: "exec-1", taskId: "task-from-execution" } : null,
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const plan = service.buildCompensationPlan("exec-1");
+
+  assert.ok(plan);
+  assert.equal(plan?.executionId, "exec-1");
+  assert.equal(plan?.actions.length, 3);
+  assert.equal(plan?.actions[0]?.actionType, "release_budget_reservation");
 });

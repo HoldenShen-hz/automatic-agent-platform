@@ -246,7 +246,7 @@ test("tenant-platform-types: CreateTenantInput accepts all fields", () => {
 
   assert.equal(input.tenantId, "tenant-1");
   assert.equal(input.isolationMode, "dedicated_environment");
-  assert.equal(input.deploymentMode, "single-tenant");
+  assert.equal(input.deploymentMode, "private_cloud");
 });
 
 test("tenant-platform-types: CreateTenantInput allows optional encryption config", () => {

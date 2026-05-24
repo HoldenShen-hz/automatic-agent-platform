@@ -224,6 +224,52 @@ test("HttpApiServer inject handles OPTIONS preflight request", async () => {
   }
 });
 
+test("HttpApiServer inject uses tenant-scoped rate limit buckets when authentication provides a tenant", async () => {
+  const seenBuckets: string[] = [];
+  const authService = new ApiAuthService({
+    apiKeys: [{ apiKey: "tenant-rate-key", actorId: "operator_1", roles: ["viewer"], tenantId: "tenant-rate" }],
+    jwtSecret: "tenant-rate-secret",
+    tokenTtlMs: 60 * 60 * 1000,
+  });
+  const token = authService.exchangeApiKey("tenant-rate-key").accessToken;
+  const server = new HttpApiServer({
+    approvalService: new NoOpApprovalService(),
+    inspectService: new NoOpInspectService(),
+    missionControlService: new NoOpMissionControlService(),
+    billingService: new NoOpBillingService(),
+    coordinatorLoadBalancingService: new NoOpApiDelegationService(),
+    authService,
+    rateLimiter: {
+      async checkAndConsume(bucket: string) {
+        seenBuckets.push(bucket);
+        return {
+          allowed: true,
+          maxCalls: 100,
+          remaining: 99,
+          windowMs: 1000,
+          resetAt: new Date(Date.now() + 1000).toISOString(),
+        };
+      },
+    } as never,
+    prometheusMetricsExporter: createMockPrometheusMetricsExporter() as never,
+  });
+
+  try {
+    const response = await server.inject({
+      url: "/healthz",
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(seenBuckets[0], "tenant:tenant-rate:endpoint:/healthz");
+  } finally {
+    await server.stop();
+  }
+});
+
 test("HttpApiServer inject rejects JSON write requests with unsupported content type", async () => {
   const server = createMinimalServer();
 

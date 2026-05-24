@@ -186,7 +186,7 @@ test("OapeflirLoopService packages feedback-stage decision input with budget and
     systemTelemetry: {
       durationMs: 25,
       tokensUsed: 10,
-      modelId: "test-bridge",
+      modelId: "MiniMax-M2.7",
       retryCount: 0,
       validationPassed: true,
     },
@@ -237,6 +237,7 @@ test("OapeflirLoopService packages feedback-stage decision input with budget and
   assert.equal(decisionInputBundle.bundleId, decisionInputBundle.decisionInputBundleId);
   assert.equal(decisionInputBundle.policy.policyIds[0], "policy.review");
   assert.equal(decisionInputBundle.budget.remainingSteps, 4);
+  assert.equal(decisionInputBundle.budget.remainingCost, 19.99998);
   assert.equal(decisionInputBundle.risk.escalationThreshold, 0.7);
   assert.equal(decisionInputBundle.evaluator.score, 0.42);
   assert.equal(decisionInputBundle.decisionKind, "replan");

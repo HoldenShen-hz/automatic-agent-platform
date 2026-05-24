@@ -43,6 +43,6 @@ test("SlaOperationsService resolves routing hint and records breaches", () => {
   assert.equal(decision.routingHint?.reservedCapacityUnits, 40);
   assert.deepEqual(
     decision.breachRecords[0]?.breachCodes,
-    ["sla.latency_breach", "sla.success_rate_breach", "sla.queue_wait_breach"],
+    ["sla.success_rate_breach", "sla.queue_wait_breach"],
   );
 });

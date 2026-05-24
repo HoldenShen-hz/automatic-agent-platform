@@ -300,7 +300,6 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
           }
           const taskId = newId("task");
-          const now = nowIso();
           // Use canonical intake pipeline for proper task admission
           const result = deps.intakeAdmissionService.admit({
             tenantId: effectiveTenantId,
@@ -314,27 +313,6 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] },
             idempotencyKey: ctx.request.headers["idempotency-key"] ?? `task:${newId("idempotency")}`,
             traceId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
-          });
-
-          deps.taskStore.task.insertTask({
-            id: taskId,
-            parentId: payload.parentId ?? null,
-            rootId: taskId,
-            divisionId: payload.divisionId ?? null,
-            tenantId: effectiveTenantId,
-            title: payload.title,
-            status: "queued",
-            source: payload.source ?? "user",
-            priority: payload.priority ?? "normal",
-            inputJson: payload.inputJson ?? "{}",
-            normalizedInputJson: payload.inputJson ?? "{}",
-            outputJson: null,
-            estimatedCostUsd: null,
-            actualCostUsd: 0,
-            errorCode: null,
-            createdAt: now,
-            updatedAt: now,
-            completedAt: null,
           });
           for (const event of result.events) {
             deps.taskStore.event.insertEvent({

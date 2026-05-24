@@ -6,6 +6,7 @@ import type { MissionControlService } from "../../../../../../src/platform/five-
 import type { InspectService } from "../../../../../../src/platform/shared/observability/inspect-service.js";
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { IntakeAdmissionService } from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(): MissionControlService {
@@ -215,6 +216,74 @@ test("POST /api/v1/tasks inserts task into task store", async () => {
   assert.equal(insertedTask.source, "user");
   assert.ok(insertedTask.id != null, "Expected task ID to be generated");
   assert.ok(insertedTask.createdAt != null, "Expected createdAt timestamp");
+});
+
+test("POST /api/v1/tasks with intakeAdmissionService does not double-write task records", async () => {
+  let insertedTask = false;
+  let insertedEvents = 0;
+  let admitted = false;
+  const mockTaskStore = {
+    task: {
+      insertTask: () => {
+        insertedTask = true;
+      },
+      getTask: () => null,
+      updateTaskInput: () => {},
+      updateTaskStatus: () => {},
+      updateTaskOutput: () => {},
+    },
+    event: {
+      insertEvent: () => {
+        insertedEvents += 1;
+      },
+    },
+  } as unknown as AuthoritativeTaskStore;
+  const intakeAdmissionService = {
+    admit: () => {
+      admitted = true;
+      return {
+        taskDraft: { taskDraftId: "draft-1" },
+        confirmedTaskSpec: { confirmedTaskSpecId: "ctspec-1" },
+        requestEnvelope: { requestId: "req-1", requestHash: "hash-1", constraintPackRef: "policy://default" },
+        runVersionLock: { runVersionLockId: "lock-1" },
+        harnessRun: { harnessRunId: "hrun-1" },
+        events: [{
+          eventId: "event-1",
+          eventType: "platform.intake.admitted",
+          payload: { ok: true },
+          traceId: "trace-1",
+          occurredAt: "2026-04-28T00:00:00.000Z",
+          schemaVersion: "1",
+          aggregateId: "agg-1",
+          runId: "run-1",
+          aggregateSeq: 1,
+          causationId: null,
+          correlationId: "corr-1",
+          payloadHash: "hash-1",
+          replayBehavior: "idempotent",
+          source: "task-routes.test",
+        }],
+      };
+    },
+  } as unknown as IntakeAdmissionService;
+
+  const deps = {
+    authService: createMockAuthService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    taskStore: mockTaskStore,
+    intakeAdmissionService,
+  };
+  const routes = createTaskRoutes(deps);
+  const ctx = createMockContext("/api/v1/tasks", ["api", "v1", "tasks"], {}, "POST", { title: "Intake Task" });
+
+  const response = await callRoute(routes, ctx);
+
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 201);
+  assert.equal(admitted, true);
+  assert.equal(insertedTask, false);
+  assert.equal(insertedEvents, 1);
 });
 
 test("POST /api/v1/tasks uses api_key auth method", async () => {

@@ -278,7 +278,7 @@ test("TaskTerminalTransitionInput structure for cancelled terminal status", () =
   };
 
   assert.equal(input.terminalStatus, "cancelled");
-  assert.equal(input.taskOutputJson, null);
+  assert.equal(input.taskOutputJson, "{}");
 });
 
 test("TaskTerminalTransitionInput accepts all TaskTerminalStatus values", () => {

@@ -62,6 +62,22 @@ test("DashboardWebSocketServer enforces task scope authorization on registration
   );
 });
 
+test("DashboardWebSocketServer rejects task subscriptions when no task scope is granted", () => {
+  const server = new DashboardWebSocketServer();
+
+  assert.throws(
+    () => server.registerClient(
+      [{ channel: "task", filterId: "task-1" }],
+      "principal-1",
+      "tenant-1",
+      null,
+      "1.0",
+      { allowedChannels: ["task"], allowedTenantIds: ["tenant-1"], allowedTaskIds: [] },
+    ),
+    /outside the authorized scope/,
+  );
+});
+
 test("DashboardWebSocketServer filters tenant-scoped deltas on the server side", () => {
   const server = new DashboardWebSocketServer();
 

@@ -316,9 +316,9 @@ test("QualityEvaluationEvidence with executionId", () => {
 });
 
 test("QualityEvaluationEvidence without executionId", () => {
-  const evidence = createMockQualityEvaluationEvidence();
+  const { executionId: _ignoredExecutionId, ...evidence } = createMockQualityEvaluationEvidence();
 
-  assert.equal(evidence.executionId, undefined);
+  assert.equal("executionId" in evidence, false);
 });
 
 test("QualityEvaluationEvidence configSnapshot matches qualityGate weights", () => {

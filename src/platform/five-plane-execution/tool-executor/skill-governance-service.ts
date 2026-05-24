@@ -116,6 +116,11 @@ interface StoredSkillPolicy {
   blocked_message: string | null;
 }
 
+interface SkillExecutionAuditEntry {
+  readonly executionId: string;
+  readonly recordedAtMs: number;
+}
+
 export function computeSkillHealth(executionCount: number, successRate: number): number {
   if (executionCount === 0) return 0.5; // Neutral for never-executed skills
   return successRate * Math.min(1.0, executionCount / 100);
@@ -149,6 +154,8 @@ function toStoredSkill(row: Record<string, unknown>): StoredSkill {
 }
 
 export class SkillGovernanceService {
+  private readonly executionAuditBySkillId = new Map<string, SkillExecutionAuditEntry[]>();
+
   public constructor(private readonly store: AuthoritativeTaskStore) {}
 
   private withConnection<T>(work: Parameters<AuthoritativeTaskStore["withConnection"]>[0]): T {
@@ -289,16 +296,7 @@ export class SkillGovernanceService {
     );
 
     if (!row || !row.skill_id) {
-      // Return default policy
-      return {
-        skillId,
-        allowExecution: true,
-        requireApproval: false,
-        maxConcurrentExecutions: 5,
-        maxExecutionsPerHour: 100,
-        rateLimitWindowMs: 3600000,
-        blockedMessage: null,
-      };
+      return null;
     }
 
     return {
@@ -353,11 +351,10 @@ export class SkillGovernanceService {
     const requiredApprovals: string[] = [];
 
     if (!policy) {
-      // No policy means allow with default restrictions
       return {
-        authorized: true,
-        policy: this.getExecutionPolicy(request.skillId),
-        deniedReasons: [],
+        authorized: false,
+        policy: null,
+        deniedReasons: ["Skill execution policy is not configured"],
         requiredApprovals: [],
       };
     }
@@ -370,10 +367,18 @@ export class SkillGovernanceService {
       requiredApprovals.push("skill_execution_approval");
     }
 
-    // Check rate limiting (simplified - would need execution history in real impl)
-    // For now, just check if authorized so far
+    if (policy.maxExecutionsPerHour > 0) {
+      const currentExecutions = this.pruneAndReadRecentExecutions(request.skillId, policy.rateLimitWindowMs, Date.now());
+      if (currentExecutions.length >= policy.maxExecutionsPerHour) {
+        deniedReasons.push("Skill execution rate limit exceeded");
+      }
+    }
 
     const authorized = deniedReasons.length === 0 && requiredApprovals.length === 0;
+
+    if (authorized) {
+      this.recordExecutionAttempt(request.skillId, request.executionId, Date.now(), policy.rateLimitWindowMs);
+    }
 
     return {
       authorized,
@@ -387,6 +392,7 @@ export class SkillGovernanceService {
    * Records skill execution outcome for metrics
    */
   public recordExecutionOutcome(skillId: string, success: boolean, durationMs: number): void {
+    this.pruneAndReadRecentExecutions(skillId, null, Date.now());
     this.withConnection<void>((connection) => {
       connection.prepare(`
         UPDATE skill_registry
@@ -501,5 +507,33 @@ export class SkillGovernanceService {
       `).run(nowIso(), cutoffStr);
       return 1;
     });
+  }
+
+  private pruneAndReadRecentExecutions(
+    skillId: string,
+    windowMs: number | null,
+    nowMs: number,
+  ): readonly SkillExecutionAuditEntry[] {
+    const existing = this.executionAuditBySkillId.get(skillId) ?? [];
+    const retained = windowMs == null || windowMs <= 0
+      ? existing
+      : existing.filter((entry) => nowMs - entry.recordedAtMs < windowMs);
+    if (retained.length === 0) {
+      this.executionAuditBySkillId.delete(skillId);
+      return [];
+    }
+    if (retained.length !== existing.length) {
+      this.executionAuditBySkillId.set(skillId, retained);
+    }
+    return retained;
+  }
+
+  private recordExecutionAttempt(skillId: string, executionId: string, nowMs: number, windowMs: number): void {
+    const retained = [...this.pruneAndReadRecentExecutions(skillId, windowMs, nowMs)];
+    if (retained.some((entry) => entry.executionId === executionId)) {
+      return;
+    }
+    retained.push({ executionId, recordedAtMs: nowMs });
+    this.executionAuditBySkillId.set(skillId, retained);
   }
 }

@@ -35,11 +35,13 @@ test("createSession creates valid session with tokens", () => {
   const session = createSession({
     principalId: "user-123",
     principalType: "user",
+    tenantId: "tenant-123",
   });
 
   assert.ok(session.sessionId);
   assert.equal(session.principalId, "user-123");
   assert.equal(session.principalType, "user");
+  assert.equal(session.tenantId, "tenant-123");
   assert.equal(session.status, "active");
   assert.ok(session.accessToken.tokenId);
   assert.ok(session.refreshToken.tokenId);
@@ -97,6 +99,7 @@ test("validateAccessToken returns valid for active session token", () => {
   const session = createSession({
     principalId: "user-validate",
     principalType: "user",
+    tenantId: "tenant-validate",
     clientIp: "127.0.0.1",
     userAgent: "aa-test",
   });
@@ -108,6 +111,7 @@ test("validateAccessToken returns valid for active session token", () => {
   assert.equal(result.valid, true);
   assert.ok(result.session);
   assert.equal(result.session?.sessionId, session.sessionId);
+  assert.equal(result.session?.tenantId, "tenant-validate");
   assert.equal(result.reason, null);
 });
 

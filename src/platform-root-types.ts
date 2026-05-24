@@ -1,14 +1,14 @@
-import type { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
-import type { buildDomainsStartupPlan } from "./domains-startup-plan.js";
-import type { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
-import type { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
-import type { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
-import type { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
-import type { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
-import type { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
-import type { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
-import type { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
-import type { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
+import { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
+import { buildDomainsStartupPlan } from "./domains-startup-plan.js";
+import { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
+import { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
+import { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
+import { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
+import { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
+import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
+import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
+import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
+import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
 export interface PlatformRootSummary {
   readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary> | null;

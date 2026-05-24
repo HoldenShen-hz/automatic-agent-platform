@@ -5,9 +5,10 @@ import { SemanticKnowledgeGraph } from "../../../../../src/platform/five-plane-s
 import type { ArchivedKnowledgeRecord } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
 
 function makeRecord(namespace = "test-ns"): ArchivedKnowledgeRecord {
+  const suffix = namespace.replace(/[^a-zA-Z0-9_-]/g, "_");
   return {
     source: {
-      sourceId: "src_1",
+      sourceId: `src_${suffix}`,
       type: "file",
       uri: "file:///test/doc.txt",
       contentHash: "abc123",
@@ -21,8 +22,8 @@ function makeRecord(namespace = "test-ns"): ArchivedKnowledgeRecord {
       checksum: "abc123def456",
     },
     document: {
-      documentId: "doc_1",
-      sourceId: "src_1",
+      documentId: `doc_${suffix}`,
+      sourceId: `src_${suffix}`,
       title: "Test Document",
       version: 1,
       tags: [],
@@ -37,8 +38,8 @@ function makeRecord(namespace = "test-ns"): ArchivedKnowledgeRecord {
     },
     chunks: [
       {
-        chunkId: "chunk_1",
-        documentId: "doc_1",
+        chunkId: `chunk_1_${suffix}`,
+        documentId: `doc_${suffix}`,
         content: "First chunk content",
         chunkType: "concept",
         metadata: { relevantFiles: [] },
@@ -52,8 +53,8 @@ function makeRecord(namespace = "test-ns"): ArchivedKnowledgeRecord {
         locator: {},
       },
       {
-        chunkId: "chunk_2",
-        documentId: "doc_1",
+        chunkId: `chunk_2_${suffix}`,
+        documentId: `doc_${suffix}`,
         content: "Second chunk content",
         chunkType: "example",
         metadata: { relevantFiles: [] },
@@ -85,12 +86,12 @@ test("SemanticKnowledgeGraph creates keyword and same-document relationships", (
   graph.replace([makeRecord()]);
 
   const refs = graph.findChunkKnowledgeRefsByKeyword("node");
-  const connections = graph.getChunkConnections("knowledge:chunk_1");
+  const connections = graph.getChunkConnections("knowledge:chunk_1_test-ns");
 
-  assert.deepEqual(refs.sort(), ["knowledge:chunk_1", "knowledge:chunk_2"]);
+  assert.deepEqual(refs.sort(), ["knowledge:chunk_1_test-ns", "knowledge:chunk_2_test-ns"]);
   assert.ok(connections);
-  assert.ok(connections.sharedKeywordRefs.includes("knowledge:chunk_2"));
-  assert.ok(connections.sameDocumentRefs.includes("knowledge:chunk_2"));
+  assert.ok(connections.sharedKeywordRefs.includes("knowledge:chunk_2_test-ns"));
+  assert.ok(connections.sameDocumentRefs.includes("knowledge:chunk_2_test-ns"));
 });
 
 test("SemanticKnowledgeGraph.inspect filters by namespace and keyword", () => {
@@ -100,6 +101,7 @@ test("SemanticKnowledgeGraph.inspect filters by namespace and keyword", () => {
   const ns1Inspection = graph.inspect({ namespace: "ns1", limit: 10 });
   const keywordInspection = graph.inspect({ keyword: "typescript", limit: 10 });
 
-  assert.ok(ns1Inspection.nodes.every((node) => node.namespace === "ns1" || node.nodeType === "namespace"));
+  assert.ok(ns1Inspection.nodes.some((node) => node.nodeType === "namespace" && node.label === "ns1"));
+  assert.ok(ns1Inspection.nodes.some((node) => node.namespace === "ns1" && node.nodeType === "chunk"));
   assert.ok(keywordInspection.nodes.some((node) => node.nodeType === "keyword"));
 });

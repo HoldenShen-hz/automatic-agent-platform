@@ -425,7 +425,7 @@ test("enforcePluginSignature throws for tampered signature", () => {
   );
 });
 
-test("definePlugin with SBOM that has critical vulnerabilities throws", async () => {
+test("definePlugin with SBOM that has critical vulnerabilities rejects asynchronously", async () => {
   const sbom = JSON.stringify({
     components: [
       { name: "axios", version: "0.21.1" }, // high severity
@@ -434,8 +434,8 @@ test("definePlugin with SBOM that has critical vulnerabilities throws", async ()
   writeFileSync(TEMP_SBOM_FILE, sbom);
 
   try {
-    assert.throws(
-      () => definePlugin({
+    await assert.rejects(
+      definePlugin({
         pluginId: "sbom-critical-test",
         name: "SBOM Critical Test",
         version: "1.0.0",

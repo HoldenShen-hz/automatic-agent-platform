@@ -86,6 +86,13 @@ test("TenantScopeFilter evaluate handles both null tenantIds matching", () => {
   assert.equal(result.reasonCode, "scope.allowed");
 });
 
+test("TenantScopeFilter evaluate denies tenantless service principals by default", () => {
+  const filter = new TenantScopeFilter(makeResolver(true, { tenantId: null }));
+  const result = filter.evaluate({ actorId: "svc_123", actorType: "service", tenantId: null, namespace: "execution" }, "task_456");
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "scope.tenant_mismatch");
+});
+
 test("TenantScopeFilter evaluate handles empty required scopes array", () => {
   const filter = new TenantScopeFilter(makeResolver(true, { tenantId: "tenant_abc", requiredScopes: [] }));
   const result = filter.evaluate(

@@ -1,3 +1,7 @@
+import { Agent as HttpAgent, request as httpRequest } from "node:http";
+import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
+import { URL } from "node:url";
+
 import type { GatewayStoragePort } from "./storage-port.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { HTTP_STATUS_GATEWAY_TIMEOUT } from "../../contracts/constants/network.js";
@@ -25,6 +29,7 @@ import {
   requireNonEmpty,
 } from "./helpers.js";
 import type {
+  GatewayConnectionPoolOptions,
   FetchLike,
   GatewayDeliveryReceipt,
   GatewayRetryQueueSummary,
@@ -74,6 +79,8 @@ export class ChannelGatewayService {
   private readonly circuitBreakerFailureThreshold: number;
   private readonly circuitBreakerResetMs: number;
   private readonly circuitBreakerState = new Map<string, { failureCount: number; openUntil: number | null }>();
+  private readonly httpAgent: HttpAgent;
+  private readonly httpsAgent: HttpsAgent;
   // R12-12: Pluggable adapter registry
   private readonly adapterRegistry: ChannelAdapterRegistry;
 
@@ -87,7 +94,10 @@ export class ChannelGatewayService {
     /** Optional adapter registry for pluggable channel support */
     adapterRegistry?: ChannelAdapterRegistry,
   ) {
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    const poolOptions = normalizeConnectionPoolOptions(options.connectionPool);
+    this.httpAgent = new HttpAgent(poolOptions);
+    this.httpsAgent = new HttpsAgent(poolOptions);
+    this.fetchImpl = options.fetchImpl ?? this.createPooledFetch();
     this.requestTimeoutMs = Math.max(
       1,
       Math.min(
@@ -120,6 +130,51 @@ export class ChannelGatewayService {
     ));
 
     return registry;
+  }
+
+  private createPooledFetch(): FetchLike {
+    return async (input, init) => {
+      const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const url = new URL(requestUrl);
+      const body = normalizeRequestBody(init?.body);
+      const headers = new Headers(init?.headers ?? {});
+      const transport = url.protocol === "https:" ? httpsRequest : httpRequest;
+      const agent = url.protocol === "https:" ? this.httpsAgent : this.httpAgent;
+
+      return await new Promise<Response>((resolve, reject) => {
+        const request = transport(url, {
+          method: init?.method ?? "GET",
+          headers: Object.fromEntries(headers.entries()),
+          agent,
+        }, (response) => {
+          const chunks: Buffer[] = [];
+          response.on("data", (chunk) => {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          });
+          response.on("end", () => {
+            resolve(new Response(Buffer.concat(chunks), {
+              status: response.statusCode ?? 500,
+              headers: response.headers as HeadersInit,
+            }));
+          });
+        });
+
+        request.on("error", reject);
+        if (init?.signal) {
+          if (init.signal.aborted) {
+            request.destroy(new Error("gateway.request_aborted"));
+            return;
+          }
+          init.signal.addEventListener("abort", () => {
+            request.destroy(new Error("gateway.request_aborted"));
+          }, { once: true });
+        }
+        if (body != null) {
+          request.write(body);
+        }
+        request.end();
+      });
+    };
   }
 
   /**
@@ -781,4 +836,30 @@ export class ChannelGatewayService {
       providerMessageId: null,
     };
   }
+}
+
+function normalizeConnectionPoolOptions(options: GatewayConnectionPoolOptions | undefined): ConstructorParameters<typeof HttpAgent>[0] {
+  return {
+    keepAlive: true,
+    maxSockets: Math.max(1, Math.trunc(options?.maxSockets ?? 128)),
+    maxFreeSockets: Math.max(1, Math.trunc(options?.maxFreeSockets ?? 32)),
+    keepAliveMsecs: Math.max(1, Math.trunc(options?.keepAliveMsecs ?? 5_000)),
+    timeout: Math.max(1, Math.trunc(options?.socketTimeoutMs ?? 30_000)),
+  };
+}
+
+function normalizeRequestBody(body: RequestInit["body"]): string | Buffer | null {
+  if (body == null) {
+    return null;
+  }
+  if (typeof body === "string" || Buffer.isBuffer(body)) {
+    return body;
+  }
+  if (body instanceof URLSearchParams) {
+    return body.toString();
+  }
+  throw new ValidationError(
+    "gateway.unsupported_request_body",
+    "gateway.unsupported_request_body: Built-in channel gateway transport only supports string, Buffer, and URLSearchParams bodies.",
+  );
 }

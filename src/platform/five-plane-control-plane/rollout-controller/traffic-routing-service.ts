@@ -18,6 +18,7 @@ import {
   createNoOpDirectiveSink,
 } from "../control-plane-directive-sink.js";
 import { createOperationalDirective } from "../../contracts/control-directive/index.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 export interface RouteTarget {
   targetId: string;
@@ -272,7 +273,8 @@ export class TrafficRoutingService {
 
   public updateTargetWeight(routeId: string, targetId: string, weight: number): TrafficRoute {
     const route = this.requireCompatRoute(routeId);
-    route.targets = route.targets.map((target) => target.targetId === targetId ? { ...target, weight } : target);
+    const normalizedWeight = Math.max(0, Math.min(100, weight));
+    route.targets = route.targets.map((target) => target.targetId === targetId ? { ...target, weight: normalizedWeight } : target);
     route.updatedAt = nowIso();
     return route;
   }
@@ -299,14 +301,21 @@ export class TrafficRoutingService {
     return route.targets.find((target) => target.targetId === "canary")?.weight ?? 0;
   }
 
-  public promoteCanary(routeId: string): TrafficRoute {
+  public promoteCanary(routeId: string, config: CanaryConfig = DEFAULT_CANARY_CONFIG): TrafficRoute {
     const route = this.requireCompatRoute(routeId);
+    const canaryHealth = this.evaluateSlotHealth("canary", config);
+    if (!canaryHealth.healthy) {
+      throw new ValidationError(
+        "traffic_route.canary_promotion_blocked",
+        `traffic_route.canary_promotion_blocked: ${canaryHealth.reason}`,
+      );
+    }
     route.targets = route.targets.map((target) => {
       if (target.targetId === "stable") {
-        return { ...target, weight: 100 };
+        return { ...target, weight: 0 };
       }
       if (target.targetId === "canary") {
-        return { ...target, weight: 0 };
+        return { ...target, weight: 100 };
       }
       return target;
     });
@@ -556,17 +565,7 @@ export class TrafficRoutingService {
     if (!shift || shift.status !== "in_progress") {
       return { healthy: false, reason: "shift_not_active" };
     }
-
-    const canary = this.getActiveSlot(shift.toSlot);
-    if (!canary || canary.healthScore == null) {
-      return { healthy: false, reason: "no_health_data" };
-    }
-
-    if (canary.healthScore < config.healthThreshold) {
-      return { healthy: false, reason: `health_score_${canary.healthScore}_below_${config.healthThreshold}` };
-    }
-
-    return { healthy: true, reason: "canary_healthy" };
+    return this.evaluateSlotHealth(shift.toSlot, config);
   }
 
   // ── Queries ───────────────────────────────────────────────────────
@@ -642,6 +641,17 @@ export class TrafficRoutingService {
       .prepare(`SELECT version FROM deployment_slots WHERE slot = ? ORDER BY created_at DESC LIMIT 1`)
       .get(slot) as RawRow | undefined;
     return row ? String(row.version) : "unknown";
+  }
+
+  private evaluateSlotHealth(slot: DeploymentSlot, config: CanaryConfig): { healthy: boolean; reason: string } {
+    const record = this.getActiveSlot(slot);
+    if (!record || record.healthScore == null) {
+      return { healthy: false, reason: "no_health_data" };
+    }
+    if (record.healthScore < config.healthThreshold) {
+      return { healthy: false, reason: `health_score_${record.healthScore}_below_${config.healthThreshold}` };
+    }
+    return { healthy: true, reason: "canary_healthy" };
   }
 
   // ── Mappers ───────────────────────────────────────────────────────

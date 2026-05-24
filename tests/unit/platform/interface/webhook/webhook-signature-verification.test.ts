@@ -177,13 +177,15 @@ test("WebhookIngressService receive with algorithm none does not verify signatur
     algorithm: "none",
   });
 
-  const envelope = service.receive({
-    endpointId: "ep-none-algo",
-    headers: { "x-aa-signature": "any-signature" },
-    body: JSON.stringify({ eventType: "task.completed", eventId: "evt-none" }),
-  });
-
-  assert.equal(envelope.signatureVerified, false);
+  assert.throws(
+    () =>
+      service.receive({
+        endpointId: "ep-none-algo",
+        headers: { "x-aa-signature": "any-signature" },
+        body: JSON.stringify({ eventType: "task.completed", eventId: "evt-none" }),
+      }),
+    /signature_algorithm_invalid/,
+  );
 });
 
 test("WebhookIngressService receive with empty string signature throws", () => {

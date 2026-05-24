@@ -424,9 +424,10 @@ export class DashboardWebSocketServer {
       }
       if (subscription.channel === "task"
         && subscription.filterId != null
-        && allowedTasks.size > 0
-        && !allowedTasks.has(subscription.filterId)) {
-        throw new Error(`Task subscription ${subscription.filterId} is outside the authorized scope`);
+      ) {
+        if (allowedTasks.size === 0 || !allowedTasks.has(subscription.filterId)) {
+          throw new Error(`Task subscription ${subscription.filterId} is outside the authorized scope`);
+        }
       }
     }
   }

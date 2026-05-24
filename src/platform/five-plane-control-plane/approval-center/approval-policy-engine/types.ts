@@ -261,6 +261,7 @@ export const DEFAULT_APPROVAL_POLICY_BUNDLE: ApprovalPolicyBundle = {
       conditions: [
         { field: "riskCategory", operator: "eq", value: "destructive" },
         { field: "action", operator: "in", value: ["exec_command", "write_file"] },
+        { field: "mode", operator: "eq", value: "auto" },
       ],
       conditionLogic: "and",
       action: "deny",

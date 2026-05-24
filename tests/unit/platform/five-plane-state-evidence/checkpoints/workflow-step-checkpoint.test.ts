@@ -89,7 +89,7 @@ test("createWorkflowStepCheckpoint fills defaults for omitted optional fields", 
     compensationModel: null,
   });
 
-  assert.equal(checkpoint.harnessRunId, "harness:exec-002");
+  assert.equal(checkpoint.harnessRunId, "harness:task-001");
   assert.equal(checkpoint.nodeRunId, "node:step-1");
   assert.equal(checkpoint.planGraphId, "plan:workflow-1");
   assert.equal(checkpoint.executionId, null);

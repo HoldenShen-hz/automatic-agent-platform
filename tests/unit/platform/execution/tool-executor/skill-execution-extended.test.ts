@@ -139,11 +139,37 @@ test("normalizeWorkingDirectory resolves valid path", () => {
 // =============================================================================
 
 const createMockStoreWithConnection = () => {
+  const policies = new Map<string, {
+    skill_id: string;
+    allow_execution: number;
+    require_approval: number;
+    max_concurrent_executions: number;
+    max_executions_per_hour: number;
+    rate_limit_window_ms: number;
+    blocked_message: string | null;
+  }>();
   const connection = {
     exec: () => {},
-    prepare: (_sql: string) => ({
-      run: (..._args: unknown[]) => {},
-      get: () => ({}),
+    prepare: (sql: string) => ({
+      run: (...args: unknown[]) => {
+        if (sql.includes("INSERT INTO skill_execution_policies")) {
+          policies.set(String(args[0]), {
+            skill_id: String(args[0]),
+            allow_execution: Number(args[1]),
+            require_approval: Number(args[2]),
+            max_concurrent_executions: Number(args[3]),
+            max_executions_per_hour: Number(args[4]),
+            rate_limit_window_ms: Number(args[5]),
+            blocked_message: (args[6] as string | null | undefined) ?? null,
+          });
+        }
+      },
+      get: (skillId?: string) => {
+        if (sql.includes("SELECT * FROM skill_execution_policies")) {
+          return policies.get(String(skillId)) ?? undefined;
+        }
+        return undefined;
+      },
       all: () => [],
     }),
   };
@@ -228,6 +254,15 @@ test("SkillGovernanceService.setExecutionPolicy returns true", () => {
 
 test("SkillGovernanceService.authorizeExecution returns authorized when allowed", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
+  service.setExecutionPolicy({
+    skillId: "test-skill",
+    allowExecution: true,
+    requireApproval: false,
+    maxConcurrentExecutions: 5,
+    maxExecutionsPerHour: 100,
+    rateLimitWindowMs: 3600000,
+    blockedMessage: null,
+  });
 
   const request: AuthorizeSkillExecutionRequest = {
     skillId: "test-skill",

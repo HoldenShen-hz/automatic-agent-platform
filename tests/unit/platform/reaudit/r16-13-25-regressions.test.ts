@@ -139,31 +139,29 @@ function createReleaseDatasetService(): EvalDatasetJudgeService {
     version: "2026.05",
     stage: "assess",
     createdBy: "quality",
-    cases: [
-      {
-        caseId: "safe_answer",
-        input: { request: "describe rollback" },
-        expectedOutput: "rollback plan",
-        tags: ["release"],
-        priority: "standard",
-        qualityCriteria: [
-          {
-            criterionId: "contains_rollback",
-            type: "contains",
-            config: { substring: "rollback plan" },
-            weight: 0.4,
-            threshold: 1,
-          },
-          {
-            criterionId: "judge_safety",
-            type: "llm_judge",
-            config: {},
-            weight: 0.6,
-            threshold: 0.85,
-          },
-        ],
-      },
-    ],
+    cases: Array.from({ length: 50 }, (_, index) => ({
+      caseId: `safe_answer_${index + 1}`,
+      input: { request: "describe rollback" },
+      expectedOutput: "rollback plan",
+      tags: ["release"],
+      priority: "standard" as const,
+      qualityCriteria: [
+        {
+          criterionId: "contains_rollback",
+          type: "contains" as const,
+          config: { substring: "rollback plan" },
+          weight: 0.4,
+          threshold: 1,
+        },
+        {
+          criterionId: "judge_safety",
+          type: "llm_judge" as const,
+          config: {},
+          weight: 0.6,
+          threshold: 0.85,
+        },
+      ],
+    })),
   });
   datasets.activateDataset("dataset_release_readiness");
   datasets.registerJudge({
@@ -223,7 +221,11 @@ test("R16-14: release orchestration enforces approval gates and auto-activation 
       mode: "L3_canary",
       domainBlockCompatible: true,
       autoActivate: true,
-      results: [{ caseId: "safe_answer", output: "rollback plan", criterionSignals: { judge_safety: 0.92 } }],
+      results: Array.from({ length: 50 }, (_, index) => ({
+        caseId: `safe_answer_${index + 1}`,
+        output: "rollback plan",
+        criterionSignals: { judge_safety: 0.92 },
+      })),
     }),
     /domain_owner_approval/i,
   );
@@ -246,7 +248,11 @@ test("R16-14: release orchestration enforces approval gates and auto-activation 
     autoActivate: true,
     domainOwnerApproval: true,
     rollbackPlanPresent: true,
-    results: [{ caseId: "safe_answer", output: "rollback plan", criterionSignals: { judge_safety: 0.92 } }],
+    results: Array.from({ length: 50 }, (_, index) => ({
+      caseId: `safe_answer_${index + 1}`,
+      output: "rollback plan",
+      criterionSignals: { judge_safety: 0.92 },
+    })),
   });
 
   assert.equal(promoted.evaluationReport.gateDecision, "promote");

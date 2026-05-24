@@ -36,6 +36,7 @@ test.describe("Session Management", () => {
     const session = createSession({
       principalId: "user-123",
       principalType: "user",
+      tenantId: "tenant-123",
       metadata: { plan: "pro" },
       clientIp: "192.168.1.1",
       userAgent: "Mozilla/5.0",
@@ -44,6 +45,7 @@ test.describe("Session Management", () => {
     assert.ok(session.sessionId);
     assert.equal(session.principalId, "user-123");
     assert.equal(session.principalType, "user");
+    assert.equal(session.tenantId, "tenant-123");
     assert.equal(session.status, "active");
     assert.ok(session.accessToken.tokenId);
     assert.ok(session.accessToken.expiresAt > Date.now());
@@ -67,6 +69,7 @@ test.describe("Session Management", () => {
     const session = createSession({
       principalId: "user-valid",
       principalType: "user",
+      tenantId: "tenant-valid",
     });
 
     const result = validateAccessToken(session.accessToken.tokenId, {});
@@ -74,6 +77,7 @@ test.describe("Session Management", () => {
     assert.equal(result.valid, true);
     assert.ok(result.session);
     assert.equal(result.session?.sessionId, session.sessionId);
+    assert.equal(result.session?.tenantId, "tenant-valid");
     assert.equal(result.reason, null);
   });
 

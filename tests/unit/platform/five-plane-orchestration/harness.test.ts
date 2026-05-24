@@ -75,7 +75,21 @@ test("HarnessRuntimeService loop persists previous planner output across replans
   const run = service.runLoop({
     taskId: "task-loop",
     domainId: "coding",
-    constraintPack: createConstraintPack(),
+    constraintPack: normalizeConstraintPack({
+      policyIds: ["policy.default"],
+      approvalMode: "none",
+      autonomyMode: "semi_auto",
+      tool_policy: { allowedTools: ["read", "apply_patch"] },
+      risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
+      output_policy: { requiredEvidence: [], redactSensitiveData: false },
+      budgetEnvelope: { maxSteps: 12, maxCost: 10, maxDurationMs: 60_000 },
+      sandboxRequirement: { sandboxMode: "ephemeral", timeoutMs: 60_000 },
+      approvalRequirement: {
+        requiredForRiskClass: [],
+        approverRoles: [],
+        escalationTimeoutMs: 60_000,
+      },
+    }),
     loopServices: {
       plan(input) {
         plannerInputs.push(input.previousPlannerOutput);

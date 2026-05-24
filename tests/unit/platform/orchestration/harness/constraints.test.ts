@@ -66,8 +66,8 @@ test("normalizeConstraintPack preserves canonical policies and budget envelope",
     },
   }));
 
-  assert.equal(normalized.autonomyMode, "semi_auto");
+  assert.equal(normalized.autonomyMode, "supervised_auto");
   assert.equal(normalized.tool_policy.allowedTools.includes("tool-a"), true);
   assert.equal(normalized.budgetEnvelope?.maxSteps, 5);
-  assert.equal(normalized.budget?.maxModelTokens, 256);
+  assert.equal(normalized.budget?.max_model_tokens, 256);
 });

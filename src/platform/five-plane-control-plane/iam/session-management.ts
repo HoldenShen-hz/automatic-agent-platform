@@ -51,6 +51,7 @@ export interface Session {
   readonly sessionId: string;
   readonly principalId: string;
   readonly principalType: string;
+  readonly tenantId: string | null;
   readonly status: SessionStatus;
   readonly accessToken: AccessToken;
   readonly refreshToken: RefreshToken;
@@ -192,6 +193,7 @@ function hasMatchingBoundContext(
 export function createSession(input: {
   principalId: string;
   principalType: string;
+  tenantId?: string | null;
   metadata?: Record<string, unknown>;
   clientIp?: string | null;
   userAgent?: string | null;
@@ -230,6 +232,7 @@ export function createSession(input: {
     sessionId,
     principalId: input.principalId,
     principalType: input.principalType,
+    tenantId: input.tenantId ?? null,
     status: "active",
     accessToken,
     refreshToken,

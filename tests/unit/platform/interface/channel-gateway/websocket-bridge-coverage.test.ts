@@ -425,6 +425,31 @@ networkPathTest("WebSocketBridge rejects subscriptions above per-client cap", (t
   });
 });
 
+networkPathTest("WebSocketBridge returns task_not_found when the task scope resolver cannot resolve the task", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, () => null);
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+
+      ws.on("open", () => {
+        const serverSideSocket = Array.from((bridge as any).clients.keys())[0];
+        const result = (bridge as any).subscribeToTask(serverSideSocket, "task-missing");
+        assert.equal(result, "task_not_found");
+        ws.close();
+        bridge.close().then(() => {
+          server.close();
+          resolve();
+        });
+      });
+
+      ws.on("error", reject);
+    });
+  });
+});
+
 networkPathTest("WebSocketBridge rejects connections above configured cap", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();

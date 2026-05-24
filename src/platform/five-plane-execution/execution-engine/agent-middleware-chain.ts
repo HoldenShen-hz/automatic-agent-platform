@@ -150,7 +150,7 @@ export class AgentMiddlewareChain {
     hooks: readonly (MiddlewareHook & { run(payload: TPayload): void | Promise<void> })[],
     payload: TPayload,
   ): Promise<void> {
-    const orderedHooks = hooks.length <= 2 ? [...hooks] : [...hooks].sort((left, right) => right.priority - left.priority);
+    const orderedHooks = [...hooks].sort((left, right) => right.priority - left.priority);
     for (const hook of orderedHooks) {
       try {
         await hook.run(payload);

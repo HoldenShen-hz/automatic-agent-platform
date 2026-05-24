@@ -514,10 +514,11 @@ export class RuntimeRecoveryService {
   // is delegated to RuntimeRecoveryDecisionService which owns the recovery workflow.
   // Build plan only, do not execute. Keep this service truly read-only.
   public buildCompensationPlan(executionId: string, tenantId?: string | null): CompensationPlan | null {
-    const candidates = this.store.operations.buildRuntimeRecoveryView(
-      this.store.task.getTask?.(executionId, tenantId)?.id ?? "",
-      tenantId,
-    );
+    const execution = this.store.dispatch.getExecution(executionId, tenantId);
+    if (!execution?.taskId) {
+      return null;
+    }
+    const candidates = this.store.operations.buildRuntimeRecoveryView(execution.taskId, tenantId);
 
     const candidate = candidates.find((c) => c.executionId === executionId);
     if (!candidate) {

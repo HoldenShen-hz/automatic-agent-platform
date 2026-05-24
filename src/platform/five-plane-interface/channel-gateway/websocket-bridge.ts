@@ -91,7 +91,7 @@ interface ClientConnection {
   lastActivityAt: number;
 }
 
-type SubscriptionResult = "subscribed" | "scope_denied" | "subscription_limit_exceeded";
+type SubscriptionResult = "subscribed" | "scope_denied" | "subscription_limit_exceeded" | "task_not_found";
 
 export interface WebSocketBridgeOptions {
   heartbeatIntervalMs?: number;
@@ -282,8 +282,14 @@ export class WebSocketBridge {
             ? { type: "subscribed", taskId: message.taskId }
             : {
                 type: "error",
-                code: result === "scope_denied" ? "scope_denied" : "subscription_limit_exceeded",
-                message: result === "scope_denied"
+                code: result === "task_not_found"
+                  ? "task_not_found"
+                  : result === "scope_denied"
+                    ? "scope_denied"
+                    : "subscription_limit_exceeded",
+                message: result === "task_not_found"
+                  ? "Task not found"
+                  : result === "scope_denied"
                   ? "Task scope denied"
                   : `Subscription limit of ${this.maxSubscriptionsPerClient} tasks exceeded`,
               }));
@@ -311,6 +317,9 @@ export class WebSocketBridge {
     }
     const scopeDecision = this.tenantScopeFilter?.evaluate(client.principal, taskId);
     if (scopeDecision != null && !scopeDecision.allowed) {
+      if (scopeDecision.reasonCode === "scope.task_unknown") {
+        return "task_not_found";
+      }
       return "scope_denied";
     }
     if (!client.subscribedTasks.has(taskId) && client.subscribedTasks.size >= this.maxSubscriptionsPerClient) {

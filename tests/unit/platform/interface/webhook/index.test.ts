@@ -9,6 +9,22 @@ import {
   type WebhookDispatchEnvelope,
   type WebhookSignatureAlgorithm,
 } from "../../../../../src/platform/five-plane-interface/webhook/index.js";
+import { TEST_WEBHOOK_SIGNING_SECRET, createSignedWebhookHeaders } from "../../../../helpers/webhook-signing.js";
+
+function registerSignedEndpoint(
+  service: WebhookIngressService,
+  overrides: Partial<WebhookEndpointRegistration> & Pick<WebhookEndpointRegistration, "endpointId" | "source">,
+): void {
+  service.registerEndpoint({
+    tenantId: null,
+    workspaceId: null,
+    enabled: true,
+    allowedEventTypes: [],
+    algorithm: "sha256_hmac",
+    signingSecret: TEST_WEBHOOK_SIGNING_SECRET,
+    ...overrides,
+  });
+}
 
 test("WebhookIngressService registers and retrieves endpoints", () => {
   const service = new WebhookIngressService();
@@ -58,24 +74,22 @@ test("WebhookIngressService lists all registered endpoints", () => {
 
 test("WebhookIngressService receives valid webhook and returns accepted envelope", () => {
   const service = new WebhookIngressService();
-  service.registerEndpoint({
+  registerSignedEndpoint(service, {
     endpointId: "github",
     source: "github",
     tenantId: "tenant-1",
-    workspaceId: null,
-    enabled: true,
     allowedEventTypes: ["pull_request.opened"],
-    algorithm: "none",
+  });
+  const body = JSON.stringify({
+    eventType: "pull_request.opened",
+    eventId: "evt-123",
+    repository: "test-repo",
   });
 
   const envelope = service.receive({
     endpointId: "github",
-    headers: {},
-    body: JSON.stringify({
-      eventType: "pull_request.opened",
-      eventId: "evt-123",
-      repository: "test-repo",
-    }),
+    headers: createSignedWebhookHeaders(body, { idempotencyKey: "evt-123" }),
+    body,
   });
 
   assert.equal(envelope.endpointId, "github");
@@ -86,32 +100,27 @@ test("WebhookIngressService receives valid webhook and returns accepted envelope
 
 test("WebhookIngressService returns duplicate for repeated idempotency key", () => {
   const service = new WebhookIngressService();
-  service.registerEndpoint({
+  registerSignedEndpoint(service, {
     endpointId: "github",
     source: "github",
-    tenantId: null,
-    workspaceId: null,
-    enabled: true,
     allowedEventTypes: ["pull_request.opened"],
-    algorithm: "none",
   });
+  const body = JSON.stringify({
+    eventType: "pull_request.opened",
+    eventId: "evt-1",
+  });
+  const headers = createSignedWebhookHeaders(body, { idempotencyKey: "evt-1" });
 
   const first = service.receive({
     endpointId: "github",
-    headers: {},
-    body: JSON.stringify({
-      eventType: "pull_request.opened",
-      eventId: "evt-1",
-    }),
+    headers,
+    body,
   });
 
   const second = service.receive({
     endpointId: "github",
-    headers: {},
-    body: JSON.stringify({
-      eventType: "pull_request.opened",
-      eventId: "evt-1",
-    }),
+    headers,
+    body,
   });
 
   assert.equal(first.dispatchState, "accepted");
@@ -235,26 +244,23 @@ test("WebhookIngressService resets failure count", () => {
 
 test("WebhookIngressService lists accepted envelopes", () => {
   const service = new WebhookIngressService();
-  service.registerEndpoint({
+  registerSignedEndpoint(service, {
     endpointId: "list-test",
     source: "source",
-    tenantId: null,
-    workspaceId: null,
-    enabled: true,
-    allowedEventTypes: [],
-    algorithm: "none",
+  });
+  const body1 = JSON.stringify({ eventType: "event.1", eventId: "id-1" });
+  const body2 = JSON.stringify({ eventType: "event.2", eventId: "id-2" });
+
+  service.receive({
+    endpointId: "list-test",
+    headers: createSignedWebhookHeaders(body1, { idempotencyKey: "id-1" }),
+    body: body1,
   });
 
   service.receive({
     endpointId: "list-test",
-    headers: {},
-    body: JSON.stringify({ eventType: "event.1", eventId: "id-1" }),
-  });
-
-  service.receive({
-    endpointId: "list-test",
-    headers: {},
-    body: JSON.stringify({ eventType: "event.2", eventId: "id-2" }),
+    headers: createSignedWebhookHeaders(body2, { idempotencyKey: "id-2" }),
+    body: body2,
   });
 
   const envelopes = service.listAcceptedEnvelopes();
@@ -263,20 +269,16 @@ test("WebhookIngressService lists accepted envelopes", () => {
 
 test("WebhookIngressService rollbacks accepted envelope", () => {
   const service = new WebhookIngressService();
-  service.registerEndpoint({
+  registerSignedEndpoint(service, {
     endpointId: "rollback-test",
     source: "source",
-    tenantId: null,
-    workspaceId: null,
-    enabled: true,
-    allowedEventTypes: [],
-    algorithm: "none",
   });
+  const body = JSON.stringify({ eventType: "event.1", eventId: "id-1" });
 
   const envelope = service.receive({
     endpointId: "rollback-test",
-    headers: {},
-    body: JSON.stringify({ eventType: "event.1", eventId: "id-1" }),
+    headers: createSignedWebhookHeaders(body, { idempotencyKey: "id-1" }),
+    body,
   });
 
   assert.equal(service.listAcceptedEnvelopes().length, 1);
@@ -349,6 +351,27 @@ test("WebhookDispatchEnvelope type is usable", () => {
   };
   assert.equal(envelope.envelopeId, "env-1");
   assert.equal(envelope.dispatchState, "accepted");
+});
+
+test("WebhookIngressService rejects inbound delivery for unsigned endpoints", () => {
+  const service = new WebhookIngressService();
+  service.registerEndpoint({
+    endpointId: "unsigned",
+    source: "source",
+    tenantId: null,
+    workspaceId: null,
+    enabled: true,
+    allowedEventTypes: ["event.1"],
+    algorithm: "none",
+  });
+
+  assert.throws(() => {
+    service.receive({
+      endpointId: "unsigned",
+      headers: {},
+      body: JSON.stringify({ eventType: "event.1", eventId: "evt-1" }),
+    });
+  }, /signature_algorithm_invalid/);
 });
 
 test("WebhookDispatchState type is usable", () => {

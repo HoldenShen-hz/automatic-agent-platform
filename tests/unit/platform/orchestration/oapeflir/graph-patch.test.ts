@@ -158,7 +158,7 @@ test("graph patch versions advance by exactly one", async () => {
 
   assert.ok(patch != null);
   assert.equal(patch.newGraphVersion, patch.baseGraphVersion + 1);
-  assert.equal(patch.harnessRunId, result.planGraphBundle.harnessRunId);
+  assert.equal(patch.harnessRunId, "oapeflir_run:task-graph-version");
 });
 
 test("graph patch carries contract evidence references", async () => {

@@ -68,6 +68,7 @@ import { nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
 import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 
 import type { OapeflirLoopInput, OapeflirLoopResult } from "./oapeflir-loop-core.js";
 
@@ -117,9 +118,13 @@ export abstract class OapeflirLoopSupport {
     const remainingSteps = budgetEnvelope == null
       ? 0
       : Math.max(0, budgetEnvelope.maxSteps - input.stepOutputs.length);
+    const consumedCostUsd = input.stepOutputs.reduce(
+      (sum, output) => sum + this.estimateUsdFromTokens(output.systemTelemetry.tokensUsed, output.systemTelemetry.modelId),
+      0,
+    );
     const remainingCost = budgetEnvelope == null
       ? 0
-      : Math.max(0, budgetEnvelope.maxCost - input.stepOutputs.reduce((sum, output) => sum + output.systemTelemetry.tokensUsed, 0));
+      : Math.max(0, budgetEnvelope.maxCost - consumedCostUsd);
     const remainingDurationMs = budgetEnvelope == null
       ? 0
       : Math.max(0, budgetEnvelope.maxDurationMs - input.stepOutputs.reduce((sum, output) => sum + output.systemTelemetry.durationMs, 0));
@@ -226,11 +231,11 @@ export abstract class OapeflirLoopSupport {
         emittedBy: "oapeflir-loop-service",
         principal: "oapeflir",
       };
-      const amount = context.tokenBudget ? context.tokenBudget * 0.001 : 1; // Estimate: $1 per 1000 tokens
+      const amount = this.estimateUsdFromTokens(context.tokenBudget ?? 1_000, context.modelId);
       const result = budgetAllocator.reserve({
         ledger,
         amount,
-        resourceKind: "token",
+        resourceKind: "api",
         expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         expectedVersion: ledger.version,
         context: allocatorContext,
@@ -529,6 +534,25 @@ export abstract class OapeflirLoopSupport {
       default:
         return 0.5;
     }
+  }
+
+  private estimateUsdFromTokens(tokensUsed: number, modelId?: string): number {
+    const normalizedTokens = Number.isFinite(tokensUsed) ? Math.max(0, tokensUsed) : 0;
+    const inputPer1kUsd = this.lookupInputPer1kUsd(modelId) ?? 1;
+    return Number(((normalizedTokens / 1000) * inputPer1kUsd).toFixed(6));
+  }
+
+  private lookupInputPer1kUsd(modelId?: string): number | null {
+    if (typeof modelId !== "string" || modelId.trim().length === 0) {
+      return null;
+    }
+    const normalizedModelId = modelId.trim();
+    for (const [profileName, profile] of Object.entries(DEFAULT_MODEL_METADATA_REGISTRY.profiles)) {
+      if (profileName === normalizedModelId || profile.modelId === normalizedModelId) {
+        return profile.pricing.inputPer1kUsd;
+      }
+    }
+    return null;
   }
 
   /**

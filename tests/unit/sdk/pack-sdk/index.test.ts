@@ -21,7 +21,7 @@ function createManifest() {
     domainId: " coding ",
     owner: " owner@example.com ",
     capabilities: [{
-      capabilityKey: "code.generate",
+      capabilityKey: "workflow.suggest",
       maturity: "ga" as const,
       requiredContracts: ["runtime_execution_contract", "runtime_execution_contract"],
     }],
@@ -93,7 +93,7 @@ test("PackPluginCompatibilityService reports missing plugin coverage", () => {
     manifest: validateBusinessPackManifest({
       ...createManifest(),
       capabilities: [{
-        capabilityKey: "nonexistent.enterprise.capability",
+        capabilityKey: "nonexistent.unmapped.capability",
         maturity: "ga",
         requiredContracts: ["runtime_execution_contract"],
       }],
@@ -102,7 +102,7 @@ test("PackPluginCompatibilityService reports missing plugin coverage", () => {
   });
 
   assert.equal(report.verdict, "missing_plugins");
-  assert.equal(report.missingPluginCapabilities[0], "nonexistent.enterprise.capability");
+  assert.equal(report.missingPluginCapabilities[0], "nonexistent.unmapped.capability");
 });
 
 test("PackLifecycleOrchestrationService tracks testing and certification gates", () => {

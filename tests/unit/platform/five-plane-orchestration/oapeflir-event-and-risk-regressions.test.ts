@@ -82,7 +82,7 @@ test("buildDecisionInputBundle keeps high-risk downgrade score independent from 
       evaluationReport: { score: number; recommendation: string; confidence: number };
       stepOutputs: Array<{ userFacingResult: { artifacts: string[] }; systemTelemetry: { durationMs: number } }>;
       constraintPack?: { risk_policy?: { escalationThreshold: number } };
-    }) => { risk: { currentScore: number; escalationThreshold: number } };
+    }) => { risk: { currentScore: number; escalationThreshold: number }; budget: { remainingCost: number } };
   }).buildDecisionInputBundle({
     taskId: "task-risk",
     harnessRunId: "harness-risk",
@@ -101,6 +101,7 @@ test("buildDecisionInputBundle keeps high-risk downgrade score independent from 
 
   assert.equal(bundle.risk.currentScore, 0.85);
   assert.equal(bundle.risk.escalationThreshold, 0.8);
+  assert.equal(bundle.budget.remainingCost, 0);
 });
 
 test("buildFeedbackSignals prefers canonical nodeRunId over legacy stepId", () => {

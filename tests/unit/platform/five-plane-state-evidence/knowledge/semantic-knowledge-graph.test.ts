@@ -98,10 +98,10 @@ test("SemanticKnowledgeGraph supports inspect and trust propagation over learned
   graph.addEntityRelation("entity:a", "entity:b", "trust_boost", 0.8, "official");
 
   const inspection = graph.inspect({ knowledgeRef: "knowledge:chunk1", limit: 5 });
-  const trust = graph.propagateTrust(["entity:entity:a"], 0.25);
+  const trust = graph.propagateTrust(["entity:a"], 0.25);
 
   assert.ok(inspection.nodes.some((node) => node.knowledgeRef === "knowledge:chunk1"));
-  assert.ok(trust.propagatedNodeIds.includes("entity:entity:a"));
-  assert.ok(trust.propagatedNodeIds.includes("entity:entity:b"));
-  assert.equal((trust.trustScoreChanges["entity:entity:b"] ?? 0) > 0, true);
+  assert.ok(trust.propagatedNodeIds.includes("entity:a"));
+  assert.ok(trust.propagatedNodeIds.includes("entity:b"));
+  assert.equal((trust.trustScoreChanges["entity:b"] ?? 0) > 0, true);
 });

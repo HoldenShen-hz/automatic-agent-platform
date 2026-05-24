@@ -282,14 +282,7 @@ test("SkillGovernanceService.getExecutionPolicy returns default policy for unkno
 
   const policy = service.getExecutionPolicy("unknown-skill");
 
-  assert.ok(policy);
-  assert.equal(policy!.skillId, "unknown-skill");
-  assert.equal(policy!.allowExecution, true);
-  assert.equal(policy!.requireApproval, false);
-  assert.equal(policy!.maxConcurrentExecutions, 5);
-  assert.equal(policy!.maxExecutionsPerHour, 100);
-  assert.equal(policy!.rateLimitWindowMs, 3600000);
-  assert.equal(policy!.blockedMessage, null);
+  assert.equal(policy, null);
 });
 
 test("SkillGovernanceService.setExecutionPolicy stores policy", () => {
@@ -312,9 +305,6 @@ test("SkillGovernanceService.setExecutionPolicy stores policy", () => {
 test("SkillGovernanceService.authorizeExecution denies when execution not allowed", () => {
   const service = new SkillGovernanceService(createMockStore());
 
-  // Note: The mock store doesn't actually persist data between calls,
-  // so we test that authorizeExecution returns appropriate structure
-  // when checking a skill with no stored policy (defaults to allowExecution: true)
   const result = service.authorizeExecution({
     skillId: "any-skill",
     skillVersion: "1.0.0",
@@ -323,16 +313,13 @@ test("SkillGovernanceService.authorizeExecution denies when execution not allowe
     requestedTools: ["read"],
   });
 
-  // With no policy stored, default is allowExecution: true
-  // So we expect authorized: true (no blocked message applied)
-  assert.equal(result.authorized, true);
+  assert.equal(result.authorized, false);
+  assert.match(result.deniedReasons.join(" "), /not configured/i);
 });
 
 test("SkillGovernanceService.authorizeExecution requires approval when policy says so", () => {
   const service = new SkillGovernanceService(createMockStore());
 
-  // Test with a skill that has no stored policy - should return authorized with empty arrays
-  // since no policy = default allow
   const result = service.authorizeExecution({
     skillId: "any-skill",
     skillVersion: "1.0.0",
@@ -341,8 +328,7 @@ test("SkillGovernanceService.authorizeExecution requires approval when policy sa
     requestedTools: ["read"],
   });
 
-  // With no policy stored, default is allowExecution: true, requireApproval: false
-  assert.equal(result.authorized, true);
+  assert.equal(result.authorized, false);
   assert.deepEqual(result.requiredApprovals, []);
 });
 

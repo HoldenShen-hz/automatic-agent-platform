@@ -31,12 +31,25 @@ export interface WebhookGatewayConfig {
   defaultHeaders?: Record<string, string>;
 }
 
+export interface GatewayConnectionPoolOptions {
+  /** Maximum open sockets per protocol pool. */
+  maxSockets?: number;
+  /** Maximum idle keep-alive sockets retained in the pool. */
+  maxFreeSockets?: number;
+  /** Keep-alive probe interval in milliseconds. */
+  keepAliveMsecs?: number;
+  /** Socket inactivity timeout in milliseconds. */
+  socketTimeoutMs?: number;
+}
+
 /**
  * Runtime options for configuring the ChannelGatewayService.
  */
 export interface ChannelGatewayServiceOptions {
   /** Optional custom fetch implementation (defaults to global fetch) */
   fetchImpl?: FetchLike;
+  /** Optional outbound HTTP connection pool tuning for the built-in fetch implementation. */
+  connectionPool?: GatewayConnectionPoolOptions;
   /** Default outbound request timeout in milliseconds (default 5000, capped at maxRequestTimeoutMs) */
   requestTimeoutMs?: number;
   /** Maximum outbound request timeout in milliseconds (default 30000) */

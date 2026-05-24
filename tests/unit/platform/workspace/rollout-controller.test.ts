@@ -3,14 +3,42 @@
  */
 
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
 import {
   TrafficRoutingService,
+  TRAFFIC_ROUTING_DDL,
   type TrafficRoute,
   type RoutingRule,
   type RouteTarget,
 } from "../../../../src/platform/five-plane-control-plane/rollout-controller/index.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+
+function createSqlBackedTrafficRoutingService(): TrafficRoutingService {
+  const connection = new DatabaseSync(":memory:");
+  connection.exec(TRAFFIC_ROUTING_DDL);
+  const db: AuthoritativeSqlDatabase = {
+    filePath: ":memory:",
+    backendType: "sqlite",
+    connection,
+    migrate: () => undefined,
+    getSchemaStatus: () => ({
+      currentVersion: 0,
+      expectedVersion: 0,
+      upToDate: true,
+      pendingVersions: [],
+      checksumMismatches: [],
+    }),
+    assertSchemaCurrent: () => undefined,
+    integrityCheck: () => [],
+    healthCheck: async () => true,
+    close: () => connection.close(),
+    transaction: <T>(work: () => T): T => work(),
+    readTransaction: <T>(work: () => T): T => work(),
+  };
+  return new TrafficRoutingService(db);
+}
 
 // ============================================================================
 // Traffic Routing Service Tests
@@ -165,6 +193,26 @@ test("TrafficRoutingService updates target weight", () => {
   assert.equal(target?.weight, 60);
 });
 
+test("TrafficRoutingService clamps target weight into the valid percentage range", () => {
+  const service = new TrafficRoutingService();
+
+  const route = service.createRoute({
+    routeId: "route_007_clamp",
+    name: "update_weight_clamp_route",
+    targets: [
+      { targetId: "target_1", weight: 80 },
+      { targetId: "target_2", weight: 20 },
+    ],
+    rules: [],
+    strategy: "weighted",
+  });
+
+  const updated = service.updateTargetWeight(route.routeId, "target_1", 160);
+
+  const target = updated.targets.find((t) => t.targetId === "target_1");
+  assert.equal(target?.weight, 100);
+});
+
 test("TrafficRoutingService deactivates route", () => {
   const service = new TrafficRoutingService();
 
@@ -221,7 +269,11 @@ test("TrafficRoutingService calculates canary percentage", () => {
 });
 
 test("TrafficRoutingService promotes canary to stable", () => {
-  const service = new TrafficRoutingService();
+  const service = createSqlBackedTrafficRoutingService();
+  const stableSlot = service.registerSlot("blue", "stable-v1");
+  const canarySlot = service.registerSlot("canary", "canary-v2");
+  service.updateHealth(stableSlot.id, 0.7);
+  service.updateHealth(canarySlot.id, 0.99);
 
   const route = service.createRoute({
     routeId: "route_011",
@@ -239,8 +291,29 @@ test("TrafficRoutingService promotes canary to stable", () => {
   const stable = promoted.targets.find((t) => t.targetId === "stable");
   const canary = promoted.targets.find((t) => t.targetId === "canary");
 
-  assert.equal(stable?.weight, 100);
-  assert.equal(canary?.weight, 0);
+  assert.equal(stable?.weight, 0);
+  assert.equal(canary?.weight, 100);
+});
+
+test("TrafficRoutingService blocks canary promotion without healthy canary slot data", () => {
+  const service = createSqlBackedTrafficRoutingService();
+  service.registerSlot("canary", "canary-v2");
+
+  const route = service.createRoute({
+    routeId: "route_011_blocked",
+    name: "promotion_route_blocked",
+    targets: [
+      { targetId: "stable", weight: 90 },
+      { targetId: "canary", weight: 10 },
+    ],
+    rules: [],
+    strategy: "canary",
+  });
+
+  assert.throws(
+    () => service.promoteCanary(route.routeId),
+    /traffic_route\.canary_promotion_blocked/,
+  );
 });
 
 // ============================================================================
