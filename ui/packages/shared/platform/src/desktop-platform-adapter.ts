@@ -1,6 +1,6 @@
 import type { PlatformId } from "@aa/shared-types";
-import { DefaultPlatformAdapter } from "./base-platform-adapter";
-import type { ElectronBridge, TauriBridge } from "./bridge-types";
+import { DefaultPlatformAdapter } from "./base-platform-adapter.js";
+import type { ElectronBridge, TauriBridge } from "./bridge-types.js";
 
 export class DesktopPlatformAdapter extends DefaultPlatformAdapter {
   public constructor(platform: Extract<PlatformId, "windows" | "macos" | "linux">) {
