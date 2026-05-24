@@ -1,392 +1,284 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PerceptionServiceAsync } from "../../../../src/scale-ecosystem/intelligence/perception-service-async.js";
+import type {
+  ActionProposalRecord,
+  IntelBriefRecord,
+  IntelItemRecord,
+  PerceptionSourceRecord,
+} from "../../../../src/platform/contracts/types/domain.js";
 import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { IntelItemRecord } from "../../../../src/platform/contracts/types/domain.js";
+import { PerceptionServiceAsync } from "../../../../src/scale-ecosystem/intelligence/perception-service-async.js";
 
-function createMockStore() {
-  const sources = new Map();
-  const intelItems = new Map();
-  const briefs = new Map();
-  const proposals = [];
-  const artifacts = [];
+type ListIntelInput = {
+  tenantId: string | null;
+  since: string | null;
+  until: string | null;
+  limit: number;
+  sourceIds?: readonly string[];
+};
 
-  return {
+function createHarness(): {
+  db: AuthoritativeSqlDatabase;
+  store: AuthoritativeTaskStore;
+  service: PerceptionServiceAsync;
+} {
+  const sources = new Map<string, PerceptionSourceRecord>();
+  const intelItems = new Map<string, IntelItemRecord>();
+  const briefs = new Map<string, IntelBriefRecord>();
+  const proposals: ActionProposalRecord[] = [];
+
+  const store = {
     intelligence: {
-      upsertPerceptionSource: (source) => sources.set(source.sourceId, source),
-      getPerceptionSource: (sourceId) => sources.get(sourceId) || null,
-      insertIntelItem: (item) => intelItems.set(item.intelId, item),
-      getIntelItemBySourceAndDedupeKey: (sourceId, dedupeKey) => {
+      upsertPerceptionSource(source: PerceptionSourceRecord): void {
+        sources.set(source.sourceId, source);
+      },
+      getPerceptionSource(sourceId: string, tenantId?: string | null): PerceptionSourceRecord | null {
+        const source = sources.get(sourceId) ?? null;
+        if (source == null) {
+          return null;
+        }
+        if (tenantId !== undefined && source.tenantId !== tenantId) {
+          return null;
+        }
+        return source;
+      },
+      insertIntelItem(item: IntelItemRecord): void {
+        intelItems.set(item.intelId, item);
+      },
+      getIntelItemBySourceAndDedupeKey(
+        sourceId: string,
+        dedupeKey: string,
+        tenantId?: string | null,
+      ): IntelItemRecord | null {
         for (const item of intelItems.values()) {
-          if (item.sourceId === sourceId && item.dedupeKey === dedupeKey) {
-            return item;
+          if (item.sourceId !== sourceId || item.dedupeKey !== dedupeKey) {
+            continue;
           }
+          if (tenantId !== undefined && item.tenantId !== tenantId) {
+            continue;
+          }
+          return item;
         }
         return null;
       },
-      listIntelItems: ({ sourceIds }) => {
-        let items = Array.from(intelItems.values());
-        if (sourceIds && sourceIds.length > 0) {
-          items = items.filter(i => sourceIds.includes(i.sourceId));
+      listIntelItems({ tenantId, since, until, limit, sourceIds }: ListIntelInput): IntelItemRecord[] {
+        let items = [...intelItems.values()];
+        if (tenantId !== null) {
+          items = items.filter((item) => item.tenantId === tenantId);
         }
-        return items;
+        if (since !== null) {
+          items = items.filter((item) => item.capturedAt >= since);
+        }
+        if (until !== null) {
+          items = items.filter((item) => item.capturedAt <= until);
+        }
+        if (sourceIds != null && sourceIds.length > 0) {
+          items = items.filter((item) => sourceIds.includes(item.sourceId));
+        }
+        return items.slice(0, limit);
       },
-      listIntelItemsByIds: (ids) => {
-        return ids.map(id => intelItems.get(id)).filter(Boolean);
+      listIntelItemsByIds(ids: readonly string[]): IntelItemRecord[] {
+        return ids
+          .map((id) => intelItems.get(id))
+          .filter((item): item is IntelItemRecord => item != null);
       },
-      insertIntelBrief: (brief) => briefs.set(brief.briefId, brief),
-      getIntelBrief: (briefId) => briefs.get(briefId) || null,
-      listIntelBriefs: () => Array.from(briefs.values()),
-      listPerceptionSources: (enabledOnly, tenantId) => {
-        let result = Array.from(sources.values());
-        if (enabledOnly) result = result.filter(s => s.enabled === 1);
+      insertIntelBrief(brief: IntelBriefRecord): void {
+        briefs.set(brief.briefId, brief);
+      },
+      getIntelBrief(briefId: string, tenantId?: string | null): IntelBriefRecord | null {
+        const brief = briefs.get(briefId) ?? null;
+        if (brief == null) {
+          return null;
+        }
+        if (tenantId !== undefined && brief.tenantId !== tenantId) {
+          return null;
+        }
+        return brief;
+      },
+      listPerceptionSources(enabledOnly: boolean, tenantId?: string | null): PerceptionSourceRecord[] {
+        let result = [...sources.values()];
+        if (tenantId !== undefined) {
+          result = result.filter((source) => source.tenantId === tenantId);
+        }
+        if (enabledOnly) {
+          result = result.filter((source) => source.enabled === 1);
+        }
         return result;
       },
-      listActionProposalsByBrief: () => proposals,
-      insertActionProposal: (proposal) => proposals.push(proposal),
+      listActionProposalsByBrief(briefId: string, tenantId?: string | null): ActionProposalRecord[] {
+        return proposals.filter(
+          (proposal) => proposal.briefId === briefId && (tenantId === undefined || proposal.tenantId === tenantId),
+        );
+      },
+      insertActionProposal(proposal: ActionProposalRecord): void {
+        proposals.push(proposal);
+      },
     },
     task: {
-      getTask: () => null,
-      insertTask: (task) => { },
+      getTask(_taskId: string): null {
+        return null;
+      },
+      insertTask(_task: unknown): void {},
     },
     artifact: {
-      insertArtifact: (record) => artifacts.push(record),
+      insertArtifact(_artifact: unknown): void {},
     },
-    listIntelItems: ({ tenantId, since, until, limit }) => {
-      let items = Array.from(intelItems.values());
-      if (since) items = items.filter(i => i.capturedAt >= since);
-      if (until) items = items.filter(i => i.capturedAt <= until);
-      return items.slice(0, limit || 25);
+    listIntelItemsByIds(ids: readonly string[]): IntelItemRecord[] {
+      return ids
+        .map((id) => intelItems.get(id))
+        .filter((item): item is IntelItemRecord => item != null);
     },
-  };
-}
+  } as unknown as AuthoritativeTaskStore;
 
-function createMockDb() {
+  const db = {
+    filePath: "/tmp/perception-service-async.test.db",
+    transaction<T>(fn: () => T): T {
+      return fn();
+    },
+  } as unknown as AuthoritativeSqlDatabase;
+
   return {
-    transaction: (fn) => fn(),
-    filePath: "/tmp/test.db",
+    db,
+    store,
+    service: new PerceptionServiceAsync(db, store),
   };
 }
 
-test("PerceptionServiceAsync registerSource returns Promise", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
+test("PerceptionServiceAsync registerSource returns a promise and normalizes persisted source fields", async () => {
+  const { service } = createHarness();
 
-  const result = service.registerSource({
+  const pending = service.registerSource({
+    sourceId: "source.async.api",
     type: "api",
-    name: "Test Source",
-  });
-
-  assert.ok(result instanceof Promise);
-
-  const source = await result;
-  assert.equal(source.name, "Test Source");
-  assert.equal(source.type, "api");
-  assert.ok(source.sourceId);
-});
-
-test("PerceptionServiceAsync registerSource with custom id", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    sourceId: "custom_source_async",
-    type: "feed",
-    name: "Custom Source",
-  });
-
-  assert.equal(source.sourceId, "custom_source_async");
-});
-
-test("PerceptionServiceAsync registerSource with priority", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    type: "api",
-    name: "Priority Source",
-    priority: 10,
-  });
-
-  assert.equal(source.priority, 10);
-});
-
-test("PerceptionServiceAsync registerSource disabled source", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    type: "api",
-    name: "Disabled Source",
+    name: "  Example Source  ",
     enabled: false,
+    priority: 7.8,
   });
 
+  assert.ok(pending instanceof Promise);
+
+  const source = await pending;
+  assert.equal(source.sourceId, "source.async.api");
+  assert.equal(source.name, "Example Source");
   assert.equal(source.enabled, 0);
+  assert.equal(source.priority, 7);
 });
 
-test("PerceptionServiceAsync ingestIntel returns Promise", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
+test("PerceptionServiceAsync ingestIntel deduplicates items and normalizes metadata", async () => {
+  const { service } = createHarness();
   const source = await service.registerSource({
-    sourceId: "src_async_1",
+    sourceId: "source.async.ingest",
     type: "api",
-    name: "Test Source",
+    name: "Async Ingest",
   });
 
-  const result = service.ingestIntel({
+  const first = await service.ingestIntel({
+    sourceId: source.sourceId,
+    items: [{
+      title: "Critical Security Update",
+      summary: "A significant update is available for the platform.",
+      rawRef: " https://example.com/update ",
+      relevanceScore: 0.81234,
+      importance: 0.94567,
+      dedupeKey: "same-update",
+      tags: ["IMPORTANT", "security", "security", "release"],
+      ttlHours: 4.7,
+    }],
+  });
+
+  const second = await service.ingestIntelAsync({
+    sourceId: source.sourceId,
+    items: [{
+      title: "Critical Security Update",
+      summary: "A significant update is available for the platform.",
+      rawRef: "https://example.com/update",
+      relevanceScore: 0.8,
+      importance: 0.9,
+      dedupeKey: "same-update",
+    }],
+  });
+
+  assert.equal(first.insertedItems.length, 1);
+  assert.equal(first.insertedItems[0]?.rawRef, "https://example.com/update");
+  assert.equal(first.insertedItems[0]?.relevanceScore, 0.812);
+  assert.equal(first.insertedItems[0]?.importance, 0.946);
+  assert.deepEqual(JSON.parse(first.insertedItems[0]?.tagsJson ?? "[]"), ["important", "security", "release"]);
+  assert.notEqual(first.insertedItems[0]?.expiresAt, null);
+  assert.equal(second.insertedItems.length, 0);
+  assert.equal(second.skippedDuplicateCount, 1);
+});
+
+test("PerceptionServiceAsync buildBrief returns current items and derived recommended actions", async () => {
+  const { service } = createHarness();
+  const source = await service.registerSource({
+    sourceId: "source.async.brief",
+    type: "api",
+    name: "Async Brief",
+  });
+
+  await service.ingestIntel({
     sourceId: source.sourceId,
     items: [
       {
-        title: "Important Update",
-        summary: "There is a critical update available",
-        rawRef: "https://example.com/update",
-        relevanceScore: 0.8,
+        title: "Major launch signal",
+        summary: "A high-importance launch should drive investigation.",
+        rawRef: "https://example.com/launch",
+        relevanceScore: 0.7,
         importance: 0.9,
       },
-    ],
-  });
-
-  assert.ok(result instanceof Promise);
-
-  const intelResult = await result;
-  assert.equal(intelResult.insertedItems.length, 1);
-  assert.equal(intelResult.skippedDuplicateCount, 0);
-});
-
-test("PerceptionServiceAsync ingestIntel skips duplicates", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    sourceId: "src_async_2",
-    type: "api",
-    name: "Test Source 2",
-  });
-
-  await service.ingestIntel({
-    sourceId: source.sourceId,
-    items: [
       {
-        title: "Duplicate Title",
-        summary: "This is a duplicate",
-        rawRef: "https://example.com/duplicate",
-        relevanceScore: 0.5,
+        title: "Broad adoption signal",
+        summary: "A highly relevant signal should notify stakeholders.",
+        rawRef: "https://example.com/adoption",
+        relevanceScore: 0.8,
         importance: 0.5,
-        dedupeKey: "dup_key_1",
       },
     ],
   });
 
-  const result = await service.ingestIntel({
-    sourceId: source.sourceId,
-    items: [
-      {
-        title: "Duplicate Title",
-        summary: "This is a duplicate",
-        rawRef: "https://example.com/duplicate",
-        relevanceScore: 0.5,
-        importance: 0.5,
-        dedupeKey: "dup_key_1",
-      },
-    ],
-  });
+  const pending = service.buildBrief({});
+  assert.ok(pending instanceof Promise);
 
-  assert.equal(result.insertedItems.length, 0);
-  assert.equal(result.skippedDuplicateCount, 1);
+  const result = await pending;
+  assert.equal(result.items.length, 2);
+  assert.equal(result.recommendedActions.length, 2);
+  assert.equal(result.recommendedActions[0]?.actionType, "investigate");
+  assert.equal(result.recommendedActions[1]?.actionType, "notify");
+  assert.equal(result.brief.overallSummary.includes("2 intel items"), true);
 });
 
-test("PerceptionServiceAsync ingestIntelAsync is alias for ingestIntel", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
+test("PerceptionServiceAsync proposeActions is async and idempotent for the same brief", async () => {
+  const { service } = createHarness();
   const source = await service.registerSource({
-    sourceId: "src_async_3",
+    sourceId: "source.async.actions",
     type: "api",
-    name: "Test Source 3",
-  });
-
-  const result = await service.ingestIntelAsync({
-    sourceId: source.sourceId,
-    items: [
-      {
-        title: "Async Test Item",
-        summary: "Testing async ingest",
-        rawRef: "https://example.com/async",
-        relevanceScore: 0.6,
-        importance: 0.7,
-      },
-    ],
-  });
-
-  assert.equal(result.insertedItems.length, 1);
-  assert.equal(result.insertedItems[0].title, "Async Test Item");
-});
-
-test("PerceptionServiceAsync proposeActions returns Promise", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    sourceId: "src_async_4",
-    type: "api",
-    name: "Test Source 4",
+    name: "Async Actions",
   });
 
   await service.ingestIntel({
     sourceId: source.sourceId,
-    items: [
-      {
-        title: "Action Item",
-        summary: "This should trigger an action",
-        rawRef: "https://example.com/action",
-        relevanceScore: 0.9,
-        importance: 0.85,
-      },
-    ],
-  });
-
-  const briefResult = service.buildBrief({});
-  assert.ok(briefResult instanceof Promise);
-
-  const brief = await briefResult;
-
-  const proposalsResult = service.proposeActions({ briefId: brief.brief.briefId });
-  assert.ok(proposalsResult instanceof Promise);
-
-  const proposals = await proposalsResult;
-  assert.ok(proposals.length > 0);
-});
-
-test("PerceptionServiceAsync proposeActions idempotent", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    sourceId: "src_async_5",
-    type: "api",
-    name: "Test Source 5",
-  });
-
-  await service.ingestIntel({
-    sourceId: source.sourceId,
-    items: [
-      {
-        title: "Idempotent Test",
-        summary: "Testing idempotency",
-        rawRef: "https://example.com/idempotent",
-        relevanceScore: 0.7,
-        importance: 0.7,
-      },
-    ],
+    items: [{
+      title: "Notify signal",
+      summary: "This signal should create an approval-gated proposal.",
+      rawRef: "https://example.com/notify",
+      relevanceScore: 0.95,
+      importance: 0.6,
+    }],
   });
 
   const brief = await service.buildBrief({});
-  const proposals1 = await service.proposeActions({ briefId: brief.brief.briefId });
-  const proposals2 = await service.proposeActions({ briefId: brief.brief.briefId });
+  const pending = service.proposeActions({ briefId: brief.brief.briefId });
+  assert.ok(pending instanceof Promise);
 
-  assert.equal(proposals1.length, proposals2.length);
-});
+  const first = await pending;
+  const second = await service.proposeActionsAsync({ briefId: brief.brief.briefId });
 
-test("PerceptionServiceAsync buildBrief returns Promise", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  await service.registerSource({
-    sourceId: "src_async_6",
-    type: "api",
-    name: "Test Source 6",
-  });
-
-  const result = service.buildBrief({});
-
-  assert.ok(result instanceof Promise);
-
-  const briefResult = await result;
-  assert.ok(briefResult.brief);
-  assert.ok(Array.isArray(briefResult.items));
-});
-
-test("PerceptionServiceAsync normalizes tags on ingest", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    sourceId: "src_async_7",
-    type: "api",
-    name: "Test Source 7",
-  });
-
-  const result = await service.ingestIntel({
-    sourceId: source.sourceId,
-    items: [
-      {
-        title: "Tagged Item",
-        summary: "Item with tags for normalization",
-        rawRef: "https://example.com/tagged",
-        relevanceScore: 0.5,
-        importance: 0.5,
-        tags: ["IMPORTANT", "update", "SECURITY"],
-      },
-    ],
-  });
-
-  const tags = JSON.parse(result.insertedItems[0].tagsJson);
-  assert.ok(tags.includes("important"));
-  assert.ok(tags.includes("update"));
-  assert.ok(tags.includes("security"));
-});
-
-test("PerceptionServiceAsync multiple items in single ingest", async () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new PerceptionServiceAsync(db, store);
-
-  const source = await service.registerSource({
-    sourceId: "src_async_8",
-    type: "api",
-    name: "Test Source 8",
-  });
-
-  const result = await service.ingestIntel({
-    sourceId: source.sourceId,
-    items: [
-      {
-        title: "Item One",
-        summary: "First item summary",
-        rawRef: "https://example.com/one",
-        relevanceScore: 0.6,
-        importance: 0.6,
-      },
-      {
-        title: "Item Two",
-        summary: "Second item summary",
-        rawRef: "https://example.com/two",
-        relevanceScore: 0.7,
-        importance: 0.8,
-      },
-      {
-        title: "Item Three",
-        summary: "Third item summary",
-        rawRef: "https://example.com/three",
-        relevanceScore: 0.5,
-        importance: 0.4,
-      },
-    ],
-  });
-
-  assert.equal(result.insertedItems.length, 3);
+  assert.equal(first.length, 1);
+  assert.equal(second.length, 1);
+  assert.equal(first[0], second[0]);
+  assert.equal(first[0]?.actionType, "notify");
+  assert.equal(first[0]?.requiresApproval, 1);
+  assert.equal(first[0]?.status, "proposed");
 });

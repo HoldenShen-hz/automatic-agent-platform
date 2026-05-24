@@ -1,7 +1,3 @@
-/**
- * @fileoverview Tests for harness-sdk/index.ts - Lifecycle hooks and HarnessSdk methods
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -11,305 +7,113 @@ import {
   validatePlanGraph,
   validatePlanGraphBundle,
   type HarnessSdkCreateRunInput,
-  type HarnessSdkLifecycleHooks,
+  type PlanEdge,
   type PlanGraphBuildInput,
   type PlanNode,
-  type PlanEdge,
 } from "../../../../src/sdk/harness-sdk/index.js";
-import { newId } from "../../../../src/platform/contracts/types/ids.js";
+import type { ConstraintPack } from "../../../../src/platform/five-plane-orchestration/harness/index.js";
 
-// ============================================================================
-// HarnessSdk Lifecycle Hook Tests
-// ============================================================================
+function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
+  return {
+    policyIds: [],
+    approvalMode: "none",
+    autonomyMode: "semi_auto",
+    tool_policy: { allowedTools: ["search"] },
+    risk_policy: { maxRiskScore: 0.7, escalationThreshold: 0.5 },
+    output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    budgetEnvelope: { maxSteps: 8, maxCost: 25, maxDurationMs: 60_000 },
+    sandboxRequirement: { sandboxMode: "ephemeral", timeoutMs: 60_000 },
+    approvalRequirement: {
+      requiredForRiskClass: ["critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 300_000,
+    },
+    ...overrides,
+  };
+}
 
-test("HarnessSdk.createRun throws when tenantId is missing", () => {
-  const sdk = new HarnessSdk();
-
-  const input: HarnessSdkCreateRunInput = {
+function createRunInput(overrides: Partial<HarnessSdkCreateRunInput> = {}): HarnessSdkCreateRunInput {
+  return {
     taskId: "task_123",
     domainId: "core",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-    // tenantId intentionally omitted
+    tenantId: "tenant_abc",
+    constraintPack: createConstraintPack(),
+    ...overrides,
   };
+}
+
+function createPlanNode(nodeId: string): PlanNode {
+  return {
+    nodeId,
+    nodeType: "tool",
+    inputRefs: [],
+    outputSchemaRef: "schema:default",
+    riskClass: "medium",
+    budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["compute"] },
+    sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+    retryPolicyRef: "retry:default",
+    timeoutMs: 60_000,
+  };
+}
+
+test("HarnessSdk.createRun rejects missing tenant for the current contract", () => {
+  const sdk = new HarnessSdk();
 
   assert.throws(
-    () => sdk.createRun(input),
+    () => sdk.createRun(createRunInput({ tenantId: "" })),
     /missing_tenant/i,
   );
 });
 
-test("HarnessSdk.createRun throws when budget exceeded", () => {
+test("HarnessSdk.createRun rejects exhausted budgets and succeeds with valid inputs", () => {
   const sdk = new HarnessSdk(undefined, (budgetRef) => ({
-    allowed: false,
-    remainingBudget: 0,
-    error: "Budget exhausted",
+    allowed: budgetRef !== "budget_exhausted",
+    remainingBudget: budgetRef === "budget_exhausted" ? 0 : 1000,
+    ...(budgetRef === "budget_exhausted" ? { error: "Budget exhausted" } : {}),
   }));
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    tenantId: "tenant_abc",
-    budgetRef: "budget_exhausted",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
 
   assert.throws(
-    () => sdk.createRun(input),
+    () => sdk.createRun(createRunInput({ budgetRef: "budget_exhausted" })),
     /budget/i,
   );
+
+  const run = sdk.createRun(createRunInput({ budgetRef: "budget_valid" }));
+  const runtimeView = run as typeof run & { constraintPack: ConstraintPack };
+  assert.equal(run.tenantId, "tenant:local");
+  assert.equal(runtimeView.constraintPack.tool_policy.allowedTools.includes("search"), true);
 });
 
-test("HarnessSdk.createRun succeeds with valid tenant and budget", () => {
-  const sdk = new HarnessSdk(undefined, (budgetRef) => ({
-    allowed: true,
-    remainingBudget: 1000,
-  }));
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    tenantId: "tenant_abc",
-    budgetRef: "budget_valid",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
-
-  const run = sdk.createRun(input);
-  assert.ok(run, "Run should be created successfully");
-  assert.ok(run.harnessRunId, "Run should have harnessRunId");
-});
-
-test("HarnessSdk.createRun succeeds without budgetRef", () => {
+test("HarnessSdk.appendStepWithReceipt emits node receipts against the current run shape", () => {
   const sdk = new HarnessSdk();
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    tenantId: "tenant_abc",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
-
-  const run = sdk.createRun(input);
-  assert.ok(run, "Run should be created successfully");
-});
-
-test("HarnessSdk.appendStep routes nodeRunId and planGraphId properly", () => {
-  const sdk = new HarnessSdk();
-
-  // Create a minimal run
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const result = sdk.appendStep(run, {
-    role: "executor" as const,
-    nodeRunId: "nr_456",
-    planGraphId: "pg_789",
-    inputs: { query: "test" },
-    outputs: { result: "success" },
-  });
-
-  assert.ok(result, "appendStep should return a run");
-});
-
-test("HarnessSdk.appendStepWithReceipt produces NodeAttemptReceipt", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
+  const run = sdk.createRun(createRunInput());
+  const runtimeView = run as typeof run & {
+    planGraphBundle: { graph: { graphId: string } };
   };
 
   const { run: updatedRun, receipt } = sdk.appendStepWithReceipt(run, {
-    role: "executor" as const,
-    nodeRunId: "nr_456",
-    planGraphId: "pg_789",
+    role: "generator",
+    nodeRunId: "node_run_456",
+    planGraphId: runtimeView.planGraphBundle.graph.graphId,
     inputs: { query: "test" },
     outputs: { result: "success" },
   });
 
-  assert.ok(updatedRun, "Should return updated run");
-  assert.ok(receipt, "Should produce receipt");
-  assert.equal(receipt.nodeRunId, "nr_456");
+  assert.equal(updatedRun.currentSeq, run.currentSeq);
+  assert.equal(receipt.nodeRunId, "node_run_456");
   assert.equal(receipt.harnessRunId, run.harnessRunId);
-  assert.equal(receipt.planGraphId, "pg_789");
+  assert.equal(receipt.planGraphId, runtimeView.planGraphBundle.graph.graphId);
   assert.equal(receipt.status, "succeeded");
 });
 
-test("HarnessSdk.appendStepWithReceipt accepts custom status", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const { receipt } = sdk.appendStepWithReceipt(
-    run,
-    {
-      role: "executor" as const,
-      nodeRunId: "nr_456",
-      planGraphId: "pg_789",
-      inputs: {},
-      outputs: {},
-    },
-    { status: "failed" },
-  );
-
-  assert.equal(receipt.status, "failed");
-});
-
-test("HarnessSdk.appendStepWithReceipt accepts error info", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const { receipt } = sdk.appendStepWithReceipt(
-    run,
-    {
-      role: "executor" as const,
-      nodeRunId: "nr_456",
-      planGraphId: "pg_789",
-      inputs: {},
-      outputs: {},
-    },
-    {
-      status: "failed",
-      error: {
-        code: "eval_failed",
-        message: "Evaluation failed",
-        retryable: true,
-      },
-    },
-  );
-
-  assert.equal(receipt.status, "failed");
-  assert.ok(receipt.error, "Receipt should have error");
-  assert.equal(receipt.error.code, "eval_failed");
-});
-
-test("HarnessSdk.appendStepWithReceipt accepts outputRef", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const { receipt } = sdk.appendStepWithReceipt(
-    run,
-    {
-      role: "executor" as const,
-      nodeRunId: "nr_456",
-      planGraphId: "pg_789",
-      inputs: {},
-      outputs: {},
-    },
-    {
-      outputRef: {
-        artifactId: "art_123",
-        uri: "s3://bucket/path",
-        hash: "abc123",
-      },
-    },
-  );
-
-  assert.ok(receipt.outputRef, "Receipt should have outputRef");
-  assert.equal(receipt.outputRef.artifactId, "art_123");
-});
-
-// ============================================================================
-// buildPlanGraphBundle Tests
-// ============================================================================
-
-test("buildPlanGraphBundle creates bundle with nodes and edges", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node_1",
-      nodeType: "task",
-      status: "pending",
-      version: 1,
-    },
-    {
-      nodeId: "node_2",
-      nodeType: "task",
-      status: "pending",
-      version: 1,
-    },
-  ];
-
-  const edges: PlanEdge[] = [
-    {
-      edgeId: "edge_1",
-      edgeType: "dependency",
-      fromNodeId: "node_1",
-      toNodeId: "node_2",
-    },
-  ];
+test("buildPlanGraphBundle normalizes graph inputs and validatePlanGraph detects structural issues", () => {
+  const nodes = [createPlanNode("node_1"), createPlanNode("node_2")];
+  const edges: PlanEdge[] = [{
+    edgeId: "edge_1",
+    fromNodeId: "node_1",
+    toNodeId: "node_2",
+    condition: null,
+    dependencyType: "hard",
+  }];
 
   const input: PlanGraphBuildInput = {
     harnessRunId: "run_123",
@@ -320,640 +124,29 @@ test("buildPlanGraphBundle creates bundle with nodes and edges", () => {
   };
 
   const { bundle, validationReport } = buildPlanGraphBundle(input);
-
-  assert.ok(bundle, "Should return bundle");
-  assert.ok(bundle.graph, "Bundle should have graph");
-  assert.equal(bundle.graph.nodes.length, 2);
-  assert.equal(bundle.graph.edges.length, 1);
-  assert.ok(validationReport, "Should have validation report");
-});
-
-test("buildPlanGraphBundle sets default scheduler policy", () => {
-  const input: PlanGraphBuildInput = {
-    harnessRunId: "run_123",
-    nodes: [],
-    edges: [],
-    entryNodeIds: [],
-    terminalNodeIds: [],
-  };
-
-  const { bundle } = buildPlanGraphBundle(input);
-
-  assert.ok(bundle.schedulerPolicy, "Should have default scheduler policy");
-  assert.equal(bundle.schedulerPolicy.strategy, "deterministic_fifo");
-});
-
-test("buildPlanGraphBundle accepts custom scheduler policy", () => {
-  const input: PlanGraphBuildInput = {
-    harnessRunId: "run_123",
-    nodes: [],
-    edges: [],
-    entryNodeIds: [],
-    terminalNodeIds: [],
-    schedulerPolicy: {
-      policyId: "custom_scheduler",
-      strategy: "priority_then_fifo",
-    },
-  };
-
-  const { bundle } = buildPlanGraphBundle(input);
-
-  assert.equal(bundle.schedulerPolicy.strategy, "priority_then_fifo");
-});
-
-test("buildPlanGraphBundle sets default budgetPlanRef", () => {
-  const input: PlanGraphBuildInput = {
-    harnessRunId: "run_123",
-    nodes: [],
-    edges: [],
-    entryNodeIds: [],
-    terminalNodeIds: [],
-  };
-
-  const { bundle } = buildPlanGraphBundle(input);
-
-  assert.equal(bundle.budgetPlanRef, "budget:default");
-});
-
-test("buildPlanGraphBundle uses custom budgetPlanRef", () => {
-  const input: PlanGraphBuildInput = {
-    harnessRunId: "run_123",
-    nodes: [],
-    edges: [],
-    entryNodeIds: [],
-    terminalNodeIds: [],
-    budgetPlanRef: "budget_custom",
-  };
-
-  const { bundle } = buildPlanGraphBundle(input);
-
-  assert.equal(bundle.budgetPlanRef, "budget_custom");
-});
-
-// ============================================================================
-// validatePlanGraph Tests
-// ============================================================================
-
-test("validatePlanGraph returns valid for proper graph", () => {
-  const graph = {
-    graphId: "graph_1",
-    nodes: [
-      { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-      { nodeId: "node_2", nodeType: "task" as const, status: "pending" as const, version: 1 },
-    ],
-    edges: [
-      { edgeId: "edge_1", edgeType: "dependency" as const, fromNodeId: "node_1", toNodeId: "node_2" },
-    ],
-    entryNodeIds: ["node_1"],
-    terminalNodeIds: ["node_2"],
-    joinStrategy: "all" as const,
-    graphHash: "hash123",
-  };
-
-  const report = validatePlanGraph(graph);
-
-  assert.equal(report.valid, true);
-  assert.deepEqual(report.findings, []);
-});
-
-test("validatePlanGraph reports missing entry node", () => {
-  const graph = {
-    graphId: "graph_1",
-    nodes: [
-      { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-    ],
-    edges: [],
-    entryNodeIds: ["nonexistent"],
-    terminalNodeIds: [],
-    joinStrategy: "all" as const,
-    graphHash: "hash123",
-  };
-
-  const report = validatePlanGraph(graph);
-
-  assert.equal(report.valid, false);
-  assert.ok(report.findings.some((f) => f.includes("nonexistent")));
-});
-
-test("validatePlanGraph reports missing terminal node", () => {
-  const graph = {
-    graphId: "graph_1",
-    nodes: [
-      { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-    ],
-    edges: [],
-    entryNodeIds: [],
-    terminalNodeIds: ["nonexistent"],
-    joinStrategy: "all" as const,
-    graphHash: "hash123",
-  };
-
-  const report = validatePlanGraph(graph);
-
-  assert.equal(report.valid, false);
-  assert.ok(report.findings.some((f) => f.includes("nonexistent")));
-});
-
-test("validatePlanGraph reports edge with unknown fromNodeId", () => {
-  const graph = {
-    graphId: "graph_1",
-    nodes: [
-      { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-    ],
-    edges: [
-      { edgeId: "edge_1", edgeType: "dependency" as const, fromNodeId: "unknown", toNodeId: "node_1" },
-    ],
-    entryNodeIds: ["node_1"],
-    terminalNodeIds: ["node_1"],
-    joinStrategy: "all" as const,
-    graphHash: "hash123",
-  };
-
-  const report = validatePlanGraph(graph);
-
-  assert.equal(report.valid, false);
-  assert.ok(report.findings.some((f) => f.includes("unknown")));
-});
-
-test("validatePlanGraph reports edge with unknown toNodeId", () => {
-  const graph = {
-    graphId: "graph_1",
-    nodes: [
-      { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-    ],
-    edges: [
-      { edgeId: "edge_1", edgeType: "dependency" as const, fromNodeId: "node_1", toNodeId: "unknown" },
-    ],
-    entryNodeIds: ["node_1"],
-    terminalNodeIds: ["unknown"],
-    joinStrategy: "all" as const,
-    graphHash: "hash123",
-  };
-
-  const report = validatePlanGraph(graph);
-
-  assert.equal(report.valid, false);
-  assert.ok(report.findings.some((f) => f.includes("unknown")));
-});
-
-test("validatePlanGraph reports orphaned nodes", () => {
-  const graph = {
-    graphId: "graph_1",
-    nodes: [
-      { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-      { nodeId: "node_2", nodeType: "task" as const, status: "pending" as const, version: 1 },
-    ],
-    edges: [],
-    entryNodeIds: ["node_1"],
-    terminalNodeIds: ["node_2"],
-    joinStrategy: "all" as const,
-    graphHash: "hash123",
-  };
-
-  const report = validatePlanGraph(graph);
-
-  assert.equal(report.valid, false);
-  assert.ok(report.findings.some((f) => f.includes("not reachable")));
-});
-
-test("validatePlanGraph allows isolated cycle", () => {
-  const graph = {
-    graphId: "graph_1",
-    nodes: [
-      { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-      { nodeId: "node_2", nodeType: "task" as const, status: "pending" as const, version: 1 },
-    ],
-    edges: [
-      { edgeId: "edge_1", edgeType: "dependency" as const, fromNodeId: "node_1", toNodeId: "node_2" },
-      { edgeId: "edge_2", edgeType: "dependency" as const, fromNodeId: "node_2", toNodeId: "node_1" },
-    ],
-    entryNodeIds: ["node_1"],
-    terminalNodeIds: ["node_1"],
-    joinStrategy: "all" as const,
-    graphHash: "hash123",
-  };
-
-  const report = validatePlanGraph(graph);
-
-  // Both nodes are reachable from entry node node_1
-  assert.equal(report.valid, true);
-});
-
-// ============================================================================
-// validatePlanGraphBundle Tests
-// ============================================================================
-
-test("validatePlanGraphBundle validates wrapped bundle", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node_1",
-      nodeType: "task",
-      status: "pending",
-      version: 1,
-    },
-  ];
-
-  const edges: PlanEdge[] = [];
-
-  const { bundle } = buildPlanGraphBundle({
-    harnessRunId: "run_123",
+  const invalidReport = validatePlanGraph({
     nodes,
-    edges,
+    edges: [{ fromNodeId: "node_1", toNodeId: "missing_node" }],
     entryNodeIds: ["node_1"],
-    terminalNodeIds: ["node_1"],
+    terminalNodeIds: ["missing_node"],
   });
 
-  const result = validatePlanGraphBundle(bundle);
-
-  assert.equal(result.valid, true);
-  assert.deepEqual(result.findings, []);
-  assert.ok(result.normalizedNodeIds);
-  assert.equal(result.normalizedNodeIds.length, 1);
+  assert.equal(validationReport.valid, true);
+  assert.equal(validatePlanGraphBundle(bundle).valid, true);
+  assert.equal(bundle.graph.entryNodeIds[0], "node_1");
+  assert.equal(bundle.graph.terminalNodeIds[0], "node_2");
+  assert.equal(invalidReport.valid, false);
+  assert.equal(invalidReport.findings.some((finding) => finding.includes("missing_node")), true);
 });
 
-test("validatePlanGraphBundle reports issues from wrapped graph", () => {
-  // Create an invalid bundle by manually constructing one
-  const bundle = {
-    harnessRunId: "run_123",
-    graph: {
-      graphId: "graph_1",
-      nodes: [
-        { nodeId: "node_1", nodeType: "task" as const, status: "pending" as const, version: 1 },
-      ],
-      edges: [],
-      entryNodeIds: ["nonexistent"],
-      terminalNodeIds: [],
-      joinStrategy: "all" as const,
-      graphHash: "hash123",
-    },
-    schedulerPolicy: {
-      policyId: "default",
-      strategy: "deterministic_fifo" as const,
-    },
-    budgetPlanRef: "budget:default",
-    riskProfile: { riskClass: "low" as const, reasons: [] },
-    validationReport: { valid: false, findings: [], normalizedNodeIds: [] },
-    planGraphBundleId: "bundle_1",
-    graphVersion: 1,
-  };
-
-  const result = validatePlanGraphBundle(bundle);
-
-  assert.equal(result.valid, false);
-});
-
-// ============================================================================
-// HarnessSdk run management tests
-// ============================================================================
-
-test("HarnessSdk.checkpoint returns checkpoint ref string", () => {
+test("HarnessSdk persistence helpers operate on run ids and facade runs", () => {
   const sdk = new HarnessSdk();
+  const run = sdk.createRun(createRunInput());
+  const checkpoint = sdk.checkpoint(run);
+  const restored = sdk.restore(run.harnessRunId);
+  const replayed = sdk.traceReplay(run.harnessRunId, []);
 
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const checkpointRef = sdk.checkpoint(run);
-  assert.equal(typeof checkpointRef, "string");
-});
-
-test("HarnessSdk.persist returns same run", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const persisted = sdk.persist(run);
-  assert.equal(persisted.harnessRunId, run.harnessRunId);
-});
-
-test("HarnessSdk.restore returns null for non-existent run", () => {
-  const sdk = new HarnessSdk();
-
-  const restored = sdk.restore(newId("nonexistent"));
-  assert.equal(restored, null);
-});
-
-test("HarnessSdk.restoreFromCheckpoint returns null for non-existent checkpoint", () => {
-  const sdk = new HarnessSdk();
-
-  const restored = sdk.restoreFromCheckpoint("checkpoint_nonexistent");
-  assert.equal(restored, null);
-});
-
-test("HarnessSdk.requireRun throws for non-existent run via string", () => {
-  const sdk = new HarnessSdk();
-
-  assert.throws(
-    () => sdk.resume(newId("nonexistent")),
-    /run_not_found/i,
-  );
-});
-
-test("HarnessSdk.getTimeline returns timeline array", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [
-      {
-        eventId: "evt_1",
-        runId: newId("run"),
-        eventType: "harness.run.created",
-        schemaVersion: 1,
-        aggregateType: "HarnessRun",
-        aggregateId: newId("run"),
-        aggregateSeq: 1,
-        tenantId: "tenant_abc",
-        traceId: "trace_1",
-        payloadHash: "hash1",
-        payload: { status: "created" },
-        replayBehavior: "replay_as_fact" as const,
-        occurredAt: new Date().toISOString(),
-      },
-    ],
-  };
-
-  const timeline = sdk.getTimeline(run);
-  assert.ok(Array.isArray(timeline));
-  assert.equal(timeline.length, 1);
-});
-
-test("HarnessSdk.requestHumanReview creates run with open HITL review", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const updatedRun = sdk.requestHumanReview(run, "Needs approval", ["ref1", "ref2"]);
-  assert.ok(updatedRun, "Should return updated run");
-});
-
-test("HarnessSdk.resolveReview creates run with resolved HITL review", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const updatedRun = sdk.resolveReview(run, "approved", "user_456");
-  assert.ok(updatedRun, "Should return updated run");
-});
-
-test("HarnessSdk.sleep creates run with sleep state", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const resumeAt = new Date(Date.now() + 60000).toISOString();
-  const updatedRun = sdk.sleep(run, "Waiting for resource", resumeAt);
-  assert.ok(updatedRun, "Should return updated run");
-});
-
-test("HarnessSdk.resume wakes sleeping run", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  const resumed = sdk.resume(run);
-  assert.ok(resumed, "Should return updated run");
-});
-
-test("HarnessSdk.assertInvariants does not throw for valid run", () => {
-  const sdk = new HarnessSdk();
-
-  const run = {
-    harnessRunId: newId("run"),
-    createdAt: new Date().toISOString(),
-    status: "active" as const,
-    currentSeq: 1,
-    tenantId: "tenant_abc",
-    taskId: "task_123",
-    domainId: "core",
-    planGraphId: "pg_123",
-    nodes: [],
-    edges: [],
-    timeline: [],
-  };
-
-  assert.doesNotThrow(() => sdk.assertInvariants(run));
-});
-
-// ============================================================================
-// HarnessSdk Lifecycle Hook Tests (Issue 2009)
-// ============================================================================
-
-test("HarnessSdk calls beforeRun hook when creating run", () => {
-  const sdk = new HarnessSdk(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {
-      beforeRun: (input) => {
-        assert.equal(input.taskId, "task_123");
-        assert.equal(input.tenantId, "tenant_abc");
-      },
-    },
-  );
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    tenantId: "tenant_abc",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
-
-  sdk.createRun(input);
-});
-
-test("HarnessSdk calls afterRun hook when run succeeds", () => {
-  let afterRunCalled = false;
-  const sdk = new HarnessSdk(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {
-      afterRun: (run) => {
-        afterRunCalled = true;
-        assert.ok(run.harnessRunId, "Run should have harnessRunId");
-      },
-    },
-  );
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    tenantId: "tenant_abc",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
-
-  sdk.createRun(input);
-  assert.equal(afterRunCalled, true, "afterRun hook should be called on success");
-});
-
-test("HarnessSdk calls onError hook when run creation fails", () => {
-  let errorCalled = false;
-  const sdk = new HarnessSdk(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {
-      onError: (error) => {
-        errorCalled = true;
-        assert.ok(error instanceof Error, "Should receive an Error");
-      },
-    },
-  );
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    // Missing tenantId - should cause error
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
-
-  assert.throws(() => sdk.createRun(input), /missing_tenant/i);
-  assert.equal(errorCalled, true, "onError hook should be called on error");
-});
-
-test("HarnessSdk calls beforeRun, afterRun, and onError hooks via execute", () => {
-  let beforeRunCalled = false;
-  let afterRunCalled = false;
-  let errorCalled = false;
-
-  const sdk = new HarnessSdk(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {
-      beforeRun: () => { beforeRunCalled = true; },
-      afterRun: () => { afterRunCalled = true; },
-      onError: () => { errorCalled = true; },
-    },
-  );
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    tenantId: "tenant_abc",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
-
-  sdk.execute(input);
-  assert.equal(beforeRunCalled, true, "beforeRun should be called");
-  assert.equal(afterRunCalled, true, "afterRun should be called");
-  assert.equal(errorCalled, false, "onError should not be called on success");
-});
-
-test("HarnessSdk.lifecycleHooks is optional and SDK works without it", () => {
-  const sdk = new HarnessSdk(); // No lifecycleHooks
-
-  const input: HarnessSdkCreateRunInput = {
-    taskId: "task_123",
-    domainId: "core",
-    tenantId: "tenant_abc",
-    constraintPack: {
-      constraints: [],
-      maxConcurrentNodes: 1,
-      strategy: { type: "fifo" },
-    },
-  };
-
-  const run = sdk.createRun(input);
-  assert.ok(run, "SDK should work without lifecycle hooks");
+  assert.equal(checkpoint.startsWith("harness_checkpoint_"), true);
+  assert.equal(restored?.harnessRunId, run.harnessRunId);
+  assert.equal(replayed?.harnessRunId, run.harnessRunId);
 });

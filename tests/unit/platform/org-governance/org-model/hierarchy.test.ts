@@ -185,7 +185,7 @@ test("buildReportingChain builds owner chain to root", () => {
     mockOrgNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company", ownerUserIds: ["vp"] }),
     mockOrgNode({ orgNodeId: "dept", nodeType: "department", parentOrgNodeId: "division", ownerUserIds: ["director"] }),
     mockOrgNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "dept", ownerUserIds: ["manager"] }),
-    mockOrgNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["employee"] }),
+    mockOrgNode({ orgNodeId: "member", nodeType: "seat", parentOrgNodeId: "team", ownerUserIds: ["employee"] }),
   ];
 
   const chain = buildReportingChain(nodes, "employee", "member");
@@ -197,7 +197,7 @@ test("buildReportingChain stops at node with no owners", () => {
   const nodes = [
     mockOrgNode({ orgNodeId: "company", nodeType: "company", parentOrgNodeId: null, ownerUserIds: ["ceo"] }),
     mockOrgNode({ orgNodeId: "dept", nodeType: "department", parentOrgNodeId: "company", ownerUserIds: [] }),
-    mockOrgNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "dept", ownerUserIds: ["employee"] }),
+    mockOrgNode({ orgNodeId: "member", nodeType: "seat", parentOrgNodeId: "dept", ownerUserIds: ["employee"] }),
   ];
 
   const chain = buildReportingChain(nodes, "employee", "member");

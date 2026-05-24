@@ -503,8 +503,12 @@ test("registerPlatformSurfaceCatalog manifests match PLATFORM_SURFACE_MANIFESTS"
 
     assert.equal(manifests.length, PLATFORM_SURFACE_MANIFESTS.length);
     for (let i = 0; i < manifests.length; i++) {
-      assert.equal(manifests[i].surfaceId, PLATFORM_SURFACE_MANIFESTS[i].surfaceId);
-      assert.equal(manifests[i].entryModule, PLATFORM_SURFACE_MANIFESTS[i].entryModule);
+      const manifest = manifests[i];
+      const expected = PLATFORM_SURFACE_MANIFESTS[i];
+      assert.ok(manifest);
+      assert.ok(expected);
+      assert.equal(manifest.surfaceId, expected.surfaceId);
+      assert.equal(manifest.entryModule, expected.entryModule);
     }
   } finally {
     await registry.reset();

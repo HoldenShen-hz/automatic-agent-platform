@@ -37,7 +37,7 @@ function makeAssessment(
       rationale: "test",
     },
     resourceAllocation: { modelClass: "medium", maxTokens: 1000, timeoutMs: 60_000 },
-    approvalPolicy: { required: approvalRequired, level: approvalRequired ? "required" : "none" },
+    approvalPolicy: { required: approvalRequired, level: approvalRequired ? "user" : "none" },
     executionMode: "auto",
     suggestedActions: [],
   };
@@ -136,8 +136,8 @@ test("plugin taint and revocation helpers record current state", () => {
     ["1.0.0"],
   );
 
-  assert.equal(taintRecord.sourcePluginId, "plugin.core.basic-evaluator");
   assert.equal(taintRecord.taintLabels.length > 0, true);
+  assert.equal(taintRecord.taintLabels[0]?.sourcePluginId, "plugin.core.basic-evaluator");
   assert.equal(revocation.pluginId, "plugin.core.basic-evaluator");
   assert.equal(getPluginRevocationStatus("plugin.core.basic-evaluator")?.reason, "security issue");
   assert.equal(removePluginRevocation("plugin.core.basic-evaluator"), true);

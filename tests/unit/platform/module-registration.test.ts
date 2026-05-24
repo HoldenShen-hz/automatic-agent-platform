@@ -41,9 +41,13 @@ test("registerPlatformSurfaceCatalog returns same data as listPlatformSurfaceMan
 
     assert.equal(byRegistration.length, byListing.length);
     for (let i = 0; i < byRegistration.length; i++) {
-      assert.strictEqual(byRegistration[i].surfaceId, byListing[i].surfaceId);
-      assert.strictEqual(byRegistration[i].entryModule, byListing[i].entryModule);
-      assert.strictEqual(byRegistration[i].description, byListing[i].description);
+      const registered = byRegistration[i];
+      const listed = byListing[i];
+      assert.ok(registered != null);
+      assert.ok(listed != null);
+      assert.strictEqual(registered.surfaceId, listed.surfaceId);
+      assert.strictEqual(registered.entryModule, listed.entryModule);
+      assert.strictEqual(registered.description, listed.description);
     }
   } finally {
     await registry.reset();

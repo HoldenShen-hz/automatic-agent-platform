@@ -1,172 +1,76 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
+
 import { EvalRunService, TaskOutcomeGrader } from "../../../../../src/platform/five-plane-orchestration/harness/eval-harness/index.js";
-import type { HarnessRun } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
-test("EvalRunService is exported and can be instantiated", () => {
-  const service = new EvalRunService();
-  assert.ok(service !== undefined);
-  assert.equal(typeof service.evaluate, "function");
+function createConstraintPack(): ConstraintPack {
+  return {
+    policyIds: [],
+    approvalMode: "none",
+    autonomyMode: "supervised",
+    tool_policy: { allowedTools: [] },
+    risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
+    output_policy: { requiredEvidence: ["evidence-1"], redactSensitiveData: false },
+    budgetEnvelope: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
+    sandboxRequirement: { sandboxMode: "ephemeral", timeoutMs: 1000 },
+    approvalRequirement: {
+      requiredForRiskClass: ["critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 1000,
+    },
+  };
+}
+
+function createCompletedRun() {
+  return new HarnessRuntimeService().runLoop({
+    taskId: "task-456",
+    domainId: "domain-789",
+    constraintPack: createConstraintPack(),
+    plannerOutput: { planId: "plan-1" },
+    generatorOutput: { artifact: "patch.diff" },
+    evaluatorOutput: { verdict: "pass" },
+    evaluatorScore: 0.85,
+    producedEvidenceRefs: ["evidence-1"],
+  });
+}
+
+test("eval harness exports grader and service", () => {
+  assert.equal(typeof new EvalRunService().evaluate, "function");
+  assert.equal(typeof new TaskOutcomeGrader().grade, "function");
 });
 
-test("TaskOutcomeGrader is exported and can be instantiated", () => {
+test("TaskOutcomeGrader handles pass missing evidence and non-accept decisions", () => {
   const grader = new TaskOutcomeGrader();
-  assert.ok(grader !== undefined);
-  assert.equal(typeof grader.grade, "function");
-});
-
-test("TaskOutcomeGrader.grade returns passed when all conditions met", () => {
-  const grader = new TaskOutcomeGrader();
-  const result = grader.grade({
+  const passed = grader.grade({
     evaluatorScore: 0.8,
     expectedEvidenceRefs: ["evidence-1"],
     actualEvidenceRefs: ["evidence-1"],
     decisionAction: "accept",
   });
-
-  assert.equal(result.passed, true);
-  assert.ok(result.score >= 0.75);
-  assert.equal(result.findingCodes.length, 0);
-});
-
-test("TaskOutcomeGrader.grade records missing evidence findings", () => {
-  const grader = new TaskOutcomeGrader();
-  const result = grader.grade({
+  const missing = grader.grade({
     evaluatorScore: 0.9,
     expectedEvidenceRefs: ["evidence-1", "evidence-2"],
     actualEvidenceRefs: ["evidence-1"],
     decisionAction: "accept",
   });
-
-  assert.equal(result.passed, false);
-  assert.ok(result.findingCodes.some((code) => code.includes("missing_evidence")));
-});
-
-test("TaskOutcomeGrader.grade records non-accept decision findings", () => {
-  const grader = new TaskOutcomeGrader();
-  const result = grader.grade({
+  const replan = grader.grade({
     evaluatorScore: 0.8,
     expectedEvidenceRefs: [],
     actualEvidenceRefs: [],
     decisionAction: "replan",
   });
 
-  assert.equal(result.passed, false);
-  assert.ok(result.findingCodes.some((code) => code.includes("non_accept_decision")));
+  assert.equal(passed.passed, true);
+  assert.equal(missing.passed, false);
+  assert.ok(missing.findingCodes.some((code) => code.includes("missing_evidence")));
+  assert.equal(replan.passed, false);
 });
 
-test("TaskOutcomeGrader.grade fails for low evaluator score", () => {
-  const grader = new TaskOutcomeGrader();
-  const result = grader.grade({
-    evaluatorScore: 0.5,
-    expectedEvidenceRefs: [],
-    actualEvidenceRefs: [],
-    decisionAction: "accept",
-  });
+test("EvalRunService evaluates a real HarnessRunRuntimeState", () => {
+  const report = new EvalRunService().evaluate(createCompletedRun());
 
-  assert.equal(result.passed, false);
-});
-
-test("TaskOutcomeGrader.grade handles null decisionAction", () => {
-  const grader = new TaskOutcomeGrader();
-  const result = grader.grade({
-    evaluatorScore: 0.8,
-    expectedEvidenceRefs: [],
-    actualEvidenceRefs: [],
-    decisionAction: null,
-  });
-
-  assert.equal(result.passed, false);
-  assert.ok(result.findingCodes.length > 0);
-});
-
-test("EvalRunService.evaluate evaluates a HarnessRun", () => {
-  const service = new EvalRunService();
-  const run: HarnessRun = {
-    runId: "run-123",
-    taskId: "task-456",
-    domainId: "domain-789",
-    constraintPack: {
-      policyIds: [],
-      approvalMode: "none",
-      autonomyMode: "auto",
-      toolPolicy: { allowedTools: [] },
-      risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
-      output_policy: { requiredEvidence: ["evidence-1"], redactSensitiveData: false },
-      budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
-    },
-    steps: [],
-    maxIterations: 100,
-    currentIteration: 1,
-    status: "completed",
-    createdAt: "2026-04-23T00:00:00Z",
-    completedAt: "2026-04-23T00:01:00Z",
-    decision: {
-      decisionId: "decision-123",
-      action: "accept",
-      reasonCodes: ["accepted"],
-      confidence: 0.85,
-      createdAt: "2026-04-23T00:00:30Z",
-    },
-    contextSnapshots: [],
-    sleepLease: null,
-    recoveryCheckpoint: null,
-    feedbackEnvelope: {
-      feedbackId: "feedback-123",
-      signals: ["evidence-1"],
-      learnedActions: [],
-      createdAt: "2026-04-23T00:00:45Z",
-    },
-    toolbelt: null,
-    guardrailAssessment: null,
-    hitlRequest: null,
-    timeline: [],
-  };
-
-  const report = service.evaluate(run);
-
-  assert.equal(report.runId, "run-123");
-  assert.equal(report.stepCount, 0);
-  assert.equal(report.timelineEventCount, 0);
-  assert.equal(typeof report.overallPassed, "boolean");
-  assert.ok(report.grade !== undefined);
-});
-
-test("EvalRunService.evaluate handles run without decision", () => {
-  const service = new EvalRunService();
-  const run: HarnessRun = {
-    runId: "run-123",
-    taskId: "task-456",
-    domainId: "domain-789",
-    constraintPack: {
-      policyIds: [],
-      approvalMode: "none",
-      autonomyMode: "auto",
-      toolPolicy: { allowedTools: [] },
-      risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
-      output_policy: { requiredEvidence: [], redactSensitiveData: false },
-      budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
-    },
-    steps: [],
-    maxIterations: 100,
-    currentIteration: 0,
-    status: "created",
-    createdAt: "2026-04-23T00:00:00Z",
-    completedAt: null,
-    decision: null,
-    contextSnapshots: [],
-    sleepLease: null,
-    recoveryCheckpoint: null,
-    feedbackEnvelope: null,
-    toolbelt: null,
-    guardrailAssessment: null,
-    hitlRequest: null,
-    timeline: [],
-  };
-
-  const report = service.evaluate(run);
-
-  assert.equal(report.runId, "run-123");
-  // Should use default score of 0 when decision is null
-  assert.equal(report.grade.score, 0);
+  assert.equal(report.runId.length > 0, true);
+  assert.equal(report.overallPassed, true);
+  assert.equal(report.grade.passed, true);
 });

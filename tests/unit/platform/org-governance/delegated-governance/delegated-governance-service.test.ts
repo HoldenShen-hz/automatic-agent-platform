@@ -8,11 +8,13 @@ function mockDelegation(overrides: Partial<GovernanceDelegation> = {}): Governan
     delegationId: "delegation-1",
     grantorId: "platform_team",
     granteeId: "division_admin",
+    level: "admin",
+    delegatable: false,
     orgNodeIds: ["org-1"],
     domainIds: ["domain-1"],
+    permissions: ["manage_approvals", "manage_budgets"],
     guardrails: [],
     status: "active",
-    grantedAt: "2024-01-01T00:00:00.000Z",
     expiresAt: "2030-01-01T00:00:00.000Z",
     ...overrides,
   };
@@ -21,10 +23,8 @@ function mockDelegation(overrides: Partial<GovernanceDelegation> = {}): Governan
 function mockGuardrail(overrides: Partial<Guardrail> = {}): Guardrail {
   return {
     guardrailId: "guardrail-1",
-    name: "Test Guardrail",
-    guardrailType: "budget_limit",
+    type: "max_budget",
     value: 1000,
-    unit: "USD",
     ...overrides,
   };
 }
@@ -35,6 +35,7 @@ test("DelegatedGovernanceService resolve grants access for matching scope", () =
     orgNodeId: "org-1",
     domainId: "domain-1",
     action: "approve_task",
+    permission: "manage_approvals",
   });
 
   assert.strictEqual(result.allowed, true);
@@ -76,7 +77,7 @@ test("DelegatedGovernanceService checkOperation denies operation for wrong role"
 
 test("DelegatedGovernanceService checkOperation evaluates guardrails", () => {
   const delegation = mockDelegation({
-    guardrails: [mockGuardrail({ guardrailId: "budget-1", name: "Budget Limit", guardrailType: "budget_limit", value: 500, unit: "USD" })],
+    guardrails: [mockGuardrail({ guardrailId: "budget-1", type: "max_budget", value: 500 })],
   });
   const service = new DelegatedGovernanceService([delegation]);
   const result = service.checkOperation(

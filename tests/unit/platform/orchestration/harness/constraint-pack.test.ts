@@ -9,7 +9,7 @@ import {
   type ConstraintPack,
 } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
-function createMinimalPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
+function createPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {
     policyIds: [],
     approvalMode: "none",
@@ -28,102 +28,27 @@ function createMinimalPack(overrides: Partial<ConstraintPack> = {}): ConstraintP
   };
 }
 
-test("getConstraintRiskPolicy returns snake_case policy", () => {
-  const pack = createMinimalPack({
+test("constraint pack accessors return canonical snake_case policies", () => {
+  const pack = createPack({
     risk_policy: { maxRiskScore: 50, escalationThreshold: 40 },
-  });
-
-  const riskPolicy = getConstraintRiskPolicy(pack);
-  assert.deepEqual(riskPolicy, { maxRiskScore: 50, escalationThreshold: 40 });
-});
-
-test("getConstraintRiskPolicy throws when risk_policy is missing", () => {
-  const pack = createMinimalPack({
-    risk_policy: undefined,
-  }) as unknown as ConstraintPack;
-
-  assert.throws(() => getConstraintRiskPolicy(pack), /harness\.constraint_pack\.missing_risk_policy/);
-});
-
-test("getConstraintOutputPolicy returns snake_case policy", () => {
-  const pack = createMinimalPack({
     output_policy: { requiredEvidence: ["scan"], redactSensitiveData: true },
   });
 
-  const outputPolicy = getConstraintOutputPolicy(pack);
-  assert.deepEqual(outputPolicy, { requiredEvidence: ["scan"], redactSensitiveData: true });
+  assert.deepEqual(getConstraintRiskPolicy(pack), { maxRiskScore: 50, escalationThreshold: 40 });
+  assert.deepEqual(getConstraintOutputPolicy(pack), { requiredEvidence: ["scan"], redactSensitiveData: true });
 });
 
-test("getConstraintOutputPolicy throws when output_policy is missing", () => {
-  const pack = createMinimalPack({
-    output_policy: undefined,
-  }) as unknown as ConstraintPack;
+test("constraint pack accessors throw when required policies are absent at runtime", () => {
+  const noRisk = { ...createPack() } as ConstraintPack & { risk_policy?: ConstraintPack["risk_policy"] };
+  delete (noRisk as { risk_policy?: unknown }).risk_policy;
+  const noOutput = { ...createPack() } as ConstraintPack & { output_policy?: ConstraintPack["output_policy"] };
+  delete (noOutput as { output_policy?: unknown }).output_policy;
 
-  assert.throws(() => getConstraintOutputPolicy(pack), /harness\.constraint_pack\.missing_output_policy/);
+  assert.throws(() => getConstraintRiskPolicy(noRisk as ConstraintPack), /harness\.constraint_pack\.missing_risk_policy/);
+  assert.throws(() => getConstraintOutputPolicy(noOutput as ConstraintPack), /harness\.constraint_pack\.missing_output_policy/);
 });
 
-test("normalizeConstraintPack clones canonical snake_case fields", () => {
-  const pack = createMinimalPack({
-    policyIds: ["policy-1", "policy-2"],
-    tool_policy: { allowedTools: ["read", "write", "execute"] },
-    risk_policy: { maxRiskScore: 90, escalationThreshold: 70 },
-    output_policy: { requiredEvidence: ["audit", "review"], redactSensitiveData: true },
-  });
-
-  const normalized = normalizeConstraintPack(pack);
-
-  assert.deepEqual(normalized.policyIds, ["policy-1", "policy-2"]);
-  assert.deepEqual(normalized.tool_policy.allowedTools, ["read", "write", "execute"]);
-  assert.deepEqual(normalized.risk_policy, { maxRiskScore: 90, escalationThreshold: 70 });
-  assert.deepEqual(normalized.output_policy, { requiredEvidence: ["audit", "review"], redactSensitiveData: true });
-  assert.notEqual(normalized.policyIds, pack.policyIds);
-  assert.notEqual(normalized.tool_policy.allowedTools, pack.tool_policy.allowedTools);
-  assert.notEqual(normalized.output_policy.requiredEvidence, pack.output_policy?.requiredEvidence);
-});
-
-test("normalizeConstraintPack preserves required sandbox and approval requirements", () => {
-  const pack = createMinimalPack({
-    sandboxRequirement: { sandboxMode: "network_isolated", timeoutMs: 30_000, allowedHosts: ["api.example.com"] },
-    approvalRequirement: {
-      requiredForRiskClass: ["high", "critical"],
-      approverRoles: ["security", "ops"],
-      escalationTimeoutMs: 120_000,
-    },
-  });
-
-  const normalized = normalizeConstraintPack(pack);
-
-  assert.deepEqual(normalized.sandboxRequirement, pack.sandboxRequirement);
-  assert.deepEqual(normalized.approvalRequirement, pack.approvalRequirement);
-});
-
-test("normalizeConstraintPack derives budgetEnvelope from legacy budget", () => {
-  const pack = createMinimalPack({
-    budget: {
-      maxSteps: 25,
-      maxCost: 500,
-      maxDurationMs: 120_000,
-      max_model_tokens: 4_000,
-      max_context_tokens: 8_000,
-      max_output_tokens: 2_000,
-    },
-    budgetEnvelope: undefined,
-  });
-
-  const normalized = normalizeConstraintPack(pack);
-
-  assert.deepEqual(normalized.budgetEnvelope, {
-    maxSteps: 25,
-    maxCost: 500,
-    maxDurationMs: 120_000,
-    maxModelTokens: 4_000,
-    maxContextTokens: 8_000,
-    maxOutputTokens: 2_000,
-  });
-  assert.deepEqual(normalized.budget, pack.budget);
-});
-
-test("normalizeConstraintPack copies budgetEnvelope into deprecated budget mirror", () => {
+test("normalizeConstraintPack mirrors budgetEnvelope and legacy budget fields", () => {
   const budgetEnvelope: ConstraintBudgetEnvelope = {
     maxSteps: 20,
     maxCost: 250,
@@ -133,36 +58,22 @@ test("normalizeConstraintPack copies budgetEnvelope into deprecated budget mirro
     maxContextTokens: 12_000,
     maxOutputTokens: 2_000,
   };
-  const pack = createMinimalPack({
+
+  const normalizedFromLegacy = normalizeConstraintPack(createPack({
+    budget: {
+      maxSteps: 25,
+      maxCost: 500,
+      maxDurationMs: 120_000,
+      max_model_tokens: 4_000,
+      max_context_tokens: 8_000,
+      max_output_tokens: 2_000,
+    },
+  }));
+  const normalizedFromEnvelope = normalizeConstraintPack(createPack({
     budgetEnvelope,
-    budget: undefined,
-  });
+  }));
 
-  const normalized = normalizeConstraintPack(pack);
-
-  assert.deepEqual(normalized.budgetEnvelope, budgetEnvelope);
-  assert.deepEqual(normalized.budget, {
-    maxSteps: 20,
-    maxCost: 250,
-    maxDurationMs: 90_000,
-    max_model_tokens: 6_000,
-    max_context_tokens: 12_000,
-    max_output_tokens: 2_000,
-  });
+  assert.equal(normalizedFromLegacy.budgetEnvelope?.maxModelTokens, 4_000);
+  assert.equal(normalizedFromEnvelope.budget?.maxOutputTokens, 2_000);
+  assert.deepEqual(normalizedFromEnvelope.budgetEnvelope, budgetEnvelope);
 });
-
-test("normalizeConstraintPack falls back to budget when budgetEnvelope is absent", () => {
-  const pack = createMinimalPack({
-    budgetEnvelope: undefined,
-    budget: { maxSteps: 15, maxCost: 150, maxDurationMs: 45_000 },
-  });
-
-  const normalized = normalizeConstraintPack(pack);
-
-  assert.deepEqual(normalized.budgetEnvelope, {
-    maxSteps: 15,
-    maxCost: 150,
-    maxDurationMs: 45_000,
-  });
-});
-

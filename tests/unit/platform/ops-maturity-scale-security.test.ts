@@ -110,7 +110,7 @@ test("1941..1953: IAM, secret, plugin, and stability security guards remain enfo
       maxDailyCostUsd: 100,
       maxMonthlyCostUsd: 1000,
       warnAtRatio: 0.8,
-      mode: "deny",
+      mode: "enforcement",
     },
   });
   assert.throws(

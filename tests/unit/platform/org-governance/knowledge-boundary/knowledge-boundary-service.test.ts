@@ -8,13 +8,15 @@ import type { ChineseWallPolicy } from "../../../../../src/org-governance/knowle
 function mockBoundary(overrides: Partial<KnowledgeBoundary> = {}): KnowledgeBoundary {
   return {
     boundaryId: "boundary-1",
-    name: "Test Boundary",
-    boundaryType: "project",
     ownerOrgNodeId: "org-1",
-    ownerUserIds: ["owner-1"],
-    accessLevel: "restricted",
-    classification: "confidential",
-    active: true,
+    namespaceIds: ["knowledge/project-a"],
+    accessPolicy: "strict",
+    defaultVisibility: "private",
+    auditOnAccess: true,
+    allowedOrgNodeIds: [],
+    fieldAllowlist: [],
+    classificationRules: [],
+    sharePolicy: { mode: "explicit_grant", allowCrossTenant: false, requireAudit: true, allowOrgNodeIds: [] },
     ...overrides,
   };
 }
@@ -23,10 +25,8 @@ function mockGrant(overrides: Partial<KnowledgeShareGrant> = {}): KnowledgeShare
   return {
     grantId: "grant-1",
     boundaryId: "boundary-1",
-    grantedToOrgNodeId: "org-2",
-    grantedByUserId: "owner-1",
+    requesterOrgNodeId: "org-2",
     purpose: "collaboration",
-    grantedAt: "2024-01-01T00:00:00.000Z",
     expiresAt: null,
     ...overrides,
   };
@@ -58,7 +58,7 @@ test("KnowledgeBoundaryService evaluateAccess denies when blocked by chinese wal
 test("KnowledgeBoundaryService evaluateAccess allows when grant matches", () => {
   const service = new KnowledgeBoundaryService();
   const boundary = mockBoundary({ ownerOrgNodeId: "org-1" });
-  const grant = mockGrant({ boundaryId: "boundary-1", grantedToOrgNodeId: "org-2" });
+  const grant = mockGrant({ boundaryId: "boundary-1", requesterOrgNodeId: "org-2" });
 
   const result = service.evaluateAccess(boundary, "user-1", "org-2", "collaboration", [grant]);
 

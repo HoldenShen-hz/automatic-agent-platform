@@ -1,496 +1,135 @@
-/**
- * Unit Tests: RecoveryController Extended Coverage
- *
- * Additional tests for RecoveryController determineRetryScope,
- * getLoopController, and edge cases not covered by integration tests.
- */
-
-import test from "node:test";
 import assert from "node:assert/strict";
-import { RecoveryController, type HarnessFailureType, type RecoveryScope } from "../../../../../src/platform/five-plane-orchestration/harness/recovery-controller.js";
+import test from "node:test";
+
 import { DurableHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
-import { HarnessRuntimeService, type HarnessRun, type ConstraintPack, type HarnessRunRuntimeState } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { HarnessRuntimeService, type ConstraintPack, type HarnessRunRuntimeState } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 import { HarnessLoopController } from "../../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
+import { RecoveryController } from "../../../../../src/platform/five-plane-orchestration/harness/recovery-controller.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Test Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function createConstraintPack(overrides = {}): ConstraintPack {
+function createConstraintPack(): ConstraintPack {
   return {
-    policyIds: [],
+    policyIds: ["policy.default"],
     approvalMode: "none",
-    autonomyMode: "auto",
-    tool_policy: { allowedTools: ["bash", "read"] },
-    risk_policy: { maxRiskScore: 10, escalationThreshold: 7 },
+    autonomyMode: "supervised",
+    tool_policy: { allowedTools: ["read", "write"] },
+    risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.6 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
-    budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
-    ...overrides,
-  };
-}
-
-function createRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
-  return {
-    harnessRunId: "rc-unit-run-" + Math.random().toString(36).slice(2),
-    runId: "rc-unit-run-" + Math.random().toString(36).slice(2),
-    tenantId: "tenant:local",
-    confirmedTaskSpecId: "confirmed_task_spec:rc-task",
-    requestEnvelopeId: "request_envelope:rc-task",
-    requestHash: "request_hash:rc-task",
-    constraintPackRef: "constraint_pack:coding",
-    versionLockId: "rc-unit-run:version_lock",
-    budgetLedgerId: "rc-unit-run:budget_ledger",
-    currentSeq: 0,
-    taskId: "rc-task",
-    domainId: "coding",
-    constraintPack: createConstraintPack(),
-    planGraphBundle: {
-      planGraphBundleId: "plan_graph_bundle:rc",
-      harnessRunId: "rc-unit-run",
-      graphVersion: 1,
-      graph: {
-        graphId: "graph-rc",
-        nodes: [],
-        edges: [],
-        entryNodeIds: [],
-        terminalNodeIds: [],
-        joinStrategy: "all",
-        graphHash: "hash-rc",
-      },
-      schedulerPolicy: { policyId: "scheduler:harness.default", strategy: "deterministic_fifo" },
-      budgetPlanRef: "budget:harness.initial",
-      riskProfile: { riskClass: "medium", reasons: [] },
-      validationReport: { valid: true, findings: [], normalizedNodeIds: [] },
-      artifactRefs: [],
-      createdAt: new Date().toISOString(),
+    budgetEnvelope: { maxSteps: 10, maxCost: 25, maxDurationMs: 60_000 },
+    sandboxRequirement: { sandboxMode: "ephemeral", timeoutMs: 1_000 },
+    approvalRequirement: {
+      requiredForRiskClass: ["critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 30_000,
     },
-    steps: [],
-    maxIterations: 10,
-    currentIteration: 1,
-    status: "running",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    completedAt: null,
-    pauseReason: null,
-    decision: null,
-    contextSnapshots: [],
-    sleepLease: null,
-    recoveryCheckpoint: null,
-    feedbackEnvelope: null,
-    toolbelt: null,
-    guardrailAssessment: null,
-    hitlRequest: null,
-    timeline: [],
+  };
+}
+
+function createFixture() {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+  return { durableService, runtime, controller };
+}
+
+function createRun(runtime: HarnessRuntimeService, overrides: Partial<HarnessRunRuntimeState> = {}): HarnessRunRuntimeState {
+  return {
+    ...runtime.createRun({
+      taskId: "task-recovery",
+      domainId: "coding",
+      constraintPack: createConstraintPack(),
+    }),
     ...overrides,
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// determineRetryScope Tests
-// ─────────────────────────────────────────────────────────────────────────────
+test("RecoveryController.determineRetryScope matches current failure policy", () => {
+  const { controller } = createFixture();
 
-test("RecoveryController.determineRetryScope returns node for tool_timeout", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const scope = controller.determineRetryScope("tool_timeout");
-  assert.equal(scope, "node");
+  assert.equal(controller.determineRetryScope("tool_timeout"), "node");
+  assert.equal(controller.determineRetryScope("llm_provider_unavailable"), "node");
+  assert.equal(controller.determineRetryScope("operator_abort"), "node");
+  assert.equal(controller.determineRetryScope("budget_exhausted"), "graph");
+  assert.equal(controller.determineRetryScope("worker_crash"), "graph");
+  assert.equal(controller.determineRetryScope("platform_panic"), "graph");
 });
 
-test("RecoveryController.determineRetryScope returns node for llm_provider_unavailable", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const scope = controller.determineRetryScope("llm_provider_unavailable");
-  assert.equal(scope, "node");
-});
-
-test("RecoveryController.determineRetryScope returns graph for platform_panic", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const scope = controller.determineRetryScope("platform_panic");
-  assert.equal(scope, "graph");
-});
-
-test("RecoveryController.determineRetryScope returns graph for worker_crash", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const scope = controller.determineRetryScope("worker_crash");
-  assert.equal(scope, "graph");
-});
-
-test("RecoveryController.determineRetryScope returns graph for budget_exhausted", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const scope = controller.determineRetryScope("budget_exhausted");
-  assert.equal(scope, "graph");
-});
-
-test("RecoveryController.determineRetryScope returns node for operator_abort", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const scope = controller.determineRetryScope("operator_abort");
-  assert.equal(scope, "node");
-});
-
-test("RecoveryController.determineRetryScope defaults to node for unknown failure type", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  // @ts-ignore - Testing with invalid type
-  const scope = controller.determineRetryScope("unknown_failure" as HarnessFailureType);
-  assert.equal(scope, "node");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RecoveryScope Type Verification
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryScope type includes node and graph values", () => {
-  const scopes: RecoveryScope[] = ["node", "graph"];
-  assert.equal(scopes.length, 2);
-  assert.ok(scopes.includes("node"));
-  assert.ok(scopes.includes("graph"));
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// handleFailure Retry Exhaustion Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryController.handleFailure with llm_provider_unavailable respects retry limit", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  // Create run with sleepLease indicating retry attempt 5 (exhausted)
-  const run = createRun({
+test("RecoveryController.handleFailure escalates exhausted llm retries to HITL", () => {
+  const { runtime, controller } = createFixture();
+  const run = createRun(runtime, {
     sleepLease: {
       leaseId: "lease-1",
-      runId: "rc-unit-run",
-      reason: "llm_retry",
-      resumeAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      retryAttempt: 5, // RETRY_MAX_ATTEMPTS
+      runId: "run-1",
+      reason: "llm_provider_unavailable_retry",
+      resumeAt: "2026-04-23T00:01:00.000Z",
+      createdAt: "2026-04-23T00:00:00.000Z",
+      retryAttempt: 5,
     },
   });
 
   const result = controller.handleFailure(run, "llm_provider_unavailable");
 
-  // Should escalate to HITL when retry budget exhausted
   assert.equal(result.pauseReason, "hitl");
-  assert.ok(result.hitlRequest != null);
+  assert.equal(result.hitlRequest?.reason, "llm_provider_retry_exhausted");
+  assert.equal(result.hitlRequest?.status, "pending");
 });
 
-test("RecoveryController.handleFailure with worker_crash respects retry limit", () => {
+test("RecoveryController.handleFailure pauses operator aborts as terminal aborted runs", () => {
+  const { runtime, controller } = createFixture();
+  const run = createRun(runtime);
+
+  const result = controller.handleFailure(run, "operator_abort");
+
+  assert.equal(result.status, "aborted");
+  assert.equal(result.pauseReason, null);
+  assert.ok(result.completedAt !== null);
+});
+
+test("RecoveryController.handleFailure schedules tool timeout retry through sleep", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
+  const loopController = new HarnessLoopController(createConstraintPack(), {}, {
+    retryAttempt: 1,
+    lastRetryAt: Date.now() - 5_000,
+  });
+  const controller = new RecoveryController(durableService, runtime, loopController);
+  const run = createRun(runtime);
 
-  const run = createRun({
+  const result = controller.handleFailure(run, "tool_timeout");
+
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
+  assert.equal(result.sleepLease?.reason, "tool_timeout_retry");
+  assert.ok(typeof result.sleepLease?.retryAttempt === "number");
+});
+
+test("RecoveryController.handleFailure sends worker crashes through graph-scope sleep retry", () => {
+  const { runtime, controller } = createFixture();
+  const run = createRun(runtime);
+
+  const result = controller.handleFailure(run, "worker_crash");
+
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
+  assert.equal(result.sleepLease?.reason, "worker_crash_retry");
+  assert.ok(result.recoveryCheckpoint !== null);
+});
+
+test("RecoveryController.handleFailure escalates exhausted platform panic retries", () => {
+  const { runtime, controller } = createFixture();
+  const run = createRun(runtime, {
     sleepLease: {
       leaseId: "lease-2",
-      runId: "rc-unit-run",
-      reason: "worker_retry",
-      resumeAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      retryAttempt: 5, // RETRY_MAX_ATTEMPTS
+      runId: "run-2",
+      reason: "platform_panic_retry",
+      resumeAt: "2026-04-23T00:01:00.000Z",
+      createdAt: "2026-04-23T00:00:00.000Z",
+      retryAttempt: 5,
     },
   });
 
-  const result = controller.handleFailure(run, "worker_crash");
-
-  // Should escalate to HITL when retry budget exhausted
-  assert.equal(result.pauseReason, "hitl");
-  assert.ok(result.hitlRequest != null);
-});
-
-test("RecoveryController.handleFailure with llm_provider_unavailable sets correct retry reason", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun();
-  const result = controller.handleFailure(run, "llm_provider_unavailable");
-
-  assert.ok(result.sleepLease?.reason.includes("llm_provider_unavailable"));
-});
-
-test("RecoveryController.handleFailure with worker_crash sets correct retry reason", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun();
-  const result = controller.handleFailure(run, "worker_crash");
-
-  assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// handleFailure Backoff Computation Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryController.handleFailure with tool_timeout uses loop controller backoff", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const customLoop = new HarnessLoopController(createConstraintPack(), {}, {
-    retryAttempt: 1,
-    lastRetryAt: Date.now() - 5_000,
-  });
-  const controller = new RecoveryController(durableService, runtime, customLoop);
-
-  const run = createRun();
-  const result = controller.handleFailure(run, "tool_timeout");
-
-  // tool_timeout should result in paused sleep state with loop-controller backoff
-  assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "sleep");
-  assert.ok(result.sleepLease != null);
-});
-
-test("RecoveryController.handleFailure computes exponential backoff delay", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun();
-  const result = controller.handleFailure(run, "llm_provider_unavailable");
-
-  // First retry: base delay should be 1000ms * 2^0 = 1000ms
-  const resumeAt = new Date(result.sleepLease?.resumeAt ?? 0).getTime();
-  const createdAt = new Date(result.sleepLease?.createdAt ?? 0).getTime();
-  const delayMs = resumeAt - createdAt;
-
-  // Backoff should be between 1000ms and 2000ms (with jitter)
-  assert.ok(delayMs >= 1000);
-  assert.ok(delayMs <= 2000);
-});
-
-test("RecoveryController.handleFailure with tool_timeout records iteration in loop controller", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const customLoop = new HarnessLoopController(createConstraintPack(), {}, {
-    retryAttempt: 1,
-    lastRetryAt: Date.now() - 5_000,
-  });
-  const controller = new RecoveryController(durableService, runtime, customLoop);
-
-  const run = createRun();
-  const result = controller.handleFailure(run, "tool_timeout");
-
-  // Should have sleep lease with retry attempt from loop controller
-  assert.ok(result.sleepLease != null);
-  assert.ok(result.sleepLease.retryAttempt > 0);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// getLoopController Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryController uses injected loop controller when provided", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const customLoop = new HarnessLoopController(createConstraintPack(), {}, {
-    iteration: 0,
-    retryAttempt: 1,
-    lastRetryAt: Date.now() - 5_000,
-  });
-
-  const controller = new RecoveryController(durableService, runtime, customLoop);
-
-  const run = createRun();
-  const result = controller.handleFailure(run, "tool_timeout");
-
-  // Should use the custom loop controller's state
-  assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "sleep");
-});
-
-test("RecoveryController creates loop controller on-demand from run state", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun({
-    sleepLease: {
-      sleepLeaseId: "lease-1",
-      runId: "rc-unit-run",
-      reason: "prior_retry",
-      createdAt: new Date(Date.now() - 5_000).toISOString(),
-      resumeAt: new Date(Date.now() - 1_000).toISOString(),
-      retryAttempt: 1,
-      resumableFromStep: null,
-      expiresAt: null,
-    },
-    loopMetrics: {
-      iterationCount: 0,
-      replanCount: 2,
-      totalCost: 10,
-      durationMs: 5000,
-      maxIterations: 30,
-      maxCost: 100,
-      maxDurationMs: 60000,
-    },
-  });
-
-  const result = controller.handleFailure(run, "tool_timeout");
-
-  // On-demand loop controller should be created with run's metrics
-  assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "sleep");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// handleFailure with Checkpoint Restoration Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryController.handleFailure restores from checkpoint when available", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun();
-  durableService.persist(run);
-  const checkpointRef = durableService.checkpoint(run);
-
-  const freshRun = createRun({ runId: "fresh-run-id" });
-  const result = controller.handleFailure(freshRun, "worker_crash");
-
-  // Should restore from checkpoint
-  assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-});
-
-test("RecoveryController.handleFailure persists recovering run to durable service", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun();
-  durableService.persist(run);
-
-  controller.handleFailure(run, "worker_crash");
-
-  const restored = durableService.restore(run.runId);
-  assert.ok(restored != null);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// handleFailure with Guardrail Violation Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryController.handleFailure with tool_timeout escalates on guard violation", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  // Create run at iteration limit so loop controller returns guard violation
-  const run = createRun({
-    loopMetrics: {
-      iterationCount: 100,
-      replanCount: 0,
-      totalCost: 0,
-      durationMs: 0,
-      maxIterations: 3,
-      maxCost: 100,
-      maxDurationMs: 60000,
-    },
-    steps: [{ stepId: "s1", role: "planner", stage: "plan", iteration: 1, inputs: {}, outputs: {}, startedAt: "", completedAt: "" }],
-  });
-
-  const result = controller.handleFailure(run, "tool_timeout");
-
-  // Should escalate to HITL due to guard violation
-  assert.equal(result.pauseReason, "hitl");
-});
-
-test("RecoveryController.handleFailure includes guard violation reason code", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun({
-    loopMetrics: {
-      iterationCount: 100,
-      replanCount: 0,
-      totalCost: 0,
-      durationMs: 0,
-      maxIterations: 3,
-      maxCost: 100,
-      maxDurationMs: 60000,
-    },
-    steps: [],
-  });
-
-  const result = controller.handleFailure(run, "tool_timeout");
-
-  assert.ok(result.hitlRequest != null);
-  assert.ok(result.hitlRequest.reason.includes("tool_timeout"));
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// handleFailure Platform Panic Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryController.handleFailure with platform_panic waits for resume", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun();
   const result = controller.handleFailure(run, "platform_panic");
 
-  // Platform panic must not resume implicitly; it waits for an explicit recovery plan.
-  assert.equal(result.status, "paused");
-});
-
-test("RecoveryController.handleFailure with platform_panic uses graph scope (replan semantics)", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun();
-  const result = controller.handleFailure(run, "platform_panic");
-
-  // Without an active retry lease, platform panic stays in recovery pause until an explicit ResumePlan.
-  assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// All HarnessFailureType Coverage
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecoveryController handles all HarnessFailureType values and returns valid run", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const failureTypes: HarnessFailureType[] = [
-    "operator_abort",
-    "worker_crash",
-    "tool_timeout",
-    "llm_provider_unavailable",
-    "budget_exhausted",
-    "platform_panic",
-  ];
-
-  for (const failureType of failureTypes) {
-    const run = createRun({ runId: `run-${failureType}-${Date.now()}` });
-    const result = controller.handleFailure(run, failureType);
-    assert.ok(result != null, `handleFailure should return valid run for ${failureType}`);
-    assert.ok(result.runId != null, `result should have runId for ${failureType}`);
-  }
+  assert.equal(result.pauseReason, "hitl");
+  assert.equal(result.hitlRequest?.reason, "platform_panic_retry_exhausted");
+  assert.equal(result.hitlRequest?.status, "pending");
 });

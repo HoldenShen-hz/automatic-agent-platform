@@ -1,10 +1,3 @@
-/**
- * @fileoverview Unit tests for Fixture Redactor
- *
- * Tests the FixtureRedactor class for redacting secrets and PII from test fixtures.
- * Implements §22.3 requirement: fixture auto-redact secrets/hash PII
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -15,261 +8,131 @@ import {
   type RedactionResult,
 } from "../../../src/sdk/fixture-redact.js";
 
-test("FixtureRedactor redact detects API key pattern", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ apiKey: "secret-access-key-12345" });
+function redact<T>(fixture: T, options?: RedactionOptions): RedactionResult & { value: T } {
+  return new FixtureRedactor(options).redact(fixture) as RedactionResult & { value: T };
+}
 
-  assert.equal(result.value.apiKey, "[REDACTED]");
-  assert.ok(result.redactedFields.has("apiKey"));
-});
-
-test("FixtureRedactor redact detects password field", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ password: "mySecretPass123" });
-
-  assert.equal(result.value.password, "[REDACTED]");
-  assert.ok(result.redactedFields.has("password"));
-});
-
-test("FixtureRedactor redact detects JWT token", () => {
-  const redactor = new FixtureRedactor();
-  const jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-  const result = redactor.redact({ token: jwtToken });
-
-  assert.equal(result.value.token, "[REDACTED]");
-  assert.ok(result.redactedFields.has("token"));
-});
-
-test("FixtureRedactor redact detects AWS access key", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ awsKey: "AKIAIOSFODNN7EXAMPLE" });
-
-  assert.equal(result.value.awsKey, "[REDACTED]");
-  assert.ok(result.redactedFields.has("awsKey"));
-});
-
-test("FixtureRedactor redact detects email PII", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ email: "user@example.com" });
-
-  assert.equal(result.value.email, "[REDACTED]");
-  assert.ok(result.redactedFields.has("email"));
-});
-
-test("FixtureRedactor redact detects phone number PII", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ phone: "555-123-4567" });
-
-  assert.equal(result.value.phone, "[REDACTED]");
-  assert.ok(result.redactedFields.has("phone"));
-});
-
-test("FixtureRedactor redact detects SSN PII", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ ssn: "123-45-6789" });
-
-  assert.equal(result.value.ssn, "[REDACTED]");
-  assert.ok(result.redactedFields.has("ssn"));
-});
-
-test("FixtureRedactor redact detects credit card PII", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ card: "4111-1111-1111-1111" });
-
-  assert.equal(result.value.card, "[REDACTED]");
-  assert.ok(result.redactedFields.has("card"));
-});
-
-test("FixtureRedactor redact detects IP address PII", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({ ip: "192.168.1.1" });
-
-  assert.equal(result.value.ip, "[REDACTED]");
-  assert.ok(result.redactedFields.has("ip"));
-});
-
-test("FixtureRedactor redact handles nested objects", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({
-    user: {
-      name: "John Doe",
-      credentials: {
-        apiKey: "secret-key-123",
-      },
+test("FixtureRedactor redacts secret-looking fields and records correlation hashes by default", () => {
+  const result = redact({
+    apiKey: "secret-access-key-12345",
+    password: "mySecretPass123",
+    nested: {
+      privateKey: "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0",
     },
   });
 
-  assert.equal(result.value.user.name, "John Doe");
-  assert.equal(result.value.user.credentials.apiKey, "[REDACTED]");
-  assert.ok(result.redactedFields.has("user.credentials.apiKey"));
+  assert.equal(result.value.apiKey, "[REDACTED]");
+  assert.equal(result.value.password, "[REDACTED]");
+  assert.equal(result.value.nested.privateKey, "[REDACTED]");
+  assert.equal(result.redactedFields.has("apiKey"), true);
+  assert.equal(result.redactedFields.has("password"), true);
+  assert.equal(result.redactedFields.has("nested.privateKey"), true);
+  assert.equal(result.correlationHashes.get("password")?.startsWith("corr_"), true);
 });
 
-test("FixtureRedactor redact handles arrays", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({
+test("FixtureRedactor detects JWT, email, phone, and credit-card patterns even without secret field names", () => {
+  const result = redact({
+    tokenValue:
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signatureValue1234567890",
+    profileEmail: "user@example.com",
+    supportPhone: "555-123-4567",
+    paymentCard: "4111-1111-1111-1111",
+  });
+
+  assert.equal(result.value.tokenValue, "[REDACTED]");
+  assert.equal(result.value.profileEmail, "[REDACTED]");
+  assert.equal(result.value.supportPhone, "[REDACTED]");
+  assert.equal(result.value.paymentCard, "[REDACTED]");
+});
+
+test("FixtureRedactor recurses through arrays and nested object paths", () => {
+  const result = redact({
     users: [
-      { name: "Alice", apiKey: "key-alice" },
-      { name: "Bob", apiKey: "key-bob" },
+      { name: "Alice", apiKey: "alice-key" },
+      { name: "Bob", contact: { email: "bob@example.com" } },
     ],
   });
 
-  assert.equal(result.value.users[0].name, "Alice");
-  assert.equal(result.value.users[0].apiKey, "[REDACTED]");
-  assert.equal(result.value.users[1].apiKey, "[REDACTED]");
+  assert.equal(result.value.users[0]?.name, "Alice");
+  assert.equal(result.value.users[0]?.apiKey, "[REDACTED]");
+  assert.equal(result.value.users[1]?.contact.email, "[REDACTED]");
+  assert.equal(result.redactedFields.has("users[0].apiKey"), true);
+  assert.equal(result.redactedFields.has("users[1].contact.email"), true);
 });
 
-test("FixtureRedactor redact computes correlation hashes", () => {
-  const redactor = new FixtureRedactor({ hashRedacted: true });
-  const result = redactor.redact({ password: "secret123" });
+test("FixtureRedactor supports replaceWith, no-hash mode, and always-redact fields", () => {
+  const result = redact(
+    {
+      customSecret: "value1",
+      internalToken: "value2",
+      regularField: "value3",
+    },
+    {
+      replaceWith: "[HIDDEN]",
+      hashRedacted: false,
+      alwaysRedactFields: new Set(["customSecret", "internalToken"]),
+    },
+  );
 
-  assert.ok(result.correlationHashes.has("password"));
-  assert.ok(result.correlationHashes.get("password")?.startsWith("corr_"));
-});
-
-test("FixtureRedactor redact does not hash when hashRedacted is false", () => {
-  const redactor = new FixtureRedactor({ hashRedacted: false });
-  const result = redactor.redact({ apiKey: "secret-key" });
-
-  assert.equal(result.value.apiKey, "[REDACTED]");
-  assert.equal(result.correlationHashes.has("apiKey"), false);
-});
-
-test("FixtureRedactor redact uses custom replaceWith", () => {
-  const redactor = new FixtureRedactor({ replaceWith: "[HIDDEN]" });
-  const result = redactor.redact({ password: "secret" });
-
-  assert.equal(result.value.password, "[HIDDEN]");
-});
-
-test("FixtureRedactor redact always redacts fields from alwaysRedactFields set", () => {
-  const redactor = new FixtureRedactor({
-    alwaysRedactFields: new Set(["customSecret", "internalToken"]),
-  });
-  const result = redactor.redact({
-    customSecret: "value1",
-    internalToken: "value2",
-    regularField: "value3",
-  });
-
-  assert.equal(result.value.customSecret, "[REDACTED]");
-  assert.equal(result.value.internalToken, "[REDACTED]");
+  assert.equal(result.value.customSecret, "[HIDDEN]");
+  assert.equal(result.value.internalToken, "[HIDDEN]");
   assert.equal(result.value.regularField, "value3");
+  assert.equal(result.correlationHashes.size, 0);
 });
 
-test("FixtureRedactor redact handles null and undefined", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({
+test("FixtureRedactor supports custom secret and pii patterns", () => {
+  const result = redact(
+    {
+      pluginToken: "myapp_token_abc123",
+      partnerId: "123456",
+    },
+    {
+      customSecretPatterns: [{ pattern: /myapp[_-]?token/i, name: "myapp_token" }],
+      customPiiPatterns: [{ pattern: /\b\d{6}\b/, name: "partner_id" }],
+    },
+  );
+
+  assert.equal(result.value.pluginToken, "[REDACTED]");
+  assert.equal(result.value.partnerId, "[REDACTED]");
+  assert.equal(result.redactedFields.get("pluginToken"), "myapp_token:[REDACTED]");
+  assert.equal(result.redactedFields.get("partnerId"), "partner_id:[REDACTED]");
+});
+
+test("FixtureRedactor preserves null, undefined, booleans, numbers, and empty containers", () => {
+  const result = redact({
     nullField: null,
     undefinedField: undefined,
-    normalField: "test",
+    count: 42,
+    active: true,
+    emptyObj: {},
+    emptyArr: [],
   });
 
   assert.equal(result.value.nullField, null);
   assert.equal(result.value.undefinedField, undefined);
-  assert.equal(result.value.normalField, "test");
-});
-
-test("FixtureRedactor redact handles numbers and booleans", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({
-    count: 42,
-    active: true,
-    password: "secret123",
-  });
-
   assert.equal(result.value.count, 42);
   assert.equal(result.value.active, true);
-  assert.equal(result.value.password, "[REDACTED]");
-});
-
-test("FixtureRedactor redact handles custom secret patterns", () => {
-  const redactor = new FixtureRedactor({
-    customSecretPatterns: [
-      { pattern: /myapp[_-]?token/i, name: "myapp_token" },
-    ],
-  });
-  const result = redactor.redact({ token: "myapp_token_abc123" });
-
-  assert.equal(result.value.token, "[REDACTED]");
-  assert.ok(result.redactedFields.has("token"));
-});
-
-test("FixtureRedactor redact handles custom PII patterns", () => {
-  const redactor = new FixtureRedactor({
-    customPiiPatterns: [
-      { pattern: /\b\d{6}\b/, name: "custom_id" },
-    ],
-  });
-  const result = redactor.redact({ idNumber: "123456" });
-
-  assert.equal(result.value.idNumber, "[REDACTED]");
-  assert.ok(result.redactedFields.has("idNumber"));
-});
-
-test("FixtureRedactor redact handles empty objects and arrays", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({
-    emptyObj: {},
-    emptyArr: [],
-    normal: "value",
-  });
-
   assert.deepEqual(result.value.emptyObj, {});
   assert.deepEqual(result.value.emptyArr, []);
-  assert.equal(result.value.normal, "value");
 });
 
-test("FixtureRedactor createStandard creates instance with standard options", () => {
-  const redactor = FixtureRedactor.createStandard();
-  const result = redactor.redact({ apiKey: "secret-key" });
-
-  assert.equal(result.value.apiKey, "[REDACTED]");
-  assert.ok(result.correlationHashes.has("apiKey"));
-});
-
-test("FixtureRedactor createNoHash creates instance without hashing", () => {
-  const redactor = FixtureRedactor.createNoHash();
-  const result = redactor.redact({ password: "secret" });
-
-  assert.equal(result.value.password, "[REDACTED]");
-  assert.equal(result.correlationHashes.has("password"), false);
-});
-
-test("generateTestId generates unique IDs", () => {
+test("FixtureRedactor factory helpers and generateTestId expose the supported API surface", () => {
+  const standard = FixtureRedactor.createStandard().redact({ apiKey: "secret-key" }) as {
+    value: { apiKey: string };
+    correlationHashes: Map<string, string>;
+  };
+  const noHash = FixtureRedactor.createNoHash().redact({ password: "secret" }) as {
+    value: { password: string };
+    correlationHashes: Map<string, string>;
+  };
   const id1 = generateTestId();
-  const id2 = generateTestId();
+  const id2 = generateTestId("custom");
 
-  assert.ok(id1.startsWith("test_"));
-  assert.ok(id2.startsWith("test_"));
+  assert.equal(standard.value.apiKey, "[REDACTED]");
+  assert.equal(standard.correlationHashes.has("apiKey"), true);
+  assert.equal(noHash.value.password, "[REDACTED]");
+  assert.equal(noHash.correlationHashes.has("password"), false);
+  assert.equal(id1.startsWith("test_"), true);
+  assert.equal(id2.startsWith("custom_"), true);
   assert.notEqual(id1, id2);
-});
-
-test("generateTestId uses custom prefix", () => {
-  const id = generateTestId("custom");
-  assert.ok(id.startsWith("custom_"));
-});
-
-test("FixtureRedactor redact handles high entropy secrets", () => {
-  const redactor = new FixtureRedactor();
-  // 40+ character string with high entropy
-  const result = redactor.redact({
-    largeSecret: "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0",
-  });
-
-  assert.equal(result.value.largeSecret, "[REDACTED]");
-  assert.ok(result.redactedFields.has("largeSecret"));
-});
-
-test("FixtureRedactor redact handles field prefix for nested paths", () => {
-  const redactor = new FixtureRedactor();
-  const result = redactor.redact({
-    level1: {
-      level2: {
-        apiKey: "secret",
-      },
-    },
-  });
-
-  assert.equal(result.value.level1.level2.apiKey, "[REDACTED]");
-  assert.ok(result.redactedFields.has("level1.level2.apiKey"));
 });

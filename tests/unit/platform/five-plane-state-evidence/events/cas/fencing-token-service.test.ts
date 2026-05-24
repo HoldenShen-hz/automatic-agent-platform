@@ -99,6 +99,7 @@ test("validateFencingToken returns valid:false for malformed token", () => {
 test("validateWriteAccess returns allowed:true for valid fencingToken", () => {
   const service = createService("node1");
   const fence = service.acquireFence("exec1", "exclusive");
+  assert.ok(fence !== null);
 
   // simulate validateWriteAccess by calling validateFencingToken
   const result = service.validateFencingToken(fence.fenceToken, "node1");

@@ -25,7 +25,7 @@ test("typed event payload map covers canonical harness, side-effect, budget, and
     "platform.node_run.failed": { runId: "run-1", nodeId: "node-1", taskId: "task-1", occurredAt: "2026-05-04T00:00:00.000Z" },
     "platform.side_effect.failed": { runId: "run-1", sideEffectId: "se-1", taskId: "task-1", occurredAt: "2026-05-04T00:00:00.000Z" },
     "platform.budget.actualized": { budgetId: "budget-1", amount: 3.25, taskId: "task-1", occurredAt: "2026-05-04T00:00:00.000Z" },
-    "oapeflir.phase.transition": { runId: "run-1", fromPhase: "observe", toPhase: "assess", taskId: "task-1", occurredAt: "2026-05-04T00:00:00.000Z" },
+    "oapeflir.phase.transition": { runId: "run-1", fromPhase: "observe", toPhase: "assess", occurredAt: "2026-05-04T00:00:00.000Z" },
   };
 
   assert.equal(payloads["platform.harness_run.created"].runId, "run-1");
@@ -50,7 +50,6 @@ test("canonical payloads validate against runtime event schema", () => {
     runId: "run-1",
     fromPhase: "plan",
     toPhase: "execute",
-    taskId: "task-1",
     occurredAt: "2026-05-04T00:00:00.000Z",
   });
 

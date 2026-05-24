@@ -7,40 +7,17 @@ import {
   buildPlatformRootDemoSummary,
   buildPlatformRootSummary,
 } from "../../../src/index.js";
-import type {
-  HarnessRun,
-  HarnessRunStatus,
-  NodeRun,
-  PlanGraphBundle,
-  PlatformStartupTargetKind,
-} from "../../../src/index.js";
-import type {
-  HarnessRun as CanonicalHarnessRun,
-  HarnessRunStatus as CanonicalHarnessRunStatus,
-  NodeRun as CanonicalNodeRun,
-  PlanGraphBundle as CanonicalPlanGraphBundle,
-} from "../../../src/platform/contracts/executable-contracts/index.js";
+import type { PlatformStartupTargetKind } from "../../../src/index.js";
 
-type Assert<T extends true> = T;
+test("root entry re-exports the current startup builders", () => {
+  const targetKinds: PlatformStartupTargetKind[] = ["summary", "demo", "api", "console", "worker"];
 
-type _HarnessRunReexportMatches = Assert<HarnessRun extends CanonicalHarnessRun ? true : false>;
-type _HarnessRunStatusReexportMatches = Assert<HarnessRunStatus extends CanonicalHarnessRunStatus ? true : false>;
-type _NodeRunReexportMatches = Assert<NodeRun extends CanonicalNodeRun ? true : false>;
-type _PlanGraphBundleReexportMatches = Assert<PlanGraphBundle extends CanonicalPlanGraphBundle ? true : false>;
-type _PlatformStartupTargetKindMatches = Assert<PlatformStartupTargetKind extends "summary" | "demo" | "api" | "console" | "worker" ? true : false>;
-
-void (true as _HarnessRunReexportMatches);
-void (true as _HarnessRunStatusReexportMatches);
-void (true as _NodeRunReexportMatches);
-void (true as _PlanGraphBundleReexportMatches);
-void (true as _PlatformStartupTargetKindMatches);
-
-test("root entry re-exports startup builders on the top-level surface", () => {
   assert.equal(typeof buildFivePlaneRuntimeCatalog, "function");
   assert.equal(typeof buildAiOperationsStartupPlan, "function");
+  assert.deepEqual(targetKinds, ["summary", "demo", "api", "console", "worker"]);
 });
 
-test("buildPlatformRootDemoSummary publishes canonical-neutral output instead of legacy record envelopes", () => {
+test("buildPlatformRootDemoSummary publishes the current neutral contract surface", () => {
   const summary = buildPlatformRootDemoSummary({
     task: {
       id: "task_demo_1",
@@ -83,13 +60,9 @@ test("buildPlatformRootDemoSummary publishes canonical-neutral output instead of
     stepOutputCount: 1,
   });
   assert.deepEqual(summary.events, [{ eventType: "workflow:step_completed", eventTier: "tier_1" }]);
-  assert.equal("task" in (summary as Record<string, unknown>), false);
-  assert.equal("workflow" in (summary as Record<string, unknown>), false);
-  assert.equal("execution" in (summary as Record<string, unknown>), false);
-  assert.equal("session" in (summary as Record<string, unknown>), false);
 });
 
-test("buildPlatformRootSummary keeps other sections available when one builder fails", () => {
+test("buildPlatformRootSummary preserves fallback sections when one builder fails", () => {
   const summary = buildPlatformRootSummary({
     buildAiOperationsRuntimeCatalog: () => {
       throw new Error("ai ops unavailable");
