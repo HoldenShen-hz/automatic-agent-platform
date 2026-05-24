@@ -56,6 +56,22 @@ class DeterministicExecuteBridge implements ExecuteBridge {
       },
     }));
   }
+
+  public async executeSubgraph(subgraph: PlanStep[], context: ExecutionContext): Promise<ExecutionResult> {
+    return this.executePlan({
+      planId: "subgraph-plan",
+      taskId: context.taskId,
+      version: 1,
+      assessmentRef: "assessment:subgraph",
+      strategy: "linear",
+      steps: subgraph,
+      createdAt: Date.now(),
+    }, context);
+  }
+
+  public async executeChildRun(plan: Plan, context: ExecutionContext, _parentRunId: string): Promise<ExecutionResult> {
+    return this.executePlan(plan, context);
+  }
 }
 
 function createWorkflow(taskId: string) {
@@ -116,6 +132,14 @@ async function runWithFeedback(taskId: string) {
       },
       stepOutputRefs: [`step:${taskId}`],
       timestamp: Date.now(),
+      feedbackTrustScore: 0.5,
+      trustFactors: {
+        sourceReliability: 0.5,
+        historicalAccuracy: 0.5,
+        authenticatedSource: false,
+        attackSurfaceExposure: 0.5,
+        holdoutOverlap: 0,
+      },
     }],
   });
 }
@@ -142,6 +166,6 @@ test("graph patch carries contract evidence references", async () => {
   const patch = result.graphPatch;
 
   assert.ok(patch != null);
-  assert.ok(patch.policyProofRef.startsWith("artifact:"));
-  assert.ok(patch.auditRef.startsWith("artifact:"));
+  assert.ok(patch.policyProofRef.artifactId.length > 0);
+  assert.ok(patch.auditRef.uri.length > 0);
 });

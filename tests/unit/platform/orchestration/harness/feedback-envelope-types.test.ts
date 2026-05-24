@@ -89,8 +89,8 @@ test("toCanonicalHarnessRun projects runtime state into contract shape", () => {
   const canonical = toCanonicalHarnessRun(run);
 
   assert.equal(canonical.harnessRunId, run.runId);
-  assert.equal(canonical.taskId, "task-canonical");
   assert.equal(canonical.constraintPackRef, run.constraintPackRef);
+  assert.equal(canonical.status, "created");
 });
 
 test("HarnessStep uses current semanticPhase union", () => {

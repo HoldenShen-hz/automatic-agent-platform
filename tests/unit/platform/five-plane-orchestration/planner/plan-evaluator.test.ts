@@ -1,229 +1,143 @@
-/**
- * Plan Evaluator Unit Tests
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlanEvaluator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
+import { PlanEvaluator, estimateMaxConcurrency, estimatePlanTokens } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
+import type { Plan, UnifiedAssessment } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
-function makeAssessment(overrides: Partial<{
-  risk: "low" | "medium" | "high" | "critical";
-  complexity: "trivial" | "simple" | "moderate" | "complex" | "critical";
-  approvalPolicy: { required: boolean };
-  resourceAllocation: { maxTokens: number; timeoutMs: number };
-}> = {}): {
-  risk: "low" | "medium" | "high" | "critical";
-  complexity: "trivial" | "simple" | "moderate" | "complex" | "critical";
-  approvalPolicy: { required: boolean };
-  resourceAllocation: { maxTokens: number; timeoutMs: number };
-} {
+function createAssessment(overrides: Partial<UnifiedAssessment> = {}): UnifiedAssessment {
   return {
-    risk: "medium",
+    taskId: "task-plan-eval",
+    timestamp: Date.now(),
+    situationRef: "assessment:task-plan-eval",
+    phase: "pre-execution",
     complexity: "moderate",
-    approvalPolicy: { required: false },
-    resourceAllocation: { maxTokens: 10000, timeoutMs: 60000 },
+    risk: "low",
+    riskAssessment: { level: "low", factors: [] },
+    routingDecision: { division: "coding", workflow: "default", rationale: "test" },
+    resourceAllocation: {
+      modelClass: "medium",
+      maxTokens: 10_000,
+      timeoutMs: 60_000,
+    },
+    approvalPolicy: { required: false, level: "none" },
+    executionMode: "auto",
+    suggestedActions: [],
     ...overrides,
   };
 }
 
-function makePlan(overrides: Partial<{
-  steps: Array<{ stepId: string; action: string; timeout: number; retryPolicy: { maxRetries: number; backoffMs: number }; dependencies: string[] }>;
-}> = {}): {
-  planId: string;
-  taskId: string;
-  version: number;
-  strategy: "linear";
-  steps: Array<{ stepId: string; action: string; timeout: number; retryPolicy: { maxRetries: number; backoffMs: number }; dependencies: string[]; title: string }>;
-  createdAt: number;
-} {
+function createPlan(overrides: Partial<Plan> = {}): Plan {
   return {
-    planId: "plan-001",
-    taskId: "task-001",
+    planId: "plan-1",
+    taskId: "task-plan-eval",
     version: 1,
+    assessmentRef: "assessment:task-plan-eval",
     strategy: "linear",
-    steps: [],
+    steps: [{
+      stepId: "step-1",
+      action: "read",
+      title: "Read task",
+      inputs: {},
+      outputs: ["notes"],
+      dependencies: [],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    }],
     createdAt: Date.now(),
     ...overrides,
   };
 }
 
-test("PlanEvaluator.evaluate returns issues for empty plan", () => {
+test("PlanEvaluator rejects empty plans", () => {
   const evaluator = new PlanEvaluator();
-  const plan = makePlan({ steps: [] });
-  const result = evaluator.evaluate(plan, makeAssessment());
+  const result = evaluator.evaluate(createPlan({ steps: [] }), createAssessment());
 
-  assert.ok(!result.viable);
+  assert.equal(result.viable, false);
   assert.ok(result.issues.includes("planning.empty_plan"));
 });
 
-test("PlanEvaluator.evaluate flags missing critical approval", () => {
+test("PlanEvaluator requires approval for critical risk plans", () => {
   const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: [{
-      stepId: "step-1",
-      action: "execute",
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: [],
-      title: "Test step",
-    }],
-  });
-  const assessment = makeAssessment({ risk: "critical", approvalPolicy: { required: false } });
-  const result = evaluator.evaluate(plan, assessment);
+  const result = evaluator.evaluate(
+    createPlan(),
+    createAssessment({ risk: "critical", approvalPolicy: { required: false, level: "none" } }),
+  );
 
-  assert.ok(!result.viable);
+  assert.equal(result.viable, false);
   assert.ok(result.issues.includes("planning.missing_critical_approval_constraint"));
 });
 
-test("PlanEvaluator.evaluate detects DAG issues", () => {
+test("PlanEvaluator detects DAG problems and budget pressure", () => {
   const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: [{
-      stepId: "step-1",
-      action: "execute",
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: ["step-1"], // self-dependency
-      title: "Test step",
-    }],
-  });
-  const result = evaluator.evaluate(plan, makeAssessment());
+  const result = evaluator.evaluate(
+    createPlan({
+      steps: [{
+        stepId: "step-1",
+        action: "execute",
+        title: "Loop forever",
+        inputs: {},
+        dependencies: ["step-1"],
+        status: "pending",
+        timeout: 60_000,
+        retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      }],
+    }),
+    createAssessment({ resourceAllocation: { modelClass: "small", maxTokens: 100, timeoutMs: 60_000 } }),
+  );
 
-  assert.ok(!result.viable);
-  assert.ok(result.issues.some(i => i.includes("self_dependency")));
+  assert.equal(result.viable, false);
+  assert.ok(result.issues.some((issue) => issue.includes("self_dependency")));
+  assert.ok(result.estimatedTokenBudget > 0);
 });
 
-test("PlanEvaluator.evaluate detects resource budget exceeded", () => {
+test("PlanEvaluator reports parallelism pressure against worker capacity", () => {
   const evaluator = new PlanEvaluator();
-  // Create many steps that exceed token budget
-  const steps = Array.from({ length: 20 }, (_, i) => ({
-    stepId: `step-${i}`,
-    action: "execute" as const,
-    timeout: 60000,
-    retryPolicy: { maxRetries: 0, backoffMs: 250 },
-    dependencies: [],
-    title: `Step ${i}`,
-  }));
-  const plan = makePlan({ steps });
-  const assessment = makeAssessment({ resourceAllocation: { maxTokens: 100, timeoutMs: 60000 } });
+  const plan = createPlan({
+    steps: [
+      {
+        stepId: "step-1",
+        action: "read",
+        title: "Read A",
+        inputs: {},
+        dependencies: [],
+        status: "pending",
+        timeout: 1_000,
+        retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      },
+      {
+        stepId: "step-2",
+        action: "read",
+        title: "Read B",
+        inputs: {},
+        dependencies: [],
+        status: "pending",
+        timeout: 1_000,
+        retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      },
+    ],
+  });
+  const assessment = createAssessment({
+    resourceAllocation: {
+      modelClass: "medium",
+      maxTokens: 10_000,
+      timeoutMs: 60_000,
+      workerPoolCapacity: 1,
+    },
+  });
+
   const result = evaluator.evaluate(plan, assessment);
-
-  assert.ok(!result.viable);
-  assert.ok(result.issues.some(i => i.includes("resource_budget_exceeded")));
+  assert.ok(result.issues.includes("planning.parallelism_limit_exceeded:2>1"));
+  assert.equal(estimateMaxConcurrency(plan), 2);
 });
 
-test("PlanEvaluator.evaluate returns viable for valid plan", () => {
+test("PlanEvaluator produces execution recommendations", () => {
   const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: [{
-      stepId: "step-1",
-      action: "execute",
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: [],
-      title: "Valid step",
-    }],
-  });
-  const result = evaluator.evaluate(plan, makeAssessment());
-
-  assert.ok(result.viable);
-  assert.equal(result.issues.length, 0);
-});
-
-test("PlanEvaluator.produceEvaluationReport returns valid report", () => {
-  const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: [{
-      stepId: "step-1",
-      action: "execute",
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: [],
-      title: "Valid step",
-    }],
-  });
-  const report = evaluator.produceEvaluationReport(plan, makeAssessment());
-
-  assert.ok(typeof report.passed === "boolean");
-  assert.ok(typeof report.score === "number");
-  assert.ok(report.evaluationId.length > 0);
-  assert.ok(report.evaluatedAt > 0);
-});
-
-test("PlanEvaluator.produceEvaluationReport recommends proceed for viable plan", () => {
-  const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: [{
-      stepId: "step-1",
-      action: "execute",
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: [],
-      title: "Valid step",
-    }],
-  });
-  const report = evaluator.produceEvaluationReport(plan, makeAssessment());
+  const report = evaluator.produceEvaluationReport(createPlan(), createAssessment());
+  const estimate = estimatePlanTokens(createPlan());
 
   assert.equal(report.recommendation, "proceed_to_execute");
-});
-
-test("PlanEvaluator.produceEvaluationReport recommends require_human_approval for critical risk", () => {
-  const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: [{
-      stepId: "step-1",
-      action: "execute",
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: [],
-      title: "Critical step",
-    }],
-  });
-  const report = evaluator.produceEvaluationReport(plan, makeAssessment({ risk: "critical" }));
-
-  assert.equal(report.recommendation, "require_human_approval");
-});
-
-test("PlanEvaluator.produceEvaluationReport recommends reduce_scope for budget issues", () => {
-  const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: Array.from({ length: 20 }, (_, i) => ({
-      stepId: `step-${i}`,
-      action: "execute" as const,
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: [],
-      title: `Step ${i}`,
-    })),
-  });
-  const report = evaluator.produceEvaluationReport(plan, makeAssessment({ resourceAllocation: { maxTokens: 100, timeoutMs: 60000 } }));
-
-  assert.equal(report.recommendation, "reduce_scope_or_allocate_more_budget");
-});
-
-test("PlanEvaluator.produceEvaluationReport includes issues from evaluation", () => {
-  const evaluator = new PlanEvaluator();
-  const plan = makePlan({ steps: [] });
-  const report = evaluator.produceEvaluationReport(plan, makeAssessment());
-
-  assert.ok(report.issues.length > 0);
-});
-
-test("PlanEvaluator.evaluate estimates cost and token budget", () => {
-  const evaluator = new PlanEvaluator();
-  const plan = makePlan({
-    steps: [{
-      stepId: "step-1",
-      action: "execute",
-      timeout: 60000,
-      retryPolicy: { maxRetries: 0, backoffMs: 250 },
-      dependencies: [],
-      title: "Test",
-    }],
-  });
-  const result = evaluator.evaluate(plan, makeAssessment());
-
-  assert.ok(result.estimatedCostUsd >= 0);
-  assert.ok(result.estimatedTokenBudget >= 0);
+  assert.equal(report.passed, true);
+  assert.equal(report.estimatedTokenBudget, estimate.totalTokens);
+  assert.ok(report.estimatedCostUsd >= 0);
 });

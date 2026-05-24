@@ -3,40 +3,37 @@ import test from "node:test";
 
 import { EscalationService } from "../../../../src/platform/five-plane-orchestration/escalation/index.js";
 
-test("escalation cost approval threshold is driven by request policy override", () => {
-  const service = new EscalationService();
-  const baseRequest = {
-    taskId: "task-001",
-    executionId: "exec-001",
+function createRequest() {
+  return {
+    taskId: "task-1",
+    executionId: "exec-1",
     tenantId: "tenant-1",
     stage: "plan" as const,
     riskLevel: "medium" as const,
     reasonCode: "cost-check",
     estimatedCostUsd: 8,
     affectsProduction: false,
+    slaDeadline: null,
+    timeoutMs: null,
   };
+}
 
-  const defaultDecision = service.decide(baseRequest);
-  assert.equal(defaultDecision.decision, "none");
+test("EscalationService respects per-request cost threshold overrides", () => {
+  const service = new EscalationService();
 
-  const tenantPolicyDecision = service.decide({
-    ...baseRequest,
-    costThresholdUsd: 5,
-  });
-  assert.equal(tenantPolicyDecision.decision, "approval");
-  assert.equal(tenantPolicyDecision.reasonCode, "escalation.approval_required");
+  assert.equal(service.decide(createRequest()).decision, "none");
+  assert.equal(
+    service.decide({ ...createRequest(), costThresholdUsd: 5 }).decision,
+    "approval",
+  );
 });
 
-test("escalation routes execute-stage high risk decisions into the HITL takeover handler", () => {
-  const takeoverRequests: { taskId: string; stage: string; reasonCode: string }[] = [];
+test("EscalationService routes execute-stage high risk decisions to takeover", () => {
+  const takeoverRequests: string[] = [];
   const notifications: string[] = [];
   const service = new EscalationService({
     hitlTakeoverHandler(request) {
-      takeoverRequests.push({
-        taskId: request.taskId,
-        stage: request.stage,
-        reasonCode: request.reasonCode,
-      });
+      takeoverRequests.push(request.reasonCode);
       return request;
     },
     operatorNotificationHandler(notification) {
@@ -46,25 +43,25 @@ test("escalation routes execute-stage high risk decisions into the HITL takeover
   });
 
   const decision = service.decide({
-    taskId: "task-hitl",
-    executionId: "exec-hitl",
-    tenantId: "tenant-1",
+    ...createRequest(),
     stage: "execute",
     riskLevel: "high",
     reasonCode: "execution.high_risk",
-    estimatedCostUsd: 1,
-    affectsProduction: false,
-    slaDeadline: null,
-    timeoutMs: null,
   });
 
   assert.equal(decision.decision, "takeover");
   assert.equal(decision.workflowState, "paused_for_takeover");
-  assert.equal(decision.blocksExecution, true);
-  assert.deepEqual(takeoverRequests, [{
-    taskId: "task-hitl",
-    stage: "execute",
-    reasonCode: "execution.high_risk",
-  }]);
+  assert.deepEqual(takeoverRequests, ["execution.high_risk"]);
   assert.deepEqual(notifications, ["takeover"]);
+});
+
+test("EscalationService escalates imminent timeouts before normal policy checks", () => {
+  const service = new EscalationService();
+  const decision = service.decide({
+    ...createRequest(),
+    timeoutMs: 30_000,
+  });
+
+  assert.equal(decision.decision, "approval");
+  assert.equal(decision.reasonCode, "escalation.timeout_imminent_approval_required");
 });

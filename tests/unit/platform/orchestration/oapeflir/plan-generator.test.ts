@@ -11,11 +11,13 @@ import type { PlannedWorkflow } from "../../../../../src/platform/five-plane-orc
 function createObservation(taskId: string, tools: string[] = ["read"]): TaskSituation {
   return {
     taskId,
+    timestamp: Date.now(),
     objective: "implement change",
-    phase: "planning",
+    currentPhase: "planning",
     blockers: [],
     fileRefs: [],
-    codebaseSnapshot: { rootPath: "/repo", fileCount: 10 },
+    relevantMemory: [],
+    codebaseSnapshot: { rootPath: "/repo", fileCount: 10, relevantFiles: [] },
     environmentContext: {
       nodeVersion: "20.0.0",
       platform: "darwin",

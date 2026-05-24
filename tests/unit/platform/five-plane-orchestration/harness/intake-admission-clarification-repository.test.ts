@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  InMemoryClarificationSessionRepository,
-} from "../../../../../src/platform/five-plane-orchestration/harness/runtime/clarification-session-repository.js";
+import { createPrincipalRef } from "../../../../../src/platform/contracts/executable-contracts/contract-domain-factories.js";
+import { InMemoryClarificationSessionRepository } from "../../../../../src/platform/five-plane-orchestration/harness/runtime/clarification-session-repository.js";
 import {
   IntakeAdmissionService,
   type RawTaskInput,
@@ -12,23 +11,22 @@ import {
 function createRawInput(): RawTaskInput {
   return {
     tenantId: "tenant-1",
-    principal: {
+    principal: createPrincipalRef({
       principalId: "user-1",
-      actorType: "human",
+      type: "human",
+      tenantId: "tenant-1",
+      roles: ["operator"],
       authorizationLevel: "operator",
-    } as RawTaskInput["principal"],
-    source: {
-      channel: "web",
-      type: "interactive",
-    } as RawTaskInput["source"],
-    domainId: "default",
+    }),
+    source: "ui",
+    domainId: "coding",
     goal: "Maybe help me prepare a plan later when possible",
     inputs: { scope: "quarterly" },
     riskPreview: {
       riskClass: "medium",
       reasons: ["requires_clarification"],
     },
-    constraintPackRef: "constraint_pack:default",
+    constraintPackRef: "constraint_pack:coding",
     budgetIntent: {
       amount: 42,
       currency: "USD",
@@ -39,26 +37,31 @@ function createRawInput(): RawTaskInput {
   };
 }
 
-test("clarification sessions persist in repository and can resume across service instances", () => {
+test("clarification sessions persist and resume across service instances", () => {
   const repository = new InMemoryClarificationSessionRepository();
   const admittingService = new IntakeAdmissionService({ clarificationRepository: repository });
 
   const admitted = admittingService.admit(createRawInput());
   const clarificationEvent = admitted.events.find((event) => event.eventType === "platform.intake.clarification_needed");
 
-  assert.ok(clarificationEvent);
+  assert.ok(clarificationEvent != null);
   const sessionId = String((clarificationEvent.payload as Record<string, unknown>).sessionId);
-  assert.ok(repository.get(sessionId));
+  assert.ok(repository.get(sessionId) != null);
 
   const resumedService = new IntakeAdmissionService({ clarificationRepository: repository });
   const resumed = resumedService.resumeClarification(sessionId, {
-    confirmationReceiptId: "confirm-1",
+    receiptId: "confirm-1",
     confirmedAt: "2026-05-07T00:00:00.000Z",
-    confirmationMethod: "explicit_confirm",
-    confirmedBy: {
+    confirmedBy: createPrincipalRef({
       principalId: "user-1",
-      actorType: "human",
-    },
+      type: "human",
+      tenantId: "tenant-1",
+      roles: ["operator"],
+      authorizationLevel: "operator",
+    }),
+    riskClass: "medium",
+    state: "confirmed",
+    scope: "clarification",
   });
 
   assert.equal(resumed.clarificationSession.stage, "confirmed");

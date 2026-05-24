@@ -1,71 +1,128 @@
-/**
- * R20-05: Parallelism limit check test
- * Verifies PlanEvaluator checks parallelism vs worker pool capacity
- */
+import assert from "node:assert/strict";
+import test from "node:test";
 
-import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import { estimateMaxConcurrency } from '../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js';
+import { estimateMaxConcurrency } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
+import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
-describe('R20-05: Parallelism limit check', () => {
-  it('should calculate max concurrency for linear plan (all steps sequential)', () => {
-    // Linear: step1 -> step2 -> step3
-    const plan = {
-      planId: 'test-plan',
-      taskId: 'test-task',
-      version: 1,
-      createdAt: Date.now(),
-      strategy: 'linear' as const,
-      steps: [
-        { stepId: 'step1', action: 'read', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: [] },
-        { stepId: 'step2', action: 'execute', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: ['step1'] },
-        { stepId: 'step3', action: 'write', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: ['step2'] },
-      ],
-      assessmentRef: 'assessment:test:1',
-    };
+function createPlan(steps: Plan["steps"]): Plan {
+  return {
+    planId: "parallel-plan",
+    taskId: "parallel-task",
+    version: 1,
+    assessmentRef: "assessment:parallel-task",
+    strategy: "linear",
+    steps,
+    createdAt: Date.now(),
+  };
+}
 
-    const maxConcurrency = estimateMaxConcurrency(plan);
-    assert.equal(maxConcurrency, 1); // Only one step runs at a time
-  });
+test("estimateMaxConcurrency returns 1 for linear plans", () => {
+  const concurrency = estimateMaxConcurrency(createPlan([
+    {
+      stepId: "step-1",
+      action: "read",
+      title: "Read",
+      inputs: {},
+      dependencies: [],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+    {
+      stepId: "step-2",
+      action: "write",
+      title: "Write",
+      inputs: {},
+      dependencies: ["step-1"],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+  ]));
 
-  it('should calculate max concurrency for parallel plan (independent steps)', () => {
-    // Parallel: all steps independent, can run together
-    const plan = {
-      planId: 'test-plan',
-      taskId: 'test-task',
-      version: 1,
-      createdAt: Date.now(),
-      strategy: 'linear' as const,
-      steps: [
-        { stepId: 'step1', action: 'read', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: [] },
-        { stepId: 'step2', action: 'execute', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: [] },
-        { stepId: 'step3', action: 'write', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: [] },
-      ],
-      assessmentRef: 'assessment:test:1',
-    };
+  assert.equal(concurrency, 1);
+});
 
-    const maxConcurrency = estimateMaxConcurrency(plan);
-    assert.equal(maxConcurrency, 3); // All 3 steps can run in parallel
-  });
+test("estimateMaxConcurrency returns parallel branch width", () => {
+  const concurrency = estimateMaxConcurrency(createPlan([
+    {
+      stepId: "step-1",
+      action: "read",
+      title: "Read",
+      inputs: {},
+      dependencies: [],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+    {
+      stepId: "step-2",
+      action: "execute-a",
+      title: "Execute A",
+      inputs: {},
+      dependencies: ["step-1"],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+    {
+      stepId: "step-3",
+      action: "execute-b",
+      title: "Execute B",
+      inputs: {},
+      dependencies: ["step-1"],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+    {
+      stepId: "step-4",
+      action: "join",
+      title: "Join",
+      inputs: {},
+      dependencies: ["step-2", "step-3"],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+  ]));
 
-  it('should calculate max concurrency for diamond plan (join after parallel branches)', () => {
-    // Diamond: step1 -> [step2, step3] -> step4
-    const plan = {
-      planId: 'test-plan',
-      taskId: 'test-task',
-      version: 1,
-      createdAt: Date.now(),
-      strategy: 'linear' as const,
-      steps: [
-        { stepId: 'step1', action: 'read', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: [] },
-        { stepId: 'step2', action: 'execute1', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: ['step1'] },
-        { stepId: 'step3', action: 'execute2', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: ['step1'] },
-        { stepId: 'step4', action: 'write', timeout: 60000, retryPolicy: { maxRetries: 0, backoffMs: 250 }, dependencies: ['step2', 'step3'] },
-      ],
-      assessmentRef: 'assessment:test:1',
-    };
+  assert.equal(concurrency, 2);
+});
 
-    const maxConcurrency = estimateMaxConcurrency(plan);
-    assert.equal(maxConcurrency, 2); // step2 and step3 can run in parallel
-  });
+test("estimateMaxConcurrency returns all ready roots when no dependencies exist", () => {
+  const concurrency = estimateMaxConcurrency(createPlan([
+    {
+      stepId: "step-1",
+      action: "read",
+      title: "Read A",
+      inputs: {},
+      dependencies: [],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+    {
+      stepId: "step-2",
+      action: "read",
+      title: "Read B",
+      inputs: {},
+      dependencies: [],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+    {
+      stepId: "step-3",
+      action: "read",
+      title: "Read C",
+      inputs: {},
+      dependencies: [],
+      status: "pending",
+      timeout: 1_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    },
+  ]));
+
+  assert.equal(concurrency, 3);
 });

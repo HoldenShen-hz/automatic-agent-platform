@@ -3,11 +3,12 @@ import test from "node:test";
 
 import {
   HarnessRuntimeService,
+  normalizeConstraintPack,
   type ConstraintPack,
 } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(): ConstraintPack {
-  return {
+  return normalizeConstraintPack({
     policyIds: ["policy.default"],
     approvalMode: "supervised",
     autonomyMode: "semi_auto",
@@ -17,6 +18,11 @@ function createConstraintPack(): ConstraintPack {
     sandboxRequirement: {
       sandboxMode: "network_isolated",
       timeoutMs: 30_000,
+    },
+    approvalRequirement: {
+      requiredForRiskClass: [],
+      approverRoles: [],
+      escalationTimeoutMs: 60_000,
     },
     budgetEnvelope: {
       maxSteps: 4,
@@ -28,7 +34,7 @@ function createConstraintPack(): ConstraintPack {
       maxCost: 10,
       maxDurationMs: 60_000,
     },
-  };
+  });
 }
 
 test("HarnessRuntimeService appendStep records a completion time after start even without explicit latency", () => {
