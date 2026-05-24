@@ -127,7 +127,7 @@ test("resolveStableEvidenceProfile preserves profile name with empty overrides",
 test("resolveStableEvidenceProfile does not allow name to be replaced via overrides", () => {
   assert.throws(() => resolveStableEvidenceProfile("smoke", {
     name: "custom_profile" as any,
-  }), /profileOverrides\.name cannot be changed/);
+  } as unknown as StableEvidenceBundleOptions["profileOverrides"]), /profileOverrides\.name cannot be changed/);
 });
 
 test("resolveStableEvidenceProfile only overrides explicitly specified properties", () => {

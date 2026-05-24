@@ -63,6 +63,10 @@ test("PostExecutionQualityGate decides approval for canonical approve verdict", 
   const evaluation: EvaluationReport = {
     verdict: "approve",
     score: 0.65,
+    passed: false,
+    issues: ["approval_required"],
+    recommendation: "approve",
+    confidence: 0.65,
     evidenceRefs: ["approval_required"],
     notes: "approval required",
     dimensions: {

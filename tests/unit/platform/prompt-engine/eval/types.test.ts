@@ -316,9 +316,7 @@ test("QualityEvaluationEvidence with executionId", () => {
 });
 
 test("QualityEvaluationEvidence without executionId", () => {
-  const evidence = createMockQualityEvaluationEvidence({
-    executionId: undefined,
-  });
+  const evidence = createMockQualityEvaluationEvidence();
 
   assert.equal(evidence.executionId, undefined);
 });

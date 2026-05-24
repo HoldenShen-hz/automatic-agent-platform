@@ -7,7 +7,7 @@ import test from "node:test";
 import { PromptVersionManager, type VersionLineage } from "../../../../../src/platform/prompt-engine/registry/prompt-version-manager.js";
 import type { PromptBundle } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
 
-function createTestBundle(name: string, version: number | string, displayVersion: string): PromptBundle {
+function createTestBundle(name: string, version: number, displayVersion: string): PromptBundle {
   return {
     bundleId: `bundle_${name}_${version}`,
     name,
@@ -155,13 +155,13 @@ test("VersionLineage interface allows optional fields to be set", () => {
 
 test("PromptVersionManager.getVersionLineage returns correct lineage for middle version", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", "v1.0", "v1.0"));
-  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", "v2.0", "v2.0"));
-  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", "v3.0", "v3.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", 100, "v1.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", 200, "v2.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", 300, "v3.0"));
 
-  const lineage = manager.getVersionLineage("lineage-test-bundle", "v2.0");
+  const lineage = manager.getVersionLineage("lineage-test-bundle", 200);
 
-  assert.equal(lineage.current, "v2.0");
-  assert.equal(lineage.previous, "v1.0");
-  assert.equal(lineage.next, "v3.0");
+  assert.equal(lineage.current, 200);
+  assert.equal(lineage.previous, 100);
+  assert.equal(lineage.next, 300);
 });

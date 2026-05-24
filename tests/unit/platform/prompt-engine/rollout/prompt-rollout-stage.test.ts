@@ -83,7 +83,7 @@ test("nextPromptRolloutStage stage progression covers all non-terminal stages", 
 // Issue 1956: Verify shadow is NOT in the canonical rollout stages
 test("shadow stage is not part of canonical PROMPT_ROLLOUT_STAGES", () => {
   assert.equal(isPromptRolloutStage("shadow"), false);
-  assert.equal(PROMPT_ROLLOUT_STAGES.includes("shadow"), false);
+  assert.equal((PROMPT_ROLLOUT_STAGES as readonly string[]).includes("shadow"), false);
 });
 
 // Issue 1956: Verify partial_* stages are NOT in canonical rollout stages
@@ -91,9 +91,9 @@ test("partial_* stages are not part of canonical PROMPT_ROLLOUT_STAGES", () => {
   assert.equal(isPromptRolloutStage("partial_25"), false);
   assert.equal(isPromptRolloutStage("partial_50"), false);
   assert.equal(isPromptRolloutStage("partial_75"), false);
-  assert.equal(PROMPT_ROLLOUT_STAGES.includes("partial_25"), false);
-  assert.equal(PROMPT_ROLLOUT_STAGES.includes("partial_50"), false);
-  assert.equal(PROMPT_ROLLOUT_STAGES.includes("partial_75"), false);
+  assert.equal((PROMPT_ROLLOUT_STAGES as readonly string[]).includes("partial_25"), false);
+  assert.equal((PROMPT_ROLLOUT_STAGES as readonly string[]).includes("partial_50"), false);
+  assert.equal((PROMPT_ROLLOUT_STAGES as readonly string[]).includes("partial_75"), false);
 });
 
 // Issue 1956: Verify early lifecycle stages (draft/review/staging) are NOT in rollout stages
@@ -101,7 +101,7 @@ test("early lifecycle stages are not part of rollout stages", () => {
   assert.equal(isPromptRolloutStage("draft"), false);
   assert.equal(isPromptRolloutStage("review"), false);
   assert.equal(isPromptRolloutStage("staging"), false);
-  assert.equal(PROMPT_ROLLOUT_STAGES.includes("draft"), false);
-  assert.equal(PROMPT_ROLLOUT_STAGES.includes("review"), false);
-  assert.equal(PROMPT_ROLLOUT_STAGES.includes("staging"), false);
+  assert.equal((PROMPT_ROLLOUT_STAGES as readonly string[]).includes("draft"), false);
+  assert.equal((PROMPT_ROLLOUT_STAGES as readonly string[]).includes("review"), false);
+  assert.equal((PROMPT_ROLLOUT_STAGES as readonly string[]).includes("staging"), false);
 });

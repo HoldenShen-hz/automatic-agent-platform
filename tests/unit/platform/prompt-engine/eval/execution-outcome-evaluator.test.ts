@@ -1,34 +1,46 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createPlanGraphBundle } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import { ExecutionOutcomeEvaluator } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 import { PostExecutionQualityGate } from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
 import type { QualityGateConfig } from "../../../../../src/platform/prompt-engine/eval/types.js";
 
-const plan = {
-  planId: "plan_1",
-  taskId: "task_1",
-  assessmentRef: "assessment:task_1:1",
-  version: 1,
-  strategy: "linear" as const,
-  steps: [
-    {
-      stepId: "step_1",
-      action: "execute",
-      title: "execute",
-      inputs: {},
-      outputs: [],
-      dependencies: [],
-      status: "pending" as const,
-      timeout: 1000,
-      retryPolicy: {
-        maxRetries: 0,
-        backoffMs: 0,
-      },
-    },
-  ],
-  createdAt: Date.now(),
-};
+const plan = createPlanGraphBundle({
+  planGraphBundleId: "plan-bundle-1",
+  harnessRunId: "harness-run-1",
+  graph: {
+    graphId: "graph-1",
+    nodes: [{
+      nodeId: "node-1",
+      nodeType: "tool",
+      inputRefs: [],
+      outputSchemaRef: "schema:test.output",
+      riskClass: "medium",
+      budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: "retry:default",
+      timeoutMs: 1000,
+    }],
+    edges: [],
+    entryNodeIds: ["node-1"],
+    terminalNodeIds: ["node-1"],
+    joinStrategy: "all",
+    graphHash: "graph-hash-1",
+  },
+  schedulerPolicy: {
+    policyId: "scheduler:test",
+    strategy: "deterministic_fifo",
+  },
+  budgetPlanRef: "budget:test",
+  riskProfile: {
+    riskClass: "medium",
+    reasons: ["test"],
+  },
+  validationReport: { valid: true, findings: [] },
+  artifactRefs: [],
+  createdAt: "2026-05-24T00:00:00.000Z",
+});
 
 function createDefaultConfig(): QualityGateConfig {
   return {
@@ -81,7 +93,7 @@ test("ExecutionOutcomeEvaluator and PostExecutionQualityGate accept successful f
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.passed, true);
   assert.equal(gate.decide(evaluation).releaseStage, "released");
@@ -111,7 +123,7 @@ test("ExecutionOutcomeEvaluator returns failure for failed outcome with failure 
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.passed, false);
   assert.equal(evaluation.nextAction, "retry");
@@ -128,7 +140,7 @@ test("ExecutionOutcomeEvaluator triggers replan for repairable outcome", () => {
     outcome: "repairable",
     signals: [],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.nextAction, "replan");
 });
@@ -164,7 +176,7 @@ test("ExecutionOutcomeEvaluator handles partial signals correctly", () => {
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.nextAction, "complete");
   assert.ok(evaluation.qualityScore < 1.0);
@@ -191,7 +203,7 @@ test("ExecutionOutcomeEvaluator routes partial outcomes to approve without escal
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.nextAction, "approve");
   assert.equal(evaluation.verdict, "approve");
@@ -221,7 +233,7 @@ test("ExecutionOutcomeEvaluator routes to approve when approval signal is presen
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.nextAction, "approve");
   assert.equal(evaluation.verdict, "approve");
@@ -273,7 +285,7 @@ test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass thres
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.nextAction, "approve");
   assert.equal(evaluation.passed, false);
@@ -326,7 +338,7 @@ test("ExecutionOutcomeEvaluator uses configurable weights", () => {
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.qualityScore, 1.0);
   assert.equal(evaluation.passed, true);
@@ -363,7 +375,7 @@ test("ExecutionOutcomeEvaluator provides factor breakdown", () => {
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.factorBreakdown.successSignals, 1);
   assert.equal(evaluation.factorBreakdown.failureSignals, 1);
@@ -436,7 +448,7 @@ test("ExecutionOutcomeEvaluator escalates after max retries", () => {
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   assert.equal(evaluation.nextAction, "escalate");
 });
@@ -463,7 +475,7 @@ test("ExecutionOutcomeEvaluator weights sum to 1.0", () => {
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // With weights summing to 1.0 (0.3 successSignal + 0.4 completionOutcome):
   // qualityScore should be 0.7, not clamped to 0.8

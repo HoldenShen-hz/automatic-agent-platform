@@ -196,12 +196,12 @@ test("loadConversationTemplateConfig returns defaults when config is invalid JSO
 test("getTemplatesFromConfig extracts templates from config", () => {
   const config = {
     templates: [
-      { templateId: "t1", name: "Template 1", description: "", intent: "task_create", steps: [] },
-      { templateId: "t2", name: "Template 2", description: "", intent: "task_query", steps: [] },
+      { templateId: "t1", name: "Template 1", description: "", version: "1.0", intent: "task_create", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
+      { templateId: "t2", name: "Template 2", description: "", version: "1.0", intent: "task_query", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: false,
-  };
+  } as const;
 
   const templates = getTemplatesFromConfig(config);
 

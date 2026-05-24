@@ -31,6 +31,7 @@ function createTestBundle(name: string, version: string, domain = "test-domain")
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -111,6 +112,7 @@ test("HierarchicalPromptRegistryService.registerBundle throws for missing system
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -188,6 +190,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic honors weighted 
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -220,6 +223,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic normalizes weigh
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -241,6 +245,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic normalizes weigh
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -289,6 +294,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic handles non-100 
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -310,6 +316,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic handles non-100 
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -386,6 +393,7 @@ test("HierarchicalPromptRegistryService.getBundle returns default bundle when no
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -401,6 +409,7 @@ test("HierarchicalPromptRegistryService.getBundle returns default bundle when no
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {

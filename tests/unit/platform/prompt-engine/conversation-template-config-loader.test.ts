@@ -127,7 +127,7 @@ test("getTemplatesFromConfig preserves template order", () => {
     { templateId: "first", name: "First", description: "d", version: "1.0", intent: "task_create", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
     { templateId: "second", name: "Second", description: "d", version: "1.0", intent: "task_query", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
     { templateId: "third", name: "Third", description: "d", version: "1.0", intent: "task_modify", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
-  ];
+  ] as const;
 
   const config: ConversationTemplateConfig = {
     templates,

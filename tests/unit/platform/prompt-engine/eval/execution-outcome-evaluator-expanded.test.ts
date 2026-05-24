@@ -8,30 +8,45 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createPlanGraphBundle } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import { ExecutionOutcomeEvaluator } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 import type { QualityGateConfig } from "../../../../../src/platform/prompt-engine/eval/types.js";
 
-const plan = {
-  planId: "plan_expanded",
-  taskId: "task_expanded",
-  assessmentRef: "assessment:expanded:1",
-  version: 1,
-  strategy: "linear" as const,
-  steps: [
-    {
-      stepId: "step_1",
-      action: "execute",
-      title: "execute",
-      inputs: {},
-      outputs: [],
-      dependencies: [],
-      status: "pending" as const,
-      timeout: 1000,
-      retryPolicy: { maxRetries: 0, backoffMs: 0 },
-    },
-  ],
-  createdAt: Date.now(),
-};
+const plan = createPlanGraphBundle({
+  planGraphBundleId: "plan-bundle-expanded",
+  harnessRunId: "harness-run-expanded",
+  graph: {
+    graphId: "graph-expanded",
+    nodes: [{
+      nodeId: "node-1",
+      nodeType: "tool",
+      inputRefs: [],
+      outputSchemaRef: "schema:test.output",
+      riskClass: "medium",
+      budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: "retry:default",
+      timeoutMs: 1000,
+    }],
+    edges: [],
+    entryNodeIds: ["node-1"],
+    terminalNodeIds: ["node-1"],
+    joinStrategy: "all",
+    graphHash: "graph-hash-expanded",
+  },
+  schedulerPolicy: {
+    policyId: "scheduler:test",
+    strategy: "deterministic_fifo",
+  },
+  budgetPlanRef: "budget:test",
+  riskProfile: {
+    riskClass: "medium",
+    reasons: ["test"],
+  },
+  validationReport: { valid: true, findings: [] },
+  artifactRefs: [],
+  createdAt: "2026-05-24T00:00:00.000Z",
+});
 
 // Issue #1961: Weights that sum > 1.0 should still work but with potential resolution loss
 test("ExecutionOutcomeEvaluator handles weights that sum greater than 1.0", () => {
@@ -81,7 +96,7 @@ test("ExecutionOutcomeEvaluator handles weights that sum greater than 1.0", () =
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // Quality score should be clamped to max of 1.0
   assert.ok(result.qualityScore <= 1.0, `Quality score ${result.qualityScore} should be <= 1.0`);
@@ -136,7 +151,7 @@ test("ExecutionOutcomeEvaluator with extreme weights still produces valid scores
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // Score should still be >= 0 due to Math.max(0, ...)
   assert.ok(result.qualityScore >= 0);
@@ -199,7 +214,7 @@ test("ExecutionOutcomeEvaluator factor breakdown reflects weights correctly", ()
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // Factor breakdown should reflect actual weights
   assert.equal(result.factorBreakdown.successSignals, 1);
@@ -247,7 +262,7 @@ test("ExecutionOutcomeEvaluator calculates quality score with multiple signals",
       { signalId: "sig_3", source: "execution", taskId: "task_multi", category: "partial", severity: "warning", payload: { summary: "partial" }, stepOutputRefs: [], timestamp: Date.now() },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // 2 success = 0.4, completion = 0.4, partial penalty = 0.1 = 0.7
   // May be clamped if exceeds 1.0
@@ -271,7 +286,7 @@ test("ExecutionOutcomeEvaluator handles all signal types together", () => {
       { signalId: "sig_p1", source: "execution", taskId: "task_all_types", category: "partial", severity: "warning", payload: { summary: "p1" }, stepOutputRefs: [], timestamp: Date.now() },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // All signal types should be counted
   assert.equal(result.factorBreakdown.successSignals, 2);
@@ -304,7 +319,7 @@ test("ExecutionOutcomeEvaluator with timeout signals", () => {
       },
     ],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // Timeout is treated as failure
   assert.equal(result.factorBreakdown.failureSignals, 1);
@@ -355,7 +370,7 @@ test("ExecutionOutcomeEvaluator returns evaluationId in result", () => {
     outcome: "completed",
     signals: [],
     emittedAt: Date.now(),
-  });
+  } as any);
 
   // Evaluation ID should be present and valid
   assert.ok(result.evaluationId.startsWith("outcome_eval_") || result.evaluationId.length > 0);

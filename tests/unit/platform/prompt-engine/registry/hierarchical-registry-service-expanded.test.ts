@@ -38,6 +38,7 @@ function createTestBundle(name: string, version: number, domain = "test-domain")
     metadata: {
       owner: "test-owner",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: ["test"],
       compatibilityTags: [],
       trafficAllocation: {
@@ -87,6 +88,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic distributes traf
     metadata: {
       owner: "test",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: [],
       compatibilityTags: [],
       trafficAllocation: { weight: 50, startTime: undefined, endTime: undefined, targeting: undefined },
@@ -98,6 +100,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic distributes traf
     metadata: {
       owner: "test",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: [],
       compatibilityTags: [],
       trafficAllocation: { weight: 50, startTime: undefined, endTime: undefined, targeting: undefined },
@@ -138,6 +141,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with unequal wei
     metadata: {
       owner: "test",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: [],
       compatibilityTags: [],
       trafficAllocation: { weight: 80, startTime: undefined, endTime: undefined, targeting: undefined },
@@ -149,6 +153,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with unequal wei
     metadata: {
       owner: "test",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: [],
       compatibilityTags: [],
       trafficAllocation: { weight: 20, startTime: undefined, endTime: undefined, targeting: undefined },
@@ -185,6 +190,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with zero weight
     metadata: {
       owner: "test",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: [],
       compatibilityTags: [],
       trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
@@ -196,6 +202,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with zero weight
     metadata: {
       owner: "test",
       deprecated: false,
+      lifecycleStatus: "active",
       tags: [],
       compatibilityTags: [],
       trafficAllocation: { weight: 0, startTime: undefined, endTime: undefined, targeting: undefined },
@@ -284,7 +291,7 @@ test("HierarchicalPromptRegistryService runVersionLock produces consistent selec
   registry.registerBundle(createTestBundle("lock-test", 1), "global");
 
   // With runVersionLock, same run should always select same bundle
-  const runLock = { runVersionLockId: "run-123" };
+  const runLock = "run-123";
 
   const bundle1 = registry.resolveBundleForTraffic("lock-test", "classification", undefined, undefined, "key1", runLock);
   const bundle2 = registry.resolveBundleForTraffic("lock-test", "classification", undefined, undefined, "key2", runLock);

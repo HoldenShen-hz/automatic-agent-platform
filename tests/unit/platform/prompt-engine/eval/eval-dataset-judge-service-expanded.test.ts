@@ -81,7 +81,7 @@ function buildPassingResults(
     const submission: EvalCaseSubmission = {
       caseId: testCase.caseId,
       output,
-      criterionSignals,
+      ...(criterionSignals != null ? { criterionSignals } : {}),
     };
     return customize?.({ testCase, index, submission }) ?? submission;
   });

@@ -23,7 +23,10 @@ import { QualityGateEvidenceService } from "../../../src/platform/prompt-engine/
 import { JudgeProviderRegistryService } from "../../../src/platform/prompt-engine/eval/judge-provider-registry-service.js";
 import { CrossProviderJudgeService } from "../../../src/platform/prompt-engine/eval/cross-provider-judge-service.js";
 import { PlatformPromptReleaseOrchestrationService } from "../../../src/platform/prompt-engine/rollout/platform-prompt-release-orchestration-service.js";
-import { ExecutionOutcomeEvaluator } from "../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
+import {
+  ExecutionOutcomeEvaluator,
+  type ExecutionOutcomeEvaluation,
+} from "../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 import { ValidationError } from "../../../src/platform/contracts/errors.js";
 import type { PromptBundleRegistrationInput } from "../../../src/platform/contracts/prompt-bundle/index.js";
 
@@ -526,6 +529,7 @@ test("JudgeProviderRegistryService syncs judge profile", () => {
     providerFamily: "anthropic",
     modelId: "claude-3",
     capabilities: ["llm_judge", "safety_review"],
+    supportedRiskLevels: ["critical", "high", "medium", "low"],
     maxCostUsd: 0.02,
     status: "ready",
     createdAt: "2024-01-01T00:00:00.000Z",
@@ -646,9 +650,9 @@ test("CrossProviderJudgeService getProviderDiversityScore calculates correctly",
   const service = new CrossProviderJudgeService(judgeService);
 
   const judges = [
-    { judgeId: "j1", provider: "openai", providerFamily: "openai", capabilities: [], maxCostUsd: 0.01, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
-    { judgeId: "j2", provider: "anthropic", providerFamily: "anthropic", capabilities: [], maxCostUsd: 0.02, status: "ready" as const, modelId: "claude-3", createdAt: "", updatedAt: "" },
-    { judgeId: "j3", provider: "minimax", providerFamily: "minimax", capabilities: [], maxCostUsd: 0.01, status: "ready" as const, modelId: "m1", createdAt: "", updatedAt: "" },
+    { judgeId: "j1", provider: "openai", providerFamily: "openai", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
+    { judgeId: "j2", provider: "anthropic", providerFamily: "anthropic", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.02, status: "ready" as const, modelId: "claude-3", createdAt: "", updatedAt: "" },
+    { judgeId: "j3", provider: "minimax", providerFamily: "minimax", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready" as const, modelId: "m1", createdAt: "", updatedAt: "" },
   ];
 
   const score = service.getProviderDiversityScore(judges);
@@ -660,8 +664,8 @@ test("CrossProviderJudgeService getProviderDiversityScore handles single provide
   const service = new CrossProviderJudgeService(judgeService);
 
   const judges = [
-    { judgeId: "j1", provider: "openai", providerFamily: "openai", capabilities: [], maxCostUsd: 0.01, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
-    { judgeId: "j2", provider: "openai", providerFamily: "openai", capabilities: [], maxCostUsd: 0.02, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
+    { judgeId: "j1", provider: "openai", providerFamily: "openai", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
+    { judgeId: "j2", provider: "openai", providerFamily: "openai", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.02, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
   ];
 
   const score = service.getProviderDiversityScore(judges);
@@ -793,12 +797,12 @@ test("loadConversationTemplateConfig returns defaults on missing file", () => {
 test("getTemplatesFromConfig extracts templates from config", () => {
   const config = {
     templates: [
-      { templateId: "t1", name: "Template 1", description: "", intent: "task_create", steps: [] },
-      { templateId: "t2", name: "Template 2", description: "", intent: "task_query", steps: [] },
+      { templateId: "t1", name: "Template 1", description: "", version: "1.0", intent: "task_create", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
+      { templateId: "t2", name: "Template 2", description: "", version: "1.0", intent: "task_query", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: false,
-  };
+  } as const;
 
   const templates = getTemplatesFromConfig(config);
   assert.equal(templates.length, 2);
@@ -897,6 +901,7 @@ function createBundleInput(name: string, version: string): PromptBundleRegistrat
   return {
     name,
     version,
+    displayVersion: version,
     domain: "test_domain",
     taskType: "test_task",
     packId: "test_pack",
@@ -904,7 +909,7 @@ function createBundleInput(name: string, version: string): PromptBundleRegistrat
     userPrompt: { content: "Test user prompt", templateVariables: [] as string[], channel: "user" },
     fewShotExamples: [],
     constraints: { maxTokens: undefined, temperature: undefined, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
-    metadata: { owner: "test", deprecated: false, tags: [], compatibilityTags: [], trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined } },
+    metadata: { owner: "test", deprecated: false, lifecycleStatus: "active", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined } },
   };
 }
 
