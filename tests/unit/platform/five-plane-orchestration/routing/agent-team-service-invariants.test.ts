@@ -70,6 +70,9 @@ test("buildPlan populates §19.5 lane invariant fields (R19-21)", () => {
   for (const lane of plan.lanes) {
     assert.equal(typeof lane.depth, "number");
     assert.equal(lane.depth, 2, "delegated lanes should advance chain depth by one");
+    assert.ok(lane.budgetRemaining != null);
+    assert.ok(lane.correlationId != null);
+    assert.ok(lane.traceId != null);
     assert.equal(typeof lane.budgetRemaining, "number");
     assert.ok(lane.budgetRemaining <= 600, "budgetRemaining should stay within parent budget");
     assert.equal(typeof lane.correlationId, "string");

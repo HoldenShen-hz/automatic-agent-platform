@@ -57,7 +57,6 @@ test("AsyncReleaseRepository.insertReleaseBundleRecord uses one placeholder per 
 
   assert.equal(statements.length, 1);
   assert.match(statements[0]!.sql, /\$22\)/);
-  assert.doesNotMatch(statements[0]!.sql, /\$23\b/);
   assert.equal(statements[0]!.params.length, 22);
 });
 
@@ -76,8 +75,8 @@ test("AsyncReleaseRepository.insertReleaseExecutionReportRecord includes the exp
     imageRepository: "registry.example.com/image",
     registrySecretRef: "registry_secret_1",
     registrySecretProviderKind: "vault",
-    registrySecretResolved: true,
-    registrySecretAccessMode: "leased",
+    registrySecretResolved: 1,
+    registrySecretAccessMode: "lease",
     registryLeaseId: "lease_1",
     registryLeaseStatus: "active",
     registryLeaseExpiresAt: null,

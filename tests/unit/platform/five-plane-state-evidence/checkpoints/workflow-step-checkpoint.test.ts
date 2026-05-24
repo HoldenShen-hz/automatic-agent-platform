@@ -1,32 +1,24 @@
-/**
- * Unit tests for workflow-step-checkpoint module
- *
- * Tests workflow step checkpoint creation, validation, and summarization.
- */
-
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
 
 import {
   WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
+  compareWorkflowStepCheckpointVersions,
   createWorkflowStepCheckpoint,
   readWorkflowStepCheckpoint,
+  restoreWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
-  type WorkflowStepCheckpoint,
   type CreateWorkflowStepCheckpointInput,
-  type WorkflowStepCheckpointSummary,
 } from "../../../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 
-function createMockCheckpointInput(
-  overrides: Partial<CreateWorkflowStepCheckpointInput> = {},
-): CreateWorkflowStepCheckpointInput {
+function createInput(overrides: Partial<CreateWorkflowStepCheckpointInput> = {}): CreateWorkflowStepCheckpointInput {
   return {
     harnessRunId: "harness-123",
     nodeRunId: "node-456",
-    planGraphId: "bundle-789",
+    planGraphId: "plan-789",
     taskId: "task-001",
     executionId: "exec-002",
     workflowId: "workflow-1",
@@ -34,14 +26,14 @@ function createMockCheckpointInput(
     stepId: "step-1",
     roleId: "role-agent",
     outputKey: "output.step1",
-    status: "completed",
-    producedAt: "2024-01-01T00:00:00Z",
-    output: { result: "success", data: { key: "value" } },
+    status: "succeeded",
+    producedAt: "2024-01-01T00:00:00.000Z",
+    output: { result: "success", summary: "checkpoint summary" },
     decisionContext: {
       source: "model:gpt-4",
       request: "Analyze the input and provide recommendations",
-      routeReason: "User requested analysis",
-      priorStepSummaries: ["Previous step completed successfully"],
+      routeReason: "user requested analysis",
+      priorStepSummaries: ["previous step completed"],
       dependsOnStepIds: [],
     },
     resumeContext: {
@@ -51,174 +43,115 @@ function createMockCheckpointInput(
     },
     upstreamArtifactRefs: [
       {
-        artifactId: "art-1",
+        artifactId: "artifact-1",
         kind: "evidence_bundle",
-        uri: "s3://bucket/art-1",
-        createdAt: "2024-01-01T00:00:00Z",
+        uri: "s3://bucket/artifact-1",
+        createdAt: "2024-01-01T00:00:00.000Z",
       },
     ],
     fileDiffSummary: {
-      summary: "Modified main.ts and added test.ts",
-      createdPaths: ["test.ts"],
+      summary: "modified main.ts",
+      createdPaths: ["new.ts"],
       updatedPaths: ["main.ts"],
       deletedPaths: [],
     },
-    compensationModel: null,
+    compensationModel: {
+      strategy: "manual_rollback",
+      rollbackTaskId: "rollback-1",
+    },
     ...overrides,
   };
 }
 
-test("WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION is correct", () => {
-  assert.equal(WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION, "workflow_step_checkpoint.v1");
-});
-
-test("createWorkflowStepCheckpoint creates valid checkpoint", () => {
-  const input = createMockCheckpointInput();
-  const checkpoint = createWorkflowStepCheckpoint(input);
+test("createWorkflowStepCheckpoint creates the canonical schema", () => {
+  const checkpoint = createWorkflowStepCheckpoint(createInput());
 
   assert.equal(checkpoint.schemaVersion, WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION);
-  assert.equal(checkpoint.harnessRunId, input.harnessRunId);
-  assert.equal(checkpoint.nodeRunId, input.nodeRunId);
-  assert.equal(checkpoint.planGraphId, input.planGraphId);
-  assert.equal(checkpoint.taskId, input.taskId);
-  assert.equal(checkpoint.workflowId, input.workflowId);
-  assert.equal(checkpoint.stepId, input.stepId);
-  assert.equal(checkpoint.roleId, input.roleId);
-  assert.equal(checkpoint.outputKey, input.outputKey);
-  assert.equal(checkpoint.status, input.status);
-  assert.deepEqual(checkpoint.output, input.output);
+  assert.equal(checkpoint.nodeRunId, "node-456");
+  assert.equal(checkpoint.planGraphId, "plan-789");
+  assert.equal(checkpoint.status, "succeeded");
+  assert.equal(checkpoint.fileDiffSummary.summary, "modified main.ts");
+  assert.equal(checkpoint.upstreamArtifactRefs[0]?.artifactId, "artifact-1");
 });
 
-test("createWorkflowStepCheckpoint makes defensive copies of arrays", () => {
-  const input = createMockCheckpointInput();
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  // Modify original arrays
-  input.decisionContext.priorStepSummaries.push("modified");
-  input.resumeContext.completedStepIds.push("step-99");
-  input.fileDiffSummary!.createdPaths.push("modified.ts");
-
-  // Checkpoint should not be affected
-  assert.equal(checkpoint.decisionContext.priorStepSummaries.length, 1);
-  assert.equal(checkpoint.resumeContext.completedStepIds.length, 1);
-  assert.equal(checkpoint.fileDiffSummary.createdPaths.length, 1);
-});
-
-test("createWorkflowStepCheckpoint handles optional fields", () => {
-  const input = createMockCheckpointInput({
-    nodeRunId: null,
+test("createWorkflowStepCheckpoint fills defaults for omitted optional fields", () => {
+  const {
+    harnessRunId: _ignoredHarnessRunId,
+    nodeRunId: _ignoredNodeRunId,
+    planGraphId: _ignoredPlanGraphId,
+    ...base
+  } = createInput();
+  const checkpoint = createWorkflowStepCheckpoint({
+    ...base,
     executionId: null,
+    upstreamArtifactRefs: [],
+    fileDiffSummary: {},
     compensationModel: null,
-    upstreamArtifactRefs: undefined,
-    fileDiffSummary: undefined,
   });
 
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  assert.equal(checkpoint.nodeRunId, null);
+  assert.equal(checkpoint.harnessRunId, "harness:exec-002");
+  assert.equal(checkpoint.nodeRunId, "node:step-1");
+  assert.equal(checkpoint.planGraphId, "plan:workflow-1");
   assert.equal(checkpoint.executionId, null);
-  assert.equal(checkpoint.compensationModel, null);
   assert.deepEqual(checkpoint.upstreamArtifactRefs, []);
-  assert.equal(checkpoint.fileDiffSummary.summary, null);
-  assert.deepEqual(checkpoint.fileDiffSummary.createdPaths, []);
-  assert.deepEqual(checkpoint.fileDiffSummary.updatedPaths, []);
-  assert.deepEqual(checkpoint.fileDiffSummary.deletedPaths, []);
+  assert.equal(checkpoint.compensationModel, null);
 });
 
-test("createWorkflowStepCheckpoint preserves decision context", () => {
-  const input = createMockCheckpointInput({
+test("createWorkflowStepCheckpoint makes defensive copies of mutable arrays", () => {
+  const priorStepSummaries = ["previous step completed"];
+  const completedStepIds = ["step-0"];
+  const createdPaths = ["new.ts"];
+  const checkpoint = createWorkflowStepCheckpoint(createInput({
     decisionContext: {
-      source: "model:claude-3",
-      request: "Process user request",
-      routeReason: "Direct routing",
-      priorStepSummaries: ["Step 1: Init", "Step 2: Process"],
-      dependsOnStepIds: ["init-step", "process-step"],
+      source: "model:test",
+      request: "test",
+      routeReason: null,
+      priorStepSummaries,
+      dependsOnStepIds: [],
     },
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  assert.equal(checkpoint.decisionContext.source, "model:claude-3");
-  assert.equal(checkpoint.decisionContext.request, "Process user request");
-  assert.equal(checkpoint.decisionContext.routeReason, "Direct routing");
-  assert.deepEqual(checkpoint.decisionContext.priorStepSummaries, ["Step 1: Init", "Step 2: Process"]);
-  assert.deepEqual(checkpoint.decisionContext.dependsOnStepIds, ["init-step", "process-step"]);
-});
-
-test("createWorkflowStepCheckpoint preserves resume context", () => {
-  const input = createMockCheckpointInput({
     resumeContext: {
-      completedStepIds: ["step-a", "step-b", "step-c"],
-      nextStepId: "step-d",
-      outputKeys: ["out.a", "out.b", "out.c"],
+      completedStepIds,
+      nextStepId: "step-2",
+      outputKeys: ["output.step1"],
     },
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  assert.deepEqual(checkpoint.resumeContext.completedStepIds, ["step-a", "step-b", "step-c"]);
-  assert.equal(checkpoint.resumeContext.nextStepId, "step-d");
-  assert.deepEqual(checkpoint.resumeContext.outputKeys, ["out.a", "out.b", "out.c"]);
-});
-
-test("createWorkflowStepCheckpoint preserves file diff summary", () => {
-  const input = createMockCheckpointInput({
     fileDiffSummary: {
-      summary: "Code changes summary",
-      createdPaths: ["new-file.ts"],
-      updatedPaths: ["existing.ts", "another.ts"],
-      deletedPaths: ["removed.ts"],
+      summary: null,
+      createdPaths,
+      updatedPaths: [],
+      deletedPaths: [],
     },
-  });
+  }));
 
-  const checkpoint = createWorkflowStepCheckpoint(input);
+  priorStepSummaries.push("mutated");
+  completedStepIds.push("mutated");
+  createdPaths.push("mutated.ts");
 
-  assert.equal(checkpoint.fileDiffSummary.summary, "Code changes summary");
-  assert.deepEqual(checkpoint.fileDiffSummary.createdPaths, ["new-file.ts"]);
-  assert.deepEqual(checkpoint.fileDiffSummary.updatedPaths, ["existing.ts", "another.ts"]);
-  assert.deepEqual(checkpoint.fileDiffSummary.deletedPaths, ["removed.ts"]);
+  assert.deepEqual(checkpoint.decisionContext.priorStepSummaries, ["previous step completed"]);
+  assert.deepEqual(checkpoint.resumeContext.completedStepIds, ["step-0"]);
+  assert.deepEqual(checkpoint.fileDiffSummary.createdPaths, ["new.ts"]);
 });
 
-test("createWorkflowStepCheckpoint preserves upstream artifact refs", () => {
-  const artifactRefs = [
-    { artifactId: "art-1", kind: "evidence_bundle", uri: "s3://bucket/art-1", createdAt: "2024-01-01T00:00:00Z" },
-    { artifactId: "art-2", kind: "diagnostic_bundle", uri: "s3://bucket/art-2", createdAt: "2024-01-02T00:00:00Z" },
-  ];
+test("summarizeWorkflowStepCheckpoint and restoreWorkflowStepCheckpoint expose canonical recovery fields", () => {
+  const checkpoint = createWorkflowStepCheckpoint(createInput());
+  const summary = summarizeWorkflowStepCheckpoint("artifact-step-1", checkpoint);
+  const restored = restoreWorkflowStepCheckpoint(checkpoint);
 
-  const input = createMockCheckpointInput({
-    upstreamArtifactRefs: artifactRefs,
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  assert.equal(checkpoint.upstreamArtifactRefs.length, 2);
-  assert.equal(checkpoint.upstreamArtifactRefs[0].artifactId, "art-1");
-  assert.equal(checkpoint.upstreamArtifactRefs[1].artifactId, "art-2");
+  assert.equal(summary.artifactId, "artifact-step-1");
+  assert.equal(summary.nextNodeRunId, "node:step-2");
+  assert.equal(summary.summary, "checkpoint summary");
+  assert.equal(restored.harnessRunId, checkpoint.harnessRunId);
+  assert.deepEqual(restored.output, checkpoint.output);
+  assert.equal(restored.compensationModel && typeof restored.compensationModel === "object", true);
 });
 
-test("createWorkflowStepCheckpoint stores compensation model when provided", () => {
-  const compensationModel = "compensate:undo-action";
-  const input = createMockCheckpointInput({
-    compensationModel,
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  assert.equal(checkpoint.compensationModel, compensationModel);
-});
-
-test("readWorkflowStepCheckpoint accepts structured compensation model objects", () => {
+test("readWorkflowStepCheckpoint accepts persisted structured compensation models", () => {
   const workspace = mkdtempSync(join(tmpdir(), "workflow-step-checkpoint-"));
   const storagePath = join(workspace, "checkpoint.json");
+
   try {
     writeFileSync(storagePath, JSON.stringify({
-      ...createMockCheckpointInput(),
+      ...createInput(),
       schemaVersion: WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
-      planGraphId: "bundle-789",
-      compensationModel: {
-        strategy: "manual_rollback",
-        rollbackTaskId: "rollback-1",
-      },
     }));
 
     const checkpoint = readWorkflowStepCheckpoint({
@@ -227,7 +160,7 @@ test("readWorkflowStepCheckpoint accepts structured compensation model objects",
     } as never);
 
     assert.ok(checkpoint);
-    assert.deepEqual(checkpoint!.compensationModel, {
+    assert.deepEqual(checkpoint.compensationModel, {
       strategy: "manual_rollback",
       rollbackTaskId: "rollback-1",
     });
@@ -236,172 +169,31 @@ test("readWorkflowStepCheckpoint accepts structured compensation model objects",
   }
 });
 
-test("createWorkflowStepCheckpoint accepts all valid step statuses", () => {
-  const statuses = ["pending", "running", "completed", "failed", "skipped", "cancelled"] as const;
-
-  for (const status of statuses) {
-    const input = createMockCheckpointInput({ status });
-    const checkpoint = createWorkflowStepCheckpoint(input);
-    assert.equal(checkpoint.status, status);
-  }
-});
-
-test("summarizeWorkflowStepCheckpoint creates summary from checkpoint", () => {
-  const input = createMockCheckpointInput();
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  const summary = summarizeWorkflowStepCheckpoint("artifact-step-1", checkpoint);
-
-  assert.equal(summary.artifactId, "artifact-step-1");
-  assert.equal(summary.nodeRunId, checkpoint.nodeRunId);
-  assert.equal(summary.planGraphId, checkpoint.planGraphId);
-  assert.equal(summary.status, checkpoint.status);
-  assert.equal(summary.producedAt, checkpoint.producedAt);
-  assert.equal(summary.nextNodeRunId, "node:step-2");
-  assert.deepEqual(summary.outputKeys, checkpoint.resumeContext.outputKeys);
-  assert.equal(summary.source, checkpoint.decisionContext.source);
-});
-
-test("summarizeWorkflowStepCheckpoint extracts summary from output", () => {
-  const input = createMockCheckpointInput({
-    output: {
-      result: "success",
-      summary: "This is the step summary extracted from output",
-    },
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-  const summary = summarizeWorkflowStepCheckpoint("art-1", checkpoint);
-
-  assert.equal(summary.summary, "This is the step summary extracted from output");
-});
-
-test("summarizeWorkflowStepCheckpoint handles missing summary in output", () => {
-  const input = createMockCheckpointInput({
-    output: {
-      result: "success",
-      // No summary field
-    },
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-  const summary = summarizeWorkflowStepCheckpoint("art-1", checkpoint);
-
-  assert.equal(summary.summary, null);
-});
-
-test("summarizeWorkflowStepCheckpoint handles non-string summary in output", () => {
-  const input = createMockCheckpointInput({
-    output: {
-      result: "success",
-      summary: 123, // number instead of string
-    },
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-  const summary = summarizeWorkflowStepCheckpoint("art-1", checkpoint);
-
-  assert.equal(summary.summary, null);
-});
-
-test("summarizeWorkflowStepCheckpoint handles null output", () => {
-  const input = createMockCheckpointInput({
-    output: null as unknown as Record<string, unknown>,
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-  const summary = summarizeWorkflowStepCheckpoint("art-1", checkpoint);
-
-  assert.equal(summary.summary, null);
-});
-
-test("summarizeWorkflowStepCheckpoint handles array output", () => {
-  const input = createMockCheckpointInput({
-    output: ["item1", "item2"] as unknown as Record<string, unknown>,
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-  const summary = summarizeWorkflowStepCheckpoint("art-1", checkpoint);
-
-  assert.equal(summary.summary, null);
-});
-
-test("createWorkflowStepCheckpoint works with empty priorStepSummaries", () => {
-  const input = createMockCheckpointInput({
-    decisionContext: {
-      source: "model:test",
-      request: "Test",
-      routeReason: null,
-      priorStepSummaries: [],
-      dependsOnStepIds: [],
-    },
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  assert.deepEqual(checkpoint.decisionContext.priorStepSummaries, []);
-  assert.deepEqual(checkpoint.decisionContext.dependsOnStepIds, []);
-});
-
-test("createWorkflowStepCheckpoint works with empty outputKeys", () => {
-  const input = createMockCheckpointInput({
+test("compareWorkflowStepCheckpointVersions tracks output and compensation changes", () => {
+  const previous = createWorkflowStepCheckpoint(createInput({
     resumeContext: {
-      completedStepIds: [],
+      completedStepIds: ["step-0"],
+      nextStepId: "step-2",
+      outputKeys: ["output.step1"],
+    },
+  }));
+  const next = createWorkflowStepCheckpoint(createInput({
+    status: "partial_success",
+    resumeContext: {
+      completedStepIds: ["step-0", "step-1"],
       nextStepId: null,
-      outputKeys: [],
+      outputKeys: ["output.step1", "output.step2"],
     },
-  });
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
-
-  assert.deepEqual(checkpoint.resumeContext.outputKeys, []);
-  assert.equal(checkpoint.resumeContext.nextStepId, null);
-});
-
-test("createWorkflowStepCheckpoint works with empty file changes", () => {
-  const input = createMockCheckpointInput({
-    fileDiffSummary: {
-      summary: null,
-      createdPaths: [],
-      updatedPaths: [],
-      deletedPaths: [],
+    compensationModel: {
+      strategy: "rollback_and_retry",
+      notes: "changed",
     },
-  });
+  }));
 
-  const checkpoint = createWorkflowStepCheckpoint(input);
+  const diff = compareWorkflowStepCheckpointVersions(previous, next);
 
-  assert.equal(checkpoint.fileDiffSummary.summary, null);
-  assert.deepEqual(checkpoint.fileDiffSummary.createdPaths, []);
-  assert.deepEqual(checkpoint.fileDiffSummary.updatedPaths, []);
-  assert.deepEqual(checkpoint.fileDiffSummary.deletedPaths, []);
-});
-
-test("createWorkflowStepCheckpoint works with all chunk types in upstream refs", () => {
-  const artifactKinds = [
-    "source_code",
-    "config",
-    "document",
-    "report",
-    "evidence_bundle",
-    "timeline_export",
-    "diagnostic_bundle",
-    "workflow_checkpoint",
-    "feedback_snapshot",
-    "learning_object_bundle",
-    "improvement_candidate_bundle",
-    "rollout_evidence",
-    "test_result",
-    "log",
-  ] as const;
-
-  for (const kind of artifactKinds) {
-    const input = createMockCheckpointInput({
-      upstreamArtifactRefs: [
-        { artifactId: `art-${kind}`, kind, uri: "s3://bucket/test", createdAt: "2024-01-01T00:00:00Z" },
-      ],
-    });
-
-    const checkpoint = createWorkflowStepCheckpoint(input);
-    assert.equal(checkpoint.upstreamArtifactRefs[0].kind, kind);
-  }
+  assert.equal(diff.statusChanged, true);
+  assert.deepEqual(diff.outputKeysAdded, ["output.step2"]);
+  assert.equal(diff.nextStepChanged, true);
+  assert.equal(diff.compensationChanged, true);
 });

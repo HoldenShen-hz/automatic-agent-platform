@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { ReleaseRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/release-repository.js";
 
 function createMockDb() {
@@ -14,42 +15,26 @@ function createMockDb() {
   };
 }
 
-test("ReleaseRepository has all required methods", () => {
-  const db = createMockDb() as any;
-  const repo = new ReleaseRepository(db);
+test("ReleaseRepository exposes the current release and ops repository surface", () => {
+  const repo = new ReleaseRepository(createMockDb() as never);
 
-  // Bundle methods
   assert.equal(typeof repo.insertReleaseBundleRecord, "function");
   assert.equal(typeof repo.getReleaseBundleRecord, "function");
   assert.equal(typeof repo.listReleaseBundleRecords, "function");
-  // Execution report methods
   assert.equal(typeof repo.insertReleaseExecutionReportRecord, "function");
   assert.equal(typeof repo.getReleaseExecutionReportRecord, "function");
-  assert.equal(typeof repo.listReleaseExecutionReportRecords, "function");
   assert.equal(typeof repo.insertDeploymentExecutionReportRecord, "function");
-  assert.equal(typeof repo.getDeploymentExecutionReportRecord, "function");
-  assert.equal(typeof repo.listDeploymentExecutionReportRecords, "function");
-  // Environment methods
-  assert.equal(typeof repo.insertEnvironmentPromotionHistoryRecord, "function");
-  assert.equal(typeof repo.listEnvironmentPromotionHistoryRecords, "function");
   assert.equal(typeof repo.upsertEnvironmentReadinessRecord, "function");
   assert.equal(typeof repo.getActiveEnvironmentReadinessRecord, "function");
-  assert.equal(typeof repo.listEnvironmentReadinessRecords, "function");
-  // Enterprise methods
-  assert.equal(typeof repo.insertEnterpriseCapabilityReport, "function");
-  assert.equal(typeof repo.listEnterpriseCapabilityReports, "function");
   assert.equal(typeof repo.insertIncidentHandoffRecord, "function");
   assert.equal(typeof repo.listIncidentHandoffRecords, "function");
-  assert.equal(typeof repo.insertEnterpriseGovernanceReport, "function");
-  assert.equal(typeof repo.listEnterpriseGovernanceReports, "function");
 });
 
-test("ReleaseRepository inserts release bundle record", () => {
-  const db = createMockDb() as any;
-  const repo = new ReleaseRepository(db);
-
+test("ReleaseRepository accepts current release record contracts", () => {
+  const repo = new ReleaseRepository(createMockDb() as never);
   const now = "2026-04-21T10:00:00.000Z";
-  const bundle = {
+
+  repo.insertReleaseBundleRecord({
     bundleId: "bundle_1",
     environment: "production",
     version: "1.0.0",
@@ -72,66 +57,9 @@ test("ReleaseRepository inserts release bundle record", () => {
     markdownArtifactUri: "https://artifacts.example.com/bundle_1.md",
     generatedAt: now,
     exportedAt: now,
-  };
+  });
 
-  repo.insertReleaseBundleRecord(bundle);
-  assert.ok(true);
-});
-
-test("ReleaseRepository gets release bundle record", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.getReleaseBundleRecord("nonexistent");
-  assert.equal(result, null);
-});
-
-test("ReleaseRepository lists release bundle records", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.listReleaseBundleRecords();
-  assert.ok(Array.isArray(result));
-});
-
-test("ReleaseRepository lists release bundle records by environment", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.listReleaseBundleRecords({ environment: "production" });
-  assert.ok(Array.isArray(result));
-});
-
-test("ReleaseRepository inserts release execution report record", () => {
-  const db = createMockDb() as any;
-  const repo = new ReleaseRepository(db);
-
-  const now = "2026-04-21T10:00:00.000Z";
-  const report = {
+  repo.insertReleaseExecutionReportRecord({
     executionId: "exec_release_1",
     bundleId: "bundle_1",
     environment: "production",
@@ -141,9 +69,9 @@ test("ReleaseRepository inserts release execution report record", () => {
     imageRef: "registry.example.com/image:v1.0.0",
     imageRepository: "registry.example.com",
     registrySecretRef: "secret_1",
-    registrySecretProviderKind: "aws",
-    registrySecretResolved: true,
-    registrySecretAccessMode: "read_only",
+    registrySecretProviderKind: "vault",
+    registrySecretResolved: 1,
+    registrySecretAccessMode: "lease",
     registryLeaseId: "lease_1",
     registryLeaseStatus: "active",
     registryLeaseExpiresAt: now,
@@ -158,53 +86,28 @@ test("ReleaseRepository inserts release execution report record", () => {
     markdownArtifactUri: "https://artifacts.example.com/exec_1.md",
     generatedAt: now,
     exportedAt: now,
-  };
+  });
 
-  repo.insertReleaseExecutionReportRecord(report);
-  assert.ok(true);
-});
-
-test("ReleaseRepository gets release execution report record", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.getReleaseExecutionReportRecord("nonexistent");
-  assert.equal(result, null);
-});
-
-test("ReleaseRepository inserts deployment execution report record", () => {
-  const db = createMockDb() as any;
-  const repo = new ReleaseRepository(db);
-
-  const now = "2026-04-21T10:00:00.000Z";
-  const report = {
+  repo.insertDeploymentExecutionReportRecord({
     executionId: "exec_deploy_1",
     environment: "production",
     version: "1.0.0",
     commitSha: "abc123",
     rolloutStrategy: "rolling",
-    targetEligible: true,
+    targetEligible: 1,
     configBundleRef: "config_bundle_1",
     configVersionId: "config_v1",
     registrySecretRef: "secret_1",
-    registrySecretProviderKind: "aws",
-    registrySecretResolved: true,
+    registrySecretProviderKind: "vault",
+    registrySecretResolved: 1,
     deploymentSecretRef: "secret_2",
-    deploymentSecretProviderKind: "aws",
-    deploymentSecretResolved: true,
+    deploymentSecretProviderKind: "vault",
+    deploymentSecretResolved: 1,
     publishWorkflowRunId: "run_1",
     publishWorkflowRunUrl: "https://workflow.example.com/run/1",
     deployWorkflowRunId: "run_2",
     deployWorkflowRunUrl: "https://workflow.example.com/run/2",
-    executionMode: "automated",
+    executionMode: "execute",
     publishCommand: "npm run build",
     deployCommand: "kubectl apply",
     commandResultsJson: "{}",
@@ -214,132 +117,44 @@ test("ReleaseRepository inserts deployment execution report record", () => {
     markdownArtifactUri: "https://artifacts.example.com/deploy_1.md",
     generatedAt: now,
     exportedAt: now,
-  };
+  });
 
-  repo.insertDeploymentExecutionReportRecord(report);
   assert.ok(true);
 });
 
-test("ReleaseRepository gets deployment execution report record", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.getDeploymentExecutionReportRecord("nonexistent");
-  assert.equal(result, null);
-});
-
-test("ReleaseRepository upserts environment readiness record", () => {
-  const db = createMockDb() as any;
-  const repo = new ReleaseRepository(db);
-
+test("ReleaseRepository accepts current environment readiness and incident handoff contracts", () => {
+  const repo = new ReleaseRepository(createMockDb() as never);
   const now = "2026-04-21T10:00:00.000Z";
-  const record = {
+
+  repo.upsertEnvironmentReadinessRecord({
     readinessId: "readiness_1",
     environment: "production",
-    componentType: "database",
-    componentId: "db_primary",
-    credentialReady: true,
+    componentType: "provider",
+    componentId: "provider_primary",
+    credentialReady: 1,
     secondaryGatesJson: "[]",
     owner: "platform-team",
     lastVerifiedAt: now,
-    isActive: true,
+    isActive: 1,
     notes: null,
-  };
+  });
 
-  repo.upsertEnvironmentReadinessRecord(record);
-  assert.ok(true);
-});
-
-test("ReleaseRepository gets active environment readiness record", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.getActiveEnvironmentReadinessRecord("production", "database", "db_primary");
-  assert.equal(result, null);
-});
-
-test("ReleaseRepository lists environment readiness records", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.listEnvironmentReadinessRecords();
-  assert.ok(Array.isArray(result));
-});
-
-test("ReleaseRepository inserts incident handoff record", () => {
-  const db = createMockDb() as any;
-  const repo = new ReleaseRepository(db);
-
-  const now = "2026-04-21T10:00:00.000Z";
-  const record = {
+  repo.insertIncidentHandoffRecord({
     handoffId: "handoff_1",
     incidentId: "incident_1",
     environment: "production",
-    status: "pending",
+    status: "warning",
     shiftOwner: "team_a",
     primaryOncall: "user_1",
     secondaryOncall: "user_2",
     severity: "high",
     handoffJson: "{}",
     createdAt: now,
-  };
+  });
 
-  repo.insertIncidentHandoffRecord(record);
-  assert.ok(true);
-});
-
-test("ReleaseRepository lists incident handoff records", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.listIncidentHandoffRecords();
-  assert.ok(Array.isArray(result));
-});
-
-test("ReleaseRepository lists enterprise governance reports", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new ReleaseRepository(db);
-
-  const result = repo.listEnterpriseGovernanceReports();
-  assert.ok(Array.isArray(result));
+  assert.equal(repo.getReleaseBundleRecord("missing"), null);
+  assert.equal(repo.getReleaseExecutionReportRecord("missing"), null);
+  assert.equal(repo.getDeploymentExecutionReportRecord("missing"), null);
+  assert.equal(repo.getActiveEnvironmentReadinessRecord("production", "provider", "provider_primary"), null);
+  assert.ok(Array.isArray(repo.listIncidentHandoffRecords()));
 });

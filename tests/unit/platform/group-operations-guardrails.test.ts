@@ -156,8 +156,8 @@ test("R27-63 preemptionCapApplied is only true for the selected top-priority tie
   const service = new SlaOperationsService();
   const lowTier = service.evaluate({
     tiers: [
-      { tierId: "gold", displayName: "Gold", priority: 10, preemptionPriority: 10 },
-      { tierId: "silver", displayName: "Silver", priority: 5, preemptionPriority: 1 },
+      { tierId: "gold", displayName: "Gold", priority: 10, preemptionPriority: 10, targetLatencyMs: 100, targetSuccessRate: 0.99, maxQueueWaitMs: 50 },
+      { tierId: "silver", displayName: "Silver", priority: 5, preemptionPriority: 1, targetLatencyMs: 200, targetSuccessRate: 0.95, maxQueueWaitMs: 100 },
     ],
     selectedTierId: "silver",
     workflowClass: "deterministic",
@@ -167,8 +167,8 @@ test("R27-63 preemptionCapApplied is only true for the selected top-priority tie
   });
   const highTier = service.evaluate({
     tiers: [
-      { tierId: "gold", displayName: "Gold", priority: 10, preemptionPriority: 10 },
-      { tierId: "silver", displayName: "Silver", priority: 5, preemptionPriority: 1 },
+      { tierId: "gold", displayName: "Gold", priority: 10, preemptionPriority: 10, targetLatencyMs: 100, targetSuccessRate: 0.99, maxQueueWaitMs: 50 },
+      { tierId: "silver", displayName: "Silver", priority: 5, preemptionPriority: 1, targetLatencyMs: 200, targetSuccessRate: 0.95, maxQueueWaitMs: 100 },
     ],
     selectedTierId: "gold",
     workflowClass: "deterministic",

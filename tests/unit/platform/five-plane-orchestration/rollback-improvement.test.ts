@@ -180,9 +180,13 @@ test("AutoRollbackService triggers the rollback handler when thresholds are exce
   });
 
   assert.equal(decision.rollback, true);
-  assert.ok(invoked != null);
-  assert.equal(invoked!.candidateId, "candidate-r23-44");
-  assert.ok(invoked!.reasons.includes("rollout.failure_rate_exceeded"));
+  assert.ok(invoked);
+  if (!invoked) {
+    throw new Error("rollback handler was not invoked");
+  }
+  const rollbackInvocation = invoked as { candidateId: string; reasons: string[] };
+  assert.equal(rollbackInvocation.candidateId, "candidate-r23-44");
+  assert.ok(rollbackInvocation.reasons.includes("rollout.failure_rate_exceeded"));
 });
 
 test("ImprovementCandidateRegistry hydrates from a persistence store and evicts expired candidates", () => {

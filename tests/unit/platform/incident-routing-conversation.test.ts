@@ -9,8 +9,8 @@ import { createIncidentRoutes } from "../../../src/platform/five-plane-interface
 import { createPromptRoutes } from "../../../src/platform/five-plane-interface/api/http-server/prompt-routes.js";
 import { createTaskRoutes } from "../../../src/platform/five-plane-interface/api/http-server/task-routes.js";
 import type { ApiAuthService } from "../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { IncidentFacadeService } from "../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../src/platform/five-plane-interface/api/http-server/types.js";
-import { IncidentCaseService } from "../../../src/platform/five-plane-state-evidence/incident/index.js";
 
 function createAuthService(
   roles: Array<"viewer" | "operator" | "admin"> = ["viewer"],
@@ -97,10 +97,30 @@ function createHealthyMetrics() {
   };
 }
 
+function createIncidentService(): IncidentFacadeService {
+  return {
+    listIncidents: () => [],
+    listIncidentsPaginated: () => ({ incidents: [], nextToken: null }),
+    getIncident: () => null,
+    openIncident: () => {
+      throw new Error("not_implemented");
+    },
+    acknowledge: () => {
+      throw new Error("not_implemented");
+    },
+    startMitigation: () => {
+      throw new Error("not_implemented");
+    },
+    resolve: () => {
+      throw new Error("not_implemented");
+    },
+  };
+}
+
 test("R29-32 incident routes reject blank incident ids", async () => {
   const routes = createIncidentRoutes({
     authService: createAuthService(),
-    incidentService: new IncidentCaseService(),
+    incidentService: createIncidentService(),
   });
 
   await assert.rejects(
@@ -115,7 +135,7 @@ test("R29-32 incident routes reject blank incident ids", async () => {
 test("R29-33 incident id validation message does not reflect attacker input", async () => {
   const routes = createIncidentRoutes({
     authService: createAuthService(),
-    incidentService: new IncidentCaseService(),
+    incidentService: createIncidentService(),
   });
   const invalidIncidentId = "   ";
 
