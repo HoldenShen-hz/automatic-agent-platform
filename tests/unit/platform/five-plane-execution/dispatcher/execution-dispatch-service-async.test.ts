@@ -56,11 +56,21 @@ test("createTicket returns ticket decision from sync service", async () => {
     ticket: {
       id: "ticket-001",
       executionId: "exec-001",
-      priority: "medium",
+      taskId: "task-001",
+      tenantId: "tenant-001",
+      priority: "normal",
       queueName: null,
+      requiredCapabilitiesJson: "[]",
+      dispatchAfter: null,
+      attempt: 0,
       status: "pending",
+      assignedWorkerId: null,
+      leaseId: null,
+      claimedAt: null,
+      consumedAt: null,
+      invalidatedAt: null,
       createdAt: new Date().toISOString(),
-      createdAtReason: "test",
+      updatedAt: new Date().toISOString(),
     },
   };
 
@@ -85,11 +95,21 @@ test("ticket decision outcome values are valid", () => {
       ticket: {
         id: `ticket-${outcome}`,
         executionId: "exec-001",
-        priority: "medium",
+        taskId: "task-001",
+        tenantId: "tenant-001",
+        priority: "normal",
         queueName: null,
+        requiredCapabilitiesJson: "[]",
+        dispatchAfter: null,
+        attempt: 0,
         status: "pending",
+        assignedWorkerId: null,
+        leaseId: null,
+        claimedAt: null,
+        consumedAt: null,
+        invalidatedAt: null,
         createdAt: new Date().toISOString(),
-        createdAtReason: "test",
+        updatedAt: new Date().toISOString(),
       },
     };
     assert.equal(decision.outcome, outcome);
@@ -100,15 +120,25 @@ test("sync-backed async service pattern works with proper Promise wrapping", asy
   // Verify Promise.resolve works as expected for sync-backed service
   const result = await Promise.resolve({
     outcome: "created" as const,
-    ticket: {
-      id: "ticket-promise-test",
-      executionId: "exec-promise",
-      priority: "high",
-      queueName: null,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      createdAtReason: "promise-test",
-    },
+      ticket: {
+        id: "ticket-promise-test",
+        executionId: "exec-promise",
+        taskId: "task-promise",
+        tenantId: "tenant-promise",
+        priority: "high",
+        queueName: null,
+        requiredCapabilitiesJson: "[]",
+        dispatchAfter: null,
+        attempt: 0,
+        status: "pending",
+        assignedWorkerId: null,
+        leaseId: null,
+        claimedAt: null,
+        consumedAt: null,
+        invalidatedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
   });
 
   assert.equal(result.outcome, "created");

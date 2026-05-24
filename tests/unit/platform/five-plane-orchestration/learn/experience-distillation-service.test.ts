@@ -1,156 +1,91 @@
-/**
- * Experience Distillation Service Unit Tests
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ExperienceDistillationService } from "../../../../../src/platform/five-plane-orchestration/learn/experience-distillation-service.js";
+import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
-function makeSignal(overrides: Partial<{
-  learningSignalId: string;
-  learningType: "failure_pattern" | "success_signal" | "correction" | "recovery_playbook";
-  valueSummary: string;
-  confidence: number;
-  evidenceRefs: string[];
-  sourceSignalIds: string[];
-  generatedAt: string;
-}> = {}): {
-  learningSignalId: string;
-  learningType: "failure_pattern" | "success_signal" | "correction" | "recovery_playbook";
-  valueSummary: string;
-  confidence: number;
-  evidenceRefs: string[];
-  sourceSignalIds: string[];
-  generatedAt: string;
-} {
+function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
   return {
-    learningSignalId: "signal-001",
-    learningType: "failure_pattern",
-    valueSummary: "Test signal summary",
-    confidence: 0.7,
-    evidenceRefs: ["evidence-1"],
-    sourceSignalIds: ["source-1"],
-    generatedAt: new Date().toISOString(),
-    ...overrides,
+    learningSignalId: overrides.learningSignalId ?? "signal-1",
+    taskId: overrides.taskId ?? "task-1",
+    sourceFeedbackId: overrides.sourceFeedbackId ?? "feedback-1",
+    learningType: overrides.learningType ?? "failure_pattern",
+    confidence: overrides.confidence ?? 0.7,
+    valueSummary: overrides.valueSummary ?? "Retries succeeded after refreshing the session.",
+    evidenceRefs: overrides.evidenceRefs ?? ["artifact-1"],
+    sourceSignalIds: overrides.sourceSignalIds ?? ["source-1"],
+    relatedSignalIds: overrides.relatedSignalIds ?? [],
+    evidence: overrides.evidence ?? {},
+    generatedAt: overrides.generatedAt ?? 1_717_000_000_000,
   };
 }
 
-test("ExperienceDistillationService.distill creates learning object from signal", () => {
+test("ExperienceDistillationService distills canonical learning objects", () => {
   const service = new ExperienceDistillationService();
-  const signal = makeSignal({ learningSignalId: "sig-1" });
-  const results = service.distill([signal]);
 
-  assert.equal(results.length, 1);
-  assert.equal(results[0].learningObjectId.length > 0, true);
-  assert.equal(results[0].learningType, signal.learningType);
+  const [result] = service.distill([makeSignal()]);
+
+  assert.ok(result);
+  assert.equal(result.learningType, "failure_pattern");
+  assert.equal(result.kind, "failure_pattern");
+  assert.equal(result.summary, "Retries succeeded after refreshing the session.");
+  assert.equal(result.validatedBy, "none");
+  assert.equal(result.promotionStatus, "quarantine");
+  assert.equal(result.status, "created");
+  assert.deepEqual(result.content.evidenceRefs, ["artifact-1"]);
 });
 
-test("ExperienceDistillationService.distill maps title from learningType", () => {
+test("ExperienceDistillationService normalizes deprecated learning types", () => {
   const service = new ExperienceDistillationService();
-  const signal = makeSignal({ learningType: "failure_pattern" });
-  const results = service.distill([signal]);
 
-  assert.ok(results[0].title.includes("failure_pattern"));
+  const [datasetGap] = service.distill([makeSignal({ learningType: "dataset_gap" })]);
+  const [modelRetraining] = service.distill([makeSignal({ learningType: "model_retraining" })]);
+
+  assert.ok(datasetGap);
+  assert.ok(modelRetraining);
+  assert.equal(datasetGap.learningType, "failure_pattern");
+  assert.equal(datasetGap.kind, "failure_pattern");
+  assert.equal(modelRetraining.learningType, "user_correction");
+  assert.equal(modelRetraining.kind, "user_correction");
 });
 
-test("ExperienceDistillationService.distill copies valueSummary to summary", () => {
+test("ExperienceDistillationService carries over timestamps, ids, and signals", () => {
   const service = new ExperienceDistillationService();
-  const signal = makeSignal({ valueSummary: "Custom summary text" });
-  const results = service.distill([signal]);
 
-  assert.equal(results[0].summary, "Custom summary text");
+  const [result] = service.distill([
+    makeSignal({
+      generatedAt: 1_720_000_000_000,
+      sourceSignalIds: ["a", "b"],
+      evidenceRefs: ["ev-1", "ev-2"],
+    }),
+  ]);
+
+  assert.ok(result);
+  assert.equal(result.createdAt, "1720000000000");
+  assert.deepEqual(result.sourceSignalIds, ["a", "b"]);
+  assert.deepEqual(result.evidenceRefs, ["ev-1", "ev-2"]);
+  assert.notEqual(result.learningObjectId, result.objectId);
 });
 
-test("ExperienceDistillationService.distill copies confidence", () => {
+test("ExperienceDistillationService chooses recommendations by learning type", () => {
   const service = new ExperienceDistillationService();
-  const signal = makeSignal({ confidence: 0.85 });
-  const results = service.distill([signal]);
+  const [failure] = service.distill([makeSignal({ learningType: "failure_pattern" })]);
+  const [recovery] = service.distill([makeSignal({ learningType: "recovery_playbook" })]);
 
-  assert.equal(results[0].confidence, 0.85);
+  assert.ok(failure);
+  assert.ok(recovery);
+  assert.ok(failure.recommendation.includes("planning guidance"));
+  assert.ok(recovery.recommendation.includes("recovery playbook"));
 });
 
-test("ExperienceDistillationService.distill copies evidenceRefs", () => {
+test("ExperienceDistillationService handles empty and multi-signal batches", () => {
   const service = new ExperienceDistillationService();
-  const signal = makeSignal({ evidenceRefs: ["ref-1", "ref-2"] });
-  const results = service.distill([signal]);
 
-  assert.deepEqual(results[0].evidenceRefs, ["ref-1", "ref-2"]);
-});
-
-test("ExperienceDistillationService.distill copies sourceSignalIds", () => {
-  const service = new ExperienceDistillationService();
-  const signal = makeSignal({ sourceSignalIds: ["source-A", "source-B"] });
-  const results = service.distill([signal]);
-
-  assert.deepEqual(results[0].sourceSignalIds, ["source-A", "source-B"]);
-});
-
-test("ExperienceDistillationService.distill sets validatedBy to none", () => {
-  const service = new ExperienceDistillationService();
-  const results = service.distill([makeSignal()]);
-
-  assert.equal(results[0].validatedBy, "none");
-});
-
-test("ExperienceDistillationService.distill sets promotionStatus to quarantine", () => {
-  const service = new ExperienceDistillationService();
-  const results = service.distill([makeSignal()]);
-
-  assert.equal(results[0].promotionStatus, "quarantine");
-});
-
-test("ExperienceDistillationService.distill uses generatedAt for createdAt", () => {
-  const service = new ExperienceDistillationService();
-  const signal = makeSignal({ generatedAt: "2024-01-15T10:30:00Z" });
-  const results = service.distill([signal]);
-
-  assert.equal(results[0].createdAt, "2024-01-15T10:30:00Z");
-});
-
-test("ExperienceDistillationService.distill builds recommendation for failure_pattern", () => {
-  const service = new ExperienceDistillationService();
-  const signal = makeSignal({ learningType: "failure_pattern" });
-  const results = service.distill([signal]);
-
-  assert.ok(results[0].recommendation.length > 0);
-  assert.ok(results[0].recommendation.includes("preventive") || results[0].recommendation.includes("planning"));
-});
-
-test("ExperienceDistillationService.distill builds recommendation for recovery_playbook", () => {
-  const service = new ExperienceDistillationService();
-  const signal = makeSignal({ learningType: "recovery_playbook" });
-  const results = service.distill([signal]);
-
-  assert.ok(results[0].recommendation.includes("recovery") || results[0].recommendation.includes("persist"));
-});
-
-test("ExperienceDistillationService.distill handles multiple signals", () => {
-  const service = new ExperienceDistillationService();
-  const signals = [
-    makeSignal({ learningSignalId: "sig-1" }),
-    makeSignal({ learningSignalId: "sig-2" }),
-    makeSignal({ learningSignalId: "sig-3" }),
-  ];
-  const results = service.distill(signals);
-
-  assert.equal(results.length, 3);
-});
-
-test("ExperienceDistillationService.distill handles empty array", () => {
-  const service = new ExperienceDistillationService();
-  const results = service.distill([]);
-
-  assert.equal(results.length, 0);
-});
-
-test("ExperienceDistillationService.distill generates unique learningObjectIds", () => {
-  const service = new ExperienceDistillationService();
-  const signals = [
-    makeSignal({ learningSignalId: "sig-1" }),
-    makeSignal({ learningSignalId: "sig-2" }),
-  ];
-  const results = service.distill(signals);
-
-  assert.notEqual(results[0].learningObjectId, results[1].learningObjectId);
+  assert.deepEqual(service.distill([]), []);
+  const results = service.distill([
+    makeSignal({ learningSignalId: "signal-1" }),
+    makeSignal({ learningSignalId: "signal-2" }),
+  ]);
+  assert.equal(results.length, 2);
+  assert.notEqual(results[0]?.learningObjectId, results[1]?.learningObjectId);
 });

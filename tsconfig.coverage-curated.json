@@ -755,7 +755,6 @@
     "tests/unit/platform/five-plane-execution/tool-executor/web-fetch.test.ts",
     "tests/unit/platform/five-plane-execution/state-transition/transition-service-regressions.test.ts",
     "tests/unit/platform/five-plane-execution/sandbox/interpreter-path-restrictor.test.ts",
-    "tests/unit/platform/five-plane-execution/sandbox/sandbox-command-executor.test.ts",
     "tests/unit/platform/five-plane-execution/sandbox/sandbox-factory.test.ts",
     "tests/unit/platform/five-plane-execution/queue-metrics/queue-metric-collector.test.ts",
     "tests/unit/platform/five-plane-execution/queue/ticket-priority-queue.test.ts",

@@ -227,9 +227,9 @@ test("R27-14: canRetireAgent returns true when revokeAt is in the past", () => {
   const plan = {
     agentId: "agent-retire",
     successorAgentId: null,
-    transferItems: [] as readonly [],
+    transferItems: [],
     gracePeriodDays: 0,
-    notificationTargets: [] as readonly [],
+    notificationTargets: [],
     revokeAt: "2020-01-01T00:00:00.000Z",
     reason: "",
   };
@@ -240,9 +240,9 @@ test("R27-14: canRetireAgent returns false when revokeAt is in the future", () =
   const plan = {
     agentId: "agent-retire",
     successorAgentId: null,
-    transferItems: [] as readonly [],
+    transferItems: [],
     gracePeriodDays: 0,
-    notificationTargets: [] as readonly [],
+    notificationTargets: [],
     revokeAt: "2030-01-01T00:00:00.000Z",
     reason: "",
   };
@@ -253,9 +253,9 @@ test("R27-14: canRetireAgent compares parsed timestamps across boundaries and mi
   const plan = {
     agentId: "agent-retire",
     successorAgentId: null,
-    transferItems: [] as readonly [],
+    transferItems: [],
     gracePeriodDays: 0,
-    notificationTargets: [] as readonly [],
+    notificationTargets: [],
     revokeAt: "2025-06-01T00:00:00.000Z",
     reason: "",
   };

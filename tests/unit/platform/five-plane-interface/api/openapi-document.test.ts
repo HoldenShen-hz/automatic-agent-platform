@@ -3,8 +3,13 @@ import assert from "node:assert/strict";
 import {
   buildOpenApiDocument,
   listApiRoutes,
-  type ApiRouteSpec,
 } from "../../../../../src/platform/five-plane-interface/api/openapi-document.js";
+
+type OperationSpec = {
+  summary?: string;
+  parameters?: Array<Record<string, unknown>>;
+  responses?: Record<string, unknown>;
+};
 
 describe("openapi-document", () => {
   describe("buildOpenApiDocument", () => {
@@ -43,7 +48,7 @@ describe("openapi-document", () => {
       const doc = buildOpenApiDocument();
 
       assert.ok(doc.paths["/v1/auth/token"]);
-      const postSpec = doc.paths["/v1/auth/token"] as Record<string, unknown>;
+      const postSpec = doc.paths["/v1/auth/token"] as { post?: OperationSpec };
       assert.strictEqual(postSpec.post?.summary, "Exchange API key for bearer token");
     });
 
@@ -147,8 +152,8 @@ describe("openapi-document", () => {
     it("should include query parameter definitions for paginated endpoints", () => {
       const doc = buildOpenApiDocument();
 
-      const tasksSpec = doc.paths["/v1/tasks"] as Record<string, unknown>;
-      const params = tasksSpec.get?.parameters as Array<Record<string, unknown>> | undefined;
+      const tasksSpec = doc.paths["/v1/tasks"] as { get?: OperationSpec };
+      const params = tasksSpec.get?.parameters;
 
       assert.ok(params);
       assert.ok(params!.some((p) => p.name === "limit"));
@@ -158,7 +163,7 @@ describe("openapi-document", () => {
     it("should include 200 response definitions", () => {
       const doc = buildOpenApiDocument();
 
-      const healthSpec = doc.paths["/healthz"] as Record<string, unknown>;
+      const healthSpec = doc.paths["/healthz"] as { get?: OperationSpec };
       assert.ok(healthSpec.get?.responses?.["200"]);
     });
   });

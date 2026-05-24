@@ -9,7 +9,7 @@ function makeResolver(found: boolean, taskScope?: { tenantId: string | null; req
     return {
       taskId,
       tenantId: taskScope == null ? "tenant_abc" : taskScope.tenantId,
-      requiredScopes: taskScope?.requiredScopes,
+      ...(taskScope?.requiredScopes !== undefined ? { requiredScopes: taskScope.requiredScopes } : {}),
     };
   };
 }

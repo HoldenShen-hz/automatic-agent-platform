@@ -55,7 +55,7 @@ test("toDeliveryMessageRecord parses row correctly", () => {
 });
 
 test("toDeliveryMessageRecord converts string numbers to numbers", () => {
-  const row = { attempts: "4", max_retries: "7" };
+  const row = { attempts: "4", max_retries: "7" } as unknown as { attempts: number; max_retries: number };
   const result = toDeliveryMessageRecord(row);
   assert.deepEqual(result, { attempts: 4, maxRetries: 7 });
 });

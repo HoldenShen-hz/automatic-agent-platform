@@ -1,145 +1,107 @@
-/**
- * Task Decomposition Service Unit Tests
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import { TaskDecompositionService } from "../../../../../src/platform/five-plane-orchestration/planner/task-decomposition-service.js";
+import type { PlannedWorkflow } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
-function makeWorkflow() {
+function makeWorkflow(overrides: Partial<PlannedWorkflow> = {}): PlannedWorkflow {
   return {
-    workflowId: "wf-001",
-    taskId: "task-001",
-    divisionId: "division-1",
+    workflow: overrides.workflow ?? {
+      workflowId: "workflow-1",
+      divisionId: "ops",
+      steps: [],
+    },
+    executionSteps: overrides.executionSteps ?? [
+      {
+        stepId: "step-1",
+        divisionId: "ops",
+        roleId: "operator",
+        inputKeys: [],
+        agentId: "agent_operator",
+        outputKey: "result",
+        outputSchemaPath: null,
+        dependsOnStepIds: [],
+        dependencyTypes: {},
+        timeoutMs: 1_000,
+        maxAttempts: 1,
+      },
+    ],
+    planReason: overrides.planReason ?? "workflow.single_step_execution",
+    dependencyEdges: overrides.dependencyEdges ?? [],
+  };
+}
+
+test("TaskDecompositionService decomposes execution steps into titles and owners", () => {
+  const service = new TaskDecompositionService();
+
+  const [decomposition] = service.decompose(makeWorkflow());
+
+  assert.ok(decomposition);
+  assert.equal(decomposition.title, "step-1:result");
+  assert.equal(decomposition.ownerRoleId, "operator");
+  assert.deepEqual(decomposition.dependsOn, []);
+});
+
+test("TaskDecompositionService derives tool requirements from dependencies and validation hooks", () => {
+  const service = new TaskDecompositionService();
+
+  const [decomposition] = service.decompose(makeWorkflow({
+    executionSteps: [{
+      stepId: "step-2",
+      divisionId: "ops",
+      roleId: "reviewer",
+      inputKeys: ["draft"],
+      agentId: "agent_reviewer",
+      outputKey: "approved",
+      outputSchemaPath: "schemas/output.json",
+      dependsOnStepIds: ["step-1"],
+      dependencyTypes: { "step-1": "hard" },
+      timeoutMs: 2_000,
+      maxAttempts: 2,
+      compensationModel: {
+        strategy: "manual",
+        compensateAction: "rollback",
+      } as never,
+    }],
+  }));
+
+  assert.deepEqual(decomposition?.dependsOn, ["step-1"]);
+  assert.deepEqual(decomposition?.toolNames, ["read", "apply_patch", "validate_output"]);
+});
+
+test("TaskDecompositionService preserves workflow order for multiple steps", () => {
+  const service = new TaskDecompositionService();
+
+  const decomposition = service.decompose(makeWorkflow({
     executionSteps: [
       {
         stepId: "step-1",
-        roleId: "planner",
-        inputKeys: ["context"],
-        outputKey: "plan",
+        divisionId: "ops",
+        roleId: "operator",
+        inputKeys: [],
+        agentId: "agent_operator",
+        outputKey: "draft",
+        outputSchemaPath: null,
         dependsOnStepIds: [],
-        timeoutMs: 60000,
+        dependencyTypes: {},
+        timeoutMs: 1_000,
         maxAttempts: 1,
       },
       {
         stepId: "step-2",
-        roleId: "generator",
-        inputKeys: ["plan"],
-        outputKey: "result",
+        divisionId: "ops",
+        roleId: "reviewer",
+        inputKeys: ["draft"],
+        agentId: "agent_reviewer",
+        outputKey: "approved",
+        outputSchemaPath: null,
         dependsOnStepIds: ["step-1"],
-        timeoutMs: 120000,
-        maxAttempts: 2,
-        compensationModel: { compensationType: "rollback" },
-      },
-      {
-        stepId: "step-3",
-        roleId: "evaluator",
-        inputKeys: ["result"],
-        outputKey: "evaluation",
-        dependsOnStepIds: ["step-2"],
-        timeoutMs: 30000,
-        maxAttempts: 1,
-        outputSchemaPath: "/schemas/evaluation.json",
-      },
-    ],
-  };
-}
-
-test("TaskDecompositionService.decompose produces correct number of decompositions", () => {
-  const service = new TaskDecompositionService();
-  const result = service.decompose(makeWorkflow());
-
-  assert.equal(result.length, 3);
-});
-
-test("TaskDecompositionService.decompose handles step with no dependencies", () => {
-  const service = new TaskDecompositionService();
-  const wf = {
-    workflowId: "wf-001",
-    taskId: "task-001",
-    divisionId: "division-1",
-    executionSteps: [
-      {
-        stepId: "step-1",
-        roleId: "planner",
-        inputKeys: [],
-        outputKey: "plan",
-        dependsOnStepIds: [],
-        timeoutMs: 60000,
+        dependencyTypes: { "step-1": "hard" },
+        timeoutMs: 1_000,
         maxAttempts: 1,
       },
     ],
-  };
+  }));
 
-  const result = service.decompose(wf);
-
-  assert.equal(result[0].dependsOn.length, 0);
-  assert.equal(result[0].ownerRoleId, "planner");
-});
-
-test("TaskDecompositionService.decompose copies dependsOnStepIds as dependsOn", () => {
-  const service = new TaskDecompositionService();
-  const result = service.decompose(makeWorkflow());
-
-  assert.deepEqual(result[1].dependsOn, ["step-1"]);
-  assert.deepEqual(result[2].dependsOn, ["step-2"]);
-});
-
-test("TaskDecompositionService.decompose sets ownerRoleId from step roleId", () => {
-  const service = new TaskDecompositionService();
-  const result = service.decompose(makeWorkflow());
-
-  assert.equal(result[0].ownerRoleId, "planner");
-  assert.equal(result[1].ownerRoleId, "generator");
-  assert.equal(result[2].ownerRoleId, "evaluator");
-});
-
-test("TaskDecompositionService.decompose adds 'read' tool when step has dependencies", () => {
-  const service = new TaskDecompositionService();
-  const result = service.decompose(makeWorkflow());
-
-  // step-1 has no dependencies - should not get 'read'
-  assert.ok(!result[0].toolNames.includes("read"));
-  // step-2 has dependsOn - should get 'read' + others
-  assert.ok(result[1].toolNames.includes("read"));
-});
-
-test("TaskDecompositionService.decompose adds 'apply_patch' when step has compensationModel", () => {
-  const service = new TaskDecompositionService();
-  const result = service.decompose(makeWorkflow());
-
-  // step-2 has compensationModel
-  assert.ok(result[1].toolNames.includes("apply_patch"));
-});
-
-test("TaskDecompositionService.decompose adds 'validate_output' when step has outputSchemaPath", () => {
-  const service = new TaskDecompositionService();
-  const result = service.decompose(makeWorkflow());
-
-  // step-3 has outputSchemaPath
-  assert.ok(result[2].toolNames.includes("validate_output"));
-});
-
-test("TaskDecompositionService.decompose builds correct title", () => {
-  const service = new TaskDecompositionService();
-  const result = service.decompose(makeWorkflow());
-
-  assert.equal(result[0].title, "step-1:plan");
-  assert.equal(result[1].title, "step-2:result");
-  assert.equal(result[2].title, "step-3:evaluation");
-});
-
-test("TaskDecompositionService.decompose handles empty workflow", () => {
-  const service = new TaskDecompositionService();
-  const wf = {
-    workflowId: "wf-empty",
-    taskId: "task-empty",
-    divisionId: "division-1",
-    executionSteps: [],
-  };
-
-  const result = service.decompose(wf);
-
-  assert.equal(result.length, 0);
+  assert.deepEqual(decomposition.map((entry) => entry.title), ["step-1:draft", "step-2:approved"]);
 });

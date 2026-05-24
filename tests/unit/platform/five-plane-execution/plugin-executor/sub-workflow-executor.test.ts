@@ -316,7 +316,7 @@ test("SubWorkflowExecutor retryStep re-executes failed step", async () => {
 
   const result = await executor.retryStep(executionId, "step_1");
 
-  assert.equal(result.status, "completed" || result.status === "pending");
+  assert.ok(result.status === "completed" || result.status === "pending");
 });
 
 test("SubWorkflowExecutor retryStep throws for unknown execution", async () => {
@@ -539,6 +539,7 @@ test("SubWorkflowExecutor checkpoint stores step statuses", () => {
   const checkpoints = executor.getCheckpoints(executionId);
   const checkpoint = checkpoints[0];
 
+  assert.ok(checkpoint);
   assert.ok("state" in checkpoint);
   assert.ok("stepStatuses" in checkpoint.state);
 });

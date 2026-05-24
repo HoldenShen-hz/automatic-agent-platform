@@ -86,7 +86,7 @@ test("buildSnapshot filters approvals by tenantId when operator has tenantId", (
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.approvalQueue.length, 1);
-  assert.equal(snapshot.approvalQueue[0].approvalId, "a1");
+  assert.equal(snapshot.approvalQueue[0]?.approvalId, "a1");
 });
 
 test("buildSnapshot filters incidents by tenantId when operator has tenantId", () => {
@@ -100,7 +100,7 @@ test("buildSnapshot filters incidents by tenantId when operator has tenantId", (
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.incidentTimeline.length, 1);
-  assert.equal(snapshot.incidentTimeline[0].incidentId, "i1");
+  assert.equal(snapshot.incidentTimeline[0]?.incidentId, "i1");
 });
 
 test("buildSnapshot sorts incidents by createdAt descending and limits to 50", () => {
@@ -119,8 +119,8 @@ test("buildSnapshot sorts incidents by createdAt descending and limits to 50", (
   const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
 
   assert.equal(snapshot.incidentTimeline.length, 50);
-  assert.equal(snapshot.incidentTimeline[0].incidentId, "i59");
-  assert.equal(snapshot.incidentTimeline[49].incidentId, "i10");
+  assert.equal(snapshot.incidentTimeline[0]?.incidentId, "i59");
+  assert.equal(snapshot.incidentTimeline[49]?.incidentId, "i10");
 });
 
 test("buildSnapshot filters tenants by operator tenantId", () => {
@@ -134,7 +134,7 @@ test("buildSnapshot filters tenants by operator tenantId", () => {
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.tenantPanel.length, 1);
-  assert.equal(snapshot.tenantPanel[0].tenantId, "tenant-1");
+  assert.equal(snapshot.tenantPanel[0]?.tenantId, "tenant-1");
 });
 
 test("buildSnapshot builds moduleCoverage correctly for worker_management", () => {

@@ -138,8 +138,8 @@ test("createReconciliationRecord with evidence refs", () => {
   );
 
   assert.equal(record.evidenceRefs.length, 2);
-  assert.equal(record.evidenceRefs[0].artifactId, evidenceRefs[0].artifactId);
-  assert.equal(record.evidenceRefs[1].artifactId, evidenceRefs[1].artifactId);
+  assert.equal(record.evidenceRefs[0]?.artifactId, evidenceRefs[0]?.artifactId);
+  assert.equal(record.evidenceRefs[1]?.artifactId, evidenceRefs[1]?.artifactId);
 });
 
 // ---------------------------------------------------------------------------

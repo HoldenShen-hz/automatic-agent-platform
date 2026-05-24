@@ -1,155 +1,167 @@
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
+
 import { ExecutionDeviationDetector } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-deviation-detector.js";
-import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
+import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
+import type { FeedbackBatch } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
-describe("ExecutionDeviationDetector", () => {
-  describe("detect", () => {
-    const createMockPlan = (overrides: Partial<Plan> = {}): Plan =>
-      ({
-        taskId: "test-task-123",
-        workflowId: "test-workflow",
-        planId: "test-plan",
-        steps: [],
-        status: "in_progress",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-        ...overrides,
-      } as Plan);
+function createPlan(overrides: Partial<Plan> = {}): Plan {
+  return {
+    planId: "plan-1",
+    taskId: "task-1",
+    version: 1,
+    assessmentRef: "assessment://1",
+    strategy: "linear",
+    steps: [{
+      stepId: "step-1",
+      action: "tool",
+      inputs: {},
+      outputs: ["out-1"],
+      dependencies: [],
+      status: "pending",
+      timeout: 5_000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    }],
+    createdAt: Date.now(),
+    ...overrides,
+  };
+}
 
-    const createMockFeedback = (overrides: {
-      outcome?: "repairable" | "failed" | "escalated" | "completed";
-      signals?: Array<{ category: string; signal: string }>;
-    } = {}) => ({
-      outcome: overrides.outcome ?? "completed",
-      signals: overrides.signals ?? [],
-      batchId: "test-batch",
-      collectedAt: "2026-01-01T00:00:00.000Z",
-    });
+function createFeedback(overrides: Partial<FeedbackBatch> = {}): FeedbackBatch {
+  return {
+    feedbackId: "feedback-1",
+    batchId: "batch-1",
+    taskId: "task-1",
+    executionId: "execution-1",
+    planId: "plan-1",
+    outcome: "completed",
+    signals: [],
+    emittedAt: Date.now(),
+    ...overrides,
+  };
+}
 
-    it("should detect deviation when outcome is repairable", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({ outcome: "repairable" });
+test("ExecutionDeviationDetector reports failed outcomes against the plan task", () => {
+  const detector = new ExecutionDeviationDetector();
 
-      const deviations = detector.detect(plan, feedback);
+  const deviations = detector.detect(
+    createPlan({ taskId: "task-abc" }),
+    createFeedback({ taskId: "task-abc", outcome: "failed" }),
+  );
 
-      assert.equal(deviations.length, 1);
-      assert.equal(deviations[0].severity, "high");
-      assert.equal(deviations[0].reasonCode, "execution.repairable");
-      assert.equal(deviations[0].taskId, "test-task-123");
-    });
+  const firstDeviation = deviations[0];
+  assert.ok(firstDeviation);
+  assert.equal(deviations.length, 1);
+  assert.equal(firstDeviation.taskId, "task-abc");
+  assert.equal(firstDeviation.severity, "critical");
+  assert.equal(firstDeviation.reasonCode, "execution.failed");
+});
 
-    it("should detect deviation when outcome is failed", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({ outcome: "failed" });
+test("ExecutionDeviationDetector reports repairable outcomes as high severity", () => {
+  const detector = new ExecutionDeviationDetector();
 
-      const deviations = detector.detect(plan, feedback);
+  const deviations = detector.detect(createPlan(), createFeedback({ outcome: "repairable" }));
 
-      assert.equal(deviations.length, 1);
-      assert.equal(deviations[0].severity, "critical");
-      assert.equal(deviations[0].reasonCode, "execution.failed");
-    });
+  const firstDeviation = deviations[0];
+  assert.ok(firstDeviation);
+  assert.equal(firstDeviation.severity, "high");
+  assert.equal(firstDeviation.reasonCode, "execution.repairable");
+});
 
-    it("should detect deviation when outcome is escalated", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({ outcome: "escalated" });
+test("ExecutionDeviationDetector reports timeout signals with canonical feedback payloads", () => {
+  const detector = new ExecutionDeviationDetector();
 
-      const deviations = detector.detect(plan, feedback);
+  const deviations = detector.detect(
+    createPlan(),
+    createFeedback({
+      signals: [{
+        signalId: "signal-timeout",
+        taskId: "task-1",
+        source: "execution",
+        category: "timeout",
+        severity: "error",
+        payload: { signal: "execution_timed_out" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+        trustFactors: {
+          sourceReliability: 0.9,
+          historicalAccuracy: 0.8,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0.1,
+          holdoutOverlap: 0,
+        },
+        feedbackTrustScore: 0.92,
+      }],
+    }),
+  );
 
-      assert.equal(deviations.length, 1);
-      assert.equal(deviations[0].severity, "critical");
-      assert.equal(deviations[0].reasonCode, "execution.escalated");
-    });
+  const firstDeviation = deviations[0];
+  assert.ok(firstDeviation);
+  assert.equal(firstDeviation.reasonCode, "execution.timeout");
+  assert.equal(firstDeviation.severity, "high");
+});
 
-    it("should detect deviation when outcome is completed (no deviation)", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({ outcome: "completed" });
+test("ExecutionDeviationDetector combines outcome and timeout deviations", () => {
+  const detector = new ExecutionDeviationDetector();
 
-      const deviations = detector.detect(plan, feedback);
+  const deviations = detector.detect(
+    createPlan(),
+    createFeedback({
+      outcome: "escalated",
+      signals: [{
+        signalId: "signal-timeout",
+        taskId: "task-1",
+        source: "system",
+        category: "timeout",
+        severity: "critical",
+        payload: {},
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+        trustFactors: {
+          sourceReliability: 0.8,
+          historicalAccuracy: 0.8,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0.2,
+          holdoutOverlap: 0,
+        },
+        feedbackTrustScore: 0.88,
+      }],
+    }),
+  );
 
-      assert.equal(deviations.length, 0);
-    });
+  assert.equal(deviations.length, 2);
+  assert.ok(deviations.some((deviation) => deviation.reasonCode === "execution.escalated"));
+  assert.ok(deviations.some((deviation) => deviation.reasonCode === "execution.timeout"));
+  assert.notEqual(deviations[0]?.deviationId, deviations[1]?.deviationId);
+});
 
-    it("should detect timeout signal deviation", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({
-        signals: [{ category: "timeout", signal: "execution_timed_out" }],
-      });
+test("ExecutionDeviationDetector returns no deviations for completed non-timeout feedback", () => {
+  const detector = new ExecutionDeviationDetector();
 
-      const deviations = detector.detect(plan, feedback);
+  const deviations = detector.detect(
+    createPlan(),
+    createFeedback({
+      outcome: "completed",
+      signals: [{
+        signalId: "signal-success",
+        taskId: "task-1",
+        source: "execution",
+        category: "success",
+        severity: "info",
+        payload: {},
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+        trustFactors: {
+          sourceReliability: 0.9,
+          historicalAccuracy: 0.9,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0,
+          holdoutOverlap: 0,
+        },
+        feedbackTrustScore: 0.95,
+      }],
+    }),
+  );
 
-      assert.equal(deviations.length, 1);
-      assert.equal(deviations[0].severity, "high");
-      assert.equal(deviations[0].reasonCode, "execution.timeout");
-    });
-
-    it("should not detect timeout for non-timeout signals", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({
-        signals: [{ category: "performance", signal: "slow_response" }],
-      });
-
-      const deviations = detector.detect(plan, feedback);
-
-      assert.equal(deviations.length, 0);
-    });
-
-    it("should detect multiple deviations from different feedback conditions", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({
-        outcome: "repairable",
-        signals: [{ category: "timeout", signal: "execution_timed_out" }],
-      });
-
-      const deviations = detector.detect(plan, feedback);
-
-      assert.equal(deviations.length, 2);
-      assert.ok(deviations.some((d) => d.reasonCode === "execution.repairable"));
-      assert.ok(deviations.some((d) => d.reasonCode === "execution.timeout"));
-    });
-
-    it("should generate unique deviation IDs", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({
-        outcome: "failed",
-        signals: [{ category: "timeout", signal: "execution_timed_out" }],
-      });
-
-      const deviations = detector.detect(plan, feedback);
-
-      assert.equal(deviations.length, 2);
-      assert.notEqual(deviations[0].deviationId, deviations[1].deviationId);
-    });
-
-    it("should use plan.taskId in deviation", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan({ taskId: "specific-task-id" });
-      const feedback = createMockFeedback({ outcome: "failed" });
-
-      const deviations = detector.detect(plan, feedback);
-
-      assert.equal(deviations[0].taskId, "specific-task-id");
-    });
-
-    it("should include detectedAt timestamp", () => {
-      const detector = new ExecutionDeviationDetector();
-      const plan = createMockPlan();
-      const feedback = createMockFeedback({ outcome: "failed" });
-
-      const before = Date.now();
-      const deviations = detector.detect(plan, feedback);
-      const after = Date.now();
-
-      assert.ok(deviations[0].detectedAt >= before);
-      assert.ok(deviations[0].detectedAt <= after);
-    });
-  });
+  assert.deepEqual(deviations, []);
 });

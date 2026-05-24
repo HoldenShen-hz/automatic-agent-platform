@@ -121,7 +121,6 @@ test("registerEndpoint requires signingSecret for sha256_hmac algorithm", () => 
         enabled: true,
         allowedEventTypes: [],
         algorithm: "sha256_hmac",
-        signingSecret: undefined,
       }),
     /webhook\.signing_secret_required/,
   );

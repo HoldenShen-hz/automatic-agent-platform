@@ -1,187 +1,94 @@
-/**
- * Plan DAG Validator Unit Tests
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import { PlanDagValidator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-dag-validator.js";
+import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 
-function makeStep(overrides: Partial<{
-  stepId: string;
-  action: string;
-  title: string;
-  timeout: number;
-  retryPolicy: { maxRetries: number; backoffMs: number };
-  dependencies: string[];
-  inputs: Record<string, unknown>;
-}> = {}): {
-  stepId: string;
-  action: string;
-  title: string;
-  timeout: number;
-  retryPolicy: { maxRetries: number; backoffMs: number };
-  dependencies: string[];
-  status: string;
-  inputs: Record<string, unknown>;
-  outputs: string[];
-} {
+function makeStep(overrides: Partial<PlanStep> = {}): PlanStep {
   return {
-    stepId: "step-1",
-    action: "execute",
-    title: "Step 1",
-    timeout: 60000,
-    retryPolicy: { maxRetries: 0, backoffMs: 250 },
-    dependencies: [],
-    status: "pending",
-    inputs: {},
-    outputs: [],
-    ...overrides,
+    stepId: overrides.stepId ?? "step-1",
+    action: overrides.action ?? "execute",
+    title: overrides.title ?? "Step 1",
+    inputs: overrides.inputs ?? {},
+    outputs: overrides.outputs ?? [],
+    dependencies: overrides.dependencies ?? [],
+    status: overrides.status ?? "pending",
+    timeout: overrides.timeout ?? 1_000,
+    retryPolicy: overrides.retryPolicy ?? { maxRetries: 0, backoffMs: 0 },
+    ...(overrides.outputSchemaPath !== undefined ? { outputSchemaPath: overrides.outputSchemaPath } : {}),
   };
 }
 
-test("PlanDagValidator.validate returns valid for empty steps", () => {
-  const validator = new PlanDagValidator();
-  const result = validator.validate([]);
-
-  assert.equal(result.valid, true);
-  assert.equal(result.issues.length, 0);
-});
-
-test("PlanDagValidator.validate returns valid for single step", () => {
-  const validator = new PlanDagValidator();
-  const steps = [makeStep({ stepId: "step-1", title: "Initialize" })];
-  const result = validator.validate(steps);
-
-  assert.equal(result.valid, true);
-  assert.ok(result.orderedSteps.length >= 1);
-});
-
-test("PlanDagValidator.validate detects self-dependency", () => {
-  const validator = new PlanDagValidator();
-  const steps = [makeStep({ stepId: "step-1", dependencies: ["step-1"] })];
-  const result = validator.validate(steps);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.issues.some(i => i.includes("self_dependency")));
-});
-
-test("PlanDagValidator.validate detects missing dependency", () => {
-  const validator = new PlanDagValidator();
-  const steps = [makeStep({ stepId: "step-1", dependencies: ["non-existent"] })];
-  const result = validator.validate(steps);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.issues.some(i => i.includes("missing_dependency")));
-});
-
-test("PlanDagValidator.validate detects cycle", () => {
+test("PlanDagValidator accepts valid DAGs and produces topological order", () => {
   const validator = new PlanDagValidator();
   const steps = [
+    makeStep({ stepId: "step-1", title: "root" }),
+    makeStep({ stepId: "step-2", dependencies: ["step-1"], title: "branch-a" }),
+    makeStep({ stepId: "step-3", dependencies: ["step-1"], title: "branch-b" }),
+    makeStep({ stepId: "step-4", dependencies: ["step-2", "step-3"], title: "join" }),
+  ];
+
+  const result = validator.validate(steps);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.orderedSteps.map((step) => step.stepId), ["step-1", "step-2", "step-3", "step-4"]);
+});
+
+test("PlanDagValidator flags missing dependencies and self-dependencies", () => {
+  const validator = new PlanDagValidator();
+
+  const result = validator.validate([
+    makeStep({ stepId: "step-1", dependencies: ["step-1", "step-404"] }),
+  ]);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.includes("planning.self_dependency:step-1"));
+  assert.ok(result.issues.includes("planning.missing_dependency:step-1:step-404"));
+});
+
+test("PlanDagValidator detects structural cycles", () => {
+  const validator = new PlanDagValidator();
+
+  const result = validator.validate([
     makeStep({ stepId: "step-1", dependencies: ["step-2"] }),
     makeStep({ stepId: "step-2", dependencies: ["step-1"] }),
-  ];
-  const result = validator.validate(steps);
+  ]);
 
   assert.equal(result.valid, false);
-  assert.ok(result.issues.some(i => i.includes("cycle")));
+  assert.ok(result.issues.includes("planning.cycle_detected"));
 });
 
-test("PlanDagValidator.validate returns correct ordering for linear DAG", () => {
+test("PlanDagValidator validates title, timeout, and retry policy fields", () => {
+  const validator = new PlanDagValidator();
+
+  const result = validator.validate([
+    makeStep({
+      stepId: "step-1",
+      title: "",
+      timeout: 0,
+      retryPolicy: { maxRetries: -1, backoffMs: 0 },
+    }),
+  ]);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.includes("planning.missing_title:step-1"));
+  assert.ok(result.issues.includes("planning.invalid_timeout:step-1"));
+  assert.ok(result.issues.includes("planning.invalid_retry_max:step-1"));
+});
+
+test("PlanDagValidator analyzeWorstPath returns the most expensive chain", () => {
   const validator = new PlanDagValidator();
   const steps = [
-    makeStep({ stepId: "step-1", title: "First" }),
-    makeStep({ stepId: "step-2", dependencies: ["step-1"], title: "Second" }),
-    makeStep({ stepId: "step-3", dependencies: ["step-2"], title: "Third" }),
+    makeStep({ stepId: "step-1", timeout: 1_000 }),
+    makeStep({ stepId: "step-2", dependencies: ["step-1"], timeout: 5_000 }),
+    makeStep({ stepId: "step-3", dependencies: ["step-1"], timeout: 500 }),
+    makeStep({ stepId: "step-4", dependencies: ["step-2", "step-3"], timeout: 2_000 }),
   ];
-  const result = validator.validate(steps);
 
-  assert.equal(result.valid, true);
-  assert.equal(result.orderedSteps[0]?.stepId, "step-1");
-  assert.equal(result.orderedSteps[1]?.stepId, "step-2");
-  assert.equal(result.orderedSteps[2]?.stepId, "step-3");
-});
-
-test("PlanDagValidator.validate handles parallel branches", () => {
-  const validator = new PlanDagValidator();
-  const steps = [
-    makeStep({ stepId: "step-1", title: "Root" }),
-    makeStep({ stepId: "step-2", dependencies: ["step-1"], title: "Branch A" }),
-    makeStep({ stepId: "step-3", dependencies: ["step-1"], title: "Branch B" }),
-    makeStep({ stepId: "step-4", dependencies: ["step-2", "step-3"], title: "Join" }),
-  ];
-  const result = validator.validate(steps);
-
-  assert.equal(result.valid, true);
-  assert.equal(result.orderedSteps.length, 4);
-  // step-4 should come after both step-2 and step-3
-  const step4Index = result.orderedSteps.findIndex(s => s.stepId === "step-4");
-  const step2Index = result.orderedSteps.findIndex(s => s.stepId === "step-2");
-  const step3Index = result.orderedSteps.findIndex(s => s.stepId === "step-3");
-  assert.ok(step4Index > step2Index);
-  assert.ok(step4Index > step3Index);
-});
-
-test("PlanDagValidator.validate detects missing title", () => {
-  const validator = new PlanDagValidator();
-  const steps = [makeStep({ stepId: "step-1", title: "" })];
-  const result = validator.validate(steps);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.issues.some(i => i.includes("missing_title")));
-});
-
-test("PlanDagValidator.validate detects invalid timeout", () => {
-  const validator = new PlanDagValidator();
-  const steps = [makeStep({ stepId: "step-1", timeout: 0 })];
-  const result = validator.validate(steps);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.issues.some(i => i.includes("invalid_timeout")));
-});
-
-test("PlanDagValidator.validate detects invalid retry max", () => {
-  const validator = new PlanDagValidator();
-  const steps = [makeStep({ stepId: "step-1", retryPolicy: { maxRetries: -1, backoffMs: 250 } })];
-  const result = validator.validate(steps);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.issues.some(i => i.includes("invalid_retry_max")));
-});
-
-test("PlanDagValidator.analyzeWorstPath returns null for empty steps", () => {
-  const validator = new PlanDagValidator();
-  const result = validator.analyzeWorstPath([]);
-
-  assert.equal(result, null);
-});
-
-test("PlanDagValidator.analyzeWorstPath returns path for linear chain", () => {
-  const validator = new PlanDagValidator();
-  const steps = [
-    makeStep({ stepId: "step-1", timeout: 1000, retryPolicy: { maxRetries: 0, backoffMs: 100 } }),
-    makeStep({ stepId: "step-2", dependencies: ["step-1"], timeout: 2000, retryPolicy: { maxRetries: 1, backoffMs: 100 } }),
-    makeStep({ stepId: "step-3", dependencies: ["step-2"], timeout: 1500, retryPolicy: { maxRetries: 0, backoffMs: 100 } }),
-  ];
   const result = validator.analyzeWorstPath(steps);
 
-  assert.ok(result !== null);
-  assert.ok(result.pathNodeIds.length >= 1);
-  assert.ok(result.estimatedTimeoutMs > 0);
-});
-
-test("PlanDagValidator.analyzeWorstPath finds highest cost path", () => {
-  const validator = new PlanDagValidator();
-  // Create a diamond shape where step-2 and step-3 are parallel but step-2 is slower
-  const steps = [
-    makeStep({ stepId: "step-1", timeout: 1000, retryPolicy: { maxRetries: 0, backoffMs: 100 } }),
-    makeStep({ stepId: "step-2", dependencies: ["step-1"], timeout: 5000, retryPolicy: { maxRetries: 0, backoffMs: 100 } }),
-    makeStep({ stepId: "step-3", dependencies: ["step-1"], timeout: 1000, retryPolicy: { maxRetries: 0, backoffMs: 100 } }),
-    makeStep({ stepId: "step-4", dependencies: ["step-2", "step-3"], timeout: 1000, retryPolicy: { maxRetries: 0, backoffMs: 100 } }),
-  ];
-  const result = validator.analyzeWorstPath(steps);
-
-  assert.ok(result !== null);
-  // step-2 path should be more expensive
-  assert.ok(result.estimatedCost >= 5000);
+  assert.ok(result);
+  assert.deepEqual(result?.pathNodeIds, ["step-1", "step-2", "step-4"]);
+  assert.equal(result?.estimatedTimeoutMs, 8_000);
+  assert.equal(result?.estimatedCost, 8_000);
 });

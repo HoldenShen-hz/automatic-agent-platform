@@ -244,7 +244,7 @@ test("listLeaseAudits returns audit history for lease", () => {
 
   const leaseAudits = mockWorker.listLeaseAuditsForLease("lease-same");
   assert.equal(leaseAudits.length, 2, "Should return 2 audits for lease-same");
-  assert.ok(leaseAudits.every((a) => a.leaseId === "lease-same"), "All returned audits should belong to lease-same");
+  assert.ok(leaseAudits.every((a: LeaseAuditRecord) => a.leaseId === "lease-same"), "All returned audits should belong to lease-same");
 });
 
 test("listLeaseAudits returns empty array for lease with no audits", () => {
@@ -299,7 +299,7 @@ test("listLeaseAuditsForExecution returns all audits for an execution", () => {
 
   const execAudits = mockWorker.listLeaseAuditsForExecution("exec-filter");
   assert.equal(execAudits.length, 2, "Should return 2 audits for exec-filter");
-  assert.ok(execAudits.every((a) => a.executionId === "exec-filter"), "All returned audits should belong to exec-filter");
+  assert.ok(execAudits.every((a: LeaseAuditRecord) => a.executionId === "exec-filter"), "All returned audits should belong to exec-filter");
 });
 
 // ─── Tests: Audit Entries Include eventType and reasonCode ──────────────────
@@ -490,7 +490,7 @@ test("Multiple audits maintain correct chronological order", () => {
       fencingToken: 1,
       eventType: "lease_granted",
       reasonCode: null,
-      recordedAt: timestamps[0],
+      recordedAt: timestamps[0]!,
     },
     {
       id: "audit-time-2",
@@ -500,7 +500,7 @@ test("Multiple audits maintain correct chronological order", () => {
       fencingToken: 2,
       eventType: "lease_renewed",
       reasonCode: null,
-      recordedAt: timestamps[1],
+      recordedAt: timestamps[1]!,
     },
     {
       id: "audit-time-3",
@@ -510,7 +510,7 @@ test("Multiple audits maintain correct chronological order", () => {
       fencingToken: 3,
       eventType: "lease_released",
       reasonCode: "done",
-      recordedAt: timestamps[2],
+      recordedAt: timestamps[2]!,
     },
   ];
 

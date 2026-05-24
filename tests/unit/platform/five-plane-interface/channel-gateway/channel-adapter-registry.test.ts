@@ -3,11 +3,9 @@ import { test } from "node:test";
 
 import {
   ChannelAdapterRegistry,
-  type ChannelAdapter,
 } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
-import type { GatewayDeliveryReceipt } from "../../../../../src/platform/five-plane-interface/channel-gateway/types.js";
 
-function makeMockAdapter(channel: string): ChannelAdapter {
+function makeMockAdapter(channel: string) {
   return {
     channel,
     send: async () => ({

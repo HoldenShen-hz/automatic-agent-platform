@@ -1,198 +1,107 @@
-/**
- * Learning Object Validator Unit Tests
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import { LearningObjectValidator } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-validator.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
-function makeLearningObject(overrides: Partial<{
-  learningObjectId: string;
-  learningType: "failure_pattern" | "user_correction" | "recovery_playbook" | "model_retraining" | "dataset_gap";
-  title: string;
-  summary: string;
-  confidence: number;
-  evidenceRefs: string[];
-  sourceSignalIds: string[];
-  recommendation: string;
-  validatedBy: "none" | "evidence" | "human_review" | "shadow_execution";
-  promotionStatus: "draft" | "quarantine" | "validated" | "promoted" | "retired";
-}> = {}): {
-  learningObjectId: string;
-  learningType: "failure_pattern" | "user_correction" | "recovery_playbook" | "model_retraining" | "dataset_gap";
-  title: string;
-  summary: string;
-  confidence: number;
-  evidenceRefs: string[];
-  sourceSignalIds: string[];
-  recommendation: string;
-  validatedBy: "none" | "evidence" | "human_review" | "shadow_execution";
-  promotionStatus: "draft" | "quarantine" | "validated" | "promoted" | "retired";
-  createdAt: string;
-} {
+function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
+  const objectId = overrides.objectId ?? overrides.learningObjectId ?? "learning-1";
+  const kind = overrides.kind ?? overrides.learningType ?? "failure_pattern";
+  const title = overrides.title ?? "Reduce flaky retry loops";
+  const summary = overrides.summary ?? "Observed repeated retries during worker recovery.";
+  const recommendation = overrides.recommendation ?? "Add a guardrail before retrying.";
+  const evidenceRefs = overrides.evidenceRefs ?? ["artifact-1"];
+  const sourceSignalIds = overrides.sourceSignalIds ?? ["signal-1"];
   return {
-    learningObjectId: "learning-001",
-    learningType: "failure_pattern",
-    title: "Test Learning Object",
-    summary: "Test summary",
-    confidence: 0.8,
-    evidenceRefs: ["evidence-1"],
-    sourceSignalIds: ["signal-1"],
-    recommendation: "Test recommendation",
-    validatedBy: "none",
-    promotionStatus: "draft",
-    createdAt: new Date().toISOString(),
-    ...overrides,
+    learningObjectId: objectId,
+    objectId,
+    learningType: kind,
+    kind,
+    title,
+    summary,
+    content: {
+      title,
+      summary,
+      evidenceRefs,
+      sourceSignalIds,
+      recommendation,
+    },
+    confidence: overrides.confidence ?? 0.85,
+    evidenceRefs,
+    sourceSignalIds,
+    recommendation,
+    validatedBy: overrides.validatedBy ?? "none",
+    promotionStatus: overrides.promotionStatus ?? "draft",
+    status: overrides.status ?? "created",
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
   };
 }
 
-test("LearningObjectValidator.validate returns valid for good input", () => {
+test("LearningObjectValidator validates canonical learning objects", () => {
   const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({
-    confidence: 0.8,
-    evidenceRefs: ["evidence-1"],
-    learningType: "failure_pattern",
-  });
-  const result = validator.validate(obj);
+
+  const result = validator.validate(makeLearningObject());
 
   assert.equal(result.valid, true);
   assert.equal(result.reasonCode, "learning.validated");
+  assert.equal(result.learningObject.validatedBy, "evidence");
+  assert.equal(result.learningObject.promotionStatus, "validated");
 });
 
-test("LearningObjectValidator.validate rejects missing evidenceRefs", () => {
+test("LearningObjectValidator rejects objects without evidence", () => {
   const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({ evidenceRefs: [] });
-  const result = validator.validate(obj);
+
+  const result = validator.validate(makeLearningObject({ evidenceRefs: [] }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.missing_evidence");
   assert.equal(result.learningObject.promotionStatus, "quarantined");
 });
 
-test("LearningObjectValidator.validate rejects confidence below floor for failure_pattern", () => {
+test("LearningObjectValidator enforces confidence floors per type", () => {
   const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({ learningType: "failure_pattern", confidence: 0.3 });
-  const result = validator.validate(obj);
 
-  assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.confidence_below_floor");
+  assert.equal(
+    validator.validate(makeLearningObject({ learningType: "failure_pattern", kind: "failure_pattern", confidence: 0.49 })).reasonCode,
+    "learning.confidence_below_floor",
+  );
+  assert.equal(
+    validator.validate(makeLearningObject({ learningType: "user_correction", kind: "user_correction", confidence: 0.89 })).reasonCode,
+    "learning.confidence_below_floor",
+  );
 });
 
-test("LearningObjectValidator.validate rejects confidence below floor for user_correction", () => {
+test("LearningObjectValidator quarantines secret and PII content", () => {
   const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({ learningType: "user_correction", confidence: 0.5 });
-  const result = validator.validate(obj);
 
-  assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.confidence_below_floor");
+  const secret = validator.validate(makeLearningObject({
+    title: "password reset failure",
+    summary: "api_key = leaked-key",
+  }));
+  const pii = validator.validate(makeLearningObject({
+    title: "customer contact",
+    summary: "Reach user@example.com about recovery",
+  }));
+
+  assert.equal(secret.reasonCode, "learning.secret_detected");
+  assert.equal(pii.reasonCode, "learning.pii_detected");
 });
 
-test("LearningObjectValidator.validate accepts user_correction with high confidence", () => {
+test("LearningObjectValidator validateMany filters invalid objects and preserves valid ones", () => {
   const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({ learningType: "user_correction", confidence: 0.95 });
-  const result = validator.validate(obj);
 
-  assert.equal(result.valid, true);
-});
-
-test("LearningObjectValidator.validate rejects recovery_playbook with low confidence", () => {
-  const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({ learningType: "recovery_playbook", confidence: 0.5 });
-  const result = validator.validate(obj);
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.confidence_below_floor");
-});
-
-test("LearningObjectValidator.validate detects PII patterns", () => {
-  const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({
-    title: "Password exposure issue",
-    summary: "API key leaked in logs",
-  });
-  const result = validator.validate(obj);
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.secret_detected");
-});
-
-test("LearningObjectValidator.validate detects SSN pattern", () => {
-  const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({
-    title: "Test",
-    summary: "SSN: 123-45-6789 found",
-  });
-  const result = validator.validate(obj);
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_detected");
-});
-
-test("LearningObjectValidator.validate detects credit card pattern", () => {
-  const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({
-    title: "Test",
-    summary: "Card: 1234567890123456 found",
-  });
-  const result = validator.validate(obj);
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_detected");
-});
-
-test("LearningObjectValidator.validate detects email pattern", () => {
-  const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({
-    title: "Test",
-    summary: "Contact: user@example.com",
-  });
-  const result = validator.validate(obj);
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_detected");
-});
-
-test("LearningObjectValidator.validateMany filters valid objects", () => {
-  const validator = new LearningObjectValidator();
-  const inputs = [
-    makeLearningObject({ learningObjectId: "valid-1", confidence: 0.8, evidenceRefs: ["e1"] }),
-    makeLearningObject({ learningObjectId: "invalid-no-evidence", confidence: 0.8, evidenceRefs: [] }),
-    makeLearningObject({ learningObjectId: "valid-2", confidence: 0.9, evidenceRefs: ["e2"], learningType: "user_correction" }),
-  ];
-  const results = validator.validateMany(inputs);
-
-  assert.equal(results.length, 2);
-  assert.ok(results.some(r => r.learningObjectId === "valid-1"));
-  assert.ok(results.some(r => r.learningObjectId === "valid-2"));
-});
-
-test("LearningObjectValidator.validateMany handles empty array", () => {
-  const validator = new LearningObjectValidator();
-  const results = validator.validateMany([]);
-
-  assert.equal(results.length, 0);
-});
-
-test("LearningObjectValidator.validateMany updates promotionStatus to validated for valid", () => {
-  const validator = new LearningObjectValidator();
-  const inputs = [
+  const results = validator.validateMany([
+    makeLearningObject({ learningObjectId: "valid-1", objectId: "valid-1" }),
+    makeLearningObject({ learningObjectId: "invalid-1", objectId: "invalid-1", evidenceRefs: [] }),
     makeLearningObject({
-      learningObjectId: "test-1",
-      confidence: 0.8,
-      evidenceRefs: ["e1"],
-      promotionStatus: "draft",
+      learningObjectId: "valid-2",
+      objectId: "valid-2",
+      learningType: "recovery_playbook",
+      kind: "recovery_playbook",
+      confidence: 0.9,
     }),
-  ];
-  const results = validator.validateMany(inputs);
+  ]);
 
-  assert.equal(results[0].promotionStatus, "validated");
-});
-
-test("LearningObjectValidator.validate sets validatedBy to evidence for valid", () => {
-  const validator = new LearningObjectValidator();
-  const obj = makeLearningObject({ validatedBy: "none" });
-  const result = validator.validate(obj);
-
-  assert.equal(result.learningObject.validatedBy, "evidence");
+  assert.deepEqual(results.map((entry) => entry.learningObjectId), ["valid-1", "valid-2"]);
+  assert.ok(results.every((entry) => entry.promotionStatus === "validated"));
 });

@@ -112,7 +112,7 @@ test("LongRunningWorkflowService markDue returns suspensions ready to resume", (
   const due = service.markDue("2026-05-01T00:00:00.000Z");
 
   assert.equal(due.length, 1);
-  assert.equal(due[0].status, "resumable");
+  assert.equal(due[0]?.status, "resumable");
 });
 
 test("LongRunningWorkflowService markDue excludes future suspensions", () => {
@@ -249,8 +249,8 @@ test("LongRunningWorkflowService sweepExpired expires active suspensions past de
   const decisions = service.sweepExpired("2026-05-01T00:00:00.000Z");
 
   assert.equal(decisions.length, 1);
-  assert.ok(!decisions[0].allowed);
-  assert.equal(decisions[0].reasonCode, "workflow_sleep.expired_failed");
+  assert.ok(!decisions[0]?.allowed);
+  assert.equal(decisions[0]?.reasonCode, "workflow_sleep.expired_failed");
 });
 
 test("LongRunningWorkflowService sweepExpired ignores non-expired suspensions", () => {
@@ -403,8 +403,8 @@ test("LongRunningWorkflowService listResumeWindows returns windows for all suspe
   const windows = service.listResumeWindows("2026-05-01T00:30:00.000Z");
 
   assert.equal(windows.length, 2);
-  assert.ok(windows[0].due);
-  assert.ok(!windows[1].due);
+  assert.ok(windows[0]?.due);
+  assert.ok(!windows[1]?.due);
 });
 
 test("LongRunningWorkflowService resume throws for unknown suspension", () => {

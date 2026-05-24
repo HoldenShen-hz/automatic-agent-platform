@@ -241,7 +241,7 @@ test("ApiKeyRecord with rotation and expiration", () => {
 
 test("FetchLike is a type alias for fetch function", () => {
   // This test just verifies the type exists and is usable
-  const mockFetch: FetchLike = async (url: string) => {
+  const mockFetch: FetchLike = async (_input, _init) => {
     return new Response("OK");
   };
   assert.equal(typeof mockFetch, "function");

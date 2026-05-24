@@ -66,9 +66,10 @@ describe("GrpcAdapterService", () => {
   describe("getConfig", () => {
     it("should return copy of config", () => {
       const config = service.getConfig();
-      config.host = "modified";
+      const mutated = { ...config, host: "modified" };
 
       const internalConfig = service.getConfig();
+      assert.strictEqual(mutated.host, "modified");
       assert.strictEqual(internalConfig.host, "127.0.0.1");
     });
   });
@@ -346,9 +347,9 @@ describe("HEALTH_SERVICE", () => {
     assert.strictEqual(HEALTH_SERVICE.package, "grpc.health.v1");
     assert.strictEqual(HEALTH_SERVICE.fullName, "grpc.health.v1.Health");
     assert.strictEqual(HEALTH_SERVICE.methods.length, 1);
-    assert.strictEqual(HEALTH_SERVICE.methods[0].name, "Check");
-    assert.strictEqual(HEALTH_SERVICE.methods[0].requestStream, false);
-    assert.strictEqual(HEALTH_SERVICE.methods[0].responseStream, false);
+    assert.strictEqual(HEALTH_SERVICE.methods[0]?.name, "Check");
+    assert.strictEqual(HEALTH_SERVICE.methods[0]?.requestStream, false);
+    assert.strictEqual(HEALTH_SERVICE.methods[0]?.responseStream, false);
   });
 });
 

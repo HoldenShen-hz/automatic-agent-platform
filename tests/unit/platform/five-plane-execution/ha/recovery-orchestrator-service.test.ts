@@ -7,7 +7,7 @@ import type { RecoveryReport, RecoveryWorker } from "../../../../../src/platform
 function createMockRecoveryWorker(workerId: string, priority: "critical" | "high" | "normal" | "low" = "normal", intervalMs = 60000): RecoveryWorker {
   return {
     getWorkerId: () => workerId,
-    getRecoveryCadence: () => ({ priority, intervalMs }),
+    getRecoveryCadence: () => ({ priority, intervalMs, maxConcurrent: 1 }),
     runRecoveryCycle: async (): Promise<RecoveryReport> => ({
       workerId,
       workerType: "recovery_worker",
@@ -61,7 +61,7 @@ test("RecoveryOrchestratorService runs all workers in parallel", async () => {
 
   const worker1: RecoveryWorker = {
     getWorkerId: () => "parallel-worker-1",
-    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000 }),
+    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000, maxConcurrent: 1 }),
     runRecoveryCycle: async (): Promise<RecoveryReport> => {
       worker1Started = true;
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -80,7 +80,7 @@ test("RecoveryOrchestratorService runs all workers in parallel", async () => {
 
   const worker2: RecoveryWorker = {
     getWorkerId: () => "parallel-worker-2",
-    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000 }),
+    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000, maxConcurrent: 1 }),
     runRecoveryCycle: async (): Promise<RecoveryReport> => {
       worker2Started = true;
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -111,7 +111,7 @@ test("RecoveryOrchestratorService runs all workers in parallel", async () => {
 test("RecoveryOrchestratorService handles worker errors gracefully", async () => {
   const errorWorker: RecoveryWorker = {
     getWorkerId: () => "error-worker",
-    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000 }),
+    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000, maxConcurrent: 1 }),
     runRecoveryCycle: async (): Promise<RecoveryReport> => {
       throw new Error("Worker failed");
     },
@@ -172,7 +172,7 @@ test("RecoveryOrchestratorService handles empty workers array", async () => {
 test("RecoveryOrchestratorService computes durationMs correctly", async () => {
   const slowWorker: RecoveryWorker = {
     getWorkerId: () => "slow-worker",
-    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000 }),
+    getRecoveryCadence: () => ({ priority: "normal", intervalMs: 60000, maxConcurrent: 1 }),
     runRecoveryCycle: async (): Promise<RecoveryReport> => {
       await new Promise((resolve) => setTimeout(resolve, 120));
       return {

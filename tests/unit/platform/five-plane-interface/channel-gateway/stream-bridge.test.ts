@@ -73,8 +73,8 @@ test("StreamBridge replay returns all frames after lastSequence", () => {
   const result = bridge.replay(streamId, 1);
 
   assert.equal(result.frames.length, 2);
-  assert.equal(result.frames[0].sequence, 2);
-  assert.equal(result.frames[1].sequence, 3);
+  assert.equal(result.frames[0]?.sequence, 2);
+  assert.equal(result.frames[1]?.sequence, 3);
   assert.equal(result.replayable, true);
 });
 
@@ -102,8 +102,8 @@ test("StreamBridge replayAfterSequence returns correct frames", () => {
   const frames = bridge.replayAfterSequence(streamId, 1);
 
   assert.equal(frames.length, 2);
-  assert.equal(frames[0].sequence, 2);
-  assert.equal(frames[1].sequence, 3);
+  assert.equal(frames[0]?.sequence, 2);
+  assert.equal(frames[1]?.sequence, 3);
 });
 
 test("StreamBridge toSseFrame converts frame correctly", () => {

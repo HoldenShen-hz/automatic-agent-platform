@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import { matchRoute, normalizeHeaders, authenticateOptionalPrincipal, MAX_BODY_BYTES } from "../../../../src/platform/five-plane-interface/api/http-server/request-helpers.js";
 import type { ApiRequestLike } from "../../../../src/platform/five-plane-interface/api/http-server/types.js";
+import type { ApiAuthService } from "../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 
 function makeRequest(overrides: Partial<ApiRequestLike> = {}): ApiRequestLike {
   return {
@@ -108,7 +109,7 @@ test("normalizeHeaders handles undefined input", () => {
 });
 
 test("normalizeHeaders handles null input", () => {
-  const result = normalizeHeaders(null as unknown);
+  const result = normalizeHeaders(null as unknown as Record<string, string | string[] | undefined>);
   assert.deepEqual(result, {});
 });
 
@@ -129,7 +130,7 @@ test("authenticateOptionalPrincipal returns null when no auth headers provided",
     }),
   };
   const request = makeRequest({ headers: {} });
-  const result = authenticateOptionalPrincipal(request, mockAuthService as unknown);
+  const result = authenticateOptionalPrincipal(request, mockAuthService as unknown as ApiAuthService);
   assert.equal(result, null);
 });
 

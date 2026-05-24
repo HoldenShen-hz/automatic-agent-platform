@@ -45,6 +45,7 @@ function createMockWorkerSnapshot(overrides: Partial<WorkerSnapshotRecord> = {})
     lastProgressAt: now,
     lastHeartbeatAt: now,
     updatedAt: now,
+    version: 1,
     ...overrides,
   };
 }
@@ -375,7 +376,7 @@ test("Events are emitted when slots are reaped", () => {
 
   const slotReapedEvents = result.emittedEvents.filter((e) => e.eventType === "worker:slot_reaped");
   assert.equal(slotReapedEvents.length, 1, "Expected one worker:slot_reaped event");
-  assert.equal(slotReapedEvents[0].workerId, "worker-stale-001");
+  assert.equal(slotReapedEvents[0]?.workerId, "worker-stale-001");
 });
 
 test("Execution slot reclaimed events are emitted for reaped workers", () => {

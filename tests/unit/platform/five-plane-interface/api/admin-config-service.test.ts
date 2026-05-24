@@ -97,7 +97,7 @@ describe("AdminConfigService", () => {
       const updates = service.listUpdates(50, "tenant-abc");
 
       assert.strictEqual(updates.length, 1);
-      assert.strictEqual(updates[0].key, "k1");
+      assert.strictEqual(updates[0]?.key, "k1");
     });
 
     it("should return empty array when no matches for tenant", () => {
@@ -137,8 +137,8 @@ describe("AdminConfigService", () => {
       const updates = service.listUpdates(50);
 
       // The newest one should be first
-      assert.strictEqual(updates[0].key, "second");
-      assert.strictEqual(updates[1].key, "first");
+      assert.strictEqual(updates[0]?.key, "second");
+      assert.strictEqual(updates[1]?.key, "first");
     });
 
     it("should ignore negative limit", () => {

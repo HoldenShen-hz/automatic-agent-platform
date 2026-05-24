@@ -64,8 +64,8 @@ async function createSymlinkOut(workspace: WorkspaceFixture): Promise<string> {
 // Helper
 // ─────────────────────────────────────────────────────────────────────────────
 
-function checkPath(inputPath: string, roots: readonly string[]): ReturnType<typeof checkToolPathScope> {
-  return checkToolPathScope(inputPath, roots);
+function checkPath(inputPath: string, roots: readonly string[] | null): ReturnType<typeof checkToolPathScope> {
+  return checkToolPathScope(inputPath, roots ?? []);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
