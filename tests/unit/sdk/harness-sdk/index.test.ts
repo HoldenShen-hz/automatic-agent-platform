@@ -26,7 +26,44 @@ function makeConstraintPack(overrides: Partial<ConstraintPack> = {}): Constraint
     risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },
+    sandboxRequirement: { sandboxMode: "ephemeral", timeoutMs: 60000 },
+    approvalRequirement: {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 300000,
+    },
     ...overrides,
+  };
+}
+
+function createPlanNode(nodeId: string, nodeType: PlanNode["nodeType"] = "tool"): PlanNode {
+  return {
+    nodeId,
+    nodeType,
+    inputRefs: [],
+    outputSchemaRef: "schema:default",
+    riskClass: "medium",
+    budgetIntent: {
+      amount: 1,
+      currency: "USD",
+      resourceKinds: ["compute"],
+    },
+    sideEffectProfile: {
+      mayCommitExternalEffect: false,
+      reversible: true,
+    },
+    retryPolicyRef: "retry:default",
+    timeoutMs: 60000,
+  };
+}
+
+function createPlanEdge(edgeId: string, fromNodeId: string, toNodeId: string): PlanEdge {
+  return {
+    edgeId,
+    fromNodeId,
+    toNodeId,
+    condition: null,
+    dependencyType: "hard",
   };
 }
 
@@ -166,7 +203,7 @@ test("HarnessSdk.appendStep appends step to run", () => {
   const run = toCanonicalHarnessRun(runtimeRun);
 
   const stepInput: HarnessSdkAppendStepInput = {
-    role: "executor",
+    role: "generator",
     nodeRunId: "node-1",
     planGraphId: "graph-1",
     inputs: { query: "test" },
@@ -191,7 +228,7 @@ test("HarnessSdk.appendStepWithReceipt returns run and receipt", () => {
   const run = sdk.createRun(runInput);
 
   const stepInput: HarnessSdkAppendStepInput = {
-    role: "executor",
+    role: "generator",
     nodeRunId: "node-1",
     planGraphId: "graph-1",
     inputs: { query: "test" },
@@ -222,7 +259,7 @@ test("HarnessSdk.appendStepWithReceipt with error details", () => {
   const run = sdk.createRun(runInput);
 
   const stepInput: HarnessSdkAppendStepInput = {
-    role: "executor",
+    role: "generator",
     nodeRunId: "node-1",
     planGraphId: "graph-1",
     inputs: {},
@@ -252,7 +289,7 @@ test("HarnessSdk.appendStepWithReceipt with outputRef", () => {
   const run = sdk.createRun(runInput);
 
   const stepInput: HarnessSdkAppendStepInput = {
-    role: "executor",
+    role: "generator",
     nodeRunId: "node-1",
     planGraphId: "graph-1",
     inputs: {},
@@ -449,32 +486,12 @@ test("HarnessSdk.assertInvariants passes for valid run", () => {
 
 test("buildPlanGraphBundle creates valid bundle", () => {
   const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "execute",
-      description: "Execute task",
-      inputSchema: {},
-      outputSchema: {},
-      retryPolicy: { maxAttempts: 3 },
-    },
-    {
-      nodeId: "node-2",
-      nodeIndex: 1,
-      capability: "evaluate",
-      description: "Evaluate result",
-      inputSchema: {},
-      outputSchema: {},
-    },
+    createPlanNode("node-1"),
+    createPlanNode("node-2", "evaluator"),
   ];
 
   const edges: PlanEdge[] = [
-    {
-      edgeId: "edge-1",
-      fromNodeId: "node-1",
-      toNodeId: "node-2",
-      edgeType: "control_flow",
-    },
+    createPlanEdge("edge-1", "node-1", "node-2"),
   ];
 
   const input: PlanGraphBuildInput = {
@@ -496,16 +513,7 @@ test("buildPlanGraphBundle creates valid bundle", () => {
 });
 
 test("buildPlanGraphBundle with custom scheduler policy", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "execute",
-      description: "Execute task",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
 
   const edges: PlanEdge[] = [];
 
@@ -528,16 +536,7 @@ test("buildPlanGraphBundle with custom scheduler policy", () => {
 });
 
 test("buildPlanGraphBundle with budget plan ref", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "execute",
-      description: "Execute task",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
 
   const edges: PlanEdge[] = [];
 
@@ -558,16 +557,7 @@ test("buildPlanGraphBundle with budget plan ref", () => {
 test("validatePlanGraph validates entry nodes exist", () => {
   const graph = {
     graphId: "graph-1",
-    nodes: [
-      {
-        nodeId: "node-1",
-        nodeIndex: 0,
-        capability: "execute",
-        description: "Test",
-        inputSchema: {},
-        outputSchema: {},
-      },
-    ],
+    nodes: [createPlanNode("node-1")],
     edges: [],
     entryNodeIds: ["non-existent-node"],
     terminalNodeIds: ["node-1"],
@@ -584,16 +574,7 @@ test("validatePlanGraph validates entry nodes exist", () => {
 test("validatePlanGraph validates terminal nodes exist", () => {
   const graph = {
     graphId: "graph-1",
-    nodes: [
-      {
-        nodeId: "node-1",
-        nodeIndex: 0,
-        capability: "execute",
-        description: "Test",
-        inputSchema: {},
-        outputSchema: {},
-      },
-    ],
+    nodes: [createPlanNode("node-1")],
     edges: [],
     entryNodeIds: ["node-1"],
     terminalNodeIds: ["non-existent-terminal"],
@@ -610,24 +591,8 @@ test("validatePlanGraph validates terminal nodes exist", () => {
 test("validatePlanGraph validates edge references", () => {
   const graph = {
     graphId: "graph-1",
-    nodes: [
-      {
-        nodeId: "node-1",
-        nodeIndex: 0,
-        capability: "execute",
-        description: "Test",
-        inputSchema: {},
-        outputSchema: {},
-      },
-    ],
-    edges: [
-      {
-        edgeId: "edge-1",
-        fromNodeId: "node-1",
-        toNodeId: "non-existent-target",
-        edgeType: "control_flow" as const,
-      },
-    ],
+    nodes: [createPlanNode("node-1")],
+    edges: [createPlanEdge("edge-1", "node-1", "non-existent-target")],
     entryNodeIds: ["node-1"],
     terminalNodeIds: ["node-1"],
     joinStrategy: "all" as const,
@@ -644,22 +609,8 @@ test("validatePlanGraph validates no orphaned nodes", () => {
   const graph = {
     graphId: "graph-1",
     nodes: [
-      {
-        nodeId: "node-1",
-        nodeIndex: 0,
-        capability: "execute",
-        description: "Test",
-        inputSchema: {},
-        outputSchema: {},
-      },
-      {
-        nodeId: "orphaned-node",
-        nodeIndex: 1,
-        capability: "orphan",
-        description: "Not reachable",
-        inputSchema: {},
-        outputSchema: {},
-      },
+      createPlanNode("node-1"),
+      createPlanNode("orphaned-node"),
     ],
     edges: [],
     entryNodeIds: ["node-1"],
@@ -678,31 +629,10 @@ test("validatePlanGraph accepts valid graph", () => {
   const graph = {
     graphId: "graph-1",
     nodes: [
-      {
-        nodeId: "node-1",
-        nodeIndex: 0,
-        capability: "start",
-        description: "Start",
-        inputSchema: {},
-        outputSchema: {},
-      },
-      {
-        nodeId: "node-2",
-        nodeIndex: 1,
-        capability: "end",
-        description: "End",
-        inputSchema: {},
-        outputSchema: {},
-      },
+      createPlanNode("node-1"),
+      createPlanNode("node-2"),
     ],
-    edges: [
-      {
-        edgeId: "edge-1",
-        fromNodeId: "node-1",
-        toNodeId: "node-2",
-        edgeType: "control_flow" as const,
-      },
-    ],
+    edges: [createPlanEdge("edge-1", "node-1", "node-2")],
     entryNodeIds: ["node-1"],
     terminalNodeIds: ["node-2"],
     joinStrategy: "all" as const,
@@ -717,16 +647,7 @@ test("validatePlanGraph accepts valid graph", () => {
 });
 
 test("validatePlanGraphBundle validates bundle graph", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "execute",
-      description: "Execute",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
 
   const edges: PlanEdge[] = [];
 
@@ -746,16 +667,7 @@ test("validatePlanGraphBundle validates bundle graph", () => {
 });
 
 test("validatePlanGraphBundle detects invalid bundle", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "execute",
-      description: "Execute",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
 
   const edges: PlanEdge[] = [];
 

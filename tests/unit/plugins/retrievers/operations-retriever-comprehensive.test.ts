@@ -44,6 +44,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
 
   test("shutdown returns undefined", async () => {
     const plugin = createOperationsRetrieverPlugin();
+    assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
     assert.equal(result, undefined);
   });
@@ -51,6 +52,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
   test.describe("healthCheck behavior", () => {
     test("healthCheck returns false by default", async () => {
       const plugin = createOperationsRetrieverPlugin();
+      assert.ok(plugin.healthCheck);
       const result = await plugin.healthCheck();
       assert.equal(result, false);
     });
@@ -59,6 +61,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       const plugin = createOperationsRetrieverPluginWithOptions({
         healthCheck: () => true,
       });
+      assert.ok(plugin.healthCheck);
       const result = await plugin.healthCheck();
       assert.equal(result, true);
     });
@@ -67,6 +70,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       const plugin = createOperationsRetrieverPluginWithOptions({
         healthCheck: () => false,
       });
+      assert.ok(plugin.healthCheck);
       const result = await plugin.healthCheck();
       assert.equal(result, false);
     });
@@ -75,6 +79,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       const plugin = createOperationsRetrieverPluginWithOptions({
         healthCheck: async () => true,
       });
+      assert.ok(plugin.healthCheck);
       const result = await plugin.healthCheck();
       assert.equal(result, true);
     });
@@ -249,7 +254,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       });
 
       for (const result of results) {
-        if (result.snippet !== undefined) {
+        if ("snippet" in result && typeof result.snippet === "string") {
           assert.ok(typeof result.snippet === "string");
           assert.ok(result.snippet.length > 0);
         }

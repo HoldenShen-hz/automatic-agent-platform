@@ -39,7 +39,7 @@ test("requireEnvValue throws ValidationError when value is null", () => {
 });
 
 test("requireEnvValue throws ValidationError when value is undefined", () => {
-  const requireEnvValue = (value: string | null, name: string): string => {
+  const requireEnvValue = (value: string | null | undefined, name: string): string => {
     if (value == null) {
       throw new ValidationError(`missing_env:${name}`, `missing_env:${name}`);
     }

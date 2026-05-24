@@ -50,9 +50,9 @@ test("plannedWorkflow.executionSteps maps stepId, roleId, dependsOnStepIds", () 
     { stepId: "step-1", roleId: "analyzer", dependsOnStepIds: [] },
     { stepId: "step-2", roleId: "drafter", dependsOnStepIds: ["step-1"] },
   ];
-  assert.equal(steps[0].stepId, "step-1");
-  assert.equal(steps[0].dependsOnStepIds.length, 0);
-  assert.equal(steps[1].dependsOnStepIds[0], "step-1");
+  assert.equal(steps[0]!.stepId, "step-1");
+  assert.equal(steps[0]!.dependsOnStepIds.length, 0);
+  assert.equal(steps[1]!.dependsOnStepIds[0], "step-1");
 });
 
 test("snapshot.task contains id and status fields", () => {
@@ -65,8 +65,8 @@ test("stepOutputs maps stepId, roleId, summary", () => {
   const stepOutputs = [
     { stepId: "step-1", roleId: "analyzer", summary: "Analysis complete" },
   ];
-  assert.equal(stepOutputs[0].stepId, "step-1");
-  assert.equal(stepOutputs[0].summary, "Analysis complete");
+  assert.equal(stepOutputs[0]!.stepId, "step-1");
+  assert.equal(stepOutputs[0]!.summary, "Analysis complete");
 });
 
 test("streamFrames maps sequence and eventType", () => {
@@ -74,9 +74,9 @@ test("streamFrames maps sequence and eventType", () => {
     { sequence: 1, eventType: "step_started" },
     { sequence: 2, eventType: "step_completed" },
   ];
-  assert.equal(frames[0].sequence, 1);
-  assert.equal(frames[0].eventType, "step_started");
-  assert.equal(frames[1].sequence, 2);
+  assert.equal(frames[0]!.sequence, 1);
+  assert.equal(frames[0]!.eventType, "step_started");
+  assert.equal(frames[1]!.sequence, 2);
 });
 
 // ---------------------------------------------------------------------------

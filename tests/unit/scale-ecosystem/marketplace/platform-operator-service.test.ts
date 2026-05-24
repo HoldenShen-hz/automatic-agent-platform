@@ -126,12 +126,19 @@ test("platform operator service builds an execution-plane summary with readiness
     harness.store.upsertTenantRecord({
       tenantId: "tenant-platform",
       organizationId: "org-platform",
+      displayName: "Platform Tenant",
       storageScope: "tenant.storage",
       identityScope: "tenant.identity",
       policyScope: "tenant.policy",
       artifactScope: "tenant.artifact",
       isolationMode: "shared_hard_scoped",
       deploymentMode: "private_cloud",
+      quotas: {
+        monthlyCostLimitUsd: 10_000,
+        maxConcurrentExecutions: 100,
+        maxStorageBytes: 500 * 1024 * 1024 * 1024,
+      },
+      status: "active",
       createdAt,
       updatedAt: createdAt,
     });
@@ -214,6 +221,7 @@ test("platform operator service builds an execution-plane summary with readiness
       lastProgressAt: generatedAt,
       lastHeartbeatAt: generatedAt,
       updatedAt: generatedAt,
+      version: 1,
     });
 
     harness.store.insertTask({
@@ -240,6 +248,7 @@ test("platform operator service builds an execution-plane summary with readiness
       taskId: "task-1",
       workflowId: null,
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-1",
       roleId: null,
       runKind: "task_run",
@@ -249,6 +258,8 @@ test("platform operator service builds an execution-plane summary with readiness
       attempt: 1,
       timeoutMs: 60_000,
       budgetUsdLimit: null,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(["bash"]),
@@ -267,6 +278,7 @@ test("platform operator service builds an execution-plane summary with readiness
       id: "ticket-1",
       executionId: "exec-1",
       taskId: "task-1",
+      tenantId: "tenant-platform",
       priority: "normal",
       queueName: "primary",
       dispatchTarget: "any",

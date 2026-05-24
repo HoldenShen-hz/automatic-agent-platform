@@ -17,9 +17,17 @@ interface PackValidateOptions {
 function parseArgs(args: string[]): PackValidateOptions {
   const opts: PackValidateOptions = { manifest: "", strict: false };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--manifest" && i + 1 < args.length) opts.manifest = args[++i];
-    else if (args[i] === "--contract-version" && i + 1 < args.length) opts.contractVersion = args[++i];
-    else if (args[i] === "--strict") opts.strict = true;
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--manifest" && typeof next === "string") {
+      opts.manifest = next;
+      i += 1;
+    } else if (arg === "--contract-version" && typeof next === "string") {
+      opts.contractVersion = next;
+      i += 1;
+    } else if (arg === "--strict") {
+      opts.strict = true;
+    }
   }
   return opts;
 }

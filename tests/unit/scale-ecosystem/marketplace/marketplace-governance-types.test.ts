@@ -1,14 +1,5 @@
-/**
- * Unit tests for Marketplace Governance Types
- *
- * Tests type definitions and interfaces for marketplace governance.
- *
- * @see src/scale-ecosystem/marketplace/marketplace-governance-types.ts
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
-import { z } from "zod";
 import type {
   RegisterExtensionPackageInput,
   SubmitMarketplaceReviewInput,
@@ -26,24 +17,52 @@ import type {
   MarketplaceGovernanceServiceOptions,
 } from "../../../../src/scale-ecosystem/marketplace/marketplace-governance-types.js";
 
+function createSummary(overrides: Partial<MarketplaceCatalogSummary> = {}): MarketplaceCatalogSummary {
+  return {
+    packagesReady: 5,
+    reviewPending: 1,
+    blocked: 0,
+    revoked: 0,
+    total: 6,
+    overallVerdict: "ready",
+    ...overrides,
+  };
+}
+
+function createReport(overrides: Partial<MarketplaceCatalogReport> = {}): MarketplaceCatalogReport {
+  return {
+    reportId: "rpt-123",
+    generatedAt: "2024-01-15T10:00:00Z",
+    tenantId: null,
+    summary: createSummary(),
+    entries: [],
+    ...overrides,
+  };
+}
+
 test("RegisterExtensionPackageInput accepts valid input", () => {
   const input: RegisterExtensionPackageInput = {
     extensionId: "ext-123",
-    packageType: "agent",
-    displayName: "Test Agent",
+    packageType: "plugin",
+    displayName: "Test Plugin",
     version: "1.0.0",
     owner: "test-owner",
     trustLevel: "verified",
-    sourceUri: "https://example.com/agent.tar.gz",
-    capabilities: ["task-execution"],
-    permissions: ["read", "write"],
+    sourceUri: "https://example.com/plugin.tar.gz",
+    capabilities: ["knowledge.retrieve"],
+    permissions: ["read"],
+    compatibility: {
+      apiContract: "v1",
+      permissionSurface: "v1",
+      runtimeCapability: "v1",
+    },
     signatureVerified: true,
     manifestChecksum: "abc123def456",
-    lifecycleState: "draft",
+    lifecycleState: "discovered",
   };
 
   assert.equal(input.extensionId, "ext-123");
-  assert.equal(input.packageType, "agent");
+  assert.equal(input.packageType, "plugin");
   assert.equal(input.signatureVerified, true);
   assert.ok(!input.sbomVerified);
 });
@@ -136,7 +155,7 @@ test("SunsetExtensionInput accepts threshold conditions", () => {
   };
 
   assert.equal(input.thresholdConditions?.length, 1);
-  assert.equal(input.thresholdConditions![0].severityThreshold, "critical");
+  assert.equal(input.thresholdConditions?.[0]?.severityThreshold, "critical");
 });
 
 test("RetireExtensionInput accepts migration completion ratio", () => {
@@ -154,13 +173,13 @@ test("MarketplaceCatalogEntry captures full marketplace state", () => {
     packageId: "pkg-123",
     tenantId: "tenant-456",
     extensionId: "ext-789",
-    packageType: "agent",
-    displayName: "My Agent",
+    packageType: "plugin",
+    displayName: "My Plugin",
     version: "1.0.0",
     owner: "owner-abc",
-    trustLevel: "enterprise",
+    trustLevel: "verified",
     signatureVerified: true,
-    lifecycleState: "published",
+    lifecycleState: "enabled",
     reviewStatus: "approved",
     publicationStatus: "published",
     channel: "stable",
@@ -170,24 +189,24 @@ test("MarketplaceCatalogEntry captures full marketplace state", () => {
       permissionSurface: "v1",
       runtimeCapability: "v1",
     },
-    capabilities: ["task-execution"],
+    capabilities: ["knowledge.retrieve"],
     permissions: ["read"],
   };
 
-  assert.equal(entry.packageType, "agent");
+  assert.equal(entry.packageType, "plugin");
   assert.equal(entry.reviewStatus, "approved");
   assert.equal(entry.publicationStatus, "published");
 });
 
 test("MarketplaceCatalogSummary calculates correct totals", () => {
-  const summary: MarketplaceCatalogSummary = {
+  const summary = createSummary({
     packagesReady: 10,
     reviewPending: 3,
     blocked: 2,
     revoked: 1,
     total: 16,
     overallVerdict: "partial",
-  };
+  });
 
   assert.equal(summary.packagesReady, 10);
   assert.equal(summary.total, 16);
@@ -195,107 +214,65 @@ test("MarketplaceCatalogSummary calculates correct totals", () => {
 });
 
 test("MarketplaceCatalogSummary overallVerdict can be ready", () => {
-  const summary: MarketplaceCatalogSummary = {
+  const summary = createSummary({
     packagesReady: 20,
     reviewPending: 0,
     blocked: 0,
     revoked: 0,
     total: 20,
     overallVerdict: "ready",
-  };
+  });
 
   assert.equal(summary.overallVerdict, "ready");
 });
 
 test("MarketplaceCatalogReport contains summary and entries", () => {
-  const report: MarketplaceCatalogReport = {
-    reportId: "rpt-123",
-    generatedAt: "2024-01-15T10:00:00Z",
-    tenantId: null,
-    summary: {
-      packagesReady: 5,
-      reviewPending: 1,
-      blocked: 0,
-      revoked: 0,
-      total: 6,
-      overallVerdict: "ready",
-    },
-    entries: [],
-  };
+  const report = createReport();
 
   assert.equal(report.reportId, "rpt-123");
   assert.equal(report.entries.length, 0);
 });
 
 test("MarketplaceGovernanceRunResult contains report and record", () => {
+  const report = createReport();
   const result: MarketplaceGovernanceRunResult = {
-    report: {
-      reportId: "rpt-123",
-      generatedAt: "2024-01-15T10:00:00Z",
-      tenantId: null,
-      summary: {
-        packagesReady: 5,
-        reviewPending: 1,
-        blocked: 0,
-        revoked: 0,
-        total: 6,
-        overallVerdict: "ready",
-      },
-      entries: [],
-    },
+    report,
     record: {
-      reportId: "rpt-123",
-      generatedAt: "2024-01-15T10:00:00Z",
-      tenantId: null,
-      packagesReady: 5,
-      reviewPending: 1,
-      blocked: 0,
-      revoked: 0,
-      total: 6,
-      overallVerdict: "ready",
+      reportId: report.reportId,
+      generatedAt: report.generatedAt,
+      tenantId: report.tenantId,
+      summaryJson: JSON.stringify(report.summary),
+      reportJson: JSON.stringify(report),
     },
   };
 
   assert.ok(result.report);
   assert.ok(result.record);
+  assert.equal(result.record.reportId, "rpt-123");
 });
 
 test("MarketplaceGovernanceExportResult adds artifact references", () => {
+  const report = createReport();
   const result: MarketplaceGovernanceExportResult = {
-    report: {
-      reportId: "rpt-123",
-      generatedAt: "2024-01-15T10:00:00Z",
-      tenantId: null,
-      summary: {
-        packagesReady: 5,
-        reviewPending: 1,
-        blocked: 0,
-        revoked: 0,
-        total: 6,
-        overallVerdict: "ready",
-      },
-      entries: [],
-    },
+    report,
     record: {
-      reportId: "rpt-123",
-      generatedAt: "2024-01-15T10:00:00Z",
-      tenantId: null,
-      packagesReady: 5,
-      reviewPending: 1,
-      blocked: 0,
-      revoked: 0,
-      total: 6,
-      overallVerdict: "ready",
+      reportId: report.reportId,
+      generatedAt: report.generatedAt,
+      tenantId: report.tenantId,
+      summaryJson: JSON.stringify(report.summary),
+      reportJson: JSON.stringify(report),
     },
     jsonArtifact: {
       artifactId: "art-001",
-      artifactType: "application/json",
+      kind: "marketplace_governance_report",
+      mimeType: "application/json",
       uri: "s3://bucket/json-artifact.json",
       createdAt: "2024-01-15T10:00:00Z",
     },
     markdownArtifact: {
       artifactId: "art-002",
-      artifactType: "text/markdown",
+      kind: "marketplace_governance_report",
+      mimeType: "text/markdown",
       uri: "s3://bucket/markdown-artifact.md",
       createdAt: "2024-01-15T10:00:00Z",
     },
@@ -303,17 +280,16 @@ test("MarketplaceGovernanceExportResult adds artifact references", () => {
 
   assert.ok(result.jsonArtifact);
   assert.ok(result.markdownArtifact);
-  assert.equal(result.jsonArtifact.artifactType, "application/json");
+  assert.equal(result.jsonArtifact.mimeType, "application/json");
 });
 
 test("MarketplaceGovernanceServiceOptions accepts optional artifact store options", () => {
   const options: MarketplaceGovernanceServiceOptions = {
     artifactStoreOptions: {
-      basePath: "/tmp/artifacts",
-      maxSizeBytes: 1024 * 1024 * 1024,
+      rootDir: "/tmp/artifacts",
     },
   };
 
   assert.ok(options.artifactStoreOptions);
-  assert.equal(options.artifactStoreOptions.basePath, "/tmp/artifacts");
+  assert.equal(options.artifactStoreOptions.rootDir, "/tmp/artifacts");
 });

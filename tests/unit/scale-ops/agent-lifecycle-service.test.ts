@@ -5,16 +5,41 @@ import {
   AgentLifecycleService,
   type ManagedAgentDefinition,
   type ManagedAgentVersion,
-  type CanaryProgress,
 } from "../../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
+import type { CanaryProgress } from "../../../src/ops-maturity/agent-lifecycle/canary-controller/index.js";
 
 function makeTestAgent(overrides: Partial<ManagedAgentDefinition> = {}): ManagedAgentDefinition {
   return {
     agentId: "test-agent",
-    agentType: "coding",
+    name: "Test Agent",
+    domainId: "coding",
+    owner: {
+      orgNodeId: "org-root",
+      path: "/engineering/agents",
+    },
+    components: {
+      pack: { packId: "pack.test", version: "1.0.0" },
+      promptBundle: { bundleId: "prompt.test", version: "1.0.0" },
+      modelBinding: { provider: "openai", model: "gpt-4o-mini", fallbackChain: [] },
+      trustProfile: {
+        initialLevel: "manual_only",
+        scoringConfig: {
+          successWeight: 0.4,
+          latencyWeight: 0.3,
+          errorWeight: 0.3,
+        },
+      },
+      triggerSet: [],
+      connectorBindings: [],
+      autonomyConfig: {
+        maxAutomationLevel: "manual_only",
+        requireHumanApprovalForHighRisk: true,
+        maxRetriesBeforeApproval: 3,
+      },
+    },
     lifecycleState: "staging",
     currentVersionId: "v1.0.0",
-    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
   };
@@ -25,8 +50,17 @@ function makeTestVersion(overrides: Partial<ManagedAgentVersion> = {}): ManagedA
     agentId: "test-agent",
     versionId: "v1.0.0",
     semver: "1.0.0",
-    changelog: "initial",
-    registeredAt: new Date().toISOString(),
+    componentSnapshot: {
+      packVersion: "pack-v1",
+      promptBundleVersion: "prompt-v1",
+      modelBindingHash: "model-hash",
+      trustProfileHash: "trust-hash",
+      triggerSetHash: "trigger-hash",
+      autonomyConfigHash: "autonomy-hash",
+    },
+    createdAt: new Date().toISOString(),
+    createdBy: "tester",
+    releaseNote: "initial",
     ...overrides,
   };
 }
@@ -50,7 +84,7 @@ test("AgentLifecycleService addVersion appends version to agent", async () => {
   const versions = service.getAllVersions("test-agent");
 
   assert.equal(versions.length, 1);
-  assert.equal(versions[0].versionId, "v1.0.0");
+  assert.equal(versions[0]!.versionId, "v1.0.0");
 });
 
 test("AgentLifecycleService addVersion throws if agent not found", async () => {
@@ -89,9 +123,10 @@ test("AgentLifecycleService advanceCanary promotes when ready", async () => {
   service.addVersion(makeTestVersion());
   const progress: CanaryProgress = {
     rolloutPercent: 100,
-    currentStage: "full",
-    startedAt: new Date().toISOString(),
-    promoteAfterAt: new Date().toISOString(),
+    successRate: 1,
+    latencyP50Ms: 100,
+    errorRate: 0,
+    currentStage: 100,
   };
 
   const receipt = service.advanceCanary("test-agent", progress);
@@ -105,9 +140,10 @@ test("AgentLifecycleService getCanaryTrafficSplit returns split config", async (
   service.addVersion(makeTestVersion());
   const progress: CanaryProgress = {
     rolloutPercent: 10,
-    currentStage: "initial",
-    startedAt: new Date().toISOString(),
-    promoteAfterAt: new Date(Date.now() + 86400000).toISOString(),
+    successRate: 0.99,
+    latencyP50Ms: 100,
+    errorRate: 0.001,
+    currentStage: 5,
   };
 
   service.advanceCanary("test-agent", progress);
@@ -120,8 +156,8 @@ test("AgentLifecycleService getCanaryTrafficSplit returns split config", async (
 test("AgentLifecycleService rollback switches to previous version", async () => {
   const service = new AgentLifecycleService();
   service.registerAgent(makeTestAgent({ lifecycleState: "active", currentVersionId: "v2.0.0" }));
-  service.addVersion({ agentId: "test-agent", versionId: "v2.0.0", semver: "2.0.0", changelog: "new", registeredAt: new Date().toISOString() });
-  service.addVersion({ agentId: "test-agent", versionId: "v1.0.0", semver: "1.0.0", changelog: "old", registeredAt: new Date().toISOString() });
+  service.addVersion(makeTestVersion({ versionId: "v2.0.0", semver: "2.0.0", releaseNote: "new" }));
+  service.addVersion(makeTestVersion({ versionId: "v1.0.0", semver: "1.0.0", releaseNote: "old" }));
 
   const receipt = service.rollback("test-agent");
 
@@ -138,10 +174,12 @@ test("AgentLifecycleService retire moves agent to deprecated", async () => {
   const receipt = service.retire({
     agentId: "test-agent",
     drainDeadline: new Date(Date.now() - 1000).toISOString(),
-    gracefulDeadlineSeconds: 300,
-    targetState: "deprecated",
-    reasonCodes: ["superseded"],
-    decidedAt: new Date().toISOString(),
+    revokeAt: new Date(Date.now() - 1000).toISOString(),
+    reason: "superseded",
+    gracePeriodDays: 30,
+    successorAgentId: null,
+    transferItems: [],
+    notificationTargets: [],
   });
 
   assert.equal(receipt.toState, "deprecated");

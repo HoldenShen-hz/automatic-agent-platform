@@ -26,10 +26,10 @@ test("TextKnowledgeIntake accepts optional trustLevel", () => {
     title: "Title",
     body: "Body",
     namespace: "test/ns",
-    trustLevel: "reviewed",
+    trustLevel: "official",
   });
 
-  assert.equal(result.source.trustLevel, "reviewed");
+  assert.equal(result.source.trustLevel, "official");
 });
 
 test("TextKnowledgeIntake accepts optional tags", () => {
@@ -252,12 +252,12 @@ test("TextKnowledgeIntake does not modify original input", () => {
     title: "Original",
     body: "Original body",
     namespace: "test/ns",
-    trustLevel: "verified" as const,
+    trustLevel: "authoritative" as const,
   };
 
   const result = intake.ingest(input);
 
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
   assert.equal(input.body, "Original body");
 });
 

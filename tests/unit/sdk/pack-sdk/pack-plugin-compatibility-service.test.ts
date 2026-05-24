@@ -30,6 +30,7 @@ test("pack compatibility reports compatible when selected plugins cover manifest
   const manifest = validateBusinessPackManifest({
     packId: "ops-github-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [
@@ -64,6 +65,7 @@ test("pack compatibility suggests candidate plugins when selected set does not c
   const manifest = validateBusinessPackManifest({
     packId: "github-only-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [
@@ -91,6 +93,7 @@ test("pack compatibility blocks community tier when capability requires professi
   const manifest = validateBusinessPackManifest({
     packId: "github-community-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [
@@ -115,6 +118,7 @@ test("pack compatibility rejects an empty selected plugin set", () => {
   const manifest = validateBusinessPackManifest({
     packId: "ops-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [

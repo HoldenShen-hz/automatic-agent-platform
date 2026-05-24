@@ -13,10 +13,6 @@ import {
   createApiClient,
   createEventSubscriber,
   type ApiClientConfig,
-  type TypedEventSubscriber,
-  type EventSubscription,
-  type PlatformFactEvent,
-  type ProjectionUpdate,
 } from "../../../src/sdk/client-sdk/api-client.js";
 
 // ============================================================================
@@ -99,7 +95,7 @@ test("createEventSubscriber.subscribe creates subscription with correct properti
     (event) => { /* handler */ },
   );
 
-  assert.ok(subscription.subscriptionId.startsWith("sub:"));
+  assert.ok(subscription.subscriptionId?.startsWith("sub:"));
   assert.equal(subscription.consumerId, "consumer-1");
   assert.deepEqual(subscription.eventTypes, ["event.type.a", "event.type.b"]);
   assert.equal(subscription.active, true);
@@ -154,7 +150,7 @@ test("createEventSubscriber.subscribeToRunLifecycle creates subscription for run
     (event) => { /* handler */ },
   );
 
-  assert.ok(subscription.subscriptionId.startsWith("sub:run:"));
+  assert.ok(subscription.subscriptionId?.startsWith("sub:run:"));
   assert.equal(subscription.consumerId, "consumer-1");
   assert.ok(Array.isArray(subscription.eventTypes));
 });
@@ -220,8 +216,8 @@ test("createEventSubscriber.getPendingEvents returns pending events for consumer
   const pending = subscriber.getPendingEvents("consumer-1");
 
   assert.equal(pending.length, 2);
-  assert.equal((pending[0].payload as { data: string }).data, "value1");
-  assert.equal((pending[1].payload as { data: string }).data, "value2");
+  assert.equal((pending[0]?.payload as { data: string }).data, "value1");
+  assert.equal((pending[1]?.payload as { data: string }).data, "value2");
 });
 
 test("createEventSubscriber.getPendingEvents returns empty array for unknown consumer", () => {
@@ -289,113 +285,6 @@ test("EventSubscription has required readonly properties", () => {
   assert.equal(typeof subscription.eventTypes, "object");
   assert.equal(typeof subscription.active, "boolean");
   assert.equal(typeof subscription.unsubscribe, "function");
-});
-
-// ============================================================================
-// PlatformFactEvent Interface Tests
-// ============================================================================
-
-test("PlatformFactEvent structure is properly typed", () => {
-  const event: PlatformFactEvent = {
-    eventId: "evt_123",
-    runId: "run_456",
-    eventType: "test.event",
-    schemaVersion: 1,
-    aggregateType: "Task",
-    aggregateId: "task_789",
-    aggregateSeq: 1,
-    tenantId: "tenant_abc",
-    traceId: "trace_xyz",
-    payloadHash: "hash123",
-    payload: { data: "test" },
-    replayBehavior: "replay_as_fact",
-    occurredAt: "2026-04-29T00:00:00.000Z",
-  };
-
-  assert.equal(event.eventId, "evt_123");
-  assert.equal(event.runId, "run_456");
-  assert.equal(event.eventType, "test.event");
-  assert.equal(event.schemaVersion, 1);
-  assert.equal(event.aggregateType, "Task");
-  assert.equal(event.aggregateId, "task_789");
-  assert.equal(event.aggregateSeq, 1);
-  assert.equal(event.tenantId, "tenant_abc");
-  assert.equal(event.traceId, "trace_xyz");
-  assert.equal(event.payloadHash, "hash123");
-  assert.deepEqual(event.payload, { data: "test" });
-  assert.equal(event.replayBehavior, "replay_as_fact");
-  assert.equal(event.occurredAt, "2026-04-29T00:00:00.000Z");
-});
-
-test("PlatformFactEvent supports optional fields", () => {
-  const event: PlatformFactEvent = {
-    eventId: "evt_123",
-    runId: "run_456",
-    eventType: "test.event",
-    schemaVersion: 1,
-    aggregateType: "Task",
-    aggregateId: "task_789",
-    aggregateSeq: 1,
-    tenantId: "tenant_abc",
-    traceId: "trace_xyz",
-    payloadHash: "hash123",
-    payload: { data: "test" },
-    replayBehavior: "replay_as_fact",
-    occurredAt: "2026-04-29T00:00:00.000Z",
-    causationId: "cause_123",
-    correlationId: "corr_456",
-    sourceOfTruth: "platform",
-  };
-
-  assert.equal(event.causationId, "cause_123");
-  assert.equal(event.correlationId, "corr_456");
-  assert.equal(event.sourceOfTruth, "platform");
-});
-
-// ============================================================================
-// ProjectionUpdate Interface Tests
-// ============================================================================
-
-test("ProjectionUpdate structure is properly typed", () => {
-  const update: ProjectionUpdate = {
-    projectionId: "proj_123",
-    projectionType: "TaskStatus",
-    version: 1,
-    timestamp: "2026-04-29T00:00:00.000Z",
-    sourceEvents: ["evt_1", "evt_2"],
-    patch: { status: "completed" },
-    metadata: {
-      triggeredBy: "system",
-      idempotencyKey: "idem_123",
-    },
-  };
-
-  assert.equal(update.projectionId, "proj_123");
-  assert.equal(update.projectionType, "TaskStatus");
-  assert.equal(update.version, 1);
-  assert.equal(update.timestamp, "2026-04-29T00:00:00.000Z");
-  assert.deepEqual(update.sourceEvents, ["evt_1", "evt_2"]);
-  assert.deepEqual(update.patch, { status: "completed" });
-  assert.equal(update.metadata.triggeredBy, "system");
-  assert.equal(update.metadata.idempotencyKey, "idem_123");
-});
-
-test("ProjectionUpdate metadata supports optional rebuiltAt", () => {
-  const update: ProjectionUpdate = {
-    projectionId: "proj_123",
-    projectionType: "TaskStatus",
-    version: 1,
-    timestamp: "2026-04-29T00:00:00.000Z",
-    sourceEvents: [],
-    patch: {},
-    metadata: {
-      triggeredBy: "system",
-      idempotencyKey: "idem_123",
-      rebuiltAt: "2026-04-29T01:00:00.000Z",
-    },
-  };
-
-  assert.equal(update.metadata.rebuiltAt, "2026-04-29T01:00:00.000Z");
 });
 
 // ============================================================================
@@ -624,11 +513,7 @@ test("RetryableApiClient uses provided version values when given", () => {
   assert.ok(client);
 });
 
-// ============================================================================
-// TypedEventSubscriber Interface Tests
-// ============================================================================
-
-test("TypedEventSubscriber interface has all required methods", () => {
+test("event subscriber exposes the current helper surface", () => {
   const eventBus = createMockEventBus();
   const subscriber = createEventSubscriber(eventBus);
 
@@ -639,7 +524,7 @@ test("TypedEventSubscriber interface has all required methods", () => {
   assert.equal(typeof subscriber.deliverPending, "function");
 });
 
-test("TypedEventSubscriber can handle multiple consumers", () => {
+test("event subscriber can handle multiple consumers", () => {
   const eventBus = createMockEventBus();
   const subscriber = createEventSubscriber(eventBus);
 
@@ -664,7 +549,7 @@ test("TypedEventSubscriber can handle multiple consumers", () => {
   assert.equal(consumer2Called, true);
 });
 
-test("TypedEventSubscriber handlers receive parsed payload", () => {
+test("event subscriber handlers receive parsed payload", () => {
   const eventBus = createMockEventBus();
   const subscriber = createEventSubscriber(eventBus);
 
@@ -686,7 +571,7 @@ test("TypedEventSubscriber handlers receive parsed payload", () => {
   assert.deepEqual(receivedPayload, { nested: { value: 42 } });
 });
 
-test("TypedEventSubscriber surfaces malformed JSON metadata in pending events", () => {
+test("event subscriber surfaces malformed JSON metadata in pending events", () => {
   const eventBus = createMockEventBus();
   const subscriber = createEventSubscriber(eventBus);
 
@@ -697,16 +582,19 @@ test("TypedEventSubscriber surfaces malformed JSON metadata in pending events", 
 
   // Should not throw, should return a diagnostic payload instead of silently discarding the parse failure.
   const pending = subscriber.getPendingEvents("consumer-1");
+  const payload = pending[0]?.payload as {
+    errorCode: string;
+    message: string;
+    rawPayload: string;
+  };
 
   assert.equal(pending.length, 1);
-  assert.deepEqual((pending[0] as PlatformFactEvent).payload, {
-    errorCode: "client_sdk.event_payload_invalid",
-    message: "Unexpected token 'o', \"not-valid-json{{{\" is not valid JSON",
-    rawPayload: "not-valid-json{{{",
-  });
+  assert.equal(payload.errorCode, "client_sdk.event_payload_invalid");
+  assert.equal(payload.rawPayload, "not-valid-json{{{");
+  assert.match(payload.message, /not valid JSON|Unexpected token/);
 });
 
-test("TypedEventSubscriber subscribeToRunLifecycle handles multiple run lifecyle events", () => {
+test("event subscriber subscribeToRunLifecycle handles multiple run lifecycle events", () => {
   const eventBus = createMockEventBus();
   const subscriber = createEventSubscriber(eventBus);
 

@@ -4,7 +4,10 @@ import test from "node:test";
 import { FreshnessTracker } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/freshness-tracker.js";
 import type { KnowledgeSource, KnowledgeNamespace } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
-function createTestSource(freshnessTimestamp: string, trustLevel: KnowledgeSource["trustLevel"] = "verified"): KnowledgeSource {
+function createTestSource(
+  freshnessTimestamp: string,
+  trustLevel: KnowledgeSource["trustLevel"] = "authoritative",
+): KnowledgeSource {
   return {
     sourceId: "source_test",
     type: "file",
@@ -34,7 +37,7 @@ function createTestNamespace(maxAgeDays: number, staleAction: KnowledgeNamespace
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 1000,
     maxTotalSizeBytes: 10 * 1024 * 1024,
   };
@@ -50,7 +53,7 @@ test("FreshnessTracker.assess returns not stale for fresh source", () => {
 
   assert.equal(assessment.stale, false);
   assert.equal(assessment.daysOld, 5);
-  assert.equal(assessment.effectiveTrustLevel, "verified");
+  assert.equal(assessment.effectiveTrustLevel, "authoritative");
   assert.equal(assessment.action, null);
 });
 
@@ -67,28 +70,28 @@ test("FreshnessTracker.assess returns stale when source exceeds maxAgeDays", () 
   assert.equal(assessment.action, "demote");
 });
 
-test("FreshnessTracker.assess degrades trustLevel from verified to reviewed on stale verified source", () => {
+test("FreshnessTracker.assess degrades trustLevel from authoritative to official on stale authoritative source", () => {
   const tracker = new FreshnessTracker();
   const now = new Date("2024-01-20T00:00:00.000Z");
-  const source = createTestSource("2024-01-01T00:00:00.000Z", "verified");
+  const source = createTestSource("2024-01-01T00:00:00.000Z", "authoritative");
   const namespace = createTestNamespace(10, "warn");
 
   const assessment = tracker.assess(source, namespace, now);
 
   assert.equal(assessment.stale, true);
-  assert.equal(assessment.effectiveTrustLevel, "reviewed");
+  assert.equal(assessment.effectiveTrustLevel, "official");
 });
 
-test("FreshnessTracker.assess does not degrade trustLevel for non-verified stale sources", () => {
+test("FreshnessTracker.assess does not degrade trustLevel for non-authoritative stale sources", () => {
   const tracker = new FreshnessTracker();
   const now = new Date("2024-01-20T00:00:00.000Z");
-  const source = createTestSource("2024-01-01T00:00:00.000Z", "community");
+  const source = createTestSource("2024-01-01T00:00:00.000Z", "team_reviewed");
   const namespace = createTestNamespace(10, "warn");
 
   const assessment = tracker.assess(source, namespace, now);
 
   assert.equal(assessment.stale, true);
-  assert.equal(assessment.effectiveTrustLevel, "community");
+  assert.equal(assessment.effectiveTrustLevel, "team_reviewed");
 });
 
 test("FreshnessTracker.assess returns correct staleAction", () => {

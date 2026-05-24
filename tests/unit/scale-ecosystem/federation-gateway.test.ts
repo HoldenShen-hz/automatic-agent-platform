@@ -321,8 +321,8 @@ test("federation-gateway: revokeCapabilityGrant updates grant status", async () 
   // Get the grant and revoke it
   const grants = await gateway.getCapabilityGrantsForOrg("org-1");
   if (grants.length > 0) {
-    await gateway.revokeCapabilityGrant(grants[0].id, "admin");
-    assert.equal(grants[0].status, "revoked");
+    await gateway.revokeCapabilityGrant(grants[0]!.id, "admin");
+    assert.equal(grants[0]!.status, "revoked");
   }
 });
 

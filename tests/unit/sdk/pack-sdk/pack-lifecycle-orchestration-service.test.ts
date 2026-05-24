@@ -11,6 +11,7 @@ function createManifest(overrides: Partial<ReturnType<typeof validateBusinessPac
   return validateBusinessPackManifest({
     packId: "ops-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [

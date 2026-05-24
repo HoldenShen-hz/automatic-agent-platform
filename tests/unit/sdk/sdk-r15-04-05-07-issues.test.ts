@@ -84,22 +84,22 @@ test("R15-07: FixtureRedactor is exported from SDK index and works", () => {
 
   // Test API key redaction
   const result1 = redactor.redact({ apiKey: "secret-access-key-12345" });
-  assert.equal(result1.value.apiKey, "[REDACTED]");
+  assert.equal((result1.value as { apiKey: string }).apiKey, "[REDACTED]");
   assert.ok(result1.redactedFields.has("apiKey"));
 
   // Test password redaction
   const result2 = redactor.redact({ password: "mySecretPass123" });
-  assert.equal(result2.value.password, "[REDACTED]");
+  assert.equal((result2.value as { password: string }).password, "[REDACTED]");
   assert.ok(result2.redactedFields.has("password"));
 
   // Test JWT token detection
   const jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
   const result3 = redactor.redact({ token: jwtToken });
-  assert.equal(result3.value.token, "[REDACTED]");
+  assert.equal((result3.value as { token: string }).token, "[REDACTED]");
 
   // Test email PII redaction
   const result4 = redactor.redact({ email: "user@example.com" });
-  assert.equal(result4.value.email, "[REDACTED]");
+  assert.equal((result4.value as { email: string }).email, "[REDACTED]");
   assert.ok(result4.redactedFields.has("email"));
 });
 
@@ -119,8 +119,8 @@ test("R15-07: FixtureRedactor.computeCorrelationHash produces consistent hashes"
   const result1 = redactor.redact({ key: "secret-value" });
   const result2 = redactor.redact({ key: "secret-value" });
 
-  assert.equal(result1.value.key, "[REDACTED]");
-  assert.equal(result2.value.key, "[REDACTED]");
+  assert.equal((result1.value as { key: string }).key, "[REDACTED]");
+  assert.equal((result2.value as { key: string }).key, "[REDACTED]");
 
   // Correlation hashes should be present when hashRedacted is enabled (default)
   assert.ok(result1.correlationHashes.has("key"));
@@ -132,7 +132,7 @@ test("R15-07: FixtureRedactor with hashRedacted false does not produce correlati
   const redactorNoHash = new FixtureRedactor({ hashRedacted: false });
   const result = redactorNoHash.redact({ apiKey: "secret-key" });
 
-  assert.equal(result.value.apiKey, "[REDACTED]");
+  assert.equal((result.value as { apiKey: string }).apiKey, "[REDACTED]");
   assert.ok(result.correlationHashes.size === 0);
 });
 

@@ -2,45 +2,65 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { FeedbackImprovementService } from "../../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
+import {
+  deriveFeedbackTrustScore,
+  parseFeedbackSignal,
+  type FeedbackSignal,
+  type FeedbackTrustFactors,
+} from "../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+
+const defaultTrustFactors: FeedbackTrustFactors = {
+  sourceReliability: 0.9,
+  historicalAccuracy: 0.9,
+  authenticatedSource: true,
+  attackSurfaceExposure: 0.1,
+  holdoutOverlap: 0,
+};
+
+function createSignal(overrides: Partial<FeedbackSignal>): FeedbackSignal {
+  const trustFactors = overrides.trustFactors ?? defaultTrustFactors;
+  return parseFeedbackSignal({
+    signalId: "sig-default",
+    source: "execution",
+    taskId: "task_1",
+    category: "failure",
+    severity: "error",
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: 1,
+    trustFactors,
+    feedbackTrustScore: overrides.feedbackTrustScore ?? deriveFeedbackTrustScore(trustFactors),
+    ...overrides,
+  });
+}
 
 test("FeedbackImprovementService turns feedback into traceable candidates and gated release", () => {
   const service = new FeedbackImprovementService();
   const ingested = service.ingest({
     taskId: "task_1",
     signals: [
-      {
+      createSignal({
         signalId: "sig_fail",
-        source: "execution",
-        taskId: "task_1",
-        category: "failure",
-        severity: "error",
         payload: { summary: "schema mismatch", reasonCode: "schema.invalid" },
         stepOutputRefs: ["artifact:a"],
-        timestamp: 1,
-        trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.9, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
-      },
-      {
+      }),
+      createSignal({
         signalId: "sig_fix",
         source: "user",
-        taskId: "task_1",
         category: "correction",
         severity: "warning",
         payload: { summary: "adjust prompt", reasonCode: "user.fix" },
         stepOutputRefs: ["artifact:a"],
         timestamp: 2,
-        trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.9, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
-      },
-      {
+      }),
+      createSignal({
         signalId: "sig_ok",
-        source: "execution",
-        taskId: "task_1",
         category: "success",
         severity: "info",
         payload: { summary: "recovered", reasonCode: "recovery.ok" },
         stepOutputRefs: ["artifact:a"],
         timestamp: 3,
-        trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.9, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
-      },
+      }),
     ],
   });
 

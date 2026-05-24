@@ -33,10 +33,10 @@ test("FileKnowledgeIntake accepts optional trustLevel", () => {
     path: "/test/file.txt",
     content: "Content",
     namespace: "test/ns",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
 
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
 });
 
 test("FileKnowledgeIntake accepts optional tags", () => {
@@ -201,12 +201,12 @@ test("FileKnowledgeIntake does not modify original input", () => {
     path: "/test/original.txt",
     content: "Original content",
     namespace: "test/ns",
-    trustLevel: "verified" as const,
+    trustLevel: "authoritative" as const,
   };
 
   const result = intake.ingest(input);
 
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
   assert.equal(input.content, "Original content");
 });
 
@@ -249,10 +249,10 @@ test("TextKnowledgeIntake accepts optional trustLevel", () => {
     title: "Title",
     body: "Body",
     namespace: "test/ns",
-    trustLevel: "reviewed",
+    trustLevel: "official",
   });
 
-  assert.equal(result.source.trustLevel, "reviewed");
+  assert.equal(result.source.trustLevel, "official");
 });
 
 test("TextKnowledgeIntake accepts optional tags", () => {
@@ -475,12 +475,12 @@ test("TextKnowledgeIntake does not modify original input", () => {
     title: "Original",
     body: "Original body",
     namespace: "test/ns",
-    trustLevel: "verified" as const,
+    trustLevel: "authoritative" as const,
   };
 
   const result = intake.ingest(input);
 
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
   assert.equal(input.body, "Original body");
 });
 

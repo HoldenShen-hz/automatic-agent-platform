@@ -50,6 +50,7 @@ test("PackPluginCompatibilityService.evaluateManifest throws for empty plugin se
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -74,6 +75,7 @@ test("PackPluginCompatibilityService.evaluateManifest uses all available plugins
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -95,6 +97,7 @@ test("PackPluginCompatibilityService.evaluateManifest returns correct maturity m
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -121,6 +124,7 @@ test("PackPluginCompatibilityService.evaluateManifest identifies missing plugins
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -143,6 +147,7 @@ test("PackPluginCompatibilityService.evaluateManifest with enterprise license ti
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -164,6 +169,7 @@ test("PackPluginCompatibilityService.evaluateManifest sorted selected plugins", 
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -188,6 +194,7 @@ test("PackPluginCompatibilityService.evaluateManifest computes required contract
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -212,6 +219,7 @@ test("PackPluginCompatibilityService evaluateManifest calculates required licens
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
@@ -241,6 +249,7 @@ test("PackPluginCompatibilityService evaluateManifest capability coverage reason
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [

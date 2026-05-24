@@ -99,6 +99,7 @@ test("WorkerRegistryService recordHeartbeat preserves existing state on update",
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-1", existingRecord]]));
   const service = new WorkerRegistryService(store);
@@ -221,6 +222,7 @@ test("WorkerRegistryService recordHeartbeat preserves existing placement", () =>
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-1", existingRecord]]));
   const service = new WorkerRegistryService(store);
@@ -491,6 +493,7 @@ test("WorkerRegistryService recordHeartbeat merges cpuPct when not provided", ()
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-1", existingRecord]]));
   const service = new WorkerRegistryService(store);
@@ -537,6 +540,7 @@ test("WorkerRegistryService recordHeartbeat updates cpuPct when provided", () =>
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-1", existingRecord]]));
   const service = new WorkerRegistryService(store);
@@ -587,6 +591,7 @@ test("WorkerRegistryService recordHeartbeat increments restartGeneration on rest
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-1", existingRecord]]));
   const service = new WorkerRegistryService(store);
@@ -637,6 +642,7 @@ test("WorkerRegistryService recordHeartbeat preserves restartGeneration when no 
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-1", existingRecord]]));
   const service = new WorkerRegistryService(store);
@@ -973,6 +979,7 @@ test("WorkerRegistryService listStaleWorkers returns stale workers", () => {
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-1", existingRecord]]));
   const storeWithStale = {
@@ -1054,6 +1061,7 @@ test("WorkerRegistryService verifyRemoteWorkerRegistration updates existing work
     lastProgressAt: null,
     lastHeartbeatAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 1,
   };
   const store = createMockStore(new Map([["worker-remote", existingRecord]]));
   const service = new WorkerRegistryService(store);

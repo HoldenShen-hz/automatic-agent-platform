@@ -29,6 +29,7 @@ test("SlaOperationsService resolves routing hint and records breaches", () => {
       },
     ],
     selectedTierId: "enterprise",
+    workflowClass: "deterministic",
     observation: {
       latencyMs: 500,
       successRate: 0.99,

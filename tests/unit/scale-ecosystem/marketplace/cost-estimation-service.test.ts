@@ -65,6 +65,9 @@ function createTestDb(): AuthoritativeSqlDatabase {
     async healthCheck(): Promise<boolean> {
       return true;
     },
+    close(): void {
+      db.close();
+    },
   };
 }
 

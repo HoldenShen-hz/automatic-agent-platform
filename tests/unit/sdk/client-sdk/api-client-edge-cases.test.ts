@@ -34,7 +34,7 @@ test("createApiClient throws when baseUrl is missing", () => {
         apiVersion: "v1",
         bearerToken: "test-token",
         principal: mockPrincipal,
-      }),
+      } as unknown as ApiClientConfig),
     (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_base_url",
   );
 });
@@ -59,7 +59,7 @@ test("createApiClient throws when apiVersion is missing", () => {
         baseUrl: "https://api.example.com",
         bearerToken: "test-token",
         principal: mockPrincipal,
-      }),
+      } as unknown as ApiClientConfig),
     (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_api_version",
   );
 });

@@ -96,6 +96,7 @@ test("KnowledgeIngestionPipeline ingest generates semantic embeddings", () => {
 
   assert.ok(result.chunks.length > 0);
   const chunk = result.chunks[0];
+  assert.ok(chunk);
   assert.ok(Array.isArray(chunk.embedding), "embedding should be an array");
   assert.ok(chunk.embedding.length > 0, "embedding should not be empty");
   assert.ok(chunk.embeddingId, "embeddingId should be generated");
@@ -174,10 +175,10 @@ test("KnowledgeIngestionPipeline ingest applies trust level from input", () => {
     title: "Trust Level Test",
     body: "Content with trust level.",
     namespace: "test/ns",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
 
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
 });
 
 test("KnowledgeIngestionPipeline ingest applies trust level default", () => {
@@ -333,7 +334,7 @@ test("KnowledgeIngestionPipeline registerNamespace registers namespace with poli
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });

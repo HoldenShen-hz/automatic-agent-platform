@@ -2,17 +2,82 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { loadRepoModule } from "../../helpers/repo-module.js";
 
-import { AuthService } from "../../../ui/packages/shared/auth/src/auth-service.ts";
-import {
-  createAuthInterceptor,
-  createCsrfInterceptor,
-} from "../../../ui/packages/shared/api-client/src/interceptors.ts";
-import { MockTransport } from "../../../ui/packages/shared/api-client/src/rest-client.ts";
-import { BrowserWSClient, InMemoryWSClient } from "../../../ui/packages/shared/api-client/src/ws-client.ts";
-import { TelemetrySink } from "../../../ui/packages/shared/telemetry/src/index.ts";
+async function loadUiModules() {
+  const [
+    authModule,
+    interceptorModule,
+    restClientModule,
+    wsClientModule,
+    telemetryModule,
+  ] = await Promise.all([
+    loadRepoModule<{ AuthService: new () => { handleSsoCallback(params: URLSearchParams): Promise<unknown> } }>(
+      "ui",
+      "packages",
+      "shared",
+      "auth",
+      "src",
+      "auth-service.ts",
+    ),
+    loadRepoModule<{
+      createAuthInterceptor: (options: {
+        getAccessToken(): string;
+        shouldRefresh(): boolean;
+        getAccessTokenWithRefresh(): Promise<string>;
+      }) => {
+        onRequest?: (request: {
+          path: string;
+          method: "POST" | "PATCH";
+          headers: Headers;
+          body: unknown;
+        }) => Promise<{ headers: Headers }>;
+      };
+      createCsrfInterceptor: () => {
+        onRequest?: (request: {
+          path: string;
+          method: "POST" | "PATCH";
+          headers: Headers;
+          body: unknown;
+        }) => Promise<{ headers: Headers }>;
+      };
+    }>("ui", "packages", "shared", "api-client", "src", "interceptors.ts"),
+    loadRepoModule<{ MockTransport: new () => { send(request: { path: string; method: string; headers: Headers; body?: unknown }): Promise<{ status: number }> } }>(
+      "ui",
+      "packages",
+      "shared",
+      "api-client",
+      "src",
+      "rest-client.ts",
+    ),
+    loadRepoModule<{
+      BrowserWSClient: new (socket: typeof WebSocket, fallback: unknown) => { connect(url: string, token: string): void };
+      InMemoryWSClient: new () => unknown;
+    }>("ui", "packages", "shared", "api-client", "src", "ws-client.ts"),
+    loadRepoModule<{
+      TelemetrySink: new (
+        sinks?: unknown[],
+        options?: { maxBufferSize?: number; flushIntervalMs?: number },
+      ) => {
+        record(name: string): void;
+        list(): Array<{ name: string }>;
+        dispose(): void;
+      };
+    }>("ui", "packages", "shared", "telemetry", "src", "index.ts"),
+  ]);
+  return {
+    AuthService: authModule.AuthService,
+    createAuthInterceptor: interceptorModule.createAuthInterceptor,
+    createCsrfInterceptor: interceptorModule.createCsrfInterceptor,
+    MockTransport: restClientModule.MockTransport,
+    BrowserWSClient: wsClientModule.BrowserWSClient,
+    InMemoryWSClient: wsClientModule.InMemoryWSClient,
+    TelemetrySink: telemetryModule.TelemetrySink,
+  };
+}
 
 test("AuthService.handleSsoCallback does not accept URL tokens and redirects into code flow", async () => {
+  const { AuthService } = await loadUiModules();
   const authService = new AuthService();
   const params = new URLSearchParams("access_token=leaked-token&refresh_token=leaked-refresh");
 
@@ -23,6 +88,7 @@ test("AuthService.handleSsoCallback does not accept URL tokens and redirects int
 });
 
 test("BrowserWSClient keeps token out of the URL and sends it as the first auth message", async () => {
+  const { BrowserWSClient, InMemoryWSClient } = await loadUiModules();
   let capturedUrl = "";
   let capturedProtocols: string | string[] | undefined;
   const sentMessages: string[] = [];
@@ -61,6 +127,7 @@ test("BrowserWSClient keeps token out of the URL and sends it as the first auth 
 });
 
 test("createAuthInterceptor resolves a fresh token on each request when refresh is due", async () => {
+  const { createAuthInterceptor } = await loadUiModules();
   const interceptor = createAuthInterceptor({
     getAccessToken() {
       return "stale-token";
@@ -84,18 +151,18 @@ test("createAuthInterceptor resolves a fresh token on each request when refresh 
 });
 
 test("createCsrfInterceptor reads the current meta token on every write request", async () => {
+  const { createCsrfInterceptor } = await loadUiModules();
   let currentToken = "csrf-1";
   const originalDocument = globalThis.document;
-  (globalThis as typeof globalThis & {
-    document?: { querySelector<T>(selector: string): T | null };
-  }).document = {
-    querySelector(selector: string) {
+  const documentWithQuerySelector = {
+    querySelector<T extends Element>(selector: string): T | null {
       if (selector !== 'meta[name="aa-csrf-token"]') {
         return null;
       }
-      return { content: currentToken } as { content: string };
+      return { content: currentToken } as unknown as T;
     },
   };
+  (globalThis as typeof globalThis & { document?: Document }).document = documentWithQuerySelector as unknown as Document;
 
   try {
     const interceptor = createCsrfInterceptor();
@@ -120,7 +187,8 @@ test("createCsrfInterceptor reads the current meta token on every write request"
   }
 });
 
-test("TelemetrySink bounds in-memory events by maxBufferSize", () => {
+test("TelemetrySink bounds in-memory events by maxBufferSize", async () => {
+  const { TelemetrySink } = await loadUiModules();
   const sink = new TelemetrySink([], { maxBufferSize: 2, flushIntervalMs: 60_000 });
   sink.record("event.1");
   sink.record("event.2");
@@ -128,13 +196,14 @@ test("TelemetrySink bounds in-memory events by maxBufferSize", () => {
 
   assert.equal(sink.list().length <= 1, true);
   assert.deepEqual(
-    sink.list().map((event) => event.name),
+    sink.list().map((event: { name: string }) => event.name),
     ["event.3"],
   );
   sink.dispose();
 });
 
 test("MockTransport respects HTTP method-specific status codes", async () => {
+  const { MockTransport } = await loadUiModules();
   const transport = new MockTransport();
 
   const post = await transport.send({

@@ -23,11 +23,22 @@ interface PackPublishOptions {
 function parseArgs(args: string[]): PackPublishOptions {
   const opts: PackPublishOptions = { manifest: "", dryRun: false };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--manifest" && i + 1 < args.length) opts.manifest = args[++i];
-    else if (args[i] === "--registry-url" && i + 1 < args.length) opts.registryUrl = args[++i];
-    else if (args[i] === "--api-version" && i + 1 < args.length) opts.apiVersion = args[++i];
-    else if (args[i] === "--bearer-token" && i + 1 < args.length) opts.bearerToken = args[++i];
-    else if (args[i] === "--dry-run") opts.dryRun = true;
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--manifest" && typeof next === "string") {
+      opts.manifest = next;
+      i += 1;
+    } else if (arg === "--registry-url" && typeof next === "string") {
+      opts.registryUrl = next;
+      i += 1;
+    } else if (arg === "--api-version" && typeof next === "string") {
+      opts.apiVersion = next;
+      i += 1;
+    } else if (arg === "--bearer-token" && typeof next === "string") {
+      opts.bearerToken = next;
+      i += 1;
+    }
+    else if (arg === "--dry-run") opts.dryRun = true;
   }
   return opts;
 }

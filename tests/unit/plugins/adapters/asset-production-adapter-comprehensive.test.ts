@@ -15,6 +15,7 @@ test.describe("AssetProductionAdapter Plugin", () => {
 
   test("initialize returns undefined", async () => {
     const adapter = createAssetProductionAdapterPlugin();
+    assert.ok(adapter.initialize);
     const result = await adapter.initialize();
     assert.equal(result, undefined);
   });
@@ -22,11 +23,13 @@ test.describe("AssetProductionAdapter Plugin", () => {
   test("shutdown clears credential fingerprint", async () => {
     const adapter = createAssetProductionAdapterPlugin();
     await adapter.authenticate({ token: "figma_token_12345" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
   });
 
   test("healthCheck evaluates Figma API and CDN egress policy", async () => {
     const adapter = createAssetProductionAdapterPlugin();
+    assert.ok(adapter.healthCheck);
     const result = await adapter.healthCheck();
     assert.equal(result, true);
   });
@@ -176,6 +179,7 @@ test.describe("AssetProductionAdapter state management", () => {
   test("execute fails after shutdown even with prior authentication", async () => {
     const adapter = createAssetProductionAdapterPlugin();
     await adapter.authenticate({ token: "valid_figma_token_12345" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
     await assert.rejects(
       async () => adapter.execute("get_file", { fileKey: "abc123" }),

@@ -240,12 +240,12 @@ test("tenant-platform-types: CreateTenantInput accepts all fields", () => {
     identityScope: "region-us",
     policyScope: "region-us",
     artifactScope: "region-us",
-    isolationMode: "dedicated",
-    deploymentMode: "single-tenant",
+    isolationMode: "dedicated_environment",
+    deploymentMode: "private_cloud",
   };
 
   assert.equal(input.tenantId, "tenant-1");
-  assert.equal(input.isolationMode, "dedicated");
+  assert.equal(input.isolationMode, "dedicated_environment");
   assert.equal(input.deploymentMode, "single-tenant");
 });
 

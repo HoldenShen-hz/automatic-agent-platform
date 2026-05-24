@@ -1,11 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { FeedbackSignal } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+import {
+  deriveFeedbackTrustScore,
+  parseFeedbackSignal,
+  type FeedbackSignal,
+  type FeedbackTrustFactors,
+} from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import { FeedbackQualityGrader } from "../../../../src/scale-ecosystem/feedback-loop/quality-grader.js";
 
+const defaultTrustFactors: FeedbackTrustFactors = {
+  sourceReliability: 0.9,
+  historicalAccuracy: 0.9,
+  authenticatedSource: true,
+  attackSurfaceExposure: 0.1,
+  holdoutOverlap: 0,
+};
+
 function makeSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
-  const base: FeedbackSignal = {
+  const trustFactors = overrides.trustFactors ?? defaultTrustFactors;
+  return parseFeedbackSignal({
     signalId: "sig-001",
     taskId: "task-001",
     source: "execution",
@@ -14,8 +28,10 @@ function makeSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
     payload: {},
     stepOutputRefs: [],
     timestamp: Date.now(),
-  };
-  return { ...base, ...overrides };
+    trustFactors,
+    feedbackTrustScore: overrides.feedbackTrustScore ?? deriveFeedbackTrustScore(trustFactors),
+    ...overrides,
+  });
 }
 
 test("FeedbackQualityGrader returns discard for empty signals", () => {

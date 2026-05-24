@@ -4,10 +4,24 @@ import assert from "node:assert/strict";
 import { FineTuningExporter } from "../../../../src/scale-ecosystem/feedback-loop/fine-tuning-exporter.js";
 import { FeedbackQualityGrader } from "../../../../src/scale-ecosystem/feedback-loop/quality-grader.js";
 import { parseLearningSignal } from "../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { FeedbackSignal } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+import {
+  deriveFeedbackTrustScore,
+  parseFeedbackSignal,
+  type FeedbackSignal,
+  type FeedbackTrustFactors,
+} from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+
+const defaultTrustFactors: FeedbackTrustFactors = {
+  sourceReliability: 0.9,
+  historicalAccuracy: 0.9,
+  authenticatedSource: true,
+  attackSurfaceExposure: 0.1,
+  holdoutOverlap: 0,
+};
 
 function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
-  return {
+  const trustFactors = overrides.trustFactors ?? defaultTrustFactors;
+  return parseFeedbackSignal({
     signalId: "sig_test_1",
     taskId: "task_1",
     source: "user",
@@ -16,8 +30,10 @@ function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
     payload: { reasonCode: "wrong_output", summary: "Corrected output was wrong" },
     stepOutputRefs: ["step:1"],
     timestamp: Date.now(),
+    trustFactors,
+    feedbackTrustScore: overrides.feedbackTrustScore ?? deriveFeedbackTrustScore(trustFactors),
     ...overrides,
-  };
+  });
 }
 
 test("FineTuningExporter exports high-quality signals as JSONL", () => {

@@ -4,14 +4,19 @@ import test from "node:test";
 import {
   RetryableApiClient,
   type ApiClientConfig,
-  type ContractEnvelope,
 } from "../../../../src/sdk/client-sdk/api-client.js";
+import type { ContractEnvelope } from "../../../../src/platform/contracts/executable-contracts/index.js";
 
 const mockPrincipal = {
   subject: "user_123",
   tenantId: "tenant_abc",
   roles: ["admin"],
 };
+
+function requireEnvelope<TPayload>(value: unknown): ContractEnvelope<TPayload> {
+  assert.ok(value);
+  return value as ContractEnvelope<TPayload>;
+}
 
 function createClient(overrides: Partial<ApiClientConfig> = {}): RetryableApiClient {
   return new RetryableApiClient({
@@ -32,9 +37,9 @@ test("R8-19: api client wraps POST request body in ContractEnvelope", async () =
   const client = createClient({ idempotencyKey: "idem-client-default" });
   const originalFetch = globalThis.fetch;
 
-  let seenEnvelope: ContractEnvelope<{ hello: string }> | null = null;
+  let seenEnvelope: unknown = null;
   globalThis.fetch = async (_url, init) => {
-    seenEnvelope = JSON.parse(String(init?.body)) as ContractEnvelope<{ hello: string }>;
+    seenEnvelope = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -43,23 +48,23 @@ test("R8-19: api client wraps POST request body in ContractEnvelope", async () =
 
   try {
     await client.post("/test", { hello: "world" });
-    assert.ok(seenEnvelope, "Envelope should be sent");
+    const capturedEnvelope = requireEnvelope<{ hello: string }>(seenEnvelope);
     // Verify envelope structure per §5.5
-    assert.ok(seenEnvelope.envelopeId, "Envelope must have envelopeId");
-    assert.ok(seenEnvelope.commandId, "Envelope must have commandId");
-    assert.ok(seenEnvelope.correlationId, "Envelope must have correlationId");
-    assert.ok(seenEnvelope.timestamp, "Envelope must have timestamp");
-    assert.equal(seenEnvelope.schemaVersion, "v4.3", "Envelope must use v4.3 schema");
-    assert.equal(seenEnvelope.ttl, 30000, "Envelope must have 30s TTL");
+    assert.ok(capturedEnvelope.envelopeId, "Envelope must have envelopeId");
+    assert.ok(capturedEnvelope.commandId, "Envelope must have commandId");
+    assert.ok(capturedEnvelope.correlationId, "Envelope must have correlationId");
+    assert.ok(capturedEnvelope.timestamp, "Envelope must have timestamp");
+    assert.equal(capturedEnvelope.schemaVersion, "v4.3", "Envelope must use v4.3 schema");
+    assert.equal(capturedEnvelope.ttl, 30000, "Envelope must have 30s TTL");
     // Verify payload is preserved
-    assert.ok(seenEnvelope.payload, "Envelope must have payload");
-    assert.deepEqual(seenEnvelope.payload, { hello: "world" }, "Payload must be preserved");
+    assert.ok(capturedEnvelope.payload, "Envelope must have payload");
+    assert.deepEqual(capturedEnvelope.payload, { hello: "world" }, "Payload must be preserved");
     // Verify idempotency key is in envelope (not metadata)
-    assert.equal(seenEnvelope.idempotencyKey, "idem-client-default", "Idempotency key must be at envelope level");
+    assert.equal(capturedEnvelope.idempotencyKey, "idem-client-default", "Idempotency key must be at envelope level");
     // Verify principal metadata
-    assert.equal(seenEnvelope.metadata.principalSubject, mockPrincipal.subject, "Principal subject must be in metadata");
-    assert.equal(seenEnvelope.metadata.principalTenantId, mockPrincipal.tenantId, "Principal tenant must be in metadata");
-    assert.equal(seenEnvelope.metadata.principalRoles, mockPrincipal.roles.join(","), "Principal roles must be in metadata");
+    assert.equal(capturedEnvelope.metadata.principalSubject, mockPrincipal.subject, "Principal subject must be in metadata");
+    assert.equal(capturedEnvelope.metadata.principalTenantId, mockPrincipal.tenantId, "Principal tenant must be in metadata");
+    assert.equal(capturedEnvelope.metadata.principalRoles, mockPrincipal.roles.join(","), "Principal roles must be in metadata");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -69,9 +74,9 @@ test("R8-19: api client wraps PUT request body in ContractEnvelope", async () =>
   const client = createClient();
   const originalFetch = globalThis.fetch;
 
-  let seenEnvelope: ContractEnvelope<{ name: string; value: number }> | null = null;
+  let seenEnvelope: unknown = null;
   globalThis.fetch = async (_url, init) => {
-    seenEnvelope = JSON.parse(String(init?.body)) as ContractEnvelope<{ name: string; value: number }>;
+    seenEnvelope = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ updated: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -80,9 +85,9 @@ test("R8-19: api client wraps PUT request body in ContractEnvelope", async () =>
 
   try {
     await client.put("/items/1", { name: "updated-item", value: 42 });
-    assert.ok(seenEnvelope, "Envelope should be sent");
-    assert.deepEqual(seenEnvelope.payload, { name: "updated-item", value: 42 });
-    assert.equal(seenEnvelope.schemaVersion, "v4.3");
+    const capturedEnvelope = requireEnvelope<{ name: string; value: number }>(seenEnvelope);
+    assert.deepEqual(capturedEnvelope.payload, { name: "updated-item", value: 42 });
+    assert.equal(capturedEnvelope.schemaVersion, "v4.3");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -92,9 +97,9 @@ test("R8-19: api client wraps PATCH request body in ContractEnvelope", async () 
   const client = createClient();
   const originalFetch = globalThis.fetch;
 
-  let seenEnvelope: ContractEnvelope<{ partial: string }> | null = null;
+  let seenEnvelope: unknown = null;
   globalThis.fetch = async (_url, init) => {
-    seenEnvelope = JSON.parse(String(init?.body)) as ContractEnvelope<{ partial: string }>;
+    seenEnvelope = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -103,8 +108,8 @@ test("R8-19: api client wraps PATCH request body in ContractEnvelope", async () 
 
   try {
     await client.patch("/items/1", { partial: "update" });
-    assert.ok(seenEnvelope, "Envelope should be sent");
-    assert.deepEqual(seenEnvelope.payload, { partial: "update" });
+    const capturedEnvelope = requireEnvelope<{ partial: string }>(seenEnvelope);
+    assert.deepEqual(capturedEnvelope.payload, { partial: "update" });
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -166,9 +171,9 @@ test("R8-19: api client uses client-level idempotencyKey when request-specific o
   const client = createClient({ idempotencyKey: "client-idem-key" });
   const originalFetch = globalThis.fetch;
 
-  let seenEnvelope: ContractEnvelope<unknown> | null = null;
+  let seenEnvelope: unknown = null;
   globalThis.fetch = async (_url, init) => {
-    seenEnvelope = JSON.parse(String(init?.body)) as ContractEnvelope<unknown>;
+    seenEnvelope = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -177,8 +182,8 @@ test("R8-19: api client uses client-level idempotencyKey when request-specific o
 
   try {
     await client.post("/test", { data: "value" });
-    assert.ok(seenEnvelope);
-    assert.equal(seenEnvelope.idempotencyKey, "client-idem-key", "Should use client-level idempotency key");
+    const capturedEnvelope = requireEnvelope<unknown>(seenEnvelope);
+    assert.equal(capturedEnvelope.idempotencyKey, "client-idem-key", "Should use client-level idempotency key");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -247,9 +252,9 @@ test("R8-19: ContractEnvelope wrapper includes all required fields per §5.5", a
   });
   const originalFetch = globalThis.fetch;
 
-  let seenEnvelope: ContractEnvelope<unknown> | null = null;
+  let seenEnvelope: unknown = null;
   globalThis.fetch = async (_url, init) => {
-    seenEnvelope = JSON.parse(String(init?.body)) as ContractEnvelope<unknown>;
+    seenEnvelope = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -258,7 +263,7 @@ test("R8-19: ContractEnvelope wrapper includes all required fields per §5.5", a
 
   try {
     await client.post("/full-test", { data: "test" });
-    assert.ok(seenEnvelope, "Envelope must be sent");
+    const capturedEnvelope = requireEnvelope<unknown>(seenEnvelope);
 
     // Per §5.5, all inter-plane messages must carry:
     // - schemaVersion: ✓ present as "v4.3"
@@ -271,14 +276,14 @@ test("R8-19: ContractEnvelope wrapper includes all required fields per §5.5", a
     // - metadata: ✓ present with principal info
     // - payload: ✓ present (the actual message)
 
-    assert.ok(seenEnvelope.envelopeId, "envelopeId must be present");
-    assert.ok(seenEnvelope.commandId, "commandId must be present");
-    assert.ok(seenEnvelope.correlationId, "correlationId must be present");
-    assert.ok(seenEnvelope.timestamp, "timestamp must be present");
-    assert.ok(typeof seenEnvelope.signature === "string" || seenEnvelope.signature === null, "signature must be string or null");
-    assert.ok(seenEnvelope.ttl === 30000, "ttl must be 30000ms");
-    assert.ok(seenEnvelope.metadata, "metadata must be present");
-    assert.ok(seenEnvelope.payload, "payload must be present");
+    assert.ok(capturedEnvelope.envelopeId, "envelopeId must be present");
+    assert.ok(capturedEnvelope.commandId, "commandId must be present");
+    assert.ok(capturedEnvelope.correlationId, "correlationId must be present");
+    assert.ok(capturedEnvelope.timestamp, "timestamp must be present");
+    assert.ok(typeof capturedEnvelope.signature === "string" || capturedEnvelope.signature === null, "signature must be string or null");
+    assert.ok(capturedEnvelope.ttl === 30000, "ttl must be 30000ms");
+    assert.ok(capturedEnvelope.metadata, "metadata must be present");
+    assert.ok(capturedEnvelope.payload, "payload must be present");
   } finally {
     globalThis.fetch = originalFetch;
   }

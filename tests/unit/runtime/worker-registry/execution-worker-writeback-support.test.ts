@@ -7,6 +7,7 @@ import {
   buildAgentExecutionRecord,
   persistRemoteLogs,
 } from "../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-writeback-support.js";
+import type { ExecutionRecord } from "../../../../src/platform/contracts/types/domain.js";
 import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { WorkerRemoteLogInput } from "../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 
@@ -134,19 +135,45 @@ test("removeExecutionId maintains sorted order after removal", () => {
 // buildAgentExecutionRecord - comprehensive tests
 // ---------------------------------------------------------------------------
 
-function createMockStoreWithExecution(): {
-  store: AuthoritativeTaskStore;
-  execution: { id: string; taskId: string; workflowId: string; roleId: string; runKind: string; attempt: number; startedAt: string | null };
-} {
-  const execution = {
+function createExecutionRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
+  return {
     id: "exec-123",
     taskId: "task-456",
     workflowId: "wf-789",
+    parentExecutionId: null,
+    harnessRunId: null,
+    agentId: "agent-test",
     roleId: "role-test",
     runKind: "task_run",
+    status: "executing",
+    inputRef: null,
+    traceId: "trace-123",
     attempt: 2,
+    timeoutMs: 60000,
+    budgetUsdLimit: null,
+    budgetReservationId: null,
+    budgetLedgerId: null,
+    requiresApproval: 0,
+    sandboxMode: null,
+    allowedToolsJson: null,
+    allowedPathsJson: null,
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
     startedAt: "2024-01-01T00:00:00.000Z",
+    finishedAt: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    ...overrides,
   };
+}
+
+function createMockStoreWithExecution(): {
+  store: AuthoritativeTaskStore;
+  execution: ExecutionRecord;
+} {
+  const execution = createExecutionRecord();
 
   const store = {
     worker: {
@@ -183,15 +210,7 @@ test("buildAgentExecutionRecord creates record with correct base fields", () => 
 });
 
 test("buildAgentExecutionRecord uses existing planJson when available", () => {
-  const execution = {
-    id: "exec-123",
-    taskId: "task-456",
-    workflowId: "wf-789",
-    roleId: "role-test",
-    runKind: "task_run",
-    attempt: 2,
-    startedAt: null,
-  };
+  const execution = createExecutionRecord({ startedAt: null });
 
   const existingRecord = {
     executionId: "exec-123",
@@ -245,15 +264,7 @@ test("buildAgentExecutionRecord computes retryCount from execution attempt", () 
 });
 
 test("buildAgentExecutionRecord uses existing retryCount when higher", () => {
-  const execution = {
-    id: "exec-123",
-    taskId: "task-456",
-    workflowId: "wf-789",
-    roleId: "role-test",
-    runKind: "task_run",
-    attempt: 1,
-    startedAt: null,
-  };
+  const execution = createExecutionRecord({ attempt: 1, startedAt: null });
 
   const existingRecord = {
     executionId: "exec-123",
@@ -287,15 +298,7 @@ test("buildAgentExecutionRecord uses existing retryCount when higher", () => {
 });
 
 test("buildAgentExecutionRecord sets startedAt from execution when existing has none", () => {
-  const execution = {
-    id: "exec-123",
-    taskId: "task-456",
-    workflowId: "wf-789",
-    roleId: "role-test",
-    runKind: "task_run",
-    attempt: 1,
-    startedAt: "2024-01-01T00:00:00.000Z",
-  };
+  const execution = createExecutionRecord({ attempt: 1, startedAt: "2024-01-01T00:00:00.000Z" });
 
   const store = {
     worker: {
@@ -350,15 +353,7 @@ test("buildAgentExecutionRecord requires updates parameter", () => {
 });
 
 test("buildAgentExecutionRecord preserves existing lastDecisionJson", () => {
-  const execution = {
-    id: "exec-123",
-    taskId: "task-456",
-    workflowId: "wf-789",
-    roleId: "role-test",
-    runKind: "task_run",
-    attempt: 1,
-    startedAt: null,
-  };
+  const execution = createExecutionRecord({ attempt: 1, startedAt: null });
 
   const existingRecord = {
     executionId: "exec-123",

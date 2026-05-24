@@ -40,6 +40,8 @@ function makeQuotaPolicy(overrides: Partial<QuotaPolicy> = {}): QuotaPolicy {
 
 function makeMultiResourceQuota(overrides: Partial<MultiResourceQuotaVector> = {}): MultiResourceQuotaVector {
   return {
+    scope: overrides.scope ?? "tenant",
+    scopeId: overrides.scopeId ?? "tenant-1",
     worker_concurrency: overrides.worker_concurrency ?? 0,
     tool_qps: overrides.tool_qps ?? 0,
     model_tpm: overrides.model_tpm ?? 0,
@@ -48,6 +50,10 @@ function makeMultiResourceQuota(overrides: Partial<MultiResourceQuotaVector> = {
     approval_capacity: overrides.approval_capacity ?? 0,
     storage_io: overrides.storage_io ?? 0,
   };
+}
+
+function makeRequestedUnits(overrides: Partial<Record<string, number>> = {}): Partial<Record<string, number>> {
+  return { ...overrides };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,7 +247,7 @@ test("QuotaEnforcerService.registerQuota stores policy", () => {
 
 test("QuotaEnforcerService.checkQuota returns passed for unregistered policy", () => {
   const service = new QuotaEnforcerService();
-  const request = makeMultiResourceQuota({ worker_concurrency: 10 });
+  const request = makeRequestedUnits({ worker_concurrency: 10 });
 
   const result = service.checkQuota("tenant", "unknown-tenant", request);
 
@@ -260,7 +266,7 @@ test("QuotaEnforcerService.checkQuota enforces registered policy", () => {
     },
   }));
 
-  const request = makeMultiResourceQuota({ worker_concurrency: 10 }); // exceeds 5
+  const request = makeRequestedUnits({ worker_concurrency: 10 }); // exceeds 5
   const result = service.checkQuota("tenant", "tenant-1", request);
 
   assert.equal(result.passed, false);
@@ -319,7 +325,7 @@ test("QuotaEnforcerService.checkQuota handles multi-dimensional warnings", () =>
   }));
 
   // Request at soft limit (80% of hard) but under hard limit
-  const request = makeMultiResourceQuota({ worker_concurrency: 8 }); // 8 < 10 hard, 8 > 8 soft
+  const request = makeRequestedUnits({ worker_concurrency: 8 }); // 8 < 10 hard, 8 > 8 soft
   const result = service.checkQuota("tenant", "tenant-1", request);
 
   assert.equal(result.passed, true);
@@ -338,7 +344,7 @@ test("QuotaEnforcerService.checkQuota multiple dimension failures", () => {
     },
   }));
 
-  const request = makeMultiResourceQuota({
+  const request = makeRequestedUnits({
     worker_concurrency: 10, // > 5
     tool_qps: 100,          // > 50
   });
@@ -356,7 +362,7 @@ test("QuotaEnforcerService.checkQuota multiple dimension failures", () => {
 
 test("evaluateMultiDimensionalQuota uses single resource when no multiResourceHardLimits", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, currentUsage: 0 });
-  const request = makeMultiResourceQuota({ worker_concurrency: 50 });
+  const request = makeRequestedUnits({ worker_concurrency: 50 });
 
   const result = evaluateMultiDimensionalQuota(policy, request);
 
@@ -375,7 +381,7 @@ test("evaluateMultiDimensionalQuota with multiResourceHardLimits checks each dim
     },
   });
 
-  const request = makeMultiResourceQuota({ worker_concurrency: 5, tool_qps: 50 });
+  const request = makeRequestedUnits({ worker_concurrency: 5, tool_qps: 50 });
 
   const result = evaluateMultiDimensionalQuota(policy, request);
 
@@ -391,7 +397,7 @@ test("evaluateMultiDimensionalQuota detects failed dimension", () => {
     },
   });
 
-  const request = makeMultiResourceQuota({ worker_concurrency: 15 });
+  const request = makeRequestedUnits({ worker_concurrency: 15 });
 
   const result = evaluateMultiDimensionalQuota(policy, request);
 
@@ -408,12 +414,12 @@ test("evaluateMultiDimensionalQuota uses 80% of hardLimit as soft limit", () => 
   });
 
   // Request at exactly hard limit should fail
-  const atHard = makeMultiResourceQuota({ worker_concurrency: 10 });
+  const atHard = makeRequestedUnits({ worker_concurrency: 10 });
   const hardResult = evaluateMultiDimensionalQuota(policy, atHard);
   assert.equal(hardResult.passed, false);
 
   // Request at soft limit should warn but not fail
-  const atSoft = makeMultiResourceQuota({ worker_concurrency: 8 });
+  const atSoft = makeRequestedUnits({ worker_concurrency: 8 });
   const softResult = evaluateMultiDimensionalQuota(policy, atSoft);
   assert.equal(softResult.passed, true);
   assert.ok(softResult.warningDimensions.includes("worker_concurrency"));

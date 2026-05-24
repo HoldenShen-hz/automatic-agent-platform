@@ -86,7 +86,12 @@ test("EdgeRuntimeSyncService executeOffline allows medium risk profile", async (
 
 test("EdgeRuntimeSyncService executeOffline rejects profile missing required fields", async () => {
   const service = new EdgeRuntimeSyncService();
-  const profile = makeTestProfile({ deviceId: undefined, offlineMaxDuration: undefined, keyLease: undefined });
+  const {
+    deviceId: _deviceId,
+    offlineMaxDuration: _offlineMaxDuration,
+    keyLease: _keyLease,
+    ...profile
+  } = makeTestProfile();
   const request: OfflineExecutionRequest = {
     edgeNodeId: "edge-001",
     taskId: "task-001",
@@ -125,7 +130,7 @@ test("EdgeRuntimeSyncService buildSyncEnvelope creates valid envelope", async ()
 
   const envelope = service.buildSyncEnvelope(
     profile,
-    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), recordId: "rec-001", payloadDigest: "abc123" },
+    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
     "payload-digest-hash",
     1,
     "internal"
@@ -144,7 +149,7 @@ test("EdgeRuntimeSyncService sync accepts valid envelopes", async () => {
 
   const envelope = service.buildSyncEnvelope(
     profile,
-    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), recordId: "rec-001", payloadDigest: "abc123" },
+    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
     "abc123",
     1,
     "internal"
@@ -162,7 +167,7 @@ test("EdgeRuntimeSyncService sync rejects restricted data when not allowed", asy
 
   const envelope = service.buildSyncEnvelope(
     profile,
-    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), recordId: "rec-001", payloadDigest: "abc123" },
+    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
     "abc123",
     1,
     "restricted"
@@ -180,7 +185,7 @@ test("EdgeRuntimeSyncService sync applies central wins policy on digest mismatch
 
   const envelope = service.buildSyncEnvelope(
     profile,
-    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), recordId: "rec-001", payloadDigest: "abc123" },
+    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
     "abc123",
     1,
     "internal"
@@ -202,14 +207,14 @@ test("EdgeRuntimeSyncService sync respects ordering when requireOrdering is true
 
   const envelope1 = service.buildSyncEnvelope(
     profile,
-    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), recordId: "rec-001", payloadDigest: "abc123" },
+    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
     "abc123",
     1,
     "internal"
   );
   const envelope2 = service.buildSyncEnvelope(
     profile,
-    { edgeNodeId: "edge-001", taskId: "task-002", createdAt: new Date().toISOString(), recordId: "rec-002", payloadDigest: "def456" },
+    { edgeNodeId: "edge-001", taskId: "task-002", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
     "def456",
     5,
     "internal"
@@ -226,7 +231,7 @@ test("EdgeRuntimeSyncService sync skips ordering when requireOrdering is false",
 
   const envelope1 = service.buildSyncEnvelope(
     profile,
-    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), recordId: "rec-001", payloadDigest: "abc123" },
+    { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
     "abc123",
     1,
     "internal"

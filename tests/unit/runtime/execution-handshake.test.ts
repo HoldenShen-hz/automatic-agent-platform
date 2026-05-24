@@ -86,6 +86,7 @@ function createWorkerAndLease(
     lastProgressAt: null,
     lastHeartbeatAt: now,
     updatedAt: now,
+    version: 1,
   });
 
   const leaseId = newId("lease");
@@ -112,6 +113,7 @@ function createWorkerAndLease(
     id: ticketId,
     executionId,
     taskId,
+    tenantId: "tenant-default",
     priority: "normal",
     queueName: null,
     dispatchTarget: null,
@@ -175,6 +177,7 @@ function createTaskAndExecution(
     taskId,
     workflowId: "single_agent_minimal",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "unassigned", // Required field, will be updated on claim
     roleId: "general_executor",
     runKind: "task_run",
@@ -184,6 +187,8 @@ function createTaskAndExecution(
     attempt: 1,
     timeoutMs: 60000,
     budgetUsdLimit: 1,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: "workspace_write",
     allowedToolsJson: "[]",
@@ -292,6 +297,7 @@ test("claimExecution rejects when worker not registered", () => {
       id: ticketId,
       executionId,
       taskId,
+      tenantId: "tenant-default",
       priority: "normal",
       queueName: null,
       dispatchTarget: null,
@@ -483,6 +489,7 @@ test("claimExecution rejects when ticket assigned to different worker", () => {
       lastProgressAt: null,
       lastHeartbeatAt: now,
       updatedAt: now,
+      version: 1,
     });
 
     const result = handshakeService.claimExecution({
@@ -989,6 +996,7 @@ test("recordHeartbeat rejects when lease not found", () => {
       lastProgressAt: null,
       lastHeartbeatAt: now,
       updatedAt: now,
+      version: 1,
     });
 
     const result = handshakeService.recordHeartbeat({
@@ -1214,6 +1222,7 @@ test("recordHeartbeat rejects worker mismatch (different worker owns lease)", ()
       lastProgressAt: null,
       lastHeartbeatAt: now,
       updatedAt: now,
+      version: 1,
     });
 
     const result = handshakeService.recordHeartbeat({
@@ -1298,6 +1307,7 @@ test("claimExecution records claim_rejected event on failure", () => {
       id: ticketId,
       executionId,
       taskId,
+      tenantId: "tenant-default",
       priority: "normal",
       queueName: null,
       dispatchTarget: null,

@@ -9,10 +9,11 @@ test("HumanTakeoverService is exported and is a class", () => {
 test("TakeoverActionResult type is exported", () => {
   // Verify type exists by checking a function signature that uses it
   const result: TakeoverActionResult = {
-    action: "completed",
     taskId: "test-task",
-    takeoverCompletedAt: new Date().toISOString(),
+    executionId: null,
+    takeoverSessionId: "session-1",
+    operatorActionId: "action-1",
   };
-  assert.equal(result.action, "completed");
   assert.equal(result.taskId, "test-task");
+  assert.equal(result.operatorActionId, "action-1");
 });

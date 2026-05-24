@@ -14,6 +14,7 @@ test.describe("LivestreamAdapter Plugin", () => {
 
   test("initialize returns undefined", async () => {
     const adapter = createLivestreamAdapterPlugin();
+    assert.ok(adapter.initialize);
     const result = await adapter.initialize();
     assert.equal(result, undefined);
   });
@@ -21,11 +22,13 @@ test.describe("LivestreamAdapter Plugin", () => {
   test("shutdown clears credential fingerprint", async () => {
     const adapter = createLivestreamAdapterPlugin();
     await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
   });
 
   test("healthCheck returns false before authentication", async () => {
     const adapter = createLivestreamAdapterPlugin();
+    assert.ok(adapter.healthCheck);
     const result = await adapter.healthCheck();
     assert.equal(result, false);
   });
@@ -33,6 +36,7 @@ test.describe("LivestreamAdapter Plugin", () => {
   test("healthCheck returns true after authentication", async () => {
     const adapter = createLivestreamAdapterPlugin();
     await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    assert.ok(adapter.healthCheck);
     const result = await adapter.healthCheck();
     assert.equal(result, true);
   });
@@ -233,6 +237,7 @@ test.describe("LivestreamAdapter state management", () => {
   test("execute fails after shutdown even with prior authentication", async () => {
     const adapter = createLivestreamAdapterPlugin();
     await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
     await assert.rejects(
       async () => adapter.execute("get_stream_config", { streamId: "stream_123" }),
@@ -254,6 +259,7 @@ test.describe("LivestreamAdapter state management", () => {
   test("re-authenticate after shutdown works", async () => {
     const adapter = createLivestreamAdapterPlugin();
     await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
     await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken789012" });
     const result = await adapter.execute("get_stream_config", { streamId: "test" }) as any;

@@ -5,6 +5,7 @@ import {
   CapacityPlanningService,
   type CapacitySignal,
   type CapacityForecast,
+  type CapacityScenario,
 } from "../../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
 
 test("CapacityPlanningService recordSignal stores signal", async () => {
@@ -67,15 +68,34 @@ test("CapacityPlanningService compareScenarios sorts by projected units", async 
   const start = new Date(now - 5 * 3600000).toISOString();
   const end = new Date(now).toISOString();
 
-  const scenarios = [
-    { scenarioId: "s1", label: "aggressive", resourceType: "memory", growthPercent: 20, periods: 5, start, end },
-    { scenarioId: "s2", label: "moderate", resourceType: "memory", growthPercent: 10, periods: 5, start, end },
-    { scenarioId: "s3", label: "conservative", resourceType: "memory", growthPercent: 5, periods: 5, start, end },
+  const scenarios: CapacityScenario[] = [
+    {
+      scenarioId: "s1",
+      label: "aggressive",
+      baselineUnits: 100,
+      growthPercent: 20,
+      optimizationPercent: 0,
+    },
+    {
+      scenarioId: "s2",
+      label: "moderate",
+      baselineUnits: 100,
+      growthPercent: 10,
+      optimizationPercent: 0,
+    },
+    {
+      scenarioId: "s3",
+      label: "conservative",
+      baselineUnits: 100,
+      growthPercent: 5,
+      optimizationPercent: 0,
+    },
   ];
 
   const results = service.compareScenarios(scenarios);
 
   assert.equal(results.length, 3);
+  assert.ok(results[0] != null && results[1] != null && results[2] != null);
   assert.ok(results[0].projectedUnits >= results[1].projectedUnits);
   assert.ok(results[1].projectedUnits >= results[2].projectedUnits);
 });

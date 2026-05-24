@@ -86,9 +86,9 @@ test("HashEmbeddingProvider.embedBatch processes multiple texts", async () => {
   const results = await provider.embedBatch(["Text one", "Text two", "Text three"]);
 
   assert.equal(results.length, 3);
-  assert.equal(results[0].dimensions, 32);
-  assert.equal(results[1].dimensions, 32);
-  assert.equal(results[2].dimensions, 32);
+  assert.equal(results[0]!.dimensions, 32);
+  assert.equal(results[1]!.dimensions, 32);
+  assert.equal(results[2]!.dimensions, 32);
 });
 
 test("HashEmbeddingProvider.embedBatch returns same results as individual calls", async () => {
@@ -98,8 +98,8 @@ test("HashEmbeddingProvider.embedBatch returns same results as individual calls"
   const individualResult1 = await provider.embed("Text A");
   const individualResult2 = await provider.embed("Text B");
 
-  assert.deepEqual(batchResults[0].vector, individualResult1.vector);
-  assert.deepEqual(batchResults[1].vector, individualResult2.vector);
+  assert.deepEqual(batchResults[0]!.vector, individualResult1.vector);
+  assert.deepEqual(batchResults[1]!.vector, individualResult2.vector);
 });
 
 test("OpenAIEmbeddingOptions interface structure", () => {

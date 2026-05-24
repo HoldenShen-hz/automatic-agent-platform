@@ -18,11 +18,15 @@ import { isQuotaExceeded } from "../../../src/scale-ecosystem/resource-manager/q
 import { detectSlaBreach } from "../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
 import { allocateReservedCapacity } from "../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
 import { resolveHighestPriorityTier } from "../../../src/scale-ecosystem/sla-engine/tier-resolver/index.js";
+import {
+  deriveFeedbackTrustScore,
+  parseFeedbackSignal,
+} from "../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 test("scale-ecosystem support modules provide contract-aligned helpers", () => {
   assert.deepEqual(
     analyzeFeedbackSignals([
-      {
+      parseFeedbackSignal({
         signalId: "sig_1",
         taskId: "task_1",
         source: "user",
@@ -31,7 +35,21 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
         payload: {},
         stepOutputRefs: [],
         timestamp: 1,
-      },
+        trustFactors: {
+          sourceReliability: 0.9,
+          historicalAccuracy: 0.9,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0.1,
+          holdoutOverlap: 0,
+        },
+        feedbackTrustScore: deriveFeedbackTrustScore({
+          sourceReliability: 0.9,
+          historicalAccuracy: 0.9,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0.1,
+          holdoutOverlap: 0,
+        }),
+      }),
     ]),
     {
       totalSignals: 1,
@@ -55,7 +73,7 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
     ]).length,
     1,
   );
-  assert.equal(buildConnectorExecutionKey({ connectorId: "slack", capability: "notify", payload: {} }), "slack:notify");
+  assert.equal(buildConnectorExecutionKey({ connectorId: "slack", capability: "notify", payload: {}, secretBindings: [] }), "slack:notify");
   assert.equal(
     summarizeConnectorHealth([{ connectorId: "slack", status: "degraded", latencyMs: 100, checkedAt: "2026-04-20T00:00:00.000Z" }]),
     "degraded",
@@ -74,7 +92,11 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
       certificationId: "c1",
       status: "approved",
       approvedAt: "2026-04-20T00:00:00.000Z",
+      healthScore: 1,
+      sunsetAt: null,
+      expiresAt: null,
       lastReviewedAt: "2026-04-20T00:00:00.000Z",
+      activeFindings: 0,
       sbomVerified: true,
       signatureVerified: true,
       compatibilityVerified: true,
@@ -98,7 +120,7 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
   assert.equal(failover.rationale, "multi_region.primary_unhealthy");
   assert.equal(failover.fencingEpoch, 1);
   assert.equal(failover.leaderState, "promoted");
-  assert.equal(failover.reconciliationResult.canProceed, true);
+  assert.equal(failover.reconciliationResult?.canProceed, true);
   assert.equal(
     selectPreferredRegion([
       { regionId: "us-west-2", jurisdiction: "US", latencyScore: 120, residencyAllowed: true },

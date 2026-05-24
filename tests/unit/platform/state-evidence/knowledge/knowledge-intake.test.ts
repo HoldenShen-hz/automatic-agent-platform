@@ -19,7 +19,7 @@ test("TextKnowledgeIntake ingests text documents", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -29,12 +29,12 @@ test("TextKnowledgeIntake ingests text documents", () => {
     title: "Test Document",
     body: "This is a test document body.",
     namespace: "test/text",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
 
   assert.equal(result.chunks.length, 1);
   assert.equal(result.source.namespace, "test/text");
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
 });
 
 test("TextKnowledgeIntake uses default sourceType of text", () => {
@@ -51,7 +51,7 @@ test("TextKnowledgeIntake uses default sourceType of text", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -80,7 +80,7 @@ test("TextKnowledgeIntake accepts optional trustLevel", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "community",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -90,10 +90,10 @@ test("TextKnowledgeIntake accepts optional trustLevel", () => {
     title: "Community Trust",
     body: "Body",
     namespace: "test/trust",
-    trustLevel: "community",
+    trustLevel: "team_reviewed",
   });
 
-  assert.equal(result.source.trustLevel, "community");
+  assert.equal(result.source.trustLevel, "team_reviewed");
 });
 
 test("TextKnowledgeIntake accepts optional tags", () => {
@@ -110,7 +110,7 @@ test("TextKnowledgeIntake accepts optional tags", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -140,7 +140,7 @@ test("TextKnowledgeIntake accepts optional chunking config with fixed mode", () 
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -178,7 +178,7 @@ test("FileKnowledgeIntake extracts filename as title", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -208,7 +208,7 @@ test("FileKnowledgeIntake uses default sourceType of file", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -237,7 +237,7 @@ test("FileKnowledgeIntake accepts optional trustLevel", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -247,10 +247,10 @@ test("FileKnowledgeIntake accepts optional trustLevel", () => {
     path: "/test/trust.txt",
     content: "Content",
     namespace: "test/file-trust",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
 
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
 });
 
 test("FileKnowledgeIntake accepts optional tags", () => {
@@ -267,7 +267,7 @@ test("FileKnowledgeIntake accepts optional tags", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -297,7 +297,7 @@ test("FileKnowledgeIntake includes path as uri", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -326,7 +326,7 @@ test("FileKnowledgeIntake accepts optional chunking config with fixed mode", () 
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });

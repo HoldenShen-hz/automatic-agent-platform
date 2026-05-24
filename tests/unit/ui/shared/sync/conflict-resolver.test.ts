@@ -1,9 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { loadRepoModule } from "../../../../helpers/repo-module.js";
 
-import { ConflictResolver, type ConflictMetadata } from "../../../../../ui/packages/shared/sync/src/index.js";
+type ConflictMetadata = {
+  lamportTimestamp: number;
+  vectorClock: Record<string, { actorId: string; timestamp: number }>;
+};
 
-test("ConflictResolver.merge uses vector clocks instead of unconditional local overwrite", () => {
+async function loadSyncIndexModule() {
+  return loadRepoModule<{
+    ConflictResolver: new () => {
+      resolve(
+        serverValue: unknown,
+        localValue: unknown,
+        strategy: string,
+        serverMetadata?: ConflictMetadata,
+        localMetadata?: ConflictMetadata,
+      ): unknown;
+    };
+  }>("ui", "packages", "shared", "sync", "src", "index.ts");
+}
+
+test("ConflictResolver.merge uses vector clocks instead of unconditional local overwrite", async () => {
+  const { ConflictResolver } = await loadSyncIndexModule();
   const resolver = new ConflictResolver();
   const serverMetadata: ConflictMetadata = {
     lamportTimestamp: 10,
@@ -34,7 +53,8 @@ test("ConflictResolver.merge uses vector clocks instead of unconditional local o
   assert.equal(result.draftOnly, true);
 });
 
-test("ConflictResolver.merge deduplicates arrays by id without replacing server entries wholesale", () => {
+test("ConflictResolver.merge deduplicates arrays by id without replacing server entries wholesale", async () => {
+  const { ConflictResolver } = await loadSyncIndexModule();
   const resolver = new ConflictResolver();
 
   const result = resolver.resolve(
@@ -56,7 +76,8 @@ test("ConflictResolver.merge deduplicates arrays by id without replacing server 
   ]);
 });
 
-test("ConflictResolver.merge applies CRDT ordering to overlapping array entries by id", () => {
+test("ConflictResolver.merge applies CRDT ordering to overlapping array entries by id", async () => {
+  const { ConflictResolver } = await loadSyncIndexModule();
   const resolver = new ConflictResolver();
   const serverMetadata: ConflictMetadata = {
     lamportTimestamp: 8,
@@ -87,7 +108,8 @@ test("ConflictResolver.merge applies CRDT ordering to overlapping array entries 
   }]);
 });
 
-test("ConflictResolver.server_wins compares Lamport timestamps for scalar values", () => {
+test("ConflictResolver.server_wins compares Lamport timestamps for scalar values", async () => {
+  const { ConflictResolver } = await loadSyncIndexModule();
   const resolver = new ConflictResolver();
 
   const localWins = resolver.resolve(

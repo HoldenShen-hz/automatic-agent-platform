@@ -9,7 +9,11 @@ import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { loadQualityConfig } from "../../../../../src/platform/prompt-engine/eval/quality-config-loader.js";
-import { loadConversationTemplateConfig, getTemplatesFromConfig } from "../../../../../src/platform/prompt-engine/conversation-template-config-loader.js";
+import {
+  loadConversationTemplateConfig,
+  getTemplatesFromConfig,
+  type ConversationTemplateConfig,
+} from "../../../../../src/platform/prompt-engine/conversation-template-config-loader.js";
 import { PostExecutionQualityGate } from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
 import type { ExecutionOutcomeEvaluation } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 
@@ -194,14 +198,14 @@ test("loadConversationTemplateConfig returns defaults when config is invalid JSO
 });
 
 test("getTemplatesFromConfig extracts templates from config", () => {
-  const config = {
+  const config: ConversationTemplateConfig = {
     templates: [
       { templateId: "t1", name: "Template 1", description: "", version: "1.0", intent: "task_create", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
       { templateId: "t2", name: "Template 2", description: "", version: "1.0", intent: "task_query", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
     ],
     maxStepsPerTemplate: 5,
     enableTemplateAutoSelection: false,
-  } as const;
+  };
 
   const templates = getTemplatesFromConfig(config);
 

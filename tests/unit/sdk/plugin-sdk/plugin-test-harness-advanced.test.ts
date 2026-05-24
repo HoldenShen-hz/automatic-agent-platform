@@ -439,7 +439,7 @@ test("PluginTestHarness report results contain duration", async () => {
   const harness = new PluginTestHarness({ plugin });
   const report = await harness.runCases([{ name: "test", input: {} }]);
 
-  assert.ok(report.results[0]?.durationMs >= 0);
+  assert.ok(report.results[0]!.durationMs >= 0);
 });
 
 test("PluginTestHarness configureMockLlm with multiple responses", () => {

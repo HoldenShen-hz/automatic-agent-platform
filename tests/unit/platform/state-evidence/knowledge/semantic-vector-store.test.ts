@@ -143,7 +143,7 @@ test("KnowledgePlaneService async query path uses configured semantic vector sto
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "reviewed",
+    trustLevel: "official",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -153,7 +153,7 @@ test("KnowledgePlaneService async query path uses configured semantic vector sto
     body: "Build failures usually recover after clearing stale caches and re-running the pipeline once.",
     namespace: "shared/common",
     sourceType: "text",
-    trustLevel: "reviewed",
+    trustLevel: "official",
   });
 
   const hits = await plane.queryAsync("compilation", {

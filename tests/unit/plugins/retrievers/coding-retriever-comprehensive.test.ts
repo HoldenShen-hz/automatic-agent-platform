@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
+import type { SemanticRepoMapService } from "../../../../src/platform/five-plane-execution/tool-executor/semantic-repo-map-service.js";
 import { createCodingRetrieverPlugin } from "../../../../src/plugins/retrievers/coding-retriever.js";
 
 function createTestFixture(): string {
@@ -103,18 +104,21 @@ test.describe("CodingRetriever comprehensive tests", () => {
 
   test("healthCheck returns true when rootPath exists", async () => {
     const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
+    assert.ok(plugin.healthCheck);
     const result = await plugin.healthCheck();
     assert.equal(result, true);
   });
 
   test("healthCheck returns false when rootPath does not exist", async () => {
     const plugin = createCodingRetrieverPlugin({ rootPath: "/nonexistent/path" });
+    assert.ok(plugin.healthCheck);
     const result = await plugin.healthCheck();
     assert.equal(result, false);
   });
 
   test("shutdown invalidates repo map cache", async () => {
     const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
+    assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
     assert.equal(result, undefined);
   });
@@ -240,7 +244,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
       const symbolResults = results.filter((r) => r.matchType === "structural");
       for (const result of symbolResults) {
         assert.ok(typeof result.knowledgeRef === "string");
-        assert.ok(typeof result.snippet === "string");
+        assert.ok("snippet" in result && typeof result.snippet === "string");
         assert.ok(result.snippet.includes("defined at"));
       }
     });
@@ -257,7 +261,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
       const fileResults = results.filter((r) => r.matchType === "keyword");
       for (const result of fileResults) {
         assert.ok(typeof result.knowledgeRef === "string");
-        assert.ok(typeof result.snippet === "string");
+        assert.ok("snippet" in result && typeof result.snippet === "string");
         assert.ok(result.snippet.includes("imports"));
       }
     });
@@ -445,13 +449,12 @@ test.describe("CodingRetriever comprehensive tests", () => {
     });
 
     test("accepts custom repoMapService", () => {
-      // @ts-expect-error - testing with mock service
       const plugin = createCodingRetrieverPlugin({
         rootPath: fixtureRoot,
         repoMapService: {
           search: () => ({ symbols: [], files: [], relevanceScores: new Map() }),
           invalidateCache: () => {},
-        },
+        } as unknown as SemanticRepoMapService,
       });
       assert.ok(plugin !== undefined);
     });

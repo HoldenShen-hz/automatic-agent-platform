@@ -9,10 +9,24 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { SignalPreprocessor } from "../../../../src/scale-ecosystem/feedback-loop/collector/signal-preprocessor.js";
-import type { FeedbackSignal } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+import {
+  deriveFeedbackTrustScore,
+  parseFeedbackSignal,
+  type FeedbackSignal,
+  type FeedbackTrustFactors,
+} from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+
+const defaultTrustFactors: FeedbackTrustFactors = {
+  sourceReliability: 0.9,
+  historicalAccuracy: 0.9,
+  authenticatedSource: true,
+  attackSurfaceExposure: 0.1,
+  holdoutOverlap: 0,
+};
 
 function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
-  return {
+  const trustFactors = overrides.trustFactors ?? defaultTrustFactors;
+  return parseFeedbackSignal({
     signalId: "sig_test_1",
     taskId: "task_1",
     source: "execution",
@@ -21,8 +35,10 @@ function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
     payload: {},
     stepOutputRefs: [],
     timestamp: 1000,
+    trustFactors,
+    feedbackTrustScore: overrides.feedbackTrustScore ?? deriveFeedbackTrustScore(trustFactors),
     ...overrides,
-  };
+  });
 }
 
 // =============================================================================

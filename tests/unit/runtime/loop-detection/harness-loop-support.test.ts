@@ -40,7 +40,9 @@ function createMockHarnessRunRuntimeState(overrides: Partial<HarnessRunRuntimeSt
       {
         stepId: "step_1",
         role: "planner",
-        status: "completed",
+        stage: "planner",
+        iteration: 1,
+        semanticPhase: "plan",
         inputs: {},
         outputs: { planId: "plan_task_1", summary: "Test plan" },
         startedAt: "2024-01-01T00:00:00.000Z",
@@ -50,7 +52,9 @@ function createMockHarnessRunRuntimeState(overrides: Partial<HarnessRunRuntimeSt
       {
         stepId: "step_2",
         role: "generator",
-        status: "completed",
+        stage: "generator",
+        iteration: 1,
+        semanticPhase: "execute",
         inputs: {},
         outputs: { artifact: "artifact_1" },
         startedAt: "2024-01-01T00:01:00.000Z",
@@ -113,7 +117,9 @@ test("getPreviousPlannerOutput returns null when no planner step exists", () => 
       {
         stepId: "step_1",
         role: "generator",
-        status: "completed",
+        stage: "generator",
+        iteration: 1,
+        semanticPhase: "execute",
         inputs: {},
         outputs: { artifact: "artifact_1" },
         startedAt: "2024-01-01T00:00:00.000Z",
@@ -132,7 +138,9 @@ test("getPreviousPlannerOutput returns null when planner step has no outputs", (
       {
         stepId: "step_1",
         role: "planner",
-        status: "completed",
+        stage: "planner",
+        iteration: 1,
+        semanticPhase: "plan",
         inputs: {},
         outputs: null as never,
         startedAt: "2024-01-01T00:00:00.000Z",
@@ -151,7 +159,9 @@ test("getPreviousPlannerOutput returns null when outputs is not an object", () =
       {
         stepId: "step_1",
         role: "planner",
-        status: "completed",
+        stage: "planner",
+        iteration: 1,
+        semanticPhase: "plan",
         inputs: {},
         outputs: "not an object" as never,
         startedAt: "2024-01-01T00:00:00.000Z",
@@ -194,9 +204,9 @@ test("createDefaultGeneratorOutput uses planner output planId", () => {
 
   const result = createDefaultGeneratorOutput(input, 2, plannerOutput);
 
-  assert.ok(result.artifact.includes("artifact-task_gen-2"));
-  assert.ok(result.summary.includes("custom_plan_123"));
-  assert.equal(result.costUsd, 0.2);
+  assert.ok(String(result["artifact"]).includes("artifact-task_gen-2"));
+  assert.ok(String(result["summary"]).includes("custom_plan_123"));
+  assert.equal(result["costUsd"], 0.2);
 });
 
 test("createDefaultGeneratorOutput uses taskId when plannerOutput planId is undefined", () => {
@@ -205,7 +215,7 @@ test("createDefaultGeneratorOutput uses taskId when plannerOutput planId is unde
 
   const result = createDefaultGeneratorOutput(input, 1, plannerOutput);
 
-  assert.ok(result.summary.includes("task_fallback"));
+  assert.ok(String(result["summary"]).includes("task_fallback"));
 });
 
 test("createDefaultEvaluatorOutput creates pass verdict", () => {
@@ -214,10 +224,10 @@ test("createDefaultEvaluatorOutput creates pass verdict", () => {
 
   const result = createDefaultEvaluatorOutput(input, 1, generatorOutput);
 
-  assert.equal(result.verdict, "pass");
-  assert.equal(result.score, 0.86);
-  assert.equal(result.costUsd, 0.02);
-  assert.ok(result.reasoning.includes("artifact_abc"));
+  assert.equal(result["verdict"], "pass");
+  assert.equal(result["score"], 0.86);
+  assert.equal(result["costUsd"], 0.02);
+  assert.ok(String(result["reasoning"]).includes("artifact_abc"));
 });
 
 test("createDefaultEvaluatorOutput uses generatorOutput artifact in reasoning", () => {
@@ -226,8 +236,8 @@ test("createDefaultEvaluatorOutput uses generatorOutput artifact in reasoning", 
 
   const result = createDefaultEvaluatorOutput(input, 3, generatorOutput);
 
-  assert.ok(result.reasoning.includes("my_artifact_xyz"));
-  assert.equal(result.costUsd, 0.06);
+  assert.ok(String(result["reasoning"]).includes("my_artifact_xyz"));
+  assert.equal(result["costUsd"], 0.06);
 });
 
 test("estimateIterationCost sums costUsd from all outputs", () => {

@@ -18,7 +18,7 @@ test("KnowledgeIngestionPipeline ingests documents and serves keyword queries", 
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -27,12 +27,12 @@ test("KnowledgeIngestionPipeline ingests documents and serves keyword queries", 
     body: "Rollback immediately on canary failure.\n\nEscalate provider outages to the operator.",
     namespace: "ops/incident",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
 
   assert.equal(result.chunks.length, 2);
   assert.ok(pipeline.query("rollback", { domainId: "ops" }).length >= 1);
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
   assert.equal(pipeline.query("rollback", { domainId: "coding" }).length >= 1, true);
   assert.equal(result.document.status, "indexed");
 });
@@ -51,7 +51,7 @@ test("KnowledgeIngestionPipeline handles empty query results", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -74,7 +74,7 @@ test("KnowledgeIngestionPipeline ingests single-chunk document", () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -84,7 +84,7 @@ test("KnowledgeIngestionPipeline ingests single-chunk document", () => {
     body: "This is a short document.",
     namespace: "ops/single",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
 
   assert.ok(result.chunks.length >= 1);
@@ -105,7 +105,7 @@ test("KnowledgeIngestionPipeline supports section_aware chunking and AST indexin
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -117,7 +117,7 @@ test("KnowledgeIngestionPipeline supports section_aware chunking and AST indexin
     sourceType: "file",
     uri: "src/repo-notes.ts",
     language: "typescript",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     chunking: {
       mode: "section_aware",
       sectionConfig: {

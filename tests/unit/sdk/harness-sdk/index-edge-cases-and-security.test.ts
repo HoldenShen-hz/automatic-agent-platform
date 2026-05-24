@@ -15,6 +15,27 @@ function createDeferred(): { promise: Promise<void>; resolve: () => void } {
   };
 }
 
+function createPlanNode(nodeId: string, nodeType: PlanNode["nodeType"] = "tool"): PlanNode {
+  return {
+    nodeId,
+    nodeType,
+    inputRefs: [],
+    outputSchemaRef: "schema:default",
+    riskClass: "medium",
+    budgetIntent: {
+      amount: 1,
+      currency: "USD",
+      resourceKinds: ["compute"],
+    },
+    sideEffectProfile: {
+      mayCommitExternalEffect: false,
+      reversible: true,
+    },
+    retryPolicyRef: "retry:default",
+    timeoutMs: 60000,
+  };
+}
+
 test("HarnessSdk.appendStepWithReceipt uses provided nodeAttemptId", () => {
   const sdk = new HarnessSdk();
 
@@ -27,7 +48,7 @@ test("HarnessSdk.appendStepWithReceipt uses provided nodeAttemptId", () => {
   const run = sdk.createRun(runInput);
 
   const stepInput: HarnessSdkAppendStepInput = {
-    role: "executor",
+    role: "generator",
     nodeRunId: "node-1",
     planGraphId: "graph-1",
     inputs: {},
@@ -52,7 +73,7 @@ test("HarnessSdk.appendStepWithReceipt uses provided graphVersion", () => {
   const run = sdk.createRun(runInput);
 
   const stepInput: HarnessSdkAppendStepInput = {
-    role: "executor",
+    role: "generator",
     nodeRunId: "node-1",
     planGraphId: "graph-1",
     inputs: {},
@@ -77,17 +98,17 @@ test("HarnessSdk.appendStepWithReceipt uses provided receiptKind", () => {
   const run = sdk.createRun(runInput);
 
   const stepInput: HarnessSdkAppendStepInput = {
-    role: "executor",
+    role: "generator",
     nodeRunId: "node-1",
     planGraphId: "graph-1",
     inputs: {},
     outputs: {},
-    receiptKind: "retriever",
+    receiptKind: "evaluator",
   };
 
   const result = sdk.appendStepWithReceipt(run, stepInput);
 
-  assert.equal(result.receipt.receiptKind, "retriever");
+  assert.equal(result.receipt.receiptKind, "evaluator");
 });
 
 test("HarnessSdk works with empty constraintPack", () => {
@@ -105,16 +126,7 @@ test("HarnessSdk works with empty constraintPack", () => {
 });
 
 test("buildPlanGraphBundle with empty edges array is valid", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "solo",
-      description: "Solo node",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
 
   const input: PlanGraphBuildInput = {
     harnessRunId: "run-123",
@@ -131,16 +143,7 @@ test("buildPlanGraphBundle with empty edges array is valid", () => {
 });
 
 test("buildPlanGraphBundle uses default scheduler policy when not provided", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "execute",
-      description: "Execute",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
 
   const input: PlanGraphBuildInput = {
     harnessRunId: "run-123",
@@ -157,16 +160,7 @@ test("buildPlanGraphBundle uses default scheduler policy when not provided", () 
 });
 
 test("buildPlanGraphBundle uses default budget plan ref when not provided", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "execute",
-      description: "Execute",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
 
   const input: PlanGraphBuildInput = {
     harnessRunId: "run-123",
@@ -269,16 +263,7 @@ test("HarnessSdk.sendInterPlaneMessage applies bulkhead isolation when configure
 });
 
 test("buildPlanGraphBundle rejects invalid entryNodeIds", () => {
-  const nodes: PlanNode[] = [
-    {
-      nodeId: "node-1",
-      nodeIndex: 0,
-      capability: "single",
-      description: "Single node",
-      inputSchema: {},
-      outputSchema: {},
-    },
-  ];
+  const nodes: PlanNode[] = [createPlanNode("node-1")];
   const edges: PlanEdge[] = [];
 
   const input: PlanGraphBuildInput = {

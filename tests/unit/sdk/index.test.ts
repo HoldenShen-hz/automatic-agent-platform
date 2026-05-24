@@ -28,6 +28,7 @@ test("sdk barrel exports cli, client, pack, and plugin surfaces", () => {
   assert.deepEqual(summarizeCapabilityMatrix({
     packId: "pack-a",
     version: "1.0.0",
+    domainId: "ops",
     domain: "ops",
     owner: "owner",
     capabilities: [{ capabilityKey: "triage", maturity: "ga", requiredContracts: ["runtime_execution_contract"] }],

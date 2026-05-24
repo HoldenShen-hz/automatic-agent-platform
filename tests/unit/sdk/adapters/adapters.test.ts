@@ -237,6 +237,7 @@ test("GitHub adapter healthCheck evaluates egress policy", async () => {
 
   await adapter.authenticate({ token: "ghp_test_token" });
 
+  assert.ok(adapter.healthCheck);
   const healthy = await adapter.healthCheck();
   assert.equal(typeof healthy, "boolean");
 });
@@ -250,30 +251,7 @@ test("GitHub adapter signature verifier rejects missing signature", async () => 
 test("GitHub adapter with verifySignature allows trusted manifest without signature", async () => {
   // Trusted built-in plugins should not require signature verification
   const adapter = createGithubAdapterPlugin({
-    verifySignature: true,
-    manifest: {
-      pluginId: "plugin.shared.github_adapter",
-      name: "GitHub Adapter",
-      version: "1.0.0",
-      owner: "platform-team",
-      domainIds: ["coding"],
-      capabilityIds: ["external.github"],
-      spiTypes: ["adapter"],
-      extensionKind: "external_adapter",
-      trustLevel: "trusted", // Trusted - should skip signature check
-      publicSdkSurface: "@automatic-agent/plugin-github-adapter",
-      settingsSchema: {},
-      sandbox: {
-        timeoutMs: 5000,
-        allowFilesystemWrite: false,
-        allowNetworkEgress: true,
-        allowedKnowledgeNamespaces: [],
-        maxConcurrentInvocations: 4,
-        maxQueuedInvocations: 8,
-        runtimeIsolation: "serialized_in_process",
-        cooldownMs: 0,
-      },
-    },
+    signatureKey: "test-key",
   });
 
   // Should not throw
@@ -283,8 +261,10 @@ test("GitHub adapter with verifySignature allows trusted manifest without signat
 test("GitHub adapter lifecycle uses initialize, authenticate, and shutdown", async () => {
   const adapter = createGithubAdapterPlugin();
 
-  await adapter.initialize({} as never);
+  assert.ok(adapter.initialize);
+  await adapter.initialize();
   await adapter.authenticate({ token: "test" });
+  assert.ok(adapter.shutdown);
   await adapter.shutdown();
 
   await assert.rejects(

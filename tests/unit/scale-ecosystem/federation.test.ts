@@ -329,7 +329,6 @@ test("FederationGateway.requestDelegation returns success without approval", asy
     requestedPermissions: ["invoke"],
     constraints: [],
     requestedBy: "user",
-    requestedAt: new Date(),
   });
   assert.equal(result.success, true);
 });
@@ -364,7 +363,6 @@ test("FederationGateway.requestDelegation returns pending with approval required
     requestedPermissions: ["invoke"],
     constraints: [],
     requestedBy: "user",
-    requestedAt: new Date(),
   });
   assert.equal(result.success, true);
   assert.equal(result.errorCode, "PENDING_APPROVAL");
@@ -401,7 +399,6 @@ test("FederationGateway.checkCapabilityAccess returns true for granted permissio
     requestedPermissions: ["invoke"],
     constraints: [],
     requestedBy: "user",
-    requestedAt: new Date(),
   });
 
   const hasAccess = await gateway.checkCapabilityAccess("org-1", "org-2", "capability-1", "invoke");
@@ -507,12 +504,12 @@ test("computeFederationTopologyDiff identifies unchanged regions", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("FederationAudit - can be created", () => {
-  const audit = createFederationAudit({ federationId: "fed-1" });
+  const audit = createFederationAudit({ maxAgeDays: 365 });
   assert.ok(audit instanceof FederationAudit);
 });
 
 test("FederationAudit.record adds audit record", () => {
-  const audit = createFederationAudit({ federationId: "fed-1" });
+  const audit = createFederationAudit({ maxAgeDays: 365 });
   audit.record({
     orgId: "org-1",
     action: "trust.established",
@@ -527,7 +524,7 @@ test("FederationAudit.record adds audit record", () => {
 });
 
 test("FederationAudit.query filters by orgId", () => {
-  const audit = createFederationAudit({ federationId: "fed-1" });
+  const audit = createFederationAudit({ maxAgeDays: 365 });
   audit.record({
     orgId: "org-1",
     action: "trust.established",
@@ -550,7 +547,7 @@ test("FederationAudit.query filters by orgId", () => {
 });
 
 test("FederationAudit.getSummary returns aggregate stats", () => {
-  const audit = createFederationAudit({ federationId: "fed-1" });
+  const audit = createFederationAudit({ maxAgeDays: 365 });
   audit.record({
     orgId: "org-1",
     action: "trust.established",

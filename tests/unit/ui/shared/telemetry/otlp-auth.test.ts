@@ -1,9 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { loadRepoModule } from "../../../../helpers/repo-module.js";
 
-import { OtlpHttpTelemetryExporter } from "../../../../../ui/packages/shared/telemetry/src/index.js";
+async function loadTelemetryModule() {
+  return loadRepoModule<{
+    OtlpHttpTelemetryExporter: new (
+      endpoint: string,
+      fetcher: (url: string, init?: RequestInit) => Promise<Response>,
+      options?: { authorization?: string },
+    ) => {
+      export(events: Array<{ name: string; attributes: Record<string, unknown>; recordedAt: string }>): Promise<void>;
+    };
+  }>("ui", "packages", "shared", "telemetry", "src", "index.ts");
+}
 
-test("OtlpHttpTelemetryExporter rejects missing authorization for multi-tenant isolation", () => {
+test("OtlpHttpTelemetryExporter rejects missing authorization for multi-tenant isolation", async () => {
+  const { OtlpHttpTelemetryExporter } = await loadTelemetryModule();
   assert.throws(
     () => new OtlpHttpTelemetryExporter("https://otel.example.com/v1/logs", async () => new Response("{}")),
     /requires authorization header or VITE_OTLP_AUTH_TOKEN/,
@@ -11,12 +23,13 @@ test("OtlpHttpTelemetryExporter rejects missing authorization for multi-tenant i
 });
 
 test("OtlpHttpTelemetryExporter sends authorization header on export", async () => {
+  const { OtlpHttpTelemetryExporter } = await loadTelemetryModule();
   let requestHeaders: HeadersInit | undefined;
   let requestSignal: AbortSignal | null | undefined;
   let requestBody: unknown;
   const exporter = new OtlpHttpTelemetryExporter(
     "https://otel.example.com/v1/logs",
-    async (_url, init) => {
+    async (_url: string, init?: RequestInit) => {
       requestHeaders = init?.headers;
       requestSignal = init?.signal;
       requestBody = JSON.parse(String(init?.body));

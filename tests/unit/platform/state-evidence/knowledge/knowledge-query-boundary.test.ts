@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import { KnowledgeQueryService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.js";
+import type { KnowledgeAccessPrincipal } from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/access-control.js";
 import type { KnowledgeRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
 
 function createRetrievalService(): KnowledgeRetrievalService {
@@ -16,10 +17,10 @@ function createRetrievalService(): KnowledgeRetrievalService {
   } as unknown as KnowledgeRetrievalService;
 }
 
-const SAME_DOMAIN_PRINCIPAL = {
+const SAME_DOMAIN_PRINCIPAL: KnowledgeAccessPrincipal = {
   principalId: "principal-1",
   domainId: "finance-accounting",
-  roles: ["reader"] as const,
+  roles: ["reader"],
   permittedNamespaces: ["tenant/finance"],
 };
 

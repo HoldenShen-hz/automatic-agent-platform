@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { DomainManifestSchema } from "../../../src/domains/registry/domain-model.js";
+import { DomainManifestSchema, type DomainDefinition } from "../../../src/domains/registry/domain-model.js";
 import { DomainRegistryService } from "../../../src/domains/registry/domain-registry-service.js";
 import { DomainRecipeSchema, type DomainRecipe } from "../../../src/domains/recipes/index.js";
 import { RecipeExecutor } from "../../../src/domains/recipes/recipe-executor.js";
@@ -27,7 +27,10 @@ function createOidcConfig() {
   };
 }
 
-function createDomainDefinition(domainId: string, status: "draft" | "registered" | "canary" | "active" | "deprecated" = "registered") {
+function createDomainDefinition(
+  domainId: string,
+  status: "draft" | "registered" | "canary" | "active" | "deprecated" = "registered",
+): DomainDefinition {
   return {
     domainId,
     name: `Domain ${domainId}`,
@@ -60,7 +63,7 @@ function createDomainDefinition(domainId: string, status: "draft" | "registered"
     status,
     externalAdapters: [],
     pluginBindings: [],
-  } as const;
+  };
 }
 
 function createRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; defaultWorkflowId: string }): DomainRecipe {
@@ -118,7 +121,7 @@ test("1969..1973: OIDC PKCE, userinfo fail-closed, refresh rotation, SCIM tenant
       ok: false,
       status: 503,
       json: async () => ({}),
-    })) as typeof fetch;
+    })) as unknown as typeof fetch;
     const failClosedService = new OidcIdentityService(createOidcConfig(), undefined, { allowMockFallback: false });
     await assert.rejects(
       async () => failClosedService.fetchUserInfo("access-token-1"),
@@ -184,6 +187,7 @@ test("1969..1973: OIDC PKCE, userinfo fail-closed, refresh rotation, SCIM tenant
       }],
       "2026-05-12T01:00:00.000Z",
     );
+    assert.ok(shareDecision);
     assert.equal(shareDecision.allowed, true);
     assert.match(shareSource, /new Date\(item\.expiresAt\) >= new Date\(nowIso\)/);
   } finally {
@@ -338,7 +342,10 @@ test("1982..1986: expired OIDC cleanup, recipe workflow query, targeted SCIM pat
   const workflowCalls: Array<{ workflowId: string; tenantId?: string | null }> = [];
   const executor = new RecipeExecutor(null, undefined, {
     existsWorkflow(workflowId, tenantId) {
-      workflowCalls.push({ workflowId, tenantId });
+      workflowCalls.push({
+        workflowId,
+        ...(tenantId !== undefined ? { tenantId } : {}),
+      });
       return workflowId === "wf-available";
     },
   });

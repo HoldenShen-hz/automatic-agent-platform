@@ -87,9 +87,9 @@ test("defaultGovernanceQuotaCategories returns artifact category", () => {
       cleanupEnabled: true,
     },
   ];
-  assert.equal(categories[0].categoryId, "artifact");
-  assert.ok(categories[0].roots[0].includes("artifacts"));
-  assert.equal(categories[0].maxBytes, 250 * 1024 * 1024);
+  assert.equal(categories[0]!.categoryId, "artifact");
+  assert.ok(categories[0]!.roots[0]!.includes("artifacts"));
+  assert.equal(categories[0]!.maxBytes, 250 * 1024 * 1024);
 });
 
 test("defaultGovernanceQuotaCategories returns debug category", () => {
@@ -109,8 +109,8 @@ test("defaultGovernanceQuotaCategories returns debug category", () => {
     },
   ];
   const debugCategory = categories[1];
-  assert.equal(debugCategory.categoryId, "debug");
-  assert.ok(debugCategory.roots.length === 2);
+  assert.equal(debugCategory!.categoryId, "debug");
+  assert.ok(debugCategory!.roots.length === 2);
 });
 
 test("defaultGovernanceQuotaCategories returns backup category", () => {
@@ -136,9 +136,9 @@ test("defaultGovernanceQuotaCategories returns backup category", () => {
     },
   ];
   const backupCategory = categories[2];
-  assert.equal(backupCategory.categoryId, "backup");
-  assert.ok(backupCategory.roots.length === 2);
-  assert.equal(backupCategory.maxBytes, 200 * 1024 * 1024);
+  assert.equal(backupCategory!.categoryId, "backup");
+  assert.ok(backupCategory!.roots.length === 2);
+  assert.equal(backupCategory!.maxBytes, 200 * 1024 * 1024);
 });
 
 // ---------------------------------------------------------------------------

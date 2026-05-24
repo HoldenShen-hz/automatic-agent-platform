@@ -69,13 +69,17 @@ test("repair output returns repair results", () => {
 // ---------------------------------------------------------------------------
 
 test("action === 'repair' conditional works", () => {
+  const describeAction = (action: "scan" | "repair") =>
+    action === "repair" ? "repairing" : "scanning";
   const action: "scan" | "repair" = "repair";
-  const result = action === "repair" ? "repairing" : "scanning";
+  const result = describeAction(action);
   assert.equal(result, "repairing");
 });
 
 test("action === 'scan' conditional works", () => {
+  const describeAction = (action: "scan" | "repair") =>
+    action === "repair" ? "repairing" : "scanning";
   const action: "scan" | "repair" = "scan";
-  const result = action === "repair" ? "repairing" : "scanning";
+  const result = describeAction(action);
   assert.equal(result, "scanning");
 });

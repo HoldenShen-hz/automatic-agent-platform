@@ -89,7 +89,9 @@ test("ExecutionWorkerHandshakeServiceAsync exports WorkerHandshakeDecision type"
   const decision: WorkerHandshakeDecision = {
     accepted: true,
     executionId: "exec-1",
-    handshakeId: "hs-1",
+    ticketId: "ticket-1",
+    leaseId: "lease-1",
+    reasonCode: null,
   };
   assert.equal(decision.accepted, true);
   assert.equal(decision.executionId, "exec-1");

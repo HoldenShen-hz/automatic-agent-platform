@@ -27,19 +27,23 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
     plugin.initialize = async () => {
       initialized = true;
     };
+    assert.ok(plugin.initialize);
     await plugin.initialize();
     assert.equal(initialized, true);
   });
 
   test("healthCheck reflects lifecycle state", async () => {
     const plugin = createAssetProductionRetrieverPlugin();
+    assert.ok(plugin.healthCheck);
     assert.equal(await plugin.healthCheck(), false);
+    assert.ok(plugin.initialize);
     await plugin.initialize();
     assert.equal(await plugin.healthCheck(), true);
   });
 
   test("shutdown returns undefined", async () => {
     const plugin = createAssetProductionRetrieverPlugin();
+    assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
     assert.equal(result, undefined);
   });

@@ -101,7 +101,7 @@ function createMockStore(): { store: AuthoritativeTaskStore; getExperiences: () 
           const cutoff = args[0] as string;
           const before = experiences.length;
           for (let i = experiences.length - 1; i >= 0; i--) {
-            if (experiences[i].last_accessed_at < cutoff) {
+            if (experiences[i]!.last_accessed_at < cutoff) {
               experiences.splice(i, 1);
             }
           }
@@ -434,7 +434,7 @@ test("ExperienceCacheService.findSimilarExperiences sorts by similarity score de
 
   assert.ok(results.length > 0);
   if (results.length >= 2) {
-    assert.ok(results[0].similarityScore >= results[1].similarityScore);
+    assert.ok(results[0]!.similarityScore >= results[1]!.similarityScore);
   }
 });
 
@@ -508,7 +508,7 @@ test("ExperienceCacheService.retrieveForFewShot formats succeeded tools correctl
   const result = service.retrieveForFewShot({ taskContext: "deploy application" }, "session_1");
 
   assert.ok(result.examples.length > 0);
-  const example = result.examples[0];
+  const example = result.examples[0]!;
   // Only succeeded tools should be included
   assert.ok(example.toolsUsed.includes("bash"));
   assert.ok(example.toolsUsed.includes("kubectl"));
@@ -534,12 +534,12 @@ test("ExperienceCacheService.retrieveForFewShot includes matched keywords in rea
 
   const result = service.retrieveForFewShot({ taskContext: "implement REST API" }, "session_1");
 
-  if (result.examples.length > 0 && result.examples[0].reasoning) {
+  if (result.examples.length > 0 && result.examples[0]!.reasoning) {
     // Reasoning should mention matched keywords
     assert.ok(
-      result.examples[0].reasoning.includes("REST") ||
-        result.examples[0].reasoning.includes("API") ||
-        result.examples[0].reasoning.includes("implement"),
+      result.examples[0]!.reasoning.includes("REST") ||
+        result.examples[0]!.reasoning.includes("API") ||
+        result.examples[0]!.reasoning.includes("implement"),
     );
   }
 });
@@ -813,6 +813,6 @@ test("ExperienceCacheService.findSimilarExperiences empty query returns all (up 
   assert.ok(results.length <= 5); // Default limit is 5
   // Results should be sorted by quality_score DESC
   if (results.length > 1) {
-    assert.ok(results[0].experience.qualityScore >= results[1].experience.qualityScore);
+    assert.ok(results[0]!.experience.qualityScore >= results[1]!.experience.qualityScore);
   }
 });

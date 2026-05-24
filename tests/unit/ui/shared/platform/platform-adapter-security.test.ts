@@ -1,9 +1,30 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { loadRepoModule } from "../../../../helpers/repo-module.js";
 
-import { DefaultPlatformAdapter, MobilePlatformAdapter, WebPlatformAdapter } from "../../../../../ui/packages/shared/platform/src/index.js";
+async function loadPlatformModule() {
+  return loadRepoModule<{
+    DefaultPlatformAdapter: new (
+      platform: string,
+      options?: { allowedShellCommands?: string[] },
+    ) => { runShell(command: string): Promise<{ code: number; stderr: string }> };
+    MobilePlatformAdapter: new (platform: string, bridge?: unknown) => {
+      getAnalyticsConsent(): Promise<boolean>;
+      setAnalyticsConsent(enabled: boolean): Promise<void>;
+    };
+    WebPlatformAdapter: new () => {
+      writeSecureValue(key: string, value: string): Promise<void>;
+      readSecureValue(key: string): Promise<string | null>;
+      deleteSecureValue(key: string): Promise<void>;
+      setAnalyticsConsent(enabled: boolean): Promise<void>;
+      getAnalyticsConsent(): Promise<boolean>;
+      getDebugState(): { screenSecurityEnabled: boolean };
+    };
+  }>("ui", "packages", "shared", "platform", "src", "index.ts");
+}
 
 test("WebPlatformAdapter keeps secure values out of localStorage", async () => {
+  const { WebPlatformAdapter } = await loadPlatformModule();
   const originalLocalStorage = globalThis.localStorage;
   const touchedKeys: string[] = [];
 
@@ -38,6 +59,7 @@ test("WebPlatformAdapter keeps secure values out of localStorage", async () => {
 });
 
 test("WebPlatformAdapter uses localStorage only for analytics consent persistence", async () => {
+  const { WebPlatformAdapter } = await loadPlatformModule();
   const originalLocalStorage = globalThis.localStorage;
   const stored = new Map<string, string>();
 
@@ -66,19 +88,22 @@ test("WebPlatformAdapter uses localStorage only for analytics consent persistenc
   }
 });
 
-test("WebPlatformAdapter enables screen security by default to match desktop shells", () => {
+test("WebPlatformAdapter enables screen security by default to match desktop shells", async () => {
+  const { WebPlatformAdapter } = await loadPlatformModule();
   const adapter = new WebPlatformAdapter();
 
   assert.equal(adapter.getDebugState().screenSecurityEnabled, true);
 });
 
 test("MobilePlatformAdapter defaults analytics consent to opt-in true", async () => {
+  const { MobilePlatformAdapter } = await loadPlatformModule();
   const adapter = new MobilePlatformAdapter("ios");
 
   assert.equal(await adapter.getAnalyticsConsent(), true);
 });
 
 test("MobilePlatformAdapter persists explicit analytics consent through the mobile bridge", async () => {
+  const { MobilePlatformAdapter } = await loadPlatformModule();
   let consent = false;
   let setCalls = 0;
   const bridge = {
@@ -107,6 +132,7 @@ test("MobilePlatformAdapter persists explicit analytics consent through the mobi
 });
 
 test("DefaultPlatformAdapter.runShell denies commands outside the whitelist", async () => {
+  const { DefaultPlatformAdapter } = await loadPlatformModule();
   const adapter = new DefaultPlatformAdapter("linux", {
     allowedShellCommands: ["health-check", "sync-status"],
   });

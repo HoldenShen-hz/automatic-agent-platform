@@ -19,6 +19,7 @@ test("validateBusinessPackManifest trims packId, version, domain, owner", () => 
   const manifest = validateBusinessPackManifest({
     packId: "  ops-pack  ",
     version: "  1.0.0  ",
+    domainId: "  operations  ",
     domain: "  operations  ",
     owner: "  ops@example.com  ",
     capabilities: [
@@ -31,13 +32,17 @@ test("validateBusinessPackManifest trims packId, version, domain, owner", () => 
   assert.equal(manifest.domain, "operations");
   assert.equal(manifest.owner, "ops@example.com");
   assert.equal(manifest.capabilities[0]!.capabilityKey, "triage");
-  assert.equal(manifest.capabilities[0]!.requiredContracts[0], "runtime_execution_contract");
+  const capability = manifest.capabilities[0];
+  assert.ok(capability);
+  assert.ok(Array.isArray(capability.requiredContracts));
+  assert.equal(capability.requiredContracts[0]!, "runtime_execution_contract");
 });
 
 test("validateBusinessPackManifest deduplicates requiredContracts within a capability", () => {
   const manifest = validateBusinessPackManifest({
     packId: "ops-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [
@@ -52,6 +57,7 @@ test("validateBusinessPackManifest removes empty contracts", () => {
   const manifest = validateBusinessPackManifest({
     packId: "ops-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [
@@ -68,6 +74,7 @@ test("validateBusinessPackManifest rejects empty packId", () => {
       validateBusinessPackManifest({
         packId: "   ",
         version: "1.0.0",
+        domainId: "operations",
         domain: "operations",
         owner: "ops@example.com",
         capabilities: [
@@ -84,6 +91,7 @@ test("validateBusinessPackManifest rejects empty capabilities", () => {
       validateBusinessPackManifest({
         packId: "ops-pack",
         version: "1.0.0",
+        domainId: "operations",
         domain: "operations",
         owner: "ops@example.com",
         capabilities: [],
@@ -96,6 +104,7 @@ test("summarizeCapabilityMatrix counts all maturity levels correctly", () => {
   const manifest = validateBusinessPackManifest({
     packId: "ops-pack",
     version: "1.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [

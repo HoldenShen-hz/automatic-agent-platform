@@ -13,6 +13,7 @@ import {
   registerPluginSigningVerificationKey,
   verifyPluginSignature,
   enforcePluginSignature,
+  type PluginDefinition,
 } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
 
 test("definePlugin throws when pluginId is missing", () => {
@@ -310,7 +311,7 @@ test("validatePluginDefinition validates and returns same definition", () => {
 });
 
 test("validatePluginDefinition uses default description when missing", () => {
-  const original = {
+  const original: PluginDefinition = {
     pluginId: "my-pack.tool",
     name: "My Tool",
     version: "1.0.0",
@@ -323,7 +324,11 @@ test("validatePluginDefinition uses default description when missing", () => {
     }],
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [],
-    security: { sandboxTier: "process" as const, egressDomains: [] },
+    security: { sandboxTier: "workspace_write" as const, egressDomains: [] },
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: null,
   };
 
   const validated = validatePluginDefinition(original);
@@ -373,7 +378,7 @@ test("verifyPluginSignature returns false for unsigned plugin", () => {
 
 test("verifyPluginSignature returns false when keyId is not registered", () => {
   // Create PluginDefinition directly to bypass signature enforcement
-  const plugin = {
+  const plugin: PluginDefinition = {
     pluginId: "test-pack.signed-tool",
     name: "Signed Tool",
     version: "1.0.0",
@@ -387,8 +392,9 @@ test("verifyPluginSignature returns false when keyId is not registered", () => {
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [],
     security: { sandboxTier: "read_only" as const, egressDomains: [] },
-    spiTypes: ["tool"] as const,
+    spiTypes: ["tool"],
     domainIds: [],
+    sbomRef: null,
     signing: {
       keyId: "unknown-key",
       signature: "invalid",
@@ -420,7 +426,7 @@ test("enforcePluginSignature throws for unsigned plugin", () => {
 });
 
 test("enforcePluginSignature throws when signing keyId is not registered", () => {
-  const { publicKey } = generateKeyPairSync("rsa", {
+  const { publicKey } = generateKeyPairSync("rsa" as never, {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
     privateKeyEncoding: { type: "pkcs8", format: "pem" },
@@ -434,7 +440,7 @@ test("enforcePluginSignature throws when signing keyId is not registered", () =>
   });
 
   // Create PluginDefinition directly to bypass signature enforcement
-  const plugin = {
+  const plugin: PluginDefinition = {
     pluginId: "test-pack.wrong-key",
     name: "Wrong Key",
     version: "1.0.0",
@@ -448,8 +454,9 @@ test("enforcePluginSignature throws when signing keyId is not registered", () =>
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [],
     security: { sandboxTier: "read_only" as const, egressDomains: [] },
-    spiTypes: ["tool"] as const,
+    spiTypes: ["tool"],
     domainIds: [],
+    sbomRef: null,
     signing: {
       keyId: "other-key",
       signature: "fake",
@@ -477,7 +484,7 @@ test("enforcePluginSignature throws for invalid signature", () => {
   });
 
   // Create PluginDefinition directly to bypass signature enforcement
-  const plugin = {
+  const plugin: PluginDefinition = {
     pluginId: "test-pack.tampered",
     name: "Tampered",
     version: "1.0.0",
@@ -491,8 +498,9 @@ test("enforcePluginSignature throws for invalid signature", () => {
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [],
     security: { sandboxTier: "read_only" as const, egressDomains: [] },
-    spiTypes: ["tool"] as const,
+    spiTypes: ["tool"],
     domainIds: [],
+    sbomRef: null,
     signing: {
       keyId: "my-key",
       signature: "tampered-signature",

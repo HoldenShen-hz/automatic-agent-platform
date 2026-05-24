@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import { resolveRepoPath } from "../../../../helpers/repo-root.js";
-
-import {
-  createTauriMacosAdapter,
-  createTauriMacosDefaultAdapter,
-  tauriMacosManifest,
-} from "../../../../../ui/apps/tauri-macos/src/index.js";
+import { loadRepoModule } from "../../../../helpers/repo-module.js";
 
 const rustSource = fs.readFileSync(
   resolveRepoPath("ui/apps/tauri-macos/src-tauri/src/lib.rs"),
@@ -18,14 +13,28 @@ const cargoToml = fs.readFileSync(
   "utf-8",
 );
 
-test("tauri macOS manifest keeps updater channel enabled", () => {
+async function loadTauriMacosModule() {
+  return loadRepoModule<{
+    createTauriMacosAdapter: (input: { platform: string }) => { platform: string };
+    createTauriMacosDefaultAdapter: () => { platform: string };
+    tauriMacosManifest: {
+      platform: string;
+      runtime: string;
+      updateChannel: string;
+    };
+  }>("ui", "apps", "tauri-macos", "src", "index.ts");
+}
+
+test("tauri macOS manifest keeps updater channel enabled", async () => {
+  const { tauriMacosManifest } = await loadTauriMacosModule();
   assert.equal(tauriMacosManifest.platform, "macos");
   assert.equal(tauriMacosManifest.runtime, "tauri");
   assert.equal(tauriMacosManifest.updateChannel, "stable");
 });
 
-test("tauri macOS adapter helpers preserve platform wiring", () => {
-  assert.equal(createTauriMacosAdapter({ platform: "linux" } as any).platform, "macos");
+test("tauri macOS adapter helpers preserve platform wiring", async () => {
+  const { createTauriMacosAdapter, createTauriMacosDefaultAdapter } = await loadTauriMacosModule();
+  assert.equal(createTauriMacosAdapter({ platform: "linux" }).platform, "macos");
   assert.equal(createTauriMacosDefaultAdapter().platform, "macos");
 });
 

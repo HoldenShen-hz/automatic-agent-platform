@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import { resolveRepoPath } from "../../../../helpers/repo-root.js";
-
-import {
-  createTauriLinuxAdapter,
-  createTauriLinuxDefaultAdapter,
-  tauriLinuxManifest,
-} from "../../../../../ui/apps/tauri-linux/src/index.js";
+import { loadRepoModule } from "../../../../helpers/repo-module.js";
 
 const cargoToml = fs.readFileSync(
   resolveRepoPath("ui/apps/tauri-linux/src-tauri/Cargo.toml"),
@@ -23,15 +18,30 @@ const packageJson = JSON.parse(
   scripts?: Record<string, string>;
 };
 
-test("tauri linux manifest now carries update channel metadata", () => {
+async function loadTauriLinuxModule() {
+  return loadRepoModule<{
+    createTauriLinuxAdapter: (input: { platform: string }) => { platform: string };
+    createTauriLinuxDefaultAdapter: () => { platform: string };
+    tauriLinuxManifest: {
+      platform: string;
+      runtime: string;
+      supportsBackgroundAgent: boolean;
+      updateChannel: string;
+    };
+  }>("ui", "apps", "tauri-linux", "src", "index.ts");
+}
+
+test("tauri linux manifest now carries update channel metadata", async () => {
+  const { tauriLinuxManifest } = await loadTauriLinuxModule();
   assert.equal(tauriLinuxManifest.platform, "linux");
   assert.equal(tauriLinuxManifest.runtime, "tauri");
   assert.equal(tauriLinuxManifest.supportsBackgroundAgent, false);
   assert.equal(tauriLinuxManifest.updateChannel, "stable");
 });
 
-test("tauri linux adapter helpers preserve linux platform wiring", () => {
-  assert.equal(createTauriLinuxAdapter({ platform: "macos" } as any).platform, "linux");
+test("tauri linux adapter helpers preserve linux platform wiring", async () => {
+  const { createTauriLinuxAdapter, createTauriLinuxDefaultAdapter } = await loadTauriLinuxModule();
+  assert.equal(createTauriLinuxAdapter({ platform: "macos" }).platform, "linux");
   assert.equal(createTauriLinuxDefaultAdapter().platform, "linux");
 });
 

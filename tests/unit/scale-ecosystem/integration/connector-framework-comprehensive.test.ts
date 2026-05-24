@@ -320,7 +320,7 @@ test("ConnectorFrameworkService.execute throws for unknown connector", async () 
 
   await assert.rejects(async () => {
     await service.execute(
-      { connectorId: "non-existent", capability: "read", payload: {} },
+      { connectorId: "non-existent", capability: "read", payload: {}, secretBindings: [] },
       { environment: "dev" }
     );
   }, /connector_not_found/);

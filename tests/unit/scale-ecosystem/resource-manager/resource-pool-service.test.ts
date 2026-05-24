@@ -12,9 +12,18 @@ function createTestPool(overrides: Partial<ResourcePool> = {}): ResourcePool {
   return {
     poolId: overrides.poolId ?? "pool-1",
     resourceType: overrides.resourceType ?? "compute_units",
+    scopeType: overrides.scopeType ?? "shared",
     capacityUnits: overrides.capacityUnits ?? 100,
     allocatedUnits: overrides.allocatedUnits ?? 0,
     burstUnits: overrides.burstUnits ?? 20,
+    failureRateThreshold: overrides.failureRateThreshold ?? 0.3,
+    minSampleSize: overrides.minSampleSize ?? 20,
+    failureRate: overrides.failureRate ?? 0,
+    sampleCount: overrides.sampleCount ?? 0,
+    isolationStatus: overrides.isolationStatus ?? "active",
+    ...(overrides.tenantId != null ? { tenantId: overrides.tenantId } : {}),
+    ...(overrides.organizationId != null ? { organizationId: overrides.organizationId } : {}),
+    ...(overrides.workspaceId != null ? { workspaceId: overrides.workspaceId } : {}),
   };
 }
 
@@ -30,13 +39,13 @@ test("ResourcePoolService.registerPool parses and stores pool", () => {
 
 test("ResourcePoolService.registerPool applies defaults", () => {
   const service = new ResourcePoolService();
-  const pool = {
+  const pool = createTestPool({
     poolId: "pool-1",
     resourceType: "compute_units",
     capacityUnits: 100,
     allocatedUnits: 0,
     burstUnits: 0,
-  };
+  });
 
   const registered = service.registerPool(pool);
 

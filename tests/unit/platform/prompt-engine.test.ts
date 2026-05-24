@@ -29,6 +29,8 @@ import {
 } from "../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 import { ValidationError } from "../../../src/platform/contracts/errors.js";
 import type { PromptBundleRegistrationInput } from "../../../src/platform/contracts/prompt-bundle/index.js";
+import type { ConversationTemplateConfig } from "../../../src/platform/prompt-engine/conversation-template-config-loader.js";
+import type { JudgeProfileRecord } from "../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
 
 // ── PromptVersionManager Tests ────────────────────────────────────────
 
@@ -649,7 +651,7 @@ test("CrossProviderJudgeService getProviderDiversityScore calculates correctly",
   const judgeService = createMockEvalDatasetJudgeService();
   const service = new CrossProviderJudgeService(judgeService);
 
-  const judges = [
+  const judges: JudgeProfileRecord[] = [
     { judgeId: "j1", provider: "openai", providerFamily: "openai", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
     { judgeId: "j2", provider: "anthropic", providerFamily: "anthropic", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.02, status: "ready" as const, modelId: "claude-3", createdAt: "", updatedAt: "" },
     { judgeId: "j3", provider: "minimax", providerFamily: "minimax", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready" as const, modelId: "m1", createdAt: "", updatedAt: "" },
@@ -663,7 +665,7 @@ test("CrossProviderJudgeService getProviderDiversityScore handles single provide
   const judgeService = createMockEvalDatasetJudgeService();
   const service = new CrossProviderJudgeService(judgeService);
 
-  const judges = [
+  const judges: JudgeProfileRecord[] = [
     { judgeId: "j1", provider: "openai", providerFamily: "openai", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
     { judgeId: "j2", provider: "openai", providerFamily: "openai", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.02, status: "ready" as const, modelId: "gpt-4", createdAt: "", updatedAt: "" },
   ];
@@ -795,7 +797,7 @@ test("loadConversationTemplateConfig returns defaults on missing file", () => {
 });
 
 test("getTemplatesFromConfig extracts templates from config", () => {
-  const config = {
+  const config: ConversationTemplateConfig = {
     templates: [
       { templateId: "t1", name: "Template 1", description: "", version: "1.0", intent: "task_create", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
       { templateId: "t2", name: "Template 2", description: "", version: "1.0", intent: "task_query", steps: [], estimatedDurationMinutes: 1, tags: [], isActive: true },
@@ -909,6 +911,12 @@ function createBundleInput(name: string, version: string): PromptBundleRegistrat
     userPrompt: { content: "Test user prompt", templateVariables: [] as string[], channel: "user" },
     fewShotExamples: [],
     constraints: { maxTokens: undefined, temperature: undefined, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: { owner: "test", deprecated: false, lifecycleStatus: "active", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined } },
   };
 }

@@ -22,6 +22,7 @@ import type {
   ExecutionStatusTransitionCommand,
   MessageRecord,
   SessionRecord,
+  SessionStatusTransitionCommand,
   StepOutputRecord,
   TaskRecord,
   TaskStatusTransitionCommand,
@@ -38,6 +39,7 @@ import type { ContextCompactionResult, ContextCompactionService } from "../../..
 import type { MultiStepToolExecutionInput } from "../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
 import type { AdmissionDecision } from "../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
 import type { RoleToolExposureService } from "../../../src/platform/five-plane-execution/tool-executor/role-tool-exposure-service.js";
+import type { WorkflowStepRetryDecision } from "../../../src/platform/five-plane-orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
 import {
   executeStepLoop,
   normalizeStepFailurePlan,
@@ -252,10 +254,19 @@ function createMockStepSupervisorContext(overrides: Partial<StepSupervisorContex
     traceId: newId("trace"),
     traceContext: { traceId: newId("trace"), spanId: "span-1", parentSpanId: null, correlationId: newId("trace") },
     streamId: newId("stream"),
+    harnessRunId: newId("hrun"),
     admissionDecision: {
       decision: "allow",
       reasonCode: "admission.ok",
-      snapshot: { queuedTasks: 0, activeExecutions: 0, tier1AckBacklog: 0 },
+      snapshot: {
+        queuedTasks: 0,
+        activeExecutions: 0,
+        tier1AckBacklog: 0,
+        riskClassDistribution: {},
+        tenantUsage: {},
+        sandboxAvailability: {},
+        capabilityClassCapacity: {},
+      },
       backpressure: null,
     },
     input: createMockInput(),
@@ -386,6 +397,7 @@ test("executeStepLoop handles multiple steps with mixed outcomes", async () => {
       {
         id: newId("step"),
         taskId: newId("task"),
+        nodeRunId: newId("nrun"),
         stepId: "success_step",
         roleId: "role_1",
         status: "succeeded",
@@ -734,7 +746,7 @@ test("normalizeStepErrorCode handles array as error", () => {
 
 test("buildStepFailureSummary includes stepId and errorCode in all formats", () => {
   const stepIds = ["a", "ab", "abc", "step", "multi_step_id", "123", "step-id"];
-  const decisions = [
+  const decisions: WorkflowStepRetryDecision[] = [
     { action: "retry" as const, errorCode: "e1", failureClass: "transient", retryable: true, backoff: "none" as const, retryDelayMs: 0 },
     { action: "escalate" as const, errorCode: "e2", failureClass: "destructive", retryable: false, backoff: "none" as const, retryDelayMs: 0 },
     { action: "fail" as const, errorCode: "e3", failureClass: "non_retryable", retryable: false, backoff: "none" as const, retryDelayMs: 0 },
@@ -750,7 +762,7 @@ test("buildStepFailureSummary includes stepId and errorCode in all formats", () 
 });
 
 test("buildStepFailureSummary formats retry message correctly", () => {
-  const decision = { action: "retry" as const, errorCode: "timeout", failureClass: "transient", retryable: true, backoff: "exponential" as const, retryDelayMs: 5000 };
+  const decision: WorkflowStepRetryDecision = { action: "retry", errorCode: "timeout", failureClass: "transient", retryable: true, backoff: "exponential", retryDelayMs: 5000 };
   const result = buildStepFailureSummary("test_step", decision);
 
   assert.ok(result.includes("retry"));
@@ -760,7 +772,7 @@ test("buildStepFailureSummary formats retry message correctly", () => {
 });
 
 test("buildStepFailureSummary formats escalate message correctly", () => {
-  const decision = { action: "escalate" as const, errorCode: "auth_failure", failureClass: "destructive", retryable: false, backoff: "none" as const, retryDelayMs: 0 };
+  const decision: WorkflowStepRetryDecision = { action: "escalate", errorCode: "auth_failure", failureClass: "destructive", retryable: false, backoff: "none", retryDelayMs: 0 };
   const result = buildStepFailureSummary("auth_step", decision);
 
   assert.ok(result.includes("escalate") || result.includes("escalation"));
@@ -769,7 +781,7 @@ test("buildStepFailureSummary formats escalate message correctly", () => {
 });
 
 test("buildStepFailureSummary formats fail message correctly", () => {
-  const decision = { action: "fail" as const, errorCode: "permanent_error", failureClass: "non_retryable", retryable: false, backoff: "none" as const, retryDelayMs: 0 };
+  const decision: WorkflowStepRetryDecision = { action: "fail", errorCode: "permanent_error", failureClass: "non_retryable", retryable: false, backoff: "none", retryDelayMs: 0 };
   const result = buildStepFailureSummary("fail_step", decision);
 
   assert.ok(result.includes("failed") || result.includes("fail"));
@@ -844,6 +856,7 @@ test("executeStepLoop with successful upstream and soft dependency", async () =>
       {
         id: newId("step"),
         taskId: newId("task"),
+        nodeRunId: newId("nrun"),
         stepId: "hard_dep",
         roleId: "role_1",
         status: "succeeded",
@@ -909,8 +922,16 @@ test("executeStepLoop preserves traceContext from context", async () => {
 test("executeStepLoop passes admissionDecision through result", async () => {
   const customAdmission: AdmissionDecision = {
     decision: "queue",
-    reasonCode: "backpressure",
-    snapshot: { queuedTasks: 100, activeExecutions: 50, tier1AckBacklog: 10 },
+    reasonCode: "admission.queue_backpressure",
+    snapshot: {
+      queuedTasks: 100,
+      activeExecutions: 50,
+      tier1AckBacklog: 10,
+      riskClassDistribution: { high: 2 },
+      tenantUsage: { "tenant-1": 10 },
+      sandboxAvailability: { standard: 3 },
+      capabilityClassCapacity: { default: 5 },
+    },
     backpressure: { status: "degraded", degradationMode: "queue_only", queueGovernance: { backlogSize: 100, dispatchableBacklogSize: 50, claimedBacklogSize: 10, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, queueNames: [], starvationDetected: false }, findings: [] },
   };
   const ctx = createMockStepSupervisorContext({

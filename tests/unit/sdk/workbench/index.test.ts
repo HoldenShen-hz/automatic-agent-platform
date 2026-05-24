@@ -22,9 +22,27 @@ function createTestPlugin(overrides: Partial<PluginManifest> = {}): PluginManife
     pluginId: "test-plugin-1",
     name: "Test Plugin",
     version: "1.0.0",
-    type: "tool",
+    owner: "sdk-workbench",
+    domainIds: ["testing"],
     capabilityIds: ["test.capability"],
-    lifecycleHooks: [],
+    spiTypes: ["tool"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "sdk.test-plugin",
+    settingsSchema: {},
+    sandbox: {
+      timeoutMs: 5000,
+      allowFilesystemWrite: false,
+      allowNetworkEgress: false,
+      allowedKnowledgeNamespaces: [],
+      maxConcurrentInvocations: 1,
+      maxQueuedInvocations: 8,
+      runtimeIsolation: "serialized_in_process",
+      cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
+    },
     ...overrides,
   } as PluginManifest;
 }
@@ -33,6 +51,7 @@ function createTestPack(overrides: Partial<BusinessPackManifest> = {}): Business
   return {
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [

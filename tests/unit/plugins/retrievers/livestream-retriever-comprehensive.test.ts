@@ -27,19 +27,23 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
     plugin.initialize = async () => {
       initialized = true;
     };
+    assert.ok(plugin.initialize);
     await plugin.initialize();
     assert.equal(initialized, true);
   });
 
   test("healthCheck reflects lifecycle state", async () => {
     const plugin = createLivestreamRetrieverPlugin();
+    assert.ok(plugin.healthCheck);
     assert.equal(await plugin.healthCheck(), false);
+    assert.ok(plugin.initialize);
     await plugin.initialize();
     assert.equal(await plugin.healthCheck(), true);
   });
 
   test("shutdown returns undefined", async () => {
     const plugin = createLivestreamRetrieverPlugin();
+    assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
     assert.equal(result, undefined);
   });
@@ -225,7 +229,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       });
 
       for (const result of results) {
-        if (result.snippet !== undefined) {
+        if ("snippet" in result && result.snippet !== undefined) {
           assert.ok(typeof result.snippet === "string");
           assert.ok(result.snippet.length > 0);
         }
@@ -263,7 +267,6 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       const results = await plugin.retrieve({
         taskId: "task_numeric_ctx",
         intent: "analytics",
-        // @ts-expect-error testing with non-string context values
         context: { metric: 12345 },
         tokenBudget: 1000,
       });

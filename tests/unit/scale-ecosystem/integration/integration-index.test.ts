@@ -118,6 +118,7 @@ test("buildConnectorExecutionKey works with exported function", () => {
     connectorId: "github",
     capability: "create_pr",
     payload: {},
+    secretBindings: [],
   });
 
   assert.equal(key, "github:create_pr");

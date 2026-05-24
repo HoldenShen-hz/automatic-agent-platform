@@ -268,6 +268,7 @@ test("ConnectorFrameworkService execute fails closed when policyRef or secret bi
       connectorId: "test-connector",
       capability: "cap1",
       payload: {},
+      secretBindings: [],
       policyRef: "policy.connector.test",
     },
     { environment: "dev" },
@@ -285,7 +286,7 @@ test("ConnectorFrameworkService execute throws for unknown connector", async () 
   await assert.rejects(
     async () =>
       await service.execute(
-        { connectorId: "unknown-connector", capability: "cap1", payload: {} },
+        { connectorId: "unknown-connector", capability: "cap1", payload: {}, secretBindings: [] },
         { environment: "dev" },
       ),
     /connector_framework.connector_not_found/,

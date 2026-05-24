@@ -7,10 +7,17 @@ import type { KnowledgeChunk, KnowledgeDocument, KnowledgeSource } from "../../.
 function createMockKnowledgeSource(overrides: Partial<KnowledgeSource> = {}): KnowledgeSource {
   return {
     sourceId: "src_1",
-    sourceType: "document",
+    type: "text",
+    uri: "file:///test/path.txt",
+    contentHash: "hash_1",
+    metadata: {},
+    ingestedAt: "2026-04-26T10:00:00Z",
+    namespace: "test",
+    language: "en",
+    tags: [],
+    trustLevel: "authoritative",
+    freshnessTimestamp: "2026-04-26T10:00:00Z",
     checksum: "abc123",
-    collectedAt: "2026-04-26T10:00:00Z",
-    collectedBy: "collector_1",
     ...overrides,
   };
 }
@@ -18,11 +25,16 @@ function createMockKnowledgeSource(overrides: Partial<KnowledgeSource> = {}): Kn
 function createMockKnowledgeDocument(overrides: Partial<KnowledgeDocument> = {}): KnowledgeDocument {
   return {
     documentId: "doc_1",
+    sourceId: "src_1",
+    title: "Test document",
+    tags: [],
+    domainScope: [],
+    mimeType: "text/plain",
     namespace: "test",
-    source: createMockKnowledgeSource(),
     version: 1,
     status: "indexed",
     rawText: "This is test content",
+    structuredText: null,
     archived: false,
     archivedAt: null,
     ...overrides,
@@ -34,8 +46,16 @@ function createMockKnowledgeChunk(overrides: Partial<KnowledgeChunk> = {}): Know
     chunkId: "chunk_1",
     documentId: "doc_1",
     content: "This is test content",
+    chunkType: "concept",
+    tokenCount: 10,
+    namespace: "test",
+    ordinal: 0,
+    summary: "Test summary",
+    keywords: [],
+    embeddingId: null,
+    locator: {},
     embedding: [0.1, 0.2, 0.3],
-    metadata: {},
+    metadata: { relevantFiles: [] },
     ...overrides,
   };
 }
@@ -130,7 +150,7 @@ test("KnowledgeArchive.list filters by namespace", () => {
   const results = archive.list("ns1");
 
   assert.equal(results.length, 1);
-  assert.equal(results[0].document.namespace, "ns1");
+  assert.equal(results[0]!.document.namespace, "ns1");
 });
 
 test("KnowledgeArchive.getChunk returns null for non-existent chunk", () => {

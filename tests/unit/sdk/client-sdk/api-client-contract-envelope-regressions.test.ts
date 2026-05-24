@@ -5,14 +5,19 @@ import {
   RetryableApiClient,
   createEventSubscriber,
   type ApiClientConfig,
-  type ContractEnvelope,
 } from "../../../../src/sdk/client-sdk/api-client.js";
+import type { ContractEnvelope } from "../../../../src/platform/contracts/executable-contracts/index.js";
 
 const mockPrincipal = {
   subject: "user_123",
   tenantId: "tenant_abc",
   roles: ["admin"],
 };
+
+function requireEnvelope<TPayload>(value: unknown): ContractEnvelope<TPayload> {
+  assert.ok(value);
+  return value as ContractEnvelope<TPayload>;
+}
 
 function createClient(overrides: Partial<ApiClientConfig> = {}): RetryableApiClient {
   return new RetryableApiClient({
@@ -28,9 +33,9 @@ test("api client wraps requests in ContractEnvelope and preserves idempotency me
   const client = createClient({ idempotencyKey: "idem-client-default" });
   const originalFetch = globalThis.fetch;
 
-  let seenEnvelope: ContractEnvelope<{ hello: string }> | null = null;
+  let seenEnvelope: unknown = null;
   globalThis.fetch = async (_url, init) => {
-    seenEnvelope = JSON.parse(String(init?.body)) as ContractEnvelope<{ hello: string }>;
+    seenEnvelope = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -39,11 +44,11 @@ test("api client wraps requests in ContractEnvelope and preserves idempotency me
 
   try {
     await client.post("/test", { hello: "world" });
-    assert.ok(seenEnvelope);
-    assert.equal(seenEnvelope.payload.hello, "world");
-    assert.equal(seenEnvelope.idempotencyKey, "idem-client-default");
-    assert.equal(seenEnvelope.principal.subject, mockPrincipal.subject);
-    assert.equal(seenEnvelope.schemaVersion, "v4.3");
+    const capturedEnvelope = requireEnvelope<{ hello: string }>(seenEnvelope);
+    assert.equal(capturedEnvelope.payload.hello, "world");
+    assert.equal(capturedEnvelope.idempotencyKey, "idem-client-default");
+    assert.equal(capturedEnvelope.metadata.principalSubject, mockPrincipal.subject);
+    assert.equal(capturedEnvelope.schemaVersion, "v4.3");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -124,7 +129,9 @@ test("api client exposes typed event subscription and pending delivery helpers",
 
   const delivered: string[] = [];
   const handle = subscriber.subscribeToRunLifecycle("consumer-1", "run-123", (event) => {
-    delivered.push(event.eventType);
+    if (event != null && typeof event === "object" && typeof (event as { eventType?: unknown }).eventType === "string") {
+      delivered.push((event as { eventType: string }).eventType);
+    }
   });
 
   events.set("consumer-1", [{

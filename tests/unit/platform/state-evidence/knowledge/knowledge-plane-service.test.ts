@@ -75,7 +75,7 @@ test("KnowledgePlaneService merges local and domain retriever results", async ()
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "active",
     externalAdapters: [],
     pluginBindings: [{
       bindingId: "binding.retriever",
@@ -409,7 +409,7 @@ test("KnowledgePlaneService audits and filters cross-domain plugin knowledge acc
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "active",
     externalAdapters: [],
     pluginBindings: [{
       bindingId: "binding.shared.retriever",
@@ -531,7 +531,7 @@ test("KnowledgePlaneService handles plugin retriever error gracefully", async ()
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "active",
     externalAdapters: [],
     pluginBindings: [{
       bindingId: "binding.error",
@@ -618,7 +618,7 @@ test("KnowledgePlaneService handles plugin KnowledgeRef format when chunk exists
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "active",
     externalAdapters: [],
     pluginBindings: [{
       bindingId: "binding.kref",
@@ -755,7 +755,7 @@ test("KnowledgePlaneService handles plugin KnowledgeRef format when chunk not in
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "active",
     externalAdapters: [],
     pluginBindings: [{
       bindingId: "binding.missing",
@@ -885,7 +885,7 @@ test("KnowledgePlaneService queryForDomain skips plugin retrieval when includePl
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "active",
     externalAdapters: [],
     pluginBindings: [{
       bindingId: "binding.test",

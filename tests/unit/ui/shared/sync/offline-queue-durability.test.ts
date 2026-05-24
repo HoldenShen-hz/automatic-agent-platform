@@ -1,9 +1,38 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { loadRepoModule } from "../../../../helpers/repo-module.js";
 
-import { OfflineQueue, createMemoryOfflineMutationStore } from "../../../../../ui/packages/shared/sync/src/index.js";
-import type { OfflineMutation } from "../../../../../ui/packages/shared/sync/src/index.js";
+type OfflineMutation = {
+  id: string;
+  endpoint: string;
+  method: string;
+  body: { title: string };
+  createdAt: string;
+  idempotencyKey: string;
+  retryCount: number;
+  status: "pending" | "conflict";
+  tenantId: string;
+  traceId: string;
+  principal: {
+    principalId: string;
+    tenantId: string;
+    roles: string[];
+  };
+};
+
+async function loadSyncQueueModule() {
+  return loadRepoModule<{
+    OfflineQueue: new (store: { writeAll(items: readonly OfflineMutation[]): Promise<void> }) => {
+      enqueue(mutation: OfflineMutation): Promise<void>;
+      size(): number;
+      peek(): OfflineMutation[];
+    };
+    createMemoryOfflineMutationStore: (
+      items: readonly OfflineMutation[],
+    ) => { writeAll(items: readonly OfflineMutation[]): Promise<void> };
+  }>("ui", "packages", "shared", "sync", "src", "index.ts");
+}
 
 function createMutation(id: string): OfflineMutation {
   return {
@@ -26,6 +55,7 @@ function createMutation(id: string): OfflineMutation {
 }
 
 test("OfflineQueue.enqueue propagates persist failures instead of silently keeping memory-only state", async () => {
+  const { OfflineQueue, createMemoryOfflineMutationStore } = await loadSyncQueueModule();
   const store = createMemoryOfflineMutationStore([]);
   store.writeAll = async () => {
     throw new Error("disk full");

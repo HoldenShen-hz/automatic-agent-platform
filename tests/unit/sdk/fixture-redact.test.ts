@@ -55,7 +55,7 @@ test("FixtureRedactor recurses through arrays and nested object paths", () => {
 
   assert.equal(result.value.users[0]?.name, "Alice");
   assert.equal(result.value.users[0]?.apiKey, "[REDACTED]");
-  assert.equal(result.value.users[1]?.contact.email, "[REDACTED]");
+  assert.equal(result.value.users[1]?.contact?.email, "[REDACTED]");
   assert.equal(result.redactedFields.has("users[0].apiKey"), true);
   assert.equal(result.redactedFields.has("users[1].contact.email"), true);
 });

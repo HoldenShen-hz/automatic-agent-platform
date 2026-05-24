@@ -4,9 +4,60 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-const { buildCoverageReport, buildBaseline, compareAgainstBaseline } = await import(
-  "../../../scripts/ci/coverage-lib.mjs"
-);
+type CoverageMetric = {
+  covered: number;
+  total: number;
+  pct: number;
+  skipped?: number;
+};
+
+type CoverageMetricSet = {
+  lines: CoverageMetric;
+  statements: CoverageMetric;
+  functions: CoverageMetric;
+  branches: CoverageMetric;
+};
+
+type CoverageDirectoryReport = {
+  directory: string;
+  fileCount: number;
+  metrics: CoverageMetricSet;
+};
+
+type CoverageReport = {
+  generatedAt?: string;
+  global: CoverageMetricSet;
+  directories: CoverageDirectoryReport[];
+};
+
+type CoverageBaseline = {
+  version?: number;
+  minimums: Record<keyof CoverageMetricSet, number>;
+  global: Record<keyof CoverageMetricSet, number>;
+  directories: Record<
+    string,
+    {
+      fileCount: number;
+      metrics: Record<keyof CoverageMetricSet, number>;
+    }
+  >;
+};
+
+type CoverageComparison = {
+  failures: string[];
+  untrackedDirectories: string[];
+};
+
+type CoverageLibModule = {
+  buildCoverageReport: (summary: Record<string, CoverageMetricSet>) => CoverageReport;
+  buildBaseline: (report: CoverageReport) => CoverageBaseline;
+  compareAgainstBaseline: (report: CoverageReport, baseline: CoverageBaseline) => CoverageComparison;
+};
+
+const coverageLib = await import(
+  new URL("../../../scripts/ci/coverage-lib.mjs", import.meta.url).href
+) as CoverageLibModule;
+const { buildCoverageReport, buildBaseline, compareAgainstBaseline } = coverageLib;
 
 test("buildCoverageReport aggregates metrics by directory", () => {
   const summary = {
@@ -130,7 +181,7 @@ test("buildBaseline creates valid baseline structure", () => {
   assert.ok(baseline.minimums);
   assert.ok(baseline.global);
   assert.ok(baseline.directories);
-  assert.equal(baseline.directories["src/platform"].fileCount, 2);
+  assert.equal(baseline.directories["src/platform"]!.fileCount, 2);
 });
 
 test("compareAgainstBaseline detects missing coverage", () => {

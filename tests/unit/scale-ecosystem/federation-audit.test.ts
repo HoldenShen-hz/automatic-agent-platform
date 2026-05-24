@@ -200,17 +200,17 @@ test("federation-audit: query filters by time range", () => {
 
 test("federation-audit: query results are sorted by timestamp descending", () => {
   const audit = new FederationAudit();
-  audit.record({ orgId: "org-1", action: "first", resourceType: "audit", status: "success", details: {} });
+  audit.record({ orgId: "org-1", action: "trust.established", resourceType: "audit", status: "success", details: { order: "first" } });
 
   // Add a small delay to ensure different timestamps
   const start = Date.now();
   while (Date.now() - start < 10) { /* spin */ }
 
-  audit.record({ orgId: "org-1", action: "second", resourceType: "audit", status: "success", details: {} });
+  audit.record({ orgId: "org-1", action: "capability.granted", resourceType: "audit", status: "success", details: { order: "second" } });
 
   const results = audit.query({});
-  assert.equal(results[0]?.action, "second");
-  assert.equal(results[1]?.action, "first");
+  assert.equal(results[0]?.action, "capability.granted");
+  assert.equal(results[1]?.action, "trust.established");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

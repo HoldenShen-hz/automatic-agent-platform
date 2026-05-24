@@ -499,6 +499,13 @@ test("R15-69 resource pools carry tenant scope and auto-isolate on high failure 
     tenantId: "tenant-1",
     organizationId: "org-1",
     capacityUnits: 10,
+    allocatedUnits: 0,
+    burstUnits: 0,
+    failureRateThreshold: 0.3,
+    minSampleSize: 20,
+    failureRate: 0,
+    sampleCount: 0,
+    isolationStatus: "active",
   });
 
   const updated = service.recordHealthObservation("tenant-pool", {

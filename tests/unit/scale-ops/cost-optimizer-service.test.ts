@@ -145,10 +145,10 @@ test("CostOptimizationService simulate calculates cost reduction", async () => {
   const results = service.simulate([{ scenarioId: "s1", subjectId: "task-001", reductionPercent: 20 }]);
 
   assert.equal(results.length, 1);
-  assert.equal(results[0].scenarioId, "s1");
-  assert.equal(results[0].currentCostUsd, 10.00);
-  assert.equal(results[0].simulatedCostUsd, 8.00);
-  assert.equal(results[0].deltaUsd, -2.00);
+  assert.equal(results[0]!.scenarioId, "s1");
+  assert.equal(results[0]!.currentCostUsd, 10.00);
+  assert.equal(results[0]!.simulatedCostUsd, 8.00);
+  assert.equal(results[0]!.deltaUsd, -2.00);
 });
 
 test("CostOptimizationService buildDashboardSlice returns complete slice", async () => {
@@ -197,10 +197,11 @@ test("CostOptimizationService listRecords returns copy of records", async () => 
   const records = service.listRecords();
 
   assert.equal(records.length, 1);
-  assert.equal(records[0].subjectId, "task-001");
-  records[0].subjectId = "modified";
+  assert.equal(records[0]!.subjectId, "task-001");
+  const mutated = { ...records[0]!, subjectId: "modified" };
+  assert.equal(mutated.subjectId, "modified");
   const records2 = service.listRecords();
-  assert.equal(records2[0].subjectId, "task-001");
+  assert.equal(records2[0]!.subjectId, "task-001");
 });
 
 test("CostOptimizationService buildRecommendations returns recommendations for subjects", async () => {

@@ -42,10 +42,10 @@ test("R23-20/R23-29: FieldEncryptionService uses authenticated encryption and lo
 
   const ciphertext = result.protectedFields[0]!.ciphertext;
   const parts = ciphertext.split(":");
-  assert.equal(parts[0], "enc");
+  assert.equal(parts[0]!, "enc");
   assert.equal(parts.length, 5);
   assert.ok(parts[1]!.length >= 32);
-  assert.notEqual(parts[4], Buffer.from("top-secret", "utf8").toString("base64"));
+  assert.notEqual(parts[4]!, Buffer.from("top-secret", "utf8").toString("base64"));
   assert.equal(service.revealField({ ciphertext, keyRef: "kms-key-ref" }), "top-secret");
 });
 
@@ -73,7 +73,7 @@ test("R23-21/R23-26: GCP Secret provider parses secret name correctly and reject
     });
 
     const result = await provider.requireSecret("secret://my-secret/versions/latest");
-    assert.equal(result.value, "decoded-secret");
+    assert.equal(result.value!, "decoded-secret");
     assert.ok(requestedUrl.includes("/secrets/my-secret/versions/latest:access"));
 
     await assert.rejects(
@@ -130,7 +130,7 @@ test("R23-24/R23-25: AWS KMS provider signs with date scope and sends base64 Cip
     });
 
     const result = await provider.requireSecret("secret://kms/test-key-id");
-    assert.equal(result.value, "decrypted-secret-value");
+    assert.equal(result.value!, "decrypted-secret-value");
     assert.match(authorization, /Credential=AKIA_TEST\/\d{8}\/us-east-1\/kms\/aws4_request/);
     assert.ok(body.includes(`"CiphertextBlob":"${ciphertext}"`));
     assert.equal(body.includes('"B"'), false);

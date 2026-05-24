@@ -34,7 +34,7 @@ function createNamespace(overrides: Partial<KnowledgeNamespace> = {}): Knowledge
       refreshStrategy: "on_access",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 1000,
     maxTotalSizeBytes: 10 * 1024 * 1024,
     ...overrides,
@@ -143,7 +143,7 @@ test("validate returns warning for restricted namespace with unverified trust", 
   const namespace = createNamespace({
     path: "sensitive.data",
     accessPolicy: "restricted",
-    trustLevel: "unverified",
+    trustLevel: "private_unverified",
   });
 
   const result = store.validate(namespace);
@@ -239,12 +239,12 @@ test("canAccessCrossNamespace respects trust level", () => {
   const lowTrust = createNamespace({
     path: "low.trust",
     ownerDomainId: "dept_a",
-    trustLevel: "unverified",
+    trustLevel: "private_unverified",
   });
   const highTrust = createNamespace({
     path: "high.trust",
     ownerDomainId: "dept_b",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
 
   // With minTrustLevelForCrossDomain = "reviewed", unverified should not pass
@@ -258,12 +258,12 @@ test("canAccessCrossNamespace allows verified for cross-domain", () => {
   const source = createNamespace({
     path: "verified.source",
     ownerDomainId: "dept_a",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
   const target = createNamespace({
     path: "verified.target",
     ownerDomainId: "dept_b",
-    trustLevel: "reviewed",
+    trustLevel: "official",
   });
 
   const result = store.canAccessCrossNamespace(source, target);
@@ -275,8 +275,8 @@ test("canAccessCrossNamespace disabled when crossNamespaceRetrieval is false", (
   const store = new NamespacePolicyStore({
     crossNamespaceRetrieval: false,
   });
-  const ns1 = createNamespace({ path: "a.b", ownerDomainId: "dept_a", trustLevel: "verified" });
-  const ns2 = createNamespace({ path: "c.d", ownerDomainId: "dept_b", trustLevel: "verified" });
+  const ns1 = createNamespace({ path: "a.b", ownerDomainId: "dept_a", trustLevel: "authoritative" });
+  const ns2 = createNamespace({ path: "c.d", ownerDomainId: "dept_b", trustLevel: "authoritative" });
 
   const result = store.canAccessCrossNamespace(ns1, ns2);
 
@@ -397,11 +397,11 @@ test("updateStrategy modifies configuration", () => {
   const store = new NamespacePolicyStore();
 
   store.updateStrategy({
-    minTrustLevelForCrossDomain: "verified",
+    minTrustLevelForCrossDomain: "authoritative",
   });
 
   const config = store.getStrategyConfig();
-  assert.equal(config.minTrustLevelForCrossDomain, "verified");
+  assert.equal(config.minTrustLevelForCrossDomain, "authoritative");
 });
 
 test("Strict isolation affects prefix conflict resolution", () => {
@@ -430,11 +430,11 @@ test("Strict isolation affects prefix conflict resolution", () => {
 test("Validates namespace with all trust levels", () => {
   const store = new NamespacePolicyStore();
 
-  const trustLevels = ["verified", "reviewed", "community", "unverified"] as const;
+  const trustLevels = ["authoritative", "official", "team_reviewed", "private_unverified"] as const;
 
   for (const level of trustLevels) {
     const namespace = createNamespace({
-      path: `test.${level}`,
+      path: `test.${level.replaceAll("_", "-")}`,
       trustLevel: level,
     });
     const result = store.validate(namespace);
@@ -486,8 +486,8 @@ test("Path validation requires alphanumeric with dots", () => {
 test("Multiple capabilities with mixed trust levels", () => {
   const store = new NamespacePolicyStore();
 
-  store.register(createNamespace({ path: "low.trust", trustLevel: "unverified" }));
-  store.register(createNamespace({ path: "high.trust", trustLevel: "verified" }));
+  store.register(createNamespace({ path: "low.trust", trustLevel: "private_unverified" }));
+  store.register(createNamespace({ path: "high.trust", trustLevel: "authoritative" }));
 
   const lowNs = store.get("low.trust");
   const highNs = store.get("high.trust");

@@ -8,14 +8,14 @@ import {
 } from "../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 
 test("buildConnectorExecutionKey creates key with connectorId and capability", () => {
-  const key = buildConnectorExecutionKey({ connectorId: "slack", capability: "notify", payload: {} });
+  const key = buildConnectorExecutionKey({ connectorId: "slack", capability: "notify", payload: {}, secretBindings: [] });
 
   assert.equal(key, "slack:notify");
 });
 
 test("buildConnectorExecutionKey handles different connectors", () => {
-  const key1 = buildConnectorExecutionKey({ connectorId: "jira", capability: "create_ticket", payload: {} });
-  const key2 = buildConnectorExecutionKey({ connectorId: "github", capability: "create_issue", payload: {} });
+  const key1 = buildConnectorExecutionKey({ connectorId: "jira", capability: "create_ticket", payload: {}, secretBindings: [] });
+  const key2 = buildConnectorExecutionKey({ connectorId: "github", capability: "create_issue", payload: {}, secretBindings: [] });
 
   assert.equal(key1, "jira:create_ticket");
   assert.equal(key2, "github:create_issue");

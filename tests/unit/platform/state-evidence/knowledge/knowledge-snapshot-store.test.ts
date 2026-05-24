@@ -31,7 +31,7 @@ function createTestNamespace(overrides?: Partial<KnowledgeNamespace>): Knowledge
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 10 * 1024 * 1024,
     ...overrides,
@@ -194,7 +194,7 @@ test("KnowledgeSnapshotStore preserves namespace fields correctly", () => {
     const namespace = createTestNamespace({
       namespaceId: "ns-detail",
       accessPolicy: "domain_only",
-      trustLevel: "reviewed",
+      trustLevel: "official",
       freshnessPolicy: {
         maxAgeDays: 7,
         staleAction: "archive",
@@ -208,7 +208,7 @@ test("KnowledgeSnapshotStore preserves namespace fields correctly", () => {
     const loaded = store.load();
     assert.ok(loaded!.namespaces[0]!.namespaceId, "ns-detail");
     assert.equal(loaded!.namespaces[0]!.accessPolicy, "domain_only");
-    assert.equal(loaded!.namespaces[0]!.trustLevel, "reviewed");
+    assert.equal(loaded!.namespaces[0]!.trustLevel, "official");
     assert.equal(loaded!.namespaces[0]!.freshnessPolicy!.refreshIntervalHours, 24);
   } finally {
     rmSync(path, { recursive: true, force: true });

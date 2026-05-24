@@ -141,6 +141,7 @@ function makeSnapshot(overrides: Partial<WorkerSnapshotRecord> = {}): WorkerSnap
     lastProgressAt: null,
     lastHeartbeatAt: now,
     updatedAt: now,
+    version: overrides.version ?? 1,
     ...overrides,
   };
 }

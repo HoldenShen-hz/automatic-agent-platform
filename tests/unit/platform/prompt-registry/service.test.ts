@@ -3,37 +3,16 @@ import test from "node:test";
 
 import { HierarchicalPromptRegistryService } from "../../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import type { PromptBundleRegistrationInput } from "../../../../src/platform/contracts/prompt-bundle/index.js";
 
-interface BundleInput {
-  name: string;
-  version: string;
-  domain: string;
-  taskType: string;
-  packId?: string;
-  displayVersion: string;
-  systemPrompt: { content: string; templateVariables: string[]; channel: "system" };
-  userPrompt?: undefined;
-  fewShotExamples: never[];
-  compatibilityMatrix: {
-    toolSchemaVersions: Array<{ toolName: string; schemaVersion: number }>;
-    evaluatorSchemaVersions: Array<{ evaluatorName: string; schemaVersion: number }>;
-    domainDescriptorVersions: Array<{ domainId: string; version: number }>;
-    modelRoutingProfiles: Array<{ modelId: string; profileVersion: number }>;
-  };
-  constraints?: undefined;
-  metadata?: undefined;
-}
-
-function makeInput(overrides: Partial<BundleInput> = {}): BundleInput {
+function makeInput(overrides: Partial<PromptBundleRegistrationInput> = {}): PromptBundleRegistrationInput {
   return {
     name: overrides.name ?? "test-bundle",
     version: overrides.version ?? "v1.0.0",
     domain: overrides.domain ?? "test-domain",
     taskType: overrides.taskType ?? "test-task",
-    packId: overrides.packId,
-    displayVersion: overrides.version ?? "v1.0.0",
+    displayVersion: String(overrides.version ?? "v1.0.0"),
     systemPrompt: { content: "You are helpful", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
     fewShotExamples: [],
     compatibilityMatrix: {
       toolSchemaVersions: [],
@@ -41,8 +20,7 @@ function makeInput(overrides: Partial<BundleInput> = {}): BundleInput {
       domainDescriptorVersions: [],
       modelRoutingProfiles: [],
     },
-    constraints: undefined,
-    metadata: undefined,
+    ...overrides,
   };
 }
 

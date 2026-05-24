@@ -11,7 +11,23 @@ import {
 } from "../../../src/sdk/plugin-sdk/plugin-definition.js";
 import { PluginContext } from "../../../src/sdk/plugin-sdk/plugin-context.js";
 
-function createPluginOptions() {
+type BasePluginOptions = {
+  pluginId: string;
+  name: string;
+  version: string;
+  capabilities: Array<{
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+    outputSchema: Record<string, unknown>;
+  }>;
+  domainIds: string[];
+  spiTypes: Array<"tool" | "adapter" | "retriever" | "evaluator">;
+  sbomRef: null;
+  signing: null;
+};
+
+function createPluginOptions(): BasePluginOptions {
   return {
     pluginId: "test-plugin",
     name: "Test Plugin",
@@ -23,7 +39,7 @@ function createPluginOptions() {
       outputSchema: { type: "object" },
     }],
     domainIds: ["test"],
-    spiTypes: ["tool"] as const,
+    spiTypes: ["tool"],
     sbomRef: null,
     signing: null,
   };

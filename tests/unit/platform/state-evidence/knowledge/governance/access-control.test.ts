@@ -32,7 +32,7 @@ function createNamespace(overrides: Partial<KnowledgeNamespace> = {}): Knowledge
       refreshStrategy: "on_access",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 1000,
     maxTotalSizeBytes: 10 * 1024 * 1024,
     ...overrides,

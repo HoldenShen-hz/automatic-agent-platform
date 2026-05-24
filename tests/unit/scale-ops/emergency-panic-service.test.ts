@@ -10,7 +10,6 @@ test("PlatformPanicService activate creates panic directive", async () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.incident",
     issuedBy: "operator-001",
     severity: "full",
@@ -32,7 +31,6 @@ test("PlatformPanicService activate requires minimum approvers", async () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.approval_gap",
     issuedBy: "single-operator",
     requiredApprovers: ["only-one"],
@@ -48,7 +46,6 @@ test("PlatformPanicService getActive returns activation for scope", async () => 
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
     scope: "region/us-east",
-    scopeLevel: "region",
     reasonCode: "outage.detected",
     activeIncidents: 1,
     issuedBy: "ops-team",
@@ -74,14 +71,12 @@ test("PlatformPanicService listActive returns all active activations", async () 
   const service = new PlatformPanicService();
   service.activate({
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.breach",
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
   });
   service.activate({
     scope: "tenant/acme",
-    scopeLevel: "tenant",
     reasonCode: "cost.anomaly",
     activeIncidents: 1,
     issuedBy: "op2",
@@ -97,7 +92,6 @@ test("PlatformPanicService evaluateExecution blocks when panic active", async ()
   const service = new PlatformPanicService();
   service.activate({
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.breach",
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
@@ -117,7 +111,6 @@ test("PlatformPanicService evaluateExecution does not block unrelated mode", asy
   const service = new PlatformPanicService();
   service.activate({
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.breach",
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
@@ -136,7 +129,6 @@ test("PlatformPanicService evaluateExecution allows actors on allowList", async 
   const service = new PlatformPanicService();
   service.activate({
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.breach",
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
@@ -169,7 +161,6 @@ test("PlatformPanicService resume clears panic and returns receipt", async () =>
   const service = new PlatformPanicService();
   service.activate({
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.breach",
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
@@ -202,7 +193,6 @@ test("PlatformPanicService resume fails when checkpoints incomplete", async () =
   const service = new PlatformPanicService();
   service.activate({
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.breach",
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
@@ -233,7 +223,6 @@ test("PlatformPanicService getResumeReceipt returns receipt", async () => {
   const service = new PlatformPanicService();
   service.activate({
     scope: "platform",
-    scopeLevel: "platform",
     reasonCode: "security.breach",
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
@@ -265,7 +254,6 @@ test("PlatformPanicService activate derives scope level from scope string", asyn
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
     scope: "domain/coding",
-    scopeLevel: "domain",
     reasonCode: "drift.detected",
     activeIncidents: 1,
     issuedBy: "op1",

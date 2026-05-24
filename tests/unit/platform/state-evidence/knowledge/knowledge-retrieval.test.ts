@@ -18,7 +18,7 @@ test("Knowledge retrieval applies graph-aware semantic reranking and structural 
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -28,14 +28,14 @@ test("Knowledge retrieval applies graph-aware semantic reranking and structural 
     body: "Retry the build after clearing stale caches.\n\nInspect dependency lockfiles before escalating persistent failures.",
     namespace: "coding/repo",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
   const community = plane.ingest({
     title: "Community retry tip",
     body: "Retry long-running jobs once before escalating to incident response.",
     namespace: "coding/repo",
     sourceType: "text",
-    trustLevel: "community",
+    trustLevel: "team_reviewed",
   });
 
   const hits = plane.query("retry build", {
@@ -77,7 +77,7 @@ test("Knowledge retrieval returns lightweight semantic matches from local embedd
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "reviewed",
+    trustLevel: "official",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -87,7 +87,7 @@ test("Knowledge retrieval returns lightweight semantic matches from local embedd
     body: "Build failures usually recover after clearing stale caches and re-running the pipeline once.",
     namespace: "shared/common",
     sourceType: "text",
-    trustLevel: "reviewed",
+    trustLevel: "official",
   });
 
   const hits = plane.query("compilation", {
@@ -117,7 +117,7 @@ test("Knowledge retrieval returns empty results for unregistered namespace", () 
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });

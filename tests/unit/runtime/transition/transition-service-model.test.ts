@@ -115,6 +115,7 @@ test("BlockedApprovalRequestDefinition context can hold arbitrary data", () => {
 
 test("BlockedForApprovalTransitionCommand structure validation", () => {
   const mockContext: TransitionAuditContext = {
+    reasonCode: "APPROVAL_REQUIRED",
     traceId: "trace-123",
     occurredAt: "2025-01-01T00:00:00.000Z",
     actorType: "system",
@@ -176,6 +177,7 @@ test("BlockedForApprovalTransitionCommand accepts all valid status values", () =
       timeoutPolicy: "approve",
     },
     context: {
+      reasonCode: "APPROVAL_TEST",
       traceId: "trace-1",
       occurredAt: "2025-01-01T00:00:00.000Z",
       actorType: "system",
@@ -219,6 +221,7 @@ test("TaskTerminalTransitionInput structure for done terminal status", () => {
     taskOutputJson: '{"result": "success"}',
     outputsJson: '{"steps": []}',
     context: {
+      reasonCode: "TASK_DONE",
       traceId: "trace-terminal",
       occurredAt: "2025-01-01T00:00:00.000Z",
       actorType: "system",
@@ -264,9 +267,10 @@ test("TaskTerminalTransitionInput structure for cancelled terminal status", () =
     currentSessionStatus: "streaming",
     currentExecutionStatus: "executing",
     terminalStatus: "cancelled",
-    taskOutputJson: null,
+    taskOutputJson: "{}",
     outputsJson: "{}",
     context: {
+      reasonCode: "TASK_CANCELLED",
       traceId: "trace-cancelled",
       occurredAt: "2025-01-01T00:00:00.000Z",
       actorType: "user",
@@ -293,6 +297,7 @@ test("TaskTerminalTransitionInput accepts all TaskTerminalStatus values", () => 
       taskOutputJson: "{}",
       outputsJson: "{}",
       context: {
+        reasonCode: "TASK_TERMINAL",
         traceId: "trace-1",
         occurredAt: "2025-01-01T00:00:00.000Z",
         actorType: "system",
@@ -343,10 +348,11 @@ test("TaskTerminalTransitionInput workflow step index validation", () => {
     terminalStatus: "done",
     taskOutputJson: "{}",
     outputsJson: '{"stepResults": []}',
-    context: {
-      traceId: "trace-steps",
-      occurredAt: "2025-01-01T00:00:00.000Z",
-      actorType: "system",
+      context: {
+        reasonCode: "WORKFLOW_STEPS",
+        traceId: "trace-steps",
+        occurredAt: "2025-01-01T00:00:00.000Z",
+        actorType: "system",
     },
     expectedWorkflowStepIndex: 10,
   };

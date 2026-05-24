@@ -252,7 +252,7 @@ test("DefaultSbomScanner.scan returns invalid for malformed URL", async () => {
 
   assert.equal(result.valid, false);
   assert.ok(result.scanErrors.length > 0);
-  assert.ok(result.scanErrors[0].includes("Invalid SBOM reference format"));
+  assert.ok(result.scanErrors[0]!.includes("Invalid SBOM reference format"));
 });
 
 test("DefaultSbomScanner.scan returns invalid for unsupported protocol", async () => {

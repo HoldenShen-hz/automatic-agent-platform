@@ -27,19 +27,23 @@ test.describe("GrowthRetriever comprehensive tests", () => {
     plugin.initialize = async () => {
       initialized = true;
     };
+    assert.ok(plugin.initialize);
     await plugin.initialize();
     assert.equal(initialized, true);
   });
 
   test("healthCheck returns true", async () => {
     const plugin = createGrowthRetrieverPlugin();
+    assert.ok(plugin.initialize);
     await plugin.initialize();
+    assert.ok(plugin.healthCheck);
     const result = await plugin.healthCheck();
     assert.equal(result, true);
   });
 
   test("shutdown returns undefined", async () => {
     const plugin = createGrowthRetrieverPlugin();
+    assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
     assert.equal(result, undefined);
   });
@@ -213,7 +217,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
       });
 
       for (const result of results) {
-        if (result.snippet !== undefined) {
+        if ("snippet" in result && result.snippet !== undefined) {
           assert.ok(typeof result.snippet === "string");
           assert.ok(result.snippet.length > 0);
         }

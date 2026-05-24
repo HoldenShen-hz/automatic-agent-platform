@@ -4,9 +4,10 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  KnowledgeBoundarySchema,
   resolveKnowledgeClassificationRules,
   resolveKnowledgeSharePolicy,
+  type KnowledgeBoundary,
+  type KnowledgeBoundaryInput,
 } from "../../../src/org-governance/knowledge-boundary/boundary-manager/index.js";
 import { evaluateChineseWallPolicy } from "../../../src/org-governance/knowledge-boundary/chinese-wall-policy.js";
 import { KnowledgeFederator } from "../../../src/org-governance/knowledge-boundary/knowledge-federator.js";
@@ -101,7 +102,7 @@ test("R27-37 policy center accepts canonical runtime modes and preserves governa
 });
 
 test("R27-38 knowledge boundary exposes classification rules and share policy", () => {
-  const boundary = KnowledgeBoundarySchema.parse({
+  const boundary = {
     boundaryId: "boundary-1",
     tenantId: "tenant-1",
     ownerOrgNodeId: "org-owner",
@@ -118,28 +119,28 @@ test("R27-38 knowledge boundary exposes classification rules and share policy", 
       requireAudit: true,
       allowOrgNodeIds: ["org-partner"],
     },
-  });
+  } satisfies KnowledgeBoundaryInput;
 
   assert.equal(resolveKnowledgeClassificationRules(boundary)[0]?.classification, "restricted");
   assert.equal(resolveKnowledgeSharePolicy(boundary).mode, "org_allowlist");
 });
 
 test("R27-39/R27-40 federated search returns canonical aggregate result and ChineseWallConstraint", () => {
-  const boundaryA = KnowledgeBoundarySchema.parse({
+  const boundaryA: KnowledgeBoundary = {
     boundaryId: "boundary-a",
     tenantId: "tenant-1",
     ownerOrgNodeId: "org-a",
     namespaceIds: ["finance"],
     allowedOrgNodeIds: ["org-searcher"],
     fieldAllowlist: ["title"],
-  });
-  const boundaryB = KnowledgeBoundarySchema.parse({
+  };
+  const boundaryB: KnowledgeBoundary = {
     boundaryId: "boundary-b",
     tenantId: "tenant-1",
     ownerOrgNodeId: "org-b",
     namespaceIds: ["legal"],
     allowedOrgNodeIds: ["org-searcher"],
-  });
+  };
   const federator = new KnowledgeFederator();
   const result = federator.searchFederated(
     [

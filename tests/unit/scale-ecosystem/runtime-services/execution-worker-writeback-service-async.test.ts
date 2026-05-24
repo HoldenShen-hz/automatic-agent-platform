@@ -90,7 +90,10 @@ test("ExecutionWorkerWritebackServiceAsync exports WorkerWritebackDecision type"
   const decision: WorkerWritebackDecision = {
     accepted: true,
     executionId: "exec-1",
-    writebackId: "wb-1",
+    leaseId: "lease-1",
+    taskId: "task-1",
+    terminalStatus: "failed",
+    reasonCode: null,
   };
   assert.equal(decision.accepted, true);
   assert.equal(decision.executionId, "exec-1");
@@ -104,8 +107,9 @@ test("ExecutionWorkerWritebackServiceAsync dispose marks service as disposed", (
     executionId: "exec-1",
     workerId: "worker-1",
     leaseId: "lease-1",
+    fencingToken: 1,
     terminalStatus: "failed",
-    errorCode: "test",
+    reasonCode: "test",
   }).then(
     () => assert.fail("Expected rejection"),
     (err: Error) => assert.ok(err.message.includes("disposed")),

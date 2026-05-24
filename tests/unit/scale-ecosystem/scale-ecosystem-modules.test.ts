@@ -48,11 +48,11 @@ import { ResourcePoolService } from "../../../src/scale-ecosystem/resource-manag
 import {
   SlaOperationsService,
   type SlaTierProfile,
-  type SlaObservation,
 } from "../../../src/scale-ecosystem/sla-engine/sla-operations-service.js";
 import {
   detectSlaBreach,
   type SlaCommitment,
+  type SlaObservation,
 } from "../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
 import {
   resolveHighestPriorityTier,
@@ -63,10 +63,10 @@ import {
 } from "../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
 import {
   ConnectorFrameworkService,
-  type ConnectorManifest,
 } from "../../../src/scale-ecosystem/integration/connector-framework-service.js";
 import {
   ConnectorManifestSchema,
+  type ConnectorManifest,
   listEnabledConnectors,
 } from "../../../src/scale-ecosystem/integration/connector-registry/index.js";
 import {
@@ -111,24 +111,29 @@ function createQueueItem(overrides: Partial<FairQueueItem> = {}): FairQueueItem 
   return {
     itemId: overrides.itemId ?? "item-1",
     tenantId: overrides.tenantId ?? "tenant-1",
-    orgId: overrides.orgId,
-    domainId: overrides.domainId,
-    slaTier: overrides.slaTier,
     priority: overrides.priority ?? 5,
     ageMs: overrides.ageMs ?? 0,
+    ...(overrides.orgId !== undefined ? { orgId: overrides.orgId } : {}),
+    ...(overrides.domainId !== undefined ? { domainId: overrides.domainId } : {}),
+    ...(overrides.slaTier !== undefined ? { slaTier: overrides.slaTier } : {}),
+    ...(overrides.guaranteedQuotaShare !== undefined ? { guaranteedQuotaShare: overrides.guaranteedQuotaShare } : {}),
+    ...(overrides.borrowedCredits !== undefined ? { borrowedCredits: overrides.borrowedCredits } : {}),
+    ...(overrides.reclaimedCredits !== undefined ? { reclaimedCredits: overrides.reclaimedCredits } : {}),
   };
 }
 
 function createQuotaPolicy(overrides: Partial<QuotaPolicy> = {}): QuotaPolicy {
   return {
-    scopeId: overrides.scopeId ?? "tenant-1",
+    scope: overrides.scope ?? "tenant",
     resourceType: overrides.resourceType ?? "runtime_units",
     hardLimit: overrides.hardLimit ?? 100,
-    softLimit: overrides.softLimit ?? 80,
-    burstLimit: overrides.burstLimit ?? 120,
     resetWindow: overrides.resetWindow ?? "1h",
     currentUsage: overrides.currentUsage ?? 50,
-    ...overrides,
+    ...(overrides.scopeId !== undefined ? { scopeId: overrides.scopeId } : { scopeId: "tenant-1" }),
+    ...(overrides.softLimit !== undefined ? { softLimit: overrides.softLimit } : { softLimit: 80 }),
+    ...(overrides.burstLimit !== undefined ? { burstLimit: overrides.burstLimit } : { burstLimit: 120 }),
+    ...(overrides.multiResourceQuota !== undefined ? { multiResourceQuota: overrides.multiResourceQuota } : {}),
+    ...(overrides.multiResourceHardLimits !== undefined ? { multiResourceHardLimits: overrides.multiResourceHardLimits } : {}),
   };
 }
 
@@ -172,6 +177,22 @@ function createManifest(lifecycleState: ConnectorManifest["lifecycleState"] = "e
     capabilities: extra.capabilities ?? ["read", "write"],
     lifecycleState,
     ...extra,
+  };
+}
+
+function createResourcePool(overrides: Partial<Parameters<ResourcePoolService["registerPool"]>[0]> = {}) {
+  return {
+    poolId: overrides.poolId ?? "pool-1",
+    resourceType: overrides.resourceType ?? "compute",
+    scopeType: overrides.scopeType ?? "shared",
+    capacityUnits: overrides.capacityUnits ?? 100,
+    allocatedUnits: overrides.allocatedUnits ?? 0,
+    burstUnits: overrides.burstUnits ?? 20,
+    failureRateThreshold: overrides.failureRateThreshold ?? 0.3,
+    minSampleSize: overrides.minSampleSize ?? 20,
+    failureRate: overrides.failureRate ?? 0,
+    sampleCount: overrides.sampleCount ?? 0,
+    isolationStatus: overrides.isolationStatus ?? "active",
   };
 }
 
@@ -655,7 +676,7 @@ test("evaluateMultiDimensionalQuota fails dimension that exceeds hard limit", ()
 
 test("ResourcePoolService.allocate grants within capacity", () => {
   const service = new ResourcePoolService();
-  service.registerPool({ poolId: "pool-1", resourceType: "compute", capacityUnits: 100, allocatedUnits: 0, burstUnits: 20 });
+  service.registerPool(createResourcePool());
 
   const allocation = service.allocate("pool-1", "consumer-1", 30);
 
@@ -665,7 +686,7 @@ test("ResourcePoolService.allocate grants within capacity", () => {
 
 test("ResourcePoolService.allocate denies when exceeded", () => {
   const service = new ResourcePoolService();
-  service.registerPool({ poolId: "pool-1", resourceType: "compute", capacityUnits: 100, allocatedUnits: 90, burstUnits: 20 });
+  service.registerPool(createResourcePool({ allocatedUnits: 90 }));
 
   const allocation = service.allocate("pool-1", "consumer-1", 40);
 
@@ -675,7 +696,7 @@ test("ResourcePoolService.allocate denies when exceeded", () => {
 
 test("ResourcePoolService.release reduces allocated units", () => {
   const service = new ResourcePoolService();
-  service.registerPool({ poolId: "pool-1", resourceType: "compute", capacityUnits: 100, allocatedUnits: 50, burstUnits: 20 });
+  service.registerPool(createResourcePool({ allocatedUnits: 50 }));
 
   const updated = service.release("pool-1", 20);
 
@@ -684,7 +705,7 @@ test("ResourcePoolService.release reduces allocated units", () => {
 
 test("ResourcePoolService.release does not go below zero", () => {
   const service = new ResourcePoolService();
-  service.registerPool({ poolId: "pool-1", resourceType: "compute", capacityUnits: 100, allocatedUnits: 10, burstUnits: 20 });
+  service.registerPool(createResourcePool({ allocatedUnits: 10 }));
 
   const updated = service.release("pool-1", 50);
 
@@ -905,6 +926,7 @@ test("ConnectorFrameworkService.execute returns failed for missing secretBinding
     connectorId: "test_connector",
     capability: "sync",
     payload: {},
+    secretBindings: [],
   }, {
     environment: "prod",
   });
@@ -1085,6 +1107,7 @@ test("buildConnectorExecutionKey creates correct key format", () => {
     connectorId: "my_connector",
     capability: "sync",
     payload: {},
+    secretBindings: [],
   });
 
   assert.equal(key, "my_connector:sync");

@@ -86,18 +86,18 @@ test("api server startup uses managed cleanup and workspace-aware data roots", (
 
 test("CLI and repo scripts expose fast paths and avoid stale layered-test coupling", () => {
   assert.equal(packageJson.scripts["test"], "npm run ci:baseline");
-  assert.equal(packageJson.scripts["test:raw"].includes("build:test"), false);
-  assert.equal(packageJson.scripts["test:unit"].includes("build:test"), false);
-  assert.equal(packageJson.scripts["test:integration"].includes("build:test"), false);
-  assert.equal(packageJson.scripts["test:golden"].includes("build:test"), false);
-  assert.equal(packageJson.scripts["test:e2e"].includes("build:test"), false);
-  assert.equal(packageJson.scripts["test:performance"].includes("build:test"), false);
+  assert.equal(packageJson.scripts["test:raw"]!.includes("build:test"), false);
+  assert.equal(packageJson.scripts["test:unit"]!.includes("build:test"), false);
+  assert.equal(packageJson.scripts["test:integration"]!.includes("build:test"), false);
+  assert.equal(packageJson.scripts["test:golden"]!.includes("build:test"), false);
+  assert.equal(packageJson.scripts["test:e2e"]!.includes("build:test"), false);
+  assert.equal(packageJson.scripts["test:performance"]!.includes("build:test"), false);
   assert.equal("migrate:down" in packageJson.scripts, false);
-  assert.equal(packageJson.scripts["secret-commands"].includes("secret-commands.js"), true);
-  assert.equal(packageJson.scripts["pack-create"].includes("pack-create.js"), true);
-  assert.equal(packageJson.scripts["pack-publish"].includes("pack-publish.js"), true);
-  assert.equal(packageJson.scripts["pack-test"].includes("pack-test.js"), true);
-  assert.equal(packageJson.scripts["pack-validate"].includes("pack-validate.js"), true);
+  assert.equal(packageJson.scripts["secret-commands"]!.includes("secret-commands.js"), true);
+  assert.equal(packageJson.scripts["pack-create"]!.includes("pack-create.js"), true);
+  assert.equal(packageJson.scripts["pack-publish"]!.includes("pack-publish.js"), true);
+  assert.equal(packageJson.scripts["pack-test"]!.includes("pack-test.js"), true);
+  assert.equal(packageJson.scripts["pack-validate"]!.includes("pack-validate.js"), true);
   assert.equal(packageJson.scripts["aa:dev"], "node --import tsx src/sdk/cli/aa.ts");
   assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-create.ts"), "utf8"), /npm run pack-create --/);
   assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-publish.ts"), "utf8"), /npm run pack-publish --/);
@@ -114,7 +114,7 @@ test("CLI and repo scripts expose fast paths and avoid stale layered-test coupli
 test("lint and config metadata cover repo scripts, generated outputs, and schema consistency", () => {
   assert.equal(tsconfig.compilerOptions?.tsBuildInfoFile, ".cache/tsconfig.tsbuildinfo");
   assert.deepEqual(scriptsTsconfig.include, ["scripts/**/*.mjs", "eslint.config.js"]);
-  assert.equal(packageJson.scripts["typecheck"].includes("tsconfig.scripts.json"), true);
+  assert.equal(packageJson.scripts["typecheck"]!.includes("tsconfig.scripts.json"), true);
   assert.equal(packageJson.scripts["lint"], "eslint . --ext .ts,.js,.mjs,.tsx");
   assert.match(rootEslintSource, /"src\/\*\*\/\*\.ts"/);
   assert.match(rootEslintSource, /"scripts\/\*\*\/\*\.mjs"/);

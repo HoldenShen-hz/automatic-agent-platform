@@ -103,17 +103,17 @@ test("output dir uses env var when set", () => {
 
 test("output dir ignores empty string env var", () => {
   const envKey = "AA_STABLE_TEST_OUTPUT_DIR";
-  const fromEnv = "";
+  const fromEnv: string | undefined = "";
 
-  const result = fromEnv && fromEnv.length > 0 ? fromEnv : null;
+  const result = fromEnv != null && fromEnv.length > 0 ? fromEnv : null;
   assert.equal(result, null);
 });
 
 test("output dir uses default when env is not set", () => {
   const envKey = "AA_STABLE_TEST_OUTPUT_DIR";
-  const fromEnv = undefined;
+  const fromEnv: string | undefined = undefined;
 
-  const result = fromEnv && fromEnv.length > 0 ? fromEnv : null;
+  const result = fromEnv ?? null;
   assert.equal(result, null);
 });
 
@@ -137,11 +137,11 @@ test("runner receives prepared args when prepare is provided", () => {
 });
 
 test("runner args excludes outputDir when includeOutputDir is false", () => {
-  const prepare = (_outputDir: string) => ({ durationMs: 5000 });
+  const prepare = (_outputDir: string): { durationMs: number; outputDir?: never } => ({ durationMs: 5000 });
   const preparedArgs = prepare("/test/output");
 
   // includeOutputDir = false means don't inject outputDir
-  const runnerArgs = preparedArgs; // No outputDir injected
+  const runnerArgs: { durationMs: number; outputDir?: never } = preparedArgs; // No outputDir injected
   assert.equal(runnerArgs.durationMs, 5000);
   assert.equal("outputDir" in runnerArgs, false);
 });

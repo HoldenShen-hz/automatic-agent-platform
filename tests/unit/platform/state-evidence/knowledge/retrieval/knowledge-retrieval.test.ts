@@ -23,7 +23,7 @@ function createMinimalSource(overrides: Partial<KnowledgeSource> = {}): Knowledg
     namespace: "test",
     language: "en",
     tags: [],
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     freshnessTimestamp: "2026-01-01T00:00:00.000Z",
     checksum: "checksum_1",
     ...overrides,
@@ -90,7 +90,7 @@ function createMinimalNamespace(overrides: Partial<KnowledgeNamespace> = {}): Kn
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
     ...overrides,
@@ -482,12 +482,12 @@ test("KnowledgeRetrievalService query with includeUnverified returns unverified 
     path: "test.namespace",
     namespaceId: "ns1",
     ownerDomainId: "test-domain",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
   namespaces.set("test.namespace", ns);
 
   archive.upsert(createArchivedRecord({
-    source: createMinimalSource({ trustLevel: "unverified" }),
+    source: createMinimalSource({ trustLevel: "private_unverified" }),
     document: createMinimalDocument({ namespace: "test.namespace" }),
     chunks: [createMinimalChunk({ chunkId: "chunk1", namespace: "test.namespace", keywords: ["retry"] })],
   }));

@@ -14,6 +14,7 @@ test.describe("GameDevAdapter Plugin", () => {
 
   test("initialize returns undefined", async () => {
     const adapter = createGameDevAdapterPlugin();
+    assert.ok(adapter.initialize);
     const result = await adapter.initialize();
     assert.equal(result, undefined);
   });
@@ -21,11 +22,13 @@ test.describe("GameDevAdapter Plugin", () => {
   test("shutdown clears credential fingerprint", async () => {
     const adapter = createGameDevAdapterPlugin();
     await adapter.authenticate({ token: "unity_token_abc12345" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
   });
 
   test("healthCheck evaluates Unity Cloud Build egress policy", async () => {
     const adapter = createGameDevAdapterPlugin();
+    assert.ok(adapter.healthCheck);
     const result = await adapter.healthCheck();
     assert.equal(result, true);
   });
@@ -191,6 +194,7 @@ test.describe("GameDevAdapter state management", () => {
   test("execute fails after shutdown even with prior authentication", async () => {
     const adapter = createGameDevAdapterPlugin();
     await adapter.authenticate({ token: "valid_unity_token_12345" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
     await assert.rejects(
       async () => adapter.execute("get_build_status", { projectSlug: "my-project" }),
@@ -212,6 +216,7 @@ test.describe("GameDevAdapter state management", () => {
   test("re-authenticate after shutdown works", async () => {
     const adapter = createGameDevAdapterPlugin();
     await adapter.authenticate({ token: "first_token" });
+    assert.ok(adapter.shutdown);
     await adapter.shutdown();
     await adapter.authenticate({ token: "second_token" });
     const result = await adapter.execute("get_build_status", { projectSlug: "test" }) as any;

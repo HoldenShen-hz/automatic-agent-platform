@@ -19,6 +19,7 @@ import {
   setSbomScanner,
   verifySbomRef,
   DefaultSbomScanner,
+  type PluginDefinition,
   type SbomVerificationOptions,
 } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
 
@@ -147,13 +148,14 @@ test("decodeSignature handles base64url encoding", () => {
 });
 
 test("decodeSignature rejects invalid base64 characters", () => {
-  const { publicKey } = generateKeyPairSync("rsa", {
+  const { publicKey } = generateKeyPairSync("rsa" as never, {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
   });
   registerPluginSigningVerificationKey({ keyId: "invalid-sig-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
-  const plugin = {
+  const plugin: PluginDefinition = {
     pluginId: "invalid-sig.tool",
     name: "Invalid Sig",
     version: "1.0.0",
@@ -162,8 +164,9 @@ test("decodeSignature rejects invalid base64 characters", () => {
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [],
     security: { sandboxTier: "read_only" as const, egressDomains: [] },
-    spiTypes: ["tool"] as const,
+    spiTypes: ["tool"],
     domainIds: [],
+    sbomRef: null,
     signing: {
       keyId: "invalid-sig-key",
       signature: "invalid!!!signature",
@@ -357,13 +360,14 @@ test("verifySbomRef returns valid for undefined", async () => {
 });
 
 test("verifyPluginSignature returns detailed result with canonicalPayload", () => {
-  const { publicKey } = generateKeyPairSync("rsa", {
+  const { publicKey } = generateKeyPairSync("rsa" as never, {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
   });
   registerPluginSigningVerificationKey({ keyId: "detail-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
-  const plugin = {
+  const plugin: PluginDefinition = {
     pluginId: "detail-test.tool",
     name: "Detail Test",
     version: "1.0.0",
@@ -372,8 +376,9 @@ test("verifyPluginSignature returns detailed result with canonicalPayload", () =
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [],
     security: { sandboxTier: "read_only" as const, egressDomains: [] },
-    spiTypes: ["tool"] as const,
+    spiTypes: ["tool"],
     domainIds: [],
+    sbomRef: null,
     signing: {
       keyId: "detail-key",
       signature: "invalid",
@@ -395,7 +400,7 @@ test("enforcePluginSignature throws for tampered signature", () => {
   });
   registerPluginSigningVerificationKey({ keyId: "tamper-key", publicKeyPem: publicKey, algorithm: "RSA-SHA256" });
 
-  const plugin = {
+  const plugin: PluginDefinition = {
     pluginId: "tamper-test.tool",
     name: "Tamper Test",
     version: "1.0.0",
@@ -404,8 +409,9 @@ test("enforcePluginSignature throws for tampered signature", () => {
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [],
     security: { sandboxTier: "read_only" as const, egressDomains: [] },
-    spiTypes: ["tool"] as const,
+    spiTypes: ["tool"],
     domainIds: [],
+    sbomRef: null,
     signing: {
       keyId: "tamper-key",
       signature: "tampered-signature-data",
@@ -428,8 +434,8 @@ test("definePlugin with SBOM that has critical vulnerabilities throws", async ()
   writeFileSync(TEMP_SBOM_FILE, sbom);
 
   try {
-    await assert.rejects(
-      definePlugin({
+    assert.throws(
+      () => definePlugin({
         pluginId: "sbom-critical-test",
         name: "SBOM Critical Test",
         version: "1.0.0",
@@ -453,9 +459,10 @@ test("SigningKeyRegistry handles key operations", () => {
   // Clear any existing keys
   registry.clear();
 
-  const { publicKey } = generateKeyPairSync("rsa", {
+  const { publicKey } = generateKeyPairSync("rsa" as never, {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
   });
   registry.registerKey("test-key-id", publicKey, "RSA-SHA256");
 

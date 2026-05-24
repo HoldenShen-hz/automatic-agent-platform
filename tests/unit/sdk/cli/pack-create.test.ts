@@ -28,13 +28,33 @@ function parseArgs(args: string[]): PackCreateOptions {
     owner: "",
   };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--pack-id" && i + 1 < args.length) opts.packId = args[++i];
-    else if (args[i] === "--domain" && i + 1 < args.length) opts.domain = args[++i];
-    else if (args[i] === "--owner" && i + 1 < args.length) opts.owner = args[++i];
-    else if (args[i] === "--version" && i + 1 < args.length) opts.version = args[++i];
-    else if (args[i] === "--capabilities" && i + 1 < args.length) opts.capabilities = args[++i].split(",");
-    else if (args[i] === "--tools" && i + 1 < args.length) opts.tools = args[++i].split(",");
-    else if (args[i] === "--output" && i + 1 < args.length) opts.output = args[++i];
+    const current = args[i];
+    const next = args[i + 1];
+    if (next === undefined) {
+      continue;
+    }
+    if (current === "--pack-id") {
+      opts.packId = next;
+      i += 1;
+    } else if (current === "--domain") {
+      opts.domain = next;
+      i += 1;
+    } else if (current === "--owner") {
+      opts.owner = next;
+      i += 1;
+    } else if (current === "--version") {
+      opts.version = next;
+      i += 1;
+    } else if (current === "--capabilities") {
+      opts.capabilities = next.split(",");
+      i += 1;
+    } else if (current === "--tools") {
+      opts.tools = next.split(",");
+      i += 1;
+    } else if (current === "--output") {
+      opts.output = next;
+      i += 1;
+    }
   }
   return opts;
 }
@@ -166,9 +186,9 @@ test("buildManifest creates valid manifest structure", () => {
   assert.equal(manifest.domainId, "test-domain");
   assert.equal(manifest.owner, "test-owner");
   assert.equal(manifest.capabilities.length, 1);
-  assert.equal(manifest.capabilities[0].capabilityKey, "core");
-  assert.equal(manifest.capabilities[0].maturity, "experimental");
-  assert.deepEqual(manifest.capabilities[0].requiredContracts, []);
+  assert.equal(manifest.capabilities[0]!.capabilityKey, "core");
+  assert.equal(manifest.capabilities[0]!.maturity, "experimental");
+  assert.deepEqual(manifest.capabilities[0]!.requiredContracts, []);
 });
 
 test("buildManifest uses provided version", () => {
@@ -195,8 +215,8 @@ test("buildManifest uses provided capabilities", () => {
   const manifest = buildManifest(opts);
 
   assert.equal(manifest.capabilities.length, 2);
-  assert.equal(manifest.capabilities[0].capabilityKey, "cap1");
-  assert.equal(manifest.capabilities[1].capabilityKey, "cap2");
+  assert.equal(manifest.capabilities[0]!.capabilityKey, "cap1");
+  assert.equal(manifest.capabilities[1]!.capabilityKey, "cap2");
 });
 
 test("buildManifest trims capability whitespace", () => {
@@ -209,8 +229,8 @@ test("buildManifest trims capability whitespace", () => {
 
   const manifest = buildManifest(opts);
 
-  assert.equal(manifest.capabilities[0].capabilityKey, "cap1");
-  assert.equal(manifest.capabilities[1].capabilityKey, "cap2,cap3");
+  assert.equal(manifest.capabilities[0]!.capabilityKey, "cap1");
+  assert.equal(manifest.capabilities[1]!.capabilityKey, "cap2,cap3");
 });
 
 test("buildManifest uses provided tools", () => {

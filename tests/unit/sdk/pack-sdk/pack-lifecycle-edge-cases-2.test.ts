@@ -11,6 +11,7 @@ function createManifest(overrides: Partial<Parameters<typeof validateBusinessPac
   return validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "testing",
     domain: "testing",
     owner: "test@example.com",
     capabilities: [

@@ -1,10 +1,59 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { loadRepoModule } from "../../../../helpers/repo-module.js";
 
-import { ConflictResolver } from "../../../../../ui/packages/shared/sync/src/conflict-resolver.js";
-import { OfflineQueue, createMemoryOfflineMutationStore } from "../../../../../ui/packages/shared/sync/src/offline-queue.js";
-import { SyncCoordinator } from "../../../../../ui/packages/shared/sync/src/sync-coordinator.js";
-import type { OfflineMutation } from "../../../../../ui/packages/shared/sync/src/types.js";
+type OfflineMutation = {
+  id: string;
+  endpoint: string;
+  method: string;
+  body: { title: string };
+  createdAt: string;
+  idempotencyKey: string;
+  retryCount: number;
+  status: "pending" | "conflict";
+  tenantId: string;
+  traceId: string;
+  principal: {
+    principalId: string;
+    tenantId: string;
+    roles: string[];
+  };
+};
+
+async function loadSyncModules() {
+  const [conflictModule, queueModule, coordinatorModule] = await Promise.all([
+    loadRepoModule<{ ConflictResolver: new () => unknown }>("ui", "packages", "shared", "sync", "src", "conflict-resolver.ts"),
+    loadRepoModule<{
+      OfflineQueue: new (store: { writeAll(items: readonly OfflineMutation[]): Promise<void> }) => {
+        enqueue(mutation: OfflineMutation): Promise<void>;
+        size(): number;
+        peek(): OfflineMutation[];
+      };
+      createMemoryOfflineMutationStore: (
+        items: readonly OfflineMutation[],
+      ) => { writeAll(items: readonly OfflineMutation[]): Promise<void> };
+    }>("ui", "packages", "shared", "sync", "src", "offline-queue.ts"),
+    loadRepoModule<{
+      SyncCoordinator: new (
+        queue: unknown,
+        resolver: unknown,
+        httpClient: { request(): Promise<unknown> },
+      ) => {
+        flush(): Promise<{
+          succeeded: unknown[];
+          failed: unknown[];
+          conflicts: Array<{ serverValue?: unknown }>;
+        }>;
+      };
+    }>("ui", "packages", "shared", "sync", "src", "sync-coordinator.ts"),
+  ]);
+  return {
+    ConflictResolver: conflictModule.ConflictResolver,
+    OfflineQueue: queueModule.OfflineQueue,
+    createMemoryOfflineMutationStore: queueModule.createMemoryOfflineMutationStore,
+    SyncCoordinator: coordinatorModule.SyncCoordinator,
+  };
+}
 
 function createMutation(id: string): OfflineMutation {
   return {
@@ -27,6 +76,7 @@ function createMutation(id: string): OfflineMutation {
 }
 
 test("SyncCoordinator.flush keeps queued mutations durable until HTTP replay is acknowledged", async () => {
+  const { ConflictResolver, OfflineQueue, SyncCoordinator, createMemoryOfflineMutationStore } = await loadSyncModules();
   const queue = new OfflineQueue(createMemoryOfflineMutationStore([]));
   await queue.enqueue(createMutation("m1"));
 
@@ -61,6 +111,7 @@ test("SyncCoordinator.flush keeps queued mutations durable until HTTP replay is 
 });
 
 test("SyncCoordinator.flush persists retryable failures back into the queue snapshot", async () => {
+  const { ConflictResolver, OfflineQueue, SyncCoordinator, createMemoryOfflineMutationStore } = await loadSyncModules();
   const queue = new OfflineQueue(createMemoryOfflineMutationStore([]));
   await queue.enqueue(createMutation("m2"));
 
@@ -84,6 +135,7 @@ test("SyncCoordinator.flush persists retryable failures back into the queue snap
 });
 
 test("SyncCoordinator.flush marks HTTP conflicts and preserves server payload for resolution", async () => {
+  const { ConflictResolver, OfflineQueue, SyncCoordinator, createMemoryOfflineMutationStore } = await loadSyncModules();
   const queue = new OfflineQueue(createMemoryOfflineMutationStore([]));
   await queue.enqueue(createMutation("m3"));
 

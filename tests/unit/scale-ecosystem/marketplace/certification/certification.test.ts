@@ -15,6 +15,26 @@ import {
   type CertificationRecord,
 } from "../../../../../src/scale-ecosystem/marketplace/certification/index.js";
 
+function createCertificationRecord(overrides: Partial<CertificationRecord> = {}): CertificationRecord {
+  return {
+    listingId: "listing-default",
+    certificationId: "cert-default",
+    status: "approved",
+    approvedAt: "2026-04-01T00:00:00.000Z",
+    healthScore: 1,
+    sunsetAt: null,
+    expiresAt: null,
+    lastReviewedAt: "2026-04-01T00:00:00.000Z",
+    activeFindings: 0,
+    sbomVerified: true,
+    signatureVerified: true,
+    compatibilityVerified: true,
+    sandboxVerified: true,
+    egressPolicyReviewed: true,
+    ...overrides,
+  };
+}
+
 test("CertificationRecordSchema parses valid pending record", () => {
   const record = {
     listingId: "listing_001",
@@ -109,17 +129,10 @@ test("CertificationRecordSchema rejects invalid status", () => {
 });
 
 test("isMarketplaceListingCertified returns true for approved status", () => {
-  const record: CertificationRecord = {
+  const record = createCertificationRecord({
     listingId: "listing_008",
     certificationId: "cert_008",
-    status: "approved",
-    approvedAt: "2026-04-01T00:00:00.000Z",
-    sbomVerified: true,
-    signatureVerified: true,
-    compatibilityVerified: true,
-    sandboxVerified: true,
-    egressPolicyReviewed: true,
-  };
+  });
 
   const result = isMarketplaceListingCertified(record);
 
@@ -127,17 +140,12 @@ test("isMarketplaceListingCertified returns true for approved status", () => {
 });
 
 test("isMarketplaceListingCertified returns false for pending status", () => {
-  const record: CertificationRecord = {
+  const record = createCertificationRecord({
     listingId: "listing_009",
     certificationId: "cert_009",
     status: "pending",
     approvedAt: null,
-    sbomVerified: true,
-    signatureVerified: true,
-    compatibilityVerified: true,
-    sandboxVerified: true,
-    egressPolicyReviewed: true,
-  };
+  });
 
   const result = isMarketplaceListingCertified(record);
 
@@ -145,17 +153,12 @@ test("isMarketplaceListingCertified returns false for pending status", () => {
 });
 
 test("isMarketplaceListingCertified returns false for revoked status", () => {
-  const record: CertificationRecord = {
+  const record = createCertificationRecord({
     listingId: "listing_010",
     certificationId: "cert_010",
     status: "revoked",
     approvedAt: null,
-    sbomVerified: true,
-    signatureVerified: true,
-    compatibilityVerified: true,
-    sandboxVerified: true,
-    egressPolicyReviewed: true,
-  };
+  });
 
   const result = isMarketplaceListingCertified(record);
 
@@ -176,17 +179,11 @@ test("CertificationRecordSchema rejects approvedAt with non-approved status", ()
 });
 
 test("isMarketplaceListingCertified fails closed when quality and security evidence is incomplete", () => {
-  const record: CertificationRecord = {
+  const record = createCertificationRecord({
     listingId: "listing_012",
     certificationId: "cert_012",
-    status: "approved",
-    approvedAt: "2026-04-01T00:00:00.000Z",
     sbomVerified: false,
-    signatureVerified: true,
-    compatibilityVerified: true,
-    sandboxVerified: true,
-    egressPolicyReviewed: true,
-  };
+  });
 
   assert.equal(isMarketplaceListingCertified(record), false);
   const status = getCertificationHealthStatus(record);

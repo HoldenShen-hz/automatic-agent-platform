@@ -324,6 +324,7 @@ test("PackLifecycleOrchestrationService handles testing with all passing criteri
     manifest: validateBusinessPackManifest({
       packId: "test-pack",
       version: "1.0.0",
+      domainId: "testing",
       domain: "testing",
       owner: "test@example.com",
       capabilities: [
@@ -354,6 +355,7 @@ test("PackLifecycleOrchestrationService handles testing with some failing criter
     manifest: validateBusinessPackManifest({
       packId: "test-pack",
       version: "1.0.0",
+      domainId: "testing",
       domain: "testing",
       owner: "test@example.com",
       capabilities: [
@@ -385,6 +387,7 @@ test("PackLifecycleOrchestrationService handles testing with coverage exactly 80
     manifest: validateBusinessPackManifest({
       packId: "test-pack",
       version: "1.0.0",
+      domainId: "testing",
       domain: "testing",
       owner: "test@example.com",
       capabilities: [
@@ -415,6 +418,7 @@ test("PackLifecycleOrchestrationService handles testing with failing eval", () =
     manifest: validateBusinessPackManifest({
       packId: "test-pack",
       version: "1.0.0",
+      domainId: "testing",
       domain: "testing",
       owner: "test@example.com",
       capabilities: [
@@ -445,6 +449,7 @@ test("PackLifecycleOrchestrationService handles testing with failing staging", (
     manifest: validateBusinessPackManifest({
       packId: "test-pack",
       version: "1.0.0",
+      domainId: "testing",
       domain: "testing",
       owner: "test@example.com",
       capabilities: [
@@ -475,6 +480,7 @@ test("PackLifecycleOrchestrationService handles certification with security revi
     manifest: validateBusinessPackManifest({
       packId: "test-pack",
       version: "1.0.0",
+      domainId: "testing",
       domain: "testing",
       owner: "test@example.com",
       capabilities: [
@@ -515,6 +521,7 @@ test("PackLifecycleOrchestrationService handles certification with risk review f
     manifest: validateBusinessPackManifest({
       packId: "test-pack",
       version: "1.0.0",
+      domainId: "testing",
       domain: "testing",
       owner: "test@example.com",
       capabilities: [

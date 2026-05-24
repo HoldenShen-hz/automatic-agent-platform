@@ -2,13 +2,32 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { FeedbackCollector } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-collector.js";
+import { deriveFeedbackTrustScore, type FeedbackSignal } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+
+function createSignal(overrides: Partial<FeedbackSignal> & Pick<FeedbackSignal, "signalId" | "taskId" | "source" | "category" | "severity">): FeedbackSignal {
+  const trustFactors = {
+    sourceReliability: 0.7,
+    historicalAccuracy: 0.8,
+    authenticatedSource: true,
+    attackSurfaceExposure: 0.2,
+    holdoutOverlap: 0,
+  };
+  return {
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: 1,
+    trustFactors,
+    feedbackTrustScore: deriveFeedbackTrustScore(trustFactors),
+    ...overrides,
+  };
+}
 
 test("FeedbackCollector deduplicates signals and emits learning signals", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_1",
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
         source: "execution",
         taskId: "task_1",
@@ -20,8 +39,8 @@ test("FeedbackCollector deduplicates signals and emits learning signals", () => 
         },
         stepOutputRefs: ["artifact:a"],
         timestamp: 1,
-      },
-      {
+      }),
+      createSignal({
         signalId: "sig_2",
         source: "execution",
         taskId: "task_1",
@@ -33,7 +52,7 @@ test("FeedbackCollector deduplicates signals and emits learning signals", () => 
         },
         stepOutputRefs: ["artifact:a"],
         timestamp: 2,
-      },
+      }),
     ],
   });
 
@@ -49,7 +68,7 @@ test("FeedbackCollector collapses recovery sequences into a recovery playbook le
   const feedback = collector.collect({
     taskId: "task_2",
     signals: [
-      {
+      createSignal({
         signalId: "sig_fail",
         source: "validation",
         taskId: "task_2",
@@ -61,8 +80,8 @@ test("FeedbackCollector collapses recovery sequences into a recovery playbook le
         },
         stepOutputRefs: ["step_validate"],
         timestamp: 1,
-      },
-      {
+      }),
+      createSignal({
         signalId: "sig_fix",
         source: "execution",
         taskId: "task_2",
@@ -74,8 +93,8 @@ test("FeedbackCollector collapses recovery sequences into a recovery playbook le
         },
         stepOutputRefs: ["step_validate"],
         timestamp: 2,
-      },
-      {
+      }),
+      createSignal({
         signalId: "sig_pass",
         source: "validation",
         taskId: "task_2",
@@ -87,7 +106,7 @@ test("FeedbackCollector collapses recovery sequences into a recovery playbook le
         },
         stepOutputRefs: ["step_validate"],
         timestamp: 3,
-      },
+      }),
     ],
   });
 
@@ -115,7 +134,7 @@ test("FeedbackCollector outcome is repairable when correction signal present", (
   const feedback = collector.collect({
     taskId: "task_correction",
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
         source: "execution",
         taskId: "task_correction",
@@ -124,7 +143,7 @@ test("FeedbackCollector outcome is repairable when correction signal present", (
         payload: { summary: "user corrected" },
         stepOutputRefs: [],
         timestamp: 1,
-      },
+      }),
     ],
   });
 
@@ -136,7 +155,7 @@ test("FeedbackCollector outcome is partial when partial signal present", () => {
   const feedback = collector.collect({
     taskId: "task_partial",
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
         source: "execution",
         taskId: "task_partial",
@@ -145,7 +164,7 @@ test("FeedbackCollector outcome is partial when partial signal present", () => {
         payload: { summary: "partial success" },
         stepOutputRefs: [],
         timestamp: 1,
-      },
+      }),
     ],
   });
 
@@ -157,7 +176,7 @@ test("FeedbackCollector outcome is completed for success signals only", () => {
   const feedback = collector.collect({
     taskId: "task_success",
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
         source: "validation",
         taskId: "task_success",
@@ -166,7 +185,7 @@ test("FeedbackCollector outcome is completed for success signals only", () => {
         payload: {},
         stepOutputRefs: [],
         timestamp: 1,
-      },
+      }),
     ],
   });
 
@@ -178,7 +197,7 @@ test("FeedbackCollector outcome is failed when timeout signal present", () => {
   const feedback = collector.collect({
     taskId: "task_timeout",
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
         source: "execution",
         taskId: "task_timeout",
@@ -187,7 +206,7 @@ test("FeedbackCollector outcome is failed when timeout signal present", () => {
         payload: {},
         stepOutputRefs: [],
         timestamp: 1,
-      },
+      }),
     ],
   });
 
@@ -201,7 +220,7 @@ test("FeedbackCollector preserves executionId and planId", () => {
     executionId: "exec_123",
     planId: "plan_456",
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
         source: "execution",
         taskId: "task_ids",
@@ -210,7 +229,7 @@ test("FeedbackCollector preserves executionId and planId", () => {
         payload: {},
         stepOutputRefs: [],
         timestamp: 1,
-      },
+      }),
     ],
   });
 
@@ -225,7 +244,7 @@ test("FeedbackCollector handles null executionId and planId", () => {
     executionId: null,
     planId: null,
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
         source: "execution",
         taskId: "task_null_ids",
@@ -234,7 +253,7 @@ test("FeedbackCollector handles null executionId and planId", () => {
         payload: {},
         stepOutputRefs: [],
         timestamp: 1,
-      },
+      }),
     ],
   });
 

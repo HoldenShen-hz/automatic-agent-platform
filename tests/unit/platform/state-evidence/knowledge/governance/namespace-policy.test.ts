@@ -25,7 +25,7 @@ function createTestNamespace(overrides?: Partial<KnowledgeNamespace>): Knowledge
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 1000,
     maxTotalSizeBytes: 10 * 1024 * 1024,
     ...overrides,
@@ -85,7 +85,7 @@ test("NamespacePolicyStore validate returns errors for invalid namespace", () =>
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000,
   };
@@ -147,7 +147,7 @@ test("NamespacePolicyStore validate warns for restricted namespace with unverifi
   const store = new NamespacePolicyStore();
   const ns = createTestNamespace({
     accessPolicy: "restricted",
-    trustLevel: "unverified",
+    trustLevel: "private_unverified",
   });
 
   const result = store.validate(ns);
@@ -209,8 +209,8 @@ test("NamespacePolicyStore canAccessCrossNamespace returns false when disabled",
   const store = new NamespacePolicyStore({
     crossNamespaceRetrieval: false,
   });
-  const source = createTestNamespace({ trustLevel: "verified" });
-  const target = createTestNamespace({ path: "other.domain", trustLevel: "verified" });
+  const source = createTestNamespace({ trustLevel: "authoritative" });
+  const target = createTestNamespace({ path: "other.domain", trustLevel: "authoritative" });
 
   const result = store.canAccessCrossNamespace(source, target);
 
@@ -219,10 +219,10 @@ test("NamespacePolicyStore canAccessCrossNamespace returns false when disabled",
 
 test("NamespacePolicyStore canAccessCrossNamespace checks trust level", () => {
   const store = new NamespacePolicyStore({
-    minTrustLevelForCrossDomain: "reviewed",
+    minTrustLevelForCrossDomain: "official",
   });
-  const source = createTestNamespace({ trustLevel: "unverified" });
-  const target = createTestNamespace({ path: "other.domain", trustLevel: "verified" });
+  const source = createTestNamespace({ trustLevel: "private_unverified" });
+  const target = createTestNamespace({ path: "other.domain", trustLevel: "authoritative" });
 
   const result = store.canAccessCrossNamespace(source, target);
 
@@ -231,10 +231,10 @@ test("NamespacePolicyStore canAccessCrossNamespace checks trust level", () => {
 
 test("NamespacePolicyStore canAccessCrossNamespace allows sufficient trust level", () => {
   const store = new NamespacePolicyStore({
-    minTrustLevelForCrossDomain: "reviewed",
+    minTrustLevelForCrossDomain: "official",
   });
-  const source = createTestNamespace({ trustLevel: "verified" });
-  const target = createTestNamespace({ path: "other.domain", trustLevel: "verified" });
+  const source = createTestNamespace({ trustLevel: "authoritative" });
+  const target = createTestNamespace({ path: "other.domain", trustLevel: "authoritative" });
 
   const result = store.canAccessCrossNamespace(source, target);
 

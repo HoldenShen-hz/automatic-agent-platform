@@ -42,6 +42,7 @@ function createPostgresHandle(options: {
       close: async () => undefined,
     } as never,
     asyncRepos: {} as never,
+    cas: null,
     postgres: {
       filePath: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require",
     } as never,
@@ -111,6 +112,9 @@ test("runtime factory fail-closes postgres backend without shadow sqlite compati
       throw new Error("unsupported");
     },
     healthCheck: async (): Promise<boolean> => false,
+    close(): void {
+      return undefined;
+    },
   };
   const backend = createPostgresHandle({
     sql: unsupportedSql,

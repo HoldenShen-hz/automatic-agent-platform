@@ -30,6 +30,7 @@ test("SdkWorkbenchService.buildSnapshot creates snapshot with all inputs", () =>
       {
         packId: "test-pack",
         version: "1.0.0",
+        domainId: "test",
         domain: "test",
         owner: "owner@example.com",
         capabilities: [
@@ -60,6 +61,7 @@ test("SdkWorkbenchService.buildSnapshot detects missing contracts", () => {
       {
         packId: "test-pack",
         version: "1.0.0",
+        domainId: "test",
         domain: "test",
         owner: "owner@example.com",
         capabilities: [
@@ -80,6 +82,7 @@ test("SdkWorkbenchService.createInstallPlan matches plugins to pack capabilities
     pack: {
       packId: "ops-pack",
       version: "1.0.0",
+      domainId: "ops",
       domain: "ops",
       owner: "owner@example.com",
       capabilities: [
@@ -112,6 +115,7 @@ test("SdkWorkbenchService.createInstallPlan resolves all capabilities when plugi
     pack: {
       packId: "ops-pack",
       version: "1.0.0",
+      domainId: "ops",
       domain: "ops",
       owner: "owner@example.com",
       capabilities: [
@@ -168,6 +172,7 @@ test("SdkWorkbenchService.buildPublishReadiness returns findings for unresolved 
       {
         packId: "ops-pack",
         version: "1.0.0",
+        domainId: "ops",
         domain: "ops",
         owner: "owner@example.com",
         capabilities: [
@@ -191,6 +196,7 @@ test("SdkWorkbenchService.buildPublishReadiness returns preview URLs", () => {
       {
         packId: "ops-pack",
         version: "1.0.0",
+        domainId: "ops",
         domain: "ops",
         owner: "owner@example.com",
         capabilities: [

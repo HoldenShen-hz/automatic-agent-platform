@@ -2,21 +2,45 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { FeedbackImprovementService } from "../../../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
+import {
+  deriveFeedbackTrustScore,
+  parseFeedbackSignal,
+  type FeedbackSignal,
+  type FeedbackTrustFactors,
+} from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+
+const defaultTrustFactors: FeedbackTrustFactors = {
+  sourceReliability: 0.9,
+  historicalAccuracy: 0.9,
+  authenticatedSource: true,
+  attackSurfaceExposure: 0.1,
+  holdoutOverlap: 0,
+};
+
+function createSignal(overrides: Partial<FeedbackSignal>): FeedbackSignal {
+  const trustFactors = overrides.trustFactors ?? defaultTrustFactors;
+  return parseFeedbackSignal({
+    signalId: "sig-default",
+    taskId: "task_1",
+    source: "execution",
+    category: "failure",
+    severity: "error",
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: 1,
+    trustFactors,
+    feedbackTrustScore: overrides.feedbackTrustScore ?? deriveFeedbackTrustScore(trustFactors),
+    ...overrides,
+  });
+}
 
 test("FeedbackImprovementService.ingest creates candidates from learning signals", () => {
   const service = new FeedbackImprovementService();
   const result = service.ingest({
     taskId: "task_1",
     signals: [
-      {
+      createSignal({
         signalId: "sig_1",
-        taskId: "task_1",
-        source: "execution",
-        category: "failure",
-        severity: "error",
-        payload: {},
-        stepOutputRefs: [],
-        timestamp: 1,
         trustFactors: {
           sourceReliability: 0.95,
           historicalAccuracy: 0.9,
@@ -24,7 +48,7 @@ test("FeedbackImprovementService.ingest creates candidates from learning signals
           attackSurfaceExposure: 0.1,
           holdoutOverlap: 0,
         },
-      },
+      }),
     ],
   });
 
@@ -39,15 +63,10 @@ test("FeedbackImprovementService.ingest keeps low-trust feedback in analysis but
   const result = service.ingest({
     taskId: "task_low_trust",
     signals: [
-      {
+      createSignal({
         signalId: "sig_low_trust_feedback",
         taskId: "task_low_trust",
         source: "system",
-        category: "failure",
-        severity: "error",
-        payload: {},
-        stepOutputRefs: [],
-        timestamp: 1,
         trustFactors: {
           sourceReliability: 0.2,
           historicalAccuracy: 0.2,
@@ -55,7 +74,7 @@ test("FeedbackImprovementService.ingest keeps low-trust feedback in analysis but
           attackSurfaceExposure: 0.9,
           holdoutOverlap: 0.1,
         },
-      },
+      }),
     ],
   });
 

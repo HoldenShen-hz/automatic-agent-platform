@@ -5,6 +5,7 @@ import { PromptTemplateRegistryService, hashPromptPrefix } from "../../../src/pl
 import { PromptVersionManager } from "../../../src/platform/prompt-engine/registry/prompt-version-manager.js";
 import { HierarchicalPromptRegistryService } from "../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";
 import { ValidationError } from "../../../src/platform/contracts/errors.js";
+import type { PromptBundleRegistrationInput } from "../../../src/platform/contracts/prompt-bundle/index.js";
 
 // =============================================================================
 // PromptTemplateRegistryService Tests
@@ -495,34 +496,14 @@ function createValidBundleInput(overrides: Partial<{
   version: string;
   domain: string;
   taskType: string;
-}> = {}): {
-  name: string;
-  version: string;
-  displayVersion: string;
-  domain: string;
-  taskType: string;
-  packId: string | undefined;
-  systemPrompt: { content: string; templateVariables: string[]; channel: "system" | "developer" | "user" };
-  userPrompt: undefined;
-  fewShotExamples: never[];
-  compatibilityMatrix: {
-    toolSchemaVersions: Array<{ toolName: string; schemaVersion: number }>;
-    evaluatorSchemaVersions: Array<{ evaluatorName: string; schemaVersion: number }>;
-    domainDescriptorVersions: Array<{ domainId: string; version: number }>;
-    modelRoutingProfiles: Array<{ modelId: string; profileVersion: number }>;
-  };
-  constraints: undefined;
-  metadata: undefined;
-} {
+}> = {}): PromptBundleRegistrationInput {
   return {
     name: overrides.name ?? "test-bundle",
     version: overrides.version ?? "v1.0.0",
     displayVersion: overrides.version ?? "v1.0.0",
     domain: overrides.domain ?? "test-domain",
     taskType: overrides.taskType ?? "test-task",
-    packId: undefined,
     systemPrompt: { content: "You are a helpful assistant", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
     fewShotExamples: [],
     compatibilityMatrix: {
       toolSchemaVersions: [],
@@ -530,8 +511,6 @@ function createValidBundleInput(overrides: Partial<{
       domainDescriptorVersions: [],
       modelRoutingProfiles: [],
     },
-    constraints: undefined,
-    metadata: undefined,
   };
 }
 

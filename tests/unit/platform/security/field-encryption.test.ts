@@ -26,8 +26,8 @@ test("FieldEncryptionService protectRecord encrypts specified fields", (t) => {
   assert.notEqual(result.protectedRecord.email, "alice@example.com");
   assert.equal(result.protectedRecord.age, 30);
   assert.equal(result.protectedFields.length, 2);
-  assert.equal(result.protectedFields[0].fieldPath, "name");
-  assert.equal(result.protectedFields[1].fieldPath, "email");
+  assert.equal(result.protectedFields[0]!.fieldPath, "name");
+  assert.equal(result.protectedFields[1]!.fieldPath, "email");
 });
 
 test("FieldEncryptionService protectRecord preserves non-matching fields", (t) => {
@@ -66,7 +66,7 @@ test("FieldEncryptionService protectRecord skips empty string values", (t) => {
   const result = service.protectRecord({ record, rules, keyRef: KEY_REF });
 
   assert.equal(result.protectedFields.length, 1);
-  assert.equal(result.protectedFields[0].fieldPath, "email");
+  assert.equal(result.protectedFields[0]!.fieldPath, "email");
 });
 
 test("FieldEncryptionService protectRecord throws on empty keyRef", (t) => {
@@ -97,7 +97,7 @@ test("FieldEncryptionService revealField decrypts protected ciphertext", (t) => 
   });
 
   const revealed = service.revealField({
-    ciphertext: protectedFields[0].ciphertext,
+    ciphertext: protectedFields[0]!.ciphertext,
     keyRef: KEY_REF,
   });
 
@@ -112,7 +112,7 @@ test("FieldEncryptionService revealField throws on wrong keyRef", (t) => {
   const { protectedFields } = service.protectRecord({ record, rules, keyRef: KEY_REF });
 
   assert.throws(
-    () => service.revealField({ ciphertext: protectedFields[0].ciphertext, keyRef: "wrong-key" }),
+    () => service.revealField({ ciphertext: protectedFields[0]!.ciphertext, keyRef: "wrong-key" }),
     (error) => expectValidationErrorCode(error, "field_encryption.key_mismatch"),
   );
 });
@@ -151,10 +151,10 @@ test("FieldEncryptionService protects and reveals nested fields", (t) => {
 
   const nestedRecord = protectedRecord as { user: { name: string } };
   assert.notEqual(nestedRecord.user.name, "Eve");
-  assert.equal(protectedFields[0].fieldPath, "user.name");
+  assert.equal(protectedFields[0]!.fieldPath, "user.name");
 
   const revealed = service.revealField({
-    ciphertext: protectedFields[0].ciphertext,
+    ciphertext: protectedFields[0]!.ciphertext,
     keyRef: KEY_REF,
   });
   assert.equal(revealed, "Eve");
@@ -174,10 +174,10 @@ test("FieldEncryptionService protects and reveals array fields", (t) => {
   const arrRecord = protectedRecord as { items: string[] };
   assert.notEqual(arrRecord.items[0], "alpha");
   assert.equal(arrRecord.items[1], "beta");
-  assert.equal(protectedFields[0].fieldPath, "items[0]");
+  assert.equal(protectedFields[0]!.fieldPath, "items[0]");
 
   const revealed = service.revealField({
-    ciphertext: protectedFields[0].ciphertext,
+    ciphertext: protectedFields[0]!.ciphertext,
     keyRef: KEY_REF,
   });
   assert.equal(revealed, "alpha");
@@ -189,11 +189,11 @@ test("FieldEncryptionService ciphertext format is enc:fingerprint:iv:authTag:cip
   const rules: FieldProtectionRule[] = [{ fieldPath: "name", classification: "internal" }];
 
   const { protectedFields } = service.protectRecord({ record, rules, keyRef: KEY_REF });
-  const parts = protectedFields[0].ciphertext.split(":");
+  const parts = protectedFields[0]!.ciphertext.split(":");
   assert.equal(parts.length, 5);
-  assert.equal(parts[0], "enc");
-  assert.ok(parts[1].length > 0); // fingerprint
-  assert.ok(parts[2].length > 0); // iv hex
-  assert.ok(parts[3].length > 0); // authTag hex
-  assert.ok(parts[4].length > 0); // ciphertext hex
+  assert.equal(parts[0]!, "enc");
+  assert.ok(parts[1]!.length > 0); // fingerprint
+  assert.ok(parts[2]!.length > 0); // iv hex
+  assert.ok(parts[3]!.length > 0); // authTag hex
+  assert.ok(parts[4]!.length > 0); // ciphertext hex
 });

@@ -7,6 +7,7 @@ const registry = JSON.parse(
   readFileSync("config/validation/platform-validation-registry.json", "utf8"),
 ) as {
   ciJobs: Array<{ jobId: string; script: string }>;
+  gates: Array<{ gateId: string }>;
 };
 const metricMap = JSON.parse(
   readFileSync("config/validation/platform-monitoring-metric-map.json", "utf8"),
@@ -39,11 +40,7 @@ test("platform validation machine gate registry covers every core gate in the re
     document.indexOf("# 48. Metric Registry"),
   );
   const documented = new Set(gateSection.match(/GATE-[A-Z-]+-\d+/g) ?? []);
-  const registered = new Set(
-    (registry as { gates: Array<{ gateId: string }> }).gates.map(
-      (gate) => gate.gateId,
-    ),
-  );
+  const registered = new Set(registry.gates.map((gate) => gate.gateId));
 
   assert.deepEqual(
     [...documented].filter((gateId) => !registered.has(gateId)),

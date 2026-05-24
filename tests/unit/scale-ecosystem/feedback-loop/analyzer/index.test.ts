@@ -2,6 +2,37 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { analyzeFeedbackSignals } from "../../../../../src/scale-ecosystem/feedback-loop/analyzer/index.js";
+import {
+  deriveFeedbackTrustScore,
+  parseFeedbackSignal,
+  type FeedbackSignal,
+  type FeedbackTrustFactors,
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+
+const defaultTrustFactors: FeedbackTrustFactors = {
+  sourceReliability: 0.9,
+  historicalAccuracy: 0.9,
+  authenticatedSource: true,
+  attackSurfaceExposure: 0.1,
+  holdoutOverlap: 0,
+};
+
+function createSignal(overrides: Partial<FeedbackSignal>): FeedbackSignal {
+  const trustFactors = overrides.trustFactors ?? defaultTrustFactors;
+  return parseFeedbackSignal({
+    signalId: "sig-default",
+    taskId: "task-default",
+    source: "execution",
+    category: "failure",
+    severity: "error",
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: 1,
+    trustFactors,
+    feedbackTrustScore: overrides.feedbackTrustScore ?? deriveFeedbackTrustScore(trustFactors),
+    ...overrides,
+  });
+}
 
 test("analyzeFeedbackSignals returns empty summary for empty signals", () => {
   const result = analyzeFeedbackSignals([]);
@@ -13,9 +44,9 @@ test("analyzeFeedbackSignals returns empty summary for empty signals", () => {
 
 test("analyzeFeedbackSignals counts signals by severity", () => {
   const signals = [
-    { signalId: "sig_1", taskId: "task_1", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 1 },
-    { signalId: "sig_2", taskId: "task_1", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 2 },
-    { signalId: "sig_3", taskId: "task_1", source: "user" as const, category: "correction" as const, severity: "warning" as const, payload: {}, stepOutputRefs: [], timestamp: 3 },
+    createSignal({ signalId: "sig_1", taskId: "task_1" }),
+    createSignal({ signalId: "sig_2", taskId: "task_1", timestamp: 2 }),
+    createSignal({ signalId: "sig_3", taskId: "task_1", source: "user", category: "correction", severity: "warning", timestamp: 3 }),
   ];
 
   const result = analyzeFeedbackSignals(signals);
@@ -27,12 +58,12 @@ test("analyzeFeedbackSignals counts signals by severity", () => {
 
 test("analyzeFeedbackSignals identifies top subjects by task", () => {
   const signals = [
-    { signalId: "sig_1", taskId: "task_a", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 1 },
-    { signalId: "sig_2", taskId: "task_a", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 2 },
-    { signalId: "sig_3", taskId: "task_a", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 3 },
-    { signalId: "sig_4", taskId: "task_b", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 4 },
-    { signalId: "sig_5", taskId: "task_b", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 5 },
-    { signalId: "sig_6", taskId: "task_c", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 6 },
+    createSignal({ signalId: "sig_1", taskId: "task_a" }),
+    createSignal({ signalId: "sig_2", taskId: "task_a", timestamp: 2 }),
+    createSignal({ signalId: "sig_3", taskId: "task_a", timestamp: 3 }),
+    createSignal({ signalId: "sig_4", taskId: "task_b", timestamp: 4 }),
+    createSignal({ signalId: "sig_5", taskId: "task_b", timestamp: 5 }),
+    createSignal({ signalId: "sig_6", taskId: "task_c", timestamp: 6 }),
   ];
 
   const result = analyzeFeedbackSignals(signals);
@@ -43,11 +74,11 @@ test("analyzeFeedbackSignals identifies top subjects by task", () => {
 
 test("analyzeFeedbackSignals limits top subjects to 3", () => {
   const signals = [
-    { signalId: "sig_1", taskId: "task_1", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 1 },
-    { signalId: "sig_2", taskId: "task_2", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 2 },
-    { signalId: "sig_3", taskId: "task_3", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 3 },
-    { signalId: "sig_4", taskId: "task_4", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 4 },
-    { signalId: "sig_5", taskId: "task_5", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 5 },
+    createSignal({ signalId: "sig_1", taskId: "task_1" }),
+    createSignal({ signalId: "sig_2", taskId: "task_2", timestamp: 2 }),
+    createSignal({ signalId: "sig_3", taskId: "task_3", timestamp: 3 }),
+    createSignal({ signalId: "sig_4", taskId: "task_4", timestamp: 4 }),
+    createSignal({ signalId: "sig_5", taskId: "task_5", timestamp: 5 }),
   ];
 
   const result = analyzeFeedbackSignals(signals);
@@ -58,11 +89,11 @@ test("analyzeFeedbackSignals limits top subjects to 3", () => {
 
 test("analyzeFeedbackSignals handles signals with different categories", () => {
   const signals = [
-    { signalId: "sig_1", taskId: "task_1", source: "execution" as const, category: "success" as const, severity: "info" as const, payload: {}, stepOutputRefs: [], timestamp: 1 },
-    { signalId: "sig_2", taskId: "task_1", source: "execution" as const, category: "failure" as const, severity: "error" as const, payload: {}, stepOutputRefs: [], timestamp: 2 },
-    { signalId: "sig_3", taskId: "task_1", source: "user" as const, category: "correction" as const, severity: "warning" as const, payload: {}, stepOutputRefs: [], timestamp: 3 },
-    { signalId: "sig_4", taskId: "task_1", source: "execution" as const, category: "timeout" as const, severity: "critical" as const, payload: {}, stepOutputRefs: [], timestamp: 4 },
-    { signalId: "sig_5", taskId: "task_1", source: "execution" as const, category: "partial" as const, severity: "warning" as const, payload: {}, stepOutputRefs: [], timestamp: 5 },
+    createSignal({ signalId: "sig_1", taskId: "task_1", category: "success", severity: "info" }),
+    createSignal({ signalId: "sig_2", taskId: "task_1", timestamp: 2 }),
+    createSignal({ signalId: "sig_3", taskId: "task_1", source: "user", category: "correction", severity: "warning", timestamp: 3 }),
+    createSignal({ signalId: "sig_4", taskId: "task_1", category: "timeout", severity: "critical", timestamp: 4 }),
+    createSignal({ signalId: "sig_5", taskId: "task_1", category: "partial", severity: "warning", timestamp: 5 }),
   ];
 
   const result = analyzeFeedbackSignals(signals);

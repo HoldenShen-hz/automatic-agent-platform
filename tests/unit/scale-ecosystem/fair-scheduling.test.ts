@@ -93,6 +93,7 @@ function createResourceClaim(overrides: Partial<ResourceClaim> = {}): ResourceCl
 
 function createQuotaPolicy(overrides: Partial<QuotaPolicy> = {}): QuotaPolicy {
   return {
+    scope: overrides.scope ?? "tenant",
     scopeId: overrides.scopeId ?? "tenant-1",
     resourceType: overrides.resourceType ?? "runtime_units",
     hardLimit: overrides.hardLimit ?? 100,
@@ -111,9 +112,15 @@ function createResourcePool(overrides: Partial<ResourcePool> = {}): ResourcePool
   return {
     poolId: overrides.poolId ?? "pool-1",
     resourceType: overrides.resourceType ?? "compute",
+    scopeType: overrides.scopeType ?? "shared",
     capacityUnits: overrides.capacityUnits ?? 100,
     allocatedUnits: overrides.allocatedUnits ?? 0,
     burstUnits: overrides.burstUnits ?? 20,
+    failureRateThreshold: overrides.failureRateThreshold ?? 0.3,
+    minSampleSize: overrides.minSampleSize ?? 20,
+    failureRate: overrides.failureRate ?? 0,
+    sampleCount: overrides.sampleCount ?? 0,
+    isolationStatus: overrides.isolationStatus ?? "active",
   };
 }
 

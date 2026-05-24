@@ -44,7 +44,7 @@ test("loadStableSequenceCliEnv filters invalid profiles", () => {
   // invalid is filtered out, valid ones remain
   assert.ok(envConfig.profileNames.includes("smoke"));
   assert.ok(envConfig.profileNames.includes("24h"));
-  assert.equal(envConfig.profileNames.includes("invalid"), false);
+  assert.equal(JSON.stringify(envConfig.profileNames).includes("\"invalid\""), false);
 });
 
 test("loadStableSequenceCliEnv defaults to 24h,72h if all profiles invalid", () => {
@@ -264,17 +264,18 @@ test("Profile names are case sensitive", () => {
 test("CLI options correctly map profileNames to options", () => {
   const profileNames = ["smoke", "24h"];
   const sharedProfileOptions = { targetDurationMs: 5000 };
+  const profileOptions: Record<string, typeof sharedProfileOptions> = Object.fromEntries(
+    profileNames.map((profileName) => [profileName, sharedProfileOptions]),
+  );
 
   const options = {
     evidenceRootDir: "/test/evidence",
     profileNames,
-    profileOptions: Object.fromEntries(
-      profileNames.map((profileName) => [profileName, sharedProfileOptions]),
-    ),
+    profileOptions,
   };
 
-  assert.equal(options.profileOptions["smoke"].targetDurationMs, 5000);
-  assert.equal(options.profileOptions["24h"].targetDurationMs, 5000);
+  assert.equal(options.profileOptions["smoke"]!.targetDurationMs, 5000);
+  assert.equal(options.profileOptions["24h"]!.targetDurationMs, 5000);
 });
 
 test("CLI sleepMs is passed to untilComplete options", () => {

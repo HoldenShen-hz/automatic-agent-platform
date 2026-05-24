@@ -11,6 +11,7 @@ function createTestBundle(name: string, version: string, domain = "test-domain")
   return {
     name,
     version,
+    displayVersion: version,
     domain,
     taskType: "classification",
     packId: undefined,
@@ -96,6 +97,7 @@ test("HierarchicalPromptRegistryService.registerBundle throws for missing system
   const invalidBundle: PromptBundleRegistrationInput = {
     name: "test-bundle",
     version: "v1.0",
+    displayVersion: "v1.0",
     domain: "test-domain",
     taskType: "classification",
     packId: undefined,

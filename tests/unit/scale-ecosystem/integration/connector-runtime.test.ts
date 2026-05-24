@@ -8,6 +8,7 @@ test("buildConnectorExecutionKey creates correct key", () => {
     connectorId: "slack",
     capability: "send_message",
     payload: { channel: "general", text: "hello" },
+    secretBindings: [],
   };
 
   const key = buildConnectorExecutionKey(request);
@@ -20,6 +21,7 @@ test("buildConnectorExecutionKey handles complex capability names", () => {
     connectorId: "aws-s3",
     capability: "upload:multipart",
     payload: {},
+    secretBindings: [],
   };
 
   const key = buildConnectorExecutionKey(request);
@@ -32,6 +34,7 @@ test("buildConnectorExecutionKey handles empty payload", () => {
     connectorId: "http",
     capability: "GET",
     payload: {},
+    secretBindings: [],
   };
 
   const key = buildConnectorExecutionKey(request);
@@ -40,15 +43,15 @@ test("buildConnectorExecutionKey handles empty payload", () => {
 });
 
 test("buildConnectorExecutionKey unique per connector", () => {
-  const request1: ConnectorExecutionRequest = { connectorId: "a", capability: "x", payload: {} };
-  const request2: ConnectorExecutionRequest = { connectorId: "b", capability: "x", payload: {} };
+  const request1: ConnectorExecutionRequest = { connectorId: "a", capability: "x", payload: {}, secretBindings: [] };
+  const request2: ConnectorExecutionRequest = { connectorId: "b", capability: "x", payload: {}, secretBindings: [] };
 
   assert.notEqual(buildConnectorExecutionKey(request1), buildConnectorExecutionKey(request2));
 });
 
 test("buildConnectorExecutionKey unique per capability", () => {
-  const request1: ConnectorExecutionRequest = { connectorId: "svc", capability: "read", payload: {} };
-  const request2: ConnectorExecutionRequest = { connectorId: "svc", capability: "write", payload: {} };
+  const request1: ConnectorExecutionRequest = { connectorId: "svc", capability: "read", payload: {}, secretBindings: [] };
+  const request2: ConnectorExecutionRequest = { connectorId: "svc", capability: "write", payload: {}, secretBindings: [] };
 
   assert.notEqual(buildConnectorExecutionKey(request1), buildConnectorExecutionKey(request2));
 });

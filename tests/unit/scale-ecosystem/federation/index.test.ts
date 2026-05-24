@@ -410,7 +410,7 @@ test("federation-index: computeFederationTopologyDiff detects modified regions",
   const diff = computeFederationTopologyDiff(left, right);
 
   assert.equal(diff.modifiedRegions.length, 1);
-  assert.ok(diff.modifiedRegions[0].changes.length > 0);
+  assert.ok(diff.modifiedRegions[0]!.changes.length > 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -442,7 +442,7 @@ test("federation-index: buildFederationCatalog includes registered organizations
   const catalog = buildFederationCatalog(gateway);
 
   assert.equal(catalog.totalCount, 1);
-  assert.equal(catalog.entries[0].name, "Test Org");
+  assert.equal(catalog.entries[0]!.name, "Test Org");
 });
 
 test("federation-index: buildFederationCatalog filters by status", async () => {
@@ -465,9 +465,9 @@ test("federation-index: buildFederationCatalog filters by status", async () => {
   const inactiveCatalog = buildFederationCatalog(gateway, { status: "inactive" });
 
   assert.equal(activeCatalog.totalCount, 1);
-  assert.equal(activeCatalog.entries[0].name, "Active Org");
+  assert.equal(activeCatalog.entries[0]!.name, "Active Org");
   assert.equal(inactiveCatalog.totalCount, 1);
-  assert.equal(inactiveCatalog.entries[0].name, "Inactive Org");
+  assert.equal(inactiveCatalog.entries[0]!.name, "Inactive Org");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

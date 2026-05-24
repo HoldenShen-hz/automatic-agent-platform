@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ExecutionDeviationDetector, type ExecutionDeviation } from "../../../src/platform/five-plane-execution/dispatcher/execution-deviation-detector.js";
-import type { Plan } from "../../../src/orchestration/oapeflir/types/index.js";
+import type { Plan } from "../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 import type { FeedbackBatch } from "../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import { deriveFeedbackTrustScore, type FeedbackSignal } from "../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 function createMockPlan(overrides: Partial<Plan> = {}): Plan {
   return {
@@ -16,18 +17,40 @@ function createMockPlan(overrides: Partial<Plan> = {}): Plan {
 
 function createMockFeedback(overrides: Partial<FeedbackBatch> = {}): FeedbackBatch {
   return {
+    feedbackId: "feedback_test",
     batchId: "batch_test",
-    outcome: "succeeded",
+    taskId: "task_test_123",
+    executionId: null,
+    planId: "plan_test",
+    outcome: "completed",
     signals: [],
-    metrics: {},
+    emittedAt: 1,
     ...overrides,
   } as FeedbackBatch;
+}
+
+function createSignal(overrides: Partial<FeedbackSignal> & Pick<FeedbackSignal, "signalId" | "taskId" | "source" | "category" | "severity">): FeedbackSignal {
+  const trustFactors = {
+    sourceReliability: 0.7,
+    historicalAccuracy: 0.7,
+    authenticatedSource: true,
+    attackSurfaceExposure: 0.2,
+    holdoutOverlap: 0,
+  };
+  return {
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: 1,
+    trustFactors,
+    feedbackTrustScore: deriveFeedbackTrustScore(trustFactors),
+    ...overrides,
+  };
 }
 
 test("ExecutionDeviationDetector.detect returns empty array for successful outcome", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
-  const feedback = createMockFeedback({ outcome: "succeeded" });
+  const feedback = createMockFeedback({ outcome: "completed" });
 
   const deviations = detector.detect(plan, feedback);
 
@@ -78,8 +101,18 @@ test("ExecutionDeviationDetector.detect returns deviation for timeout signal", (
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
-    outcome: "succeeded",
-    signals: [{ category: "timeout", code: "execution_timeout", message: "Execution timed out" }],
+    outcome: "completed",
+    signals: [createSignal({
+      signalId: "sig_timeout",
+      taskId: "task_test_123",
+      source: "execution",
+      category: "timeout",
+      severity: "error",
+      payload: {
+        reasonCode: "execution_timeout",
+        summary: "Execution timed out",
+      },
+    })],
   });
 
   const deviations = detector.detect(plan, feedback);
@@ -95,7 +128,17 @@ test("ExecutionDeviationDetector.detect returns multiple deviations for both out
   const plan = createMockPlan();
   const feedback = createMockFeedback({
     outcome: "failed",
-    signals: [{ category: "timeout", code: "execution_timeout", message: "Execution timed out" }],
+    signals: [createSignal({
+      signalId: "sig_timeout",
+      taskId: "task_test_123",
+      source: "execution",
+      category: "timeout",
+      severity: "error",
+      payload: {
+        reasonCode: "execution_timeout",
+        summary: "Execution timed out",
+      },
+    })],
   });
 
   const deviations = detector.detect(plan, feedback);
@@ -109,10 +152,24 @@ test("ExecutionDeviationDetector.detect does not return deviation for non-timeou
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
-    outcome: "succeeded",
+    outcome: "completed",
     signals: [
-      { category: "resource", code: "memory_high", message: "Memory usage high" },
-      { category: "quality", code: "low_confidence", message: "Low confidence" },
+      createSignal({
+        signalId: "sig_partial",
+        taskId: "task_test_123",
+        source: "execution",
+        category: "partial",
+        severity: "warning",
+        payload: { reasonCode: "memory_high", summary: "Memory usage high" },
+      }),
+      createSignal({
+        signalId: "sig_success",
+        taskId: "task_test_123",
+        source: "validation",
+        category: "success",
+        severity: "info",
+        payload: { reasonCode: "low_confidence", summary: "Low confidence" },
+      }),
     ],
   });
 
@@ -125,10 +182,24 @@ test("ExecutionDeviationDetector.detect collapses multiple timeout signals into 
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
-    outcome: "succeeded",
+    outcome: "completed",
     signals: [
-      { category: "timeout", code: "execution_timeout", message: "Execution timed out" },
-      { category: "timeout", code: "step_timeout", message: "Step timed out" },
+      createSignal({
+        signalId: "sig_timeout_1",
+        taskId: "task_test_123",
+        source: "execution",
+        category: "timeout",
+        severity: "error",
+        payload: { reasonCode: "execution_timeout", summary: "Execution timed out" },
+      }),
+      createSignal({
+        signalId: "sig_timeout_2",
+        taskId: "task_test_123",
+        source: "execution",
+        category: "timeout",
+        severity: "error",
+        payload: { reasonCode: "step_timeout", summary: "Step timed out" },
+      }),
     ],
   });
 
