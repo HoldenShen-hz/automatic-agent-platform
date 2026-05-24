@@ -26,16 +26,16 @@ test("KnowledgeBoundaryService handles empty boundary ID", () => {
 
   const boundary = createBoundary({ boundaryId: "" });
 
-  const result = service.evaluateAccess(
-    boundary,
-    "user_1",
-    "org_1",
-    "testing empty id",
-    [],
+  assert.throws(
+    () => service.evaluateAccess(
+      boundary,
+      "user_1",
+      "org_1",
+      "testing empty id",
+      [],
+    ),
+    /String must contain at least 1 character/,
   );
-
-  // Should still process (empty string is technically valid)
-  assert.ok(result.boundaryId === "");
 });
 
 test("KnowledgeBoundaryService handles empty owner org node", () => {
@@ -43,15 +43,16 @@ test("KnowledgeBoundaryService handles empty owner org node", () => {
 
   const boundary = createBoundary({ ownerOrgNodeId: "" });
 
-  const result = service.evaluateAccess(
-    boundary,
-    "user_1",
-    "org_1",
-    "testing empty owner",
-    [],
+  assert.throws(
+    () => service.evaluateAccess(
+      boundary,
+      "user_1",
+      "org_1",
+      "testing empty owner",
+      [],
+    ),
+    /String must contain at least 1 character/,
   );
-
-  assert.ok(result.allowed !== undefined);
 });
 
 test("KnowledgeBoundaryService handles empty namespace list", () => {

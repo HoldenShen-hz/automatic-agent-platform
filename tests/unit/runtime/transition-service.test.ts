@@ -111,9 +111,8 @@ test("TransitionService rejects illegal task terminal reentry", () => {
     fixture.store.task.updateTaskStatus(
       fixture.taskId,
       "done",
-      "{}",
-      "unit.done",
       fixture.now,
+      "unit.done",
       fixture.now,
     );
     fixture.store.execution.updateExecutionStatus(

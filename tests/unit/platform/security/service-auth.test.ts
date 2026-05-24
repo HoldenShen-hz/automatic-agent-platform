@@ -170,6 +170,7 @@ test.describe("Service Auth", () => {
 
     assert.ok(updated.lastRotatedAt !== null);
     if (beforeRotated !== null) {
+      assert.ok(beforeRotated !== undefined);
       assert.ok(updated.lastRotatedAt >= beforeRotated);
     }
   });
@@ -580,7 +581,7 @@ test.describe("Service Auth", () => {
     const certs = getServiceCertificates(identity.serviceId);
 
     assert.equal(certs.length, 1);
-    assert.equal(certs[0].certId, cert2.certId);
+    assert.equal(certs[0]!.certId, cert2.certId);
   });
 
   test("extractServiceAuth validates mTLS certificate", () => {

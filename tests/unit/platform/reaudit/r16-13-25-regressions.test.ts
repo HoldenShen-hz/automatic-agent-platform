@@ -145,7 +145,7 @@ function createReleaseDatasetService(): EvalDatasetJudgeService {
         input: { request: "describe rollback" },
         expectedOutput: "rollback plan",
         tags: ["release"],
-        priority: "medium",
+        priority: "standard",
         qualityCriteria: [
           {
             criterionId: "contains_rollback",

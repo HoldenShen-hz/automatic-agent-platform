@@ -1,0 +1,11 @@
+{
+  "task": "typecheck",
+  "command": [
+    "tsc",
+    "-p",
+    "tsconfig.json",
+    "--noEmit"
+  ],
+  "startedAt": "2026-05-24T14:14:14.041Z",
+  "completedAt": "2026-05-24T14:14:15.291Z"
+}

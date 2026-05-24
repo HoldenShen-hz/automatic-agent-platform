@@ -1172,7 +1172,6 @@ test("KnowledgePromotionService.evaluatePromotion handles missing hitCount as ze
     scope: "user",
     qualityScore: 0.8,
     importanceScore: 0.7,
-    hitCount: null,
   });
   const result = service.evaluatePromotion(memory, "team");
   assert.equal(result.canPromote, false);

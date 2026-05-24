@@ -132,8 +132,8 @@ test("InMemoryDeadLetterQueueRepository listAll sorts by createdAt", () => {
   repo.insert({ deadLetterId: "dlq_1", sourceEventId: "e1", consumerId: "c", errorCode: "e", payloadJson: "{}", status: "pending", retryCount: 0, nextRetryAt: null, createdAt: "2026-04-26T01:00:00Z", updatedAt: now, originalTimestamp: null, failureCategory: null, retryExhaustedAt: null });
 
   const all = repo.listAll();
-  assert.equal(all[0].deadLetterId, "dlq_1");
-  assert.equal(all[1].deadLetterId, "dlq_2");
+  assert.equal(all[0]!.deadLetterId, "dlq_1");
+  assert.equal(all[1]!.deadLetterId, "dlq_2");
 });
 
 test("InMemoryDeadLetterQueueRepository listByConsumer filters correctly", () => {
@@ -164,7 +164,7 @@ test("InMemoryDeadLetterQueueRepository listRetryable filters correctly", () => 
 
   const retryable = repo.listRetryable(now);
   assert.equal(retryable.length, 1);
-  assert.equal(retryable[0].deadLetterId, "dlq_3");
+  assert.equal(retryable[0]!.deadLetterId, "dlq_3");
 });
 
 test("DeadLetterQueueService enqueue creates new record", () => {

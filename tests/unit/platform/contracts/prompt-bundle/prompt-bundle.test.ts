@@ -234,9 +234,9 @@ test("PromptVersionManager.getVersionLineage returns only current when no siblin
   const bundle = createMockBundle("TestBundle", "v1.0");
   manager.registerBundleVersion(bundle);
 
-  const lineage = manager.getVersionLineage("TestBundle", "v1.0");
+  const lineage = manager.getVersionLineage("TestBundle", bundle.version);
 
-  assert.equal(lineage.current, "v1.0");
+  assert.equal(lineage.current, bundle.version);
   assert.equal(lineage.previous, undefined);
   assert.equal(lineage.next, undefined);
 });
@@ -248,11 +248,11 @@ test("PromptVersionManager.getVersionLineage returns previous and next when avai
   manager.registerBundleVersion(createMockBundle("TestBundle", "v2.0"));
   manager.registerBundleVersion(createMockBundle("TestBundle", "v3.0"));
 
-  const lineage = manager.getVersionLineage("TestBundle", "v2.0");
+  const lineage = manager.getVersionLineage("TestBundle", 200);
 
-  assert.equal(lineage.current, "v2.0");
-  assert.equal(lineage.previous, "v1.0");
-  assert.equal(lineage.next, "v3.0");
+  assert.equal(lineage.current, 200);
+  assert.equal(lineage.previous, 100);
+  assert.equal(lineage.next, 300);
 });
 
 test("PromptVersionManager.getVersionLineage returns previous only at latest version", () => {
@@ -261,10 +261,10 @@ test("PromptVersionManager.getVersionLineage returns previous only at latest ver
   manager.registerBundleVersion(createMockBundle("TestBundle", "v1.0"));
   manager.registerBundleVersion(createMockBundle("TestBundle", "v2.0"));
 
-  const lineage = manager.getVersionLineage("TestBundle", "v2.0");
+  const lineage = manager.getVersionLineage("TestBundle", 200);
 
-  assert.equal(lineage.current, "v2.0");
-  assert.equal(lineage.previous, "v1.0");
+  assert.equal(lineage.current, 200);
+  assert.equal(lineage.previous, 100);
   assert.equal(lineage.next, undefined);
 });
 
@@ -274,11 +274,11 @@ test("PromptVersionManager.getVersionLineage returns next only at oldest version
   manager.registerBundleVersion(createMockBundle("TestBundle", "v1.0"));
   manager.registerBundleVersion(createMockBundle("TestBundle", "v2.0"));
 
-  const lineage = manager.getVersionLineage("TestBundle", "v1.0");
+  const lineage = manager.getVersionLineage("TestBundle", 100);
 
-  assert.equal(lineage.current, "v1.0");
+  assert.equal(lineage.current, 100);
   assert.equal(lineage.previous, undefined);
-  assert.equal(lineage.next, "v2.0");
+  assert.equal(lineage.next, 200);
 });
 
 // =============================================================================
@@ -291,7 +291,7 @@ test("PromptVersionManager.isCurrentVersion returns true for latest version", ()
   manager.registerBundleVersion(createMockBundle("TestBundle", "v1.0"));
   manager.registerBundleVersion(createMockBundle("TestBundle", "v2.0"));
 
-  assert.equal(manager.isCurrentVersion("TestBundle", "v2.0"), true);
+  assert.equal(manager.isCurrentVersion("TestBundle", 200), true);
 });
 
 test("PromptVersionManager.isCurrentVersion returns false for older version", () => {
@@ -300,7 +300,7 @@ test("PromptVersionManager.isCurrentVersion returns false for older version", ()
   manager.registerBundleVersion(createMockBundle("TestBundle", "v1.0"));
   manager.registerBundleVersion(createMockBundle("TestBundle", "v2.0"));
 
-  assert.equal(manager.isCurrentVersion("TestBundle", "v1.0"), false);
+  assert.equal(manager.isCurrentVersion("TestBundle", 100), false);
 });
 
 test("PromptVersionManager.isCurrentVersion returns true when only one version exists", () => {
@@ -308,7 +308,7 @@ test("PromptVersionManager.isCurrentVersion returns true when only one version e
 
   manager.registerBundleVersion(createMockBundle("TestBundle", "v1.0"));
 
-  assert.equal(manager.isCurrentVersion("TestBundle", "v1.0"), true);
+  assert.equal(manager.isCurrentVersion("TestBundle", 100), true);
 });
 
 test("PromptVersionManager.isCurrentVersion returns true for empty bundle", () => {
@@ -337,7 +337,7 @@ test("PromptVersionManager.getSortedVersions returns versions in sorted order", 
 
   const versions = manager.getSortedVersions("TestBundle");
 
-  assert.deepEqual(versions, ["v1.0", "v2.0", "v3.0"]);
+  assert.deepEqual(versions, [100, 200, 300]);
 });
 
 test("PromptVersionManager.getSortedVersions handles patch versions", () => {
@@ -349,7 +349,7 @@ test("PromptVersionManager.getSortedVersions handles patch versions", () => {
 
   const versions = manager.getSortedVersions("TestBundle");
 
-  assert.deepEqual(versions, ["v1.0.1", "v1.0.2", "v1.0.10"]);
+  assert.deepEqual(versions, [101, 102, 110]);
 });
 
 // =============================================================================
@@ -363,7 +363,7 @@ test("PromptVersionManager.registerBundleVersion stores bundle", () => {
   manager.registerBundleVersion(bundle);
 
   const versions = manager.getSortedVersions("TestBundle");
-  assert.deepEqual(versions, ["v1.0"]);
+  assert.deepEqual(versions, [100]);
 });
 
 test("PromptVersionManager.registerBundleVersion enforces max versions limit", () => {
@@ -375,7 +375,7 @@ test("PromptVersionManager.registerBundleVersion enforces max versions limit", (
 
   const versions = manager.getSortedVersions("TestBundle");
   assert.equal(versions.length, 3);
-  assert.deepEqual(versions, ["v3.0", "v4.0", "v5.0"]);
+  assert.deepEqual(versions, [300, 400, 500]);
 });
 
 // =============================================================================
@@ -404,10 +404,10 @@ test("PromptVersionManager.listBundleVersions returns version metadata", () => {
 
   assert.ok(v1 !== undefined);
   assert.ok(v2 !== undefined);
-  assert.equal(v1!.displayVersion, undefined);
+  assert.equal(v1!.displayVersion, "v1.0");
   assert.equal(v1!.isCurrent, false);
   assert.equal(v1!.trafficWeight, 100);
-  assert.equal(v2!.displayVersion, undefined);
+  assert.equal(v2!.displayVersion, "v2.0");
   assert.equal(v2!.isCurrent, true);
   assert.equal(v2!.trafficWeight, 75);
 });

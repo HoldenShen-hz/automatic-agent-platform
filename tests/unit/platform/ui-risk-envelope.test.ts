@@ -146,7 +146,7 @@ test("reaudit batch: legacy request envelope carries cross-plane routing metadat
     requestId: "req_legacy_cross_plane",
     confirmedTaskSpecId: "cts_legacy_cross_plane",
     tenantId: "tenant_alpha",
-    principal: { principalId: "principal_alpha", tenantId: "tenant_alpha", roles: ["operator"] },
+    principal: { principalId: "principal_alpha", type: "human", tenantId: "tenant_alpha", roles: ["operator"] },
     traceId: "trace_alpha",
     idempotencyKey: "idem_alpha",
     priority: 2,
@@ -161,7 +161,7 @@ test("reaudit batch: legacy request envelope carries cross-plane routing metadat
 
   assert.equal(envelope.sourcePlane, "interaction");
   assert.equal(envelope.targetPlane, "orchestration");
-  assert.equal(envelope.directives.length, 1);
+  assert.equal(envelope.directives?.length, 1);
 });
 
 test("reaudit batch: e2e coverage no longer bypasses RSM for multi-step workflow and budget guard", () => {

@@ -79,7 +79,6 @@ test("1989..1995: security/bootstrap configs, architecture readiness guards, div
     "divisions/content/division.yaml",
     "divisions/customer-service/division.yaml",
     "divisions/data-engineering/division.yaml",
-    "divisions/data/division.yaml",
     "divisions/design/division.yaml",
     "divisions/devops/division.yaml",
     "divisions/ecommerce/division.yaml",

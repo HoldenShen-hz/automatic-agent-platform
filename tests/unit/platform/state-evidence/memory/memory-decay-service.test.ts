@@ -436,8 +436,9 @@ test("MemoryDecayService.evaluateCompressionCandidates includes compressionScore
     createMemoryRecord({ id: "mem_1", qualityScore: 0.8, importanceScore: 0.8, hitCount: 10 }),
   ];
   const result = service.evaluateCompressionCandidates(memories);
-  assert.ok(result.candidates[0]?.compressionScore > 0);
-  assert.ok(result.candidates[0]?.compressionScore <= 1.0);
+  assert.ok(result.candidates[0] != null);
+  assert.ok(result.candidates[0]!.compressionScore > 0);
+  assert.ok(result.candidates[0]!.compressionScore <= 1.0);
 });
 
 // =============================================================================

@@ -10,8 +10,8 @@ import {
   toUnifiedRuntimeMode,
   type PolicyDecisionRequest,
   type PolicyMode,
-  type UnifiedRuntimeMode,
 } from "../../../../src/platform/five-plane-control-plane/policy-center/index.js";
+import type { UnifiedRuntimeMode } from "../../../../src/platform/contracts/types/unified-runtime-mode.js";
 
 // ============================================================================
 // Policy Center Service Tests
@@ -321,7 +321,7 @@ test("PolicyCenterService enforces emergency mode", () => {
 test("PolicyCenterService role-based action enforcement", () => {
   const service = new PolicyCenterService({
     subjectRoles: { "user_456": ["developer"] },
-    allowedActionsByRole: { developer: ["invoke_model", "read_file"] },
+    allowedActionsByRole: { developer: ["invoke_model", "invoke_tool"] },
   });
 
   const allowedRequest: PolicyDecisionRequest = {

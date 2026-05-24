@@ -110,7 +110,7 @@ test("CryptoShreddingService.encryptRecordForSubject encrypts configured PII fie
   assert.notEqual(result.encryptedRecord.name, "Alice");
   assert.equal((result.encryptedRecord as { email: string }).email, "alice@example.com");
   assert.equal(result.encryptions.length, 1);
-  assert.equal(result.encryptions[0].fieldPath, "name");
+  assert.equal(result.encryptions[0]!.fieldPath, "name");
 });
 
 test("CryptoShreddingService.encryptRecordForSubject throws when no PII fields configured", async (t) => {
@@ -146,7 +146,7 @@ test("CryptoShreddingService.encryptRecordForSubject handles nested fields", asy
 
   const rec = result.encryptedRecord as { user: { name: string } };
   assert.notEqual(rec.user.name, "Dave");
-  assert.equal((rec.user as { email: string }).email, "dave@example.com");
+  assert.equal((rec.user as unknown as { email: string }).email, "dave@example.com");
 });
 
 test("CryptoShreddingService.encryptRecordForSubject handles array fields", async (t) => {
@@ -171,7 +171,7 @@ test("CryptoShreddingService.decryptField decrypts encrypted field", async (t) =
 
   const record = { name: "Eve" };
   const encrypted = await service.encryptRecordForSubject("subject-9", record);
-  const dekId = encrypted.encryptions[0].dekId;
+  const dekId = encrypted.encryptions[0]!.dekId;
 
   const decrypted = await service.decryptField(dekId, "name", encrypted.encryptedRecord);
   assert.equal(decrypted, "Eve");
@@ -223,5 +223,5 @@ test("CryptoShreddingService.getPiiFields returns registered fields", async (t) 
 
   const fields = service.getPiiFields();
   assert.equal(fields.length, 1);
-  assert.equal(fields[0].fieldPath, "name");
+  assert.equal(fields[0]!.fieldPath, "name");
 });

@@ -516,7 +516,7 @@ test("CDCReplicationService.recordConflict stores conflict in history", () => {
 
   const history = service.getConflictHistory("entity-1");
   assert.equal(history.length, 1);
-  assert.equal(history[0].resolution, "remote_wins");
+  assert.equal(history[0]!.resolution, "remote_wins");
 });
 
 test("CDCReplicationService.getConflictHistory returns empty array for unknown entity", () => {
@@ -591,7 +591,7 @@ test("CDCReplicationService.mergeEventsWithConflictResolution replaces conflicte
   const result = service.mergeEventsWithConflictResolution("task_conflict", localEvents, remoteEvents);
 
   assert.equal(result.length, 1);
-  const payload = JSON.parse(result[0].payloadJson);
+  const payload = JSON.parse(result[0]!.payloadJson);
   assert.equal(payload.value, "remote");
 });
 
@@ -613,9 +613,9 @@ test("MultiRegionReplicationCoordinator.setupRegionReplication creates configs f
 
   const replications = coordinator.getRegionReplications("us-west-2");
   assert.equal(replications.length, 2);
-  assert.equal(replications[0].targetRegionId, "eu-west-1");
-  assert.equal(replications[0].batchSize, 50);
-  assert.equal(replications[1].targetRegionId, "ap-southeast-1");
+  assert.equal(replications[0]!.targetRegionId, "eu-west-1");
+  assert.equal(replications[0]!.batchSize, 50);
+  assert.equal(replications[1]!.targetRegionId, "ap-southeast-1");
 });
 
 test("MultiRegionReplicationCoordinator.getCDCService returns the CDC service", async () => {
@@ -639,8 +639,8 @@ test("MultiRegionReplicationCoordinator uses default batch size and interval", a
 
   const replications = coordinator.getRegionReplications("region-test");
   assert.equal(replications.length, 1);
-  assert.equal(replications[0].batchSize, 100); // default
-  assert.equal(replications[0].replicationIntervalMs, 5000); // default
+  assert.equal(replications[0]!.batchSize, 100); // default
+  assert.equal(replications[0]!.replicationIntervalMs, 5000); // default
 });
 
 test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for unknown source", async () => {

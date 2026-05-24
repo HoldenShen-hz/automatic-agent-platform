@@ -94,7 +94,6 @@ test("R32-25: BudgetGuard allows exact hard-limit task spend but surfaces approv
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
       warnAtRatio: 1,
-      approvalThresholdUsd: 1,
       mode: "supervised",
     },
     currentTaskCostUsd: 0.4,

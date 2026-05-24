@@ -232,10 +232,10 @@ describe("cross-region-routing", () => {
           policyId: "high-risk-policy",
           allowedJurisdictions: ["US", "EU"],
           allowCrossBorder: true,
+          dataCategories: ["personal", "health"],
         },
         primaryRegionId: "region-us-east-1",
         primaryRegionHealthy: true,
-        dataCategories: ["personal", "health"],
       };
 
       const decision = service.route(request);

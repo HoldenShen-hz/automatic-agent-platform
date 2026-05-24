@@ -44,6 +44,13 @@ test("MemoryConsolidationSummary type can be referenced", () => {
       longTermBackground: [],
       facts: [],
     },
+    lossReport: {
+      consolidatedMemoryCount: 1,
+      sourceMemoryCount: 2,
+      excludedMemories: [],
+      droppedContent: [],
+      truncationTimestamp: "2026-04-14T00:00:00.000Z",
+    },
   };
   assert.equal(summary.averageQualityScore, 0.85);
   assert.equal(summary.sourceCount, 2);

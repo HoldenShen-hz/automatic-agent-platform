@@ -130,7 +130,7 @@ test("SplitBrainProtectionService.invalidateFencingTokens bumps epoch", () => {
   const invalidated = service.invalidateFencingTokens("us-east");
 
   assert.ok(invalidated.length >= 1);
-  assert.ok(invalidated[0].includes("invalidated"));
+  assert.ok(invalidated[0]!.includes("invalidated"));
 });
 
 test("SplitBrainProtectionService.recordIncident creates incident", () => {

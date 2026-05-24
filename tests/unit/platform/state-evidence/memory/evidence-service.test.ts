@@ -77,7 +77,7 @@ test("record() indexes by category", () => {
 
 test("record() indexes by sourceRef", () => {
   const service = new EvidenceService({ integrationEnabled: false });
-  const metadata = makeMetadata({ sourceRef: undefined });
+  const metadata = makeMetadata();
   service.record("quality", "memory:source1", {}, metadata);
   service.record("quality", "memory:source1", {}, metadata);
   service.record("quality", "memory:source2", {}, metadata);
@@ -255,9 +255,9 @@ test("query() sorts by recordedAt descending", () => {
 
 test("query() intersects multiple indexes", () => {
   const service = new EvidenceService({ integrationEnabled: false });
-  const meta1 = makeMetadata({ category: undefined, tenantId: "tenant_a", taskId: "task_a" });
-  const meta2 = makeMetadata({ category: undefined, tenantId: "tenant_a", taskId: "task_b" });
-  const meta3 = makeMetadata({ category: undefined, tenantId: "tenant_b", taskId: "task_a" });
+  const meta1 = makeMetadata({ tenantId: "tenant_a", taskId: "task_a" });
+  const meta2 = makeMetadata({ tenantId: "tenant_a", taskId: "task_b" });
+  const meta3 = makeMetadata({ tenantId: "tenant_b", taskId: "task_a" });
 
   service.record("quality", "memory:1", {}, { ...meta1 });
   service.record("feedback", "memory:2", {}, { ...meta2 });
@@ -534,7 +534,7 @@ test("query() with no matches returns empty array", () => {
 
 test("record() handles empty sourceRef", () => {
   const service = new EvidenceService({ integrationEnabled: false });
-  const metadata = makeMetadata({ sourceRef: undefined });
+  const metadata = makeMetadata();
   const record = service.record("quality", "", {}, metadata);
   assert.ok(record.id);
 });

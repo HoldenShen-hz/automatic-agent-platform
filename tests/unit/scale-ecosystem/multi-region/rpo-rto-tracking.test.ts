@@ -366,7 +366,7 @@ test("DataReplicatorService.measureReplicationLag detects RPO breach", () => {
 
   const measurement = replicator.measureReplicationLag("eu-west");
   assert.ok(measurement !== null);
-  assert.ok(measurement.exceedsRpo, true);
+  assert.equal(measurement.exceedsRpo, true);
 });
 
 test("DataReplicatorService.isRpoMet returns false when RPO breached", () => {

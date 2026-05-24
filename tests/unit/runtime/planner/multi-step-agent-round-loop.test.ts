@@ -226,5 +226,5 @@ test("BuildStepOutputInput interface should accept optional tools", () => {
 
   assert.ok(input.tools);
   assert.equal(input.tools.length, 1);
-  assert.equal(input.tools[0].name, "test_tool");
+  assert.equal(input.tools[0]!.name, "test_tool");
 });

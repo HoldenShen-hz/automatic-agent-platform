@@ -123,8 +123,18 @@ test("resolveSandboxPath returns path as-is without realpath", () => {
 // Policy Engine Tests
 // ============================================================================
 
+function createBudgetPolicy() {
+  return {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 1000,
+    maxMonthlyCostUsd: 10000,
+    warnAtRatio: 0.8,
+    mode: "auto" as const,
+  };
+}
+
 test("PolicyEngine evaluates allow decision for invoke_tool", () => {
-  const engine = new PolicyEngine({ budgetPolicy: { maxCostPerTask: 100, maxCostPerMonth: 10000 } });
+  const engine = new PolicyEngine({ budgetPolicy: createBudgetPolicy() });
 
   const request: PolicyDecisionRequest = {
     decisionId: "dec_001",
@@ -144,7 +154,7 @@ test("PolicyEngine evaluates allow decision for invoke_tool", () => {
 });
 
 test("PolicyEngine evaluates deny decision for destructive action in auto mode", () => {
-  const engine = new PolicyEngine({ budgetPolicy: { maxCostPerTask: 100, maxCostPerMonth: 10000 } });
+  const engine = new PolicyEngine({ budgetPolicy: createBudgetPolicy() });
 
   const request: PolicyDecisionRequest = {
     decisionId: "dec_002",
@@ -164,7 +174,7 @@ test("PolicyEngine evaluates deny decision for destructive action in auto mode",
 });
 
 test("PolicyEngine handles supervised mode", () => {
-  const engine = new PolicyEngine({ budgetPolicy: { maxCostPerTask: 100, maxCostPerMonth: 10000 } });
+  const engine = new PolicyEngine({ budgetPolicy: createBudgetPolicy() });
 
   const request: PolicyDecisionRequest = {
     decisionId: "dec_003",

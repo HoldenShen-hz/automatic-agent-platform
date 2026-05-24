@@ -13,7 +13,7 @@ import {
 } from "../../../../src/scale-ecosystem/enterprise/enterprise-capability-matrix-service.js";
 
 // Mock stores
-function createMockStore() {
+function createMockStore(): any {
   return {
     release: {
       upsertEnvironmentReadinessRecord: () => {},

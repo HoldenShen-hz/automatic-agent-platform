@@ -165,6 +165,7 @@ describe("LicenseEnforcementService recordViolation", () => {
     const violations = service.getViolations();
     const violation = violations[violations.length - 1];
 
+    assert.ok(violation);
     assert.equal(violation.accountId, "acct_test");
     assert.equal(violation.workspaceId, "ws_test");
     assert.equal(violation.tenantId, "tenant_test");

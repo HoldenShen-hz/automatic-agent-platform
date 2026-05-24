@@ -63,6 +63,12 @@ function createMockProvider(memories: MemoryRecord[] = []): MemoryProvider {
       block: "",
     }),
     prefetch: async (_query: MemoryProviderQuery): Promise<MemoryProviderPrefetchResult> => ({
+      providerId: "test-provider",
+      requestId: "req_123",
+      generatedAt: new Date().toISOString(),
+      degraded: false,
+      queued: false,
+      query: {},
       memories,
       promptBlock: "",
       fewShotExamples: [],
@@ -77,8 +83,9 @@ function createMockProvider(memories: MemoryRecord[] = []): MemoryProvider {
     syncTurn: async (_input: MemoryTurnSyncInput): Promise<MemoryTurnSyncResult> => ({
       providerId: "test-provider",
       syncedAt: new Date().toISOString(),
+      rememberedMemoryIds: [],
       rememberedMemories: [],
-      memoryIds: [],
+      recordedExperienceId: null,
     }),
     shutdown: async () => ({
       providerId: "test-provider",
@@ -190,9 +197,8 @@ test("syncTurn calls provider syncTurn", async () => {
   const provider = createMockProvider(memories);
   const service = new MemoryPlaneService(provider);
   const result = await service.syncTurn({
-    sessionId: "test_session",
-    turnNumber: 1,
-    agentId: "agent_1",
+    memories: [],
+    promotionContext: { projectId: "proj_1" },
   });
   assert.equal(result.providerId, "test-provider");
 });
@@ -201,9 +207,7 @@ test("syncTurn returns result when no remembered memories", async () => {
   const provider = createMockProvider([]);
   const service = new MemoryPlaneService(provider);
   const result = await service.syncTurn({
-    sessionId: "test_session",
-    turnNumber: 1,
-    agentId: "agent_1",
+    memories: [],
   });
   assert.deepEqual(result.rememberedMemories, []);
 });

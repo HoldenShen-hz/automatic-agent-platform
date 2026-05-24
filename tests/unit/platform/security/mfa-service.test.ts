@@ -81,6 +81,7 @@ test("startMfaEnrollment rejects disallowed MFA method", () => {
   assert.equal(credential.identifier, "us****56");
   assert.equal(credential.status, "active");
   assert.ok(credential.createdAt > 0);
+  assert.ok(credential.lastUsedAt != null);
   assert.ok(credential.lastUsedAt > 0);
   });
 
@@ -184,8 +185,8 @@ test("completeMfaEnrollment rejects already completed enrollment", () => {
 
     const credentials = getMfaCredentials("user-creds");
     assert.equal(credentials.length, 1);
-    assert.equal(credentials[0].method, "totp");
-    assert.equal(credentials[0].status, "active");
+    assert.equal(credentials[0]!.method, "totp");
+    assert.equal(credentials[0]!.status, "active");
   });
 
   test("hasActiveMfa returns false for unenrolled principal", () => {
@@ -397,7 +398,7 @@ test("verifyMfaChallenge throws for expired challenge", () => {
     disableMfa({ principalId: "user-disable", method: "totp" });
 
     const credentials = getMfaCredentials("user-disable");
-    assert.equal(credentials[0].status, "disabled");
+    assert.equal(credentials[0]!.status, "disabled");
     assert.equal(hasActiveMfa("user-disable"), false);
   });
 
@@ -442,6 +443,7 @@ test("verifyMfaChallenge throws for expired challenge", () => {
   test("MFA enrollment creates QR code URI with proper format", () => {
     const session = startMfaEnrollment({ principalId: "user-qr", method: "totp" });
 
+    assert.ok(session.qrCodeUri != null);
     assert.ok(session.qrCodeUri.startsWith("otpauth://totp/"));
     assert.ok(session.qrCodeUri.includes("secret="));
     assert.ok(session.qrCodeUri.includes("algorithm=SHA1"));

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DurableEventBusAsync } from "../../../../src/scale-ecosystem/runtime-services/durable-event-bus-async.js";
-import type { BusMetrics } from "../../../../src/scale-ecosystem/runtime-services/durable-event-bus-async.js";
 
 // NOTE: Full integration tests require database setup.
 // These tests focus on class structure, options handling, and behavior validation.
@@ -99,7 +98,7 @@ test("DurableEventBusAsync dispose can be called multiple times safely", () => {
 });
 
 test("DurableEventBusAsync exports BusMetrics type", () => {
-  const metrics: BusMetrics = {
+  const metrics: ReturnType<DurableEventBusAsync["getMetrics"]> = {
     totalPublishedEvents: 10,
     totalDeliveredEvents: 8,
     totalFailedDeliveries: 2,

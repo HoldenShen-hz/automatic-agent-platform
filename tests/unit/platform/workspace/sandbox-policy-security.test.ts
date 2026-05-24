@@ -114,6 +114,9 @@ test("security: denied root takes precedence over allowed root", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 300_000,
+    memoryLimitBytes: 512 * 1024 * 1024,
+    cpuLimitFraction: 0.5,
   };
 
   const result = checkSandboxPath(policy, "/workspace/secret/api-keys.json");
@@ -131,6 +134,9 @@ test("security: denied root with subdirectory is blocked", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 300_000,
+    memoryLimitBytes: 512 * 1024 * 1024,
+    cpuLimitFraction: 0.5,
   };
 
   const result = checkSandboxPath(policy, "/workspace/secrets/.ssh/id_rsa");
@@ -148,6 +154,9 @@ test("security: multiple denied roots are all checked", () => {
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 300_000,
+    memoryLimitBytes: 512 * 1024 * 1024,
+    cpuLimitFraction: 0.5,
   };
 
   assert.equal(checkSandboxPath(policy, "/workspace/denied1/file").allowed, false);
@@ -334,7 +343,7 @@ test("SandboxPathCheckResult contains all required fields", () => {
 
   assert.equal(deniedResult.allowed, false);
   assert.ok(deniedResult.normalizedPath.length > 0);
-  assert.ok(deniedResult.reasonCode?.length > 0);
+  assert.ok((deniedResult.reasonCode?.length ?? 0) > 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -350,6 +359,9 @@ test("SandboxPolicy requires all security fields", () => {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    timeLimitMs: 300_000,
+    memoryLimitBytes: 512 * 1024 * 1024,
+    cpuLimitFraction: 0.5,
   };
 
   assert.equal(policy.realpathEnforced, true);

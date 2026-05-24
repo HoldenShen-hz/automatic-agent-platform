@@ -329,7 +329,7 @@ test("FeedbackImprovementService.release succeeds for approved candidate", () =>
 test("FeedbackImprovementService.buildSnapshot returns analysis summary", () => {
   const service = new FeedbackImprovementService();
   const signals = [
-    {
+    createSignal({
       signalId: "sig_snapshot",
       taskId: "task_snapshot",
       source: "execution" as const,
@@ -338,7 +338,7 @@ test("FeedbackImprovementService.buildSnapshot returns analysis summary", () => 
       payload: {},
       stepOutputRefs: [],
       timestamp: 1,
-    },
+    }),
   ];
 
   const snapshot = service.buildSnapshot(signals);
@@ -353,7 +353,7 @@ test("FeedbackImprovementService.listCandidates returns all candidates", () => {
   service.ingest({
     taskId: "task_list",
     signals: [
-      {
+      createSignal({
         signalId: "sig_list",
         taskId: "task_list",
         source: "execution",
@@ -369,7 +369,7 @@ test("FeedbackImprovementService.listCandidates returns all candidates", () => {
           attackSurfaceExposure: 0.1,
           holdoutOverlap: 0,
         },
-      },
+      }),
     ],
   });
 

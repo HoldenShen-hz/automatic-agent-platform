@@ -325,7 +325,7 @@ test.describe("Session Management", () => {
     const sessions = getPrincipalSessions("user-some-revoked");
 
     assert.equal(sessions.length, 1);
-    assert.equal(sessions[0].sessionId, session2.sessionId);
+    assert.equal(sessions[0]!.sessionId, session2.sessionId);
   });
 
   test("extractBearerToken extracts token from valid header", () => {

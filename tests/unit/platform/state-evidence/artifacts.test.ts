@@ -680,6 +680,7 @@ test("ArtifactVersioningService.createNextVersion always sets parentArtifactId t
   const previous = {
     artifactId: "parent_art",
     version: 5,
+    parentArtifactId: null,
     harnessRunId: "harness_test",
     type: "source_code",
     path: "src/index.ts",
@@ -698,6 +699,7 @@ test("ArtifactVersioningService.createNextVersion preserves all extended fields"
   const previous = {
     artifactId: "art_v1",
     version: 1,
+    parentArtifactId: null,
     harnessRunId: "harness_test",
     type: "source_code",
     path: "src/index.ts",
@@ -719,6 +721,7 @@ test("ArtifactVersioningService.createNextVersion allows new artifactId in overr
   const previous = {
     artifactId: "original",
     version: 1,
+    parentArtifactId: null,
     harnessRunId: "harness_test",
     type: "source_code",
     path: "src/index.ts",
@@ -738,6 +741,7 @@ test("ArtifactVersioningService.createNextVersion ignores version in overrides",
   const previous = {
     artifactId: "artifact_test",
     version: 3,
+    parentArtifactId: null,
     harnessRunId: "harness_test",
     type: "source_code",
     path: "src/index.ts",

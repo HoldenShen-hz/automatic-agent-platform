@@ -140,6 +140,10 @@ function createMockStore(): ComplianceStore {
   }) as ComplianceStore;
 }
 
+function asCompositeStore(store: ComplianceStore) {
+  return Object.assign(store as object, { compliance: store }) as any;
+}
+
 function createMockEventEmitter(): MockEventEmitter {
   return {
     insertEvent: (event) => {
@@ -285,7 +289,7 @@ test("ErasureReportService calculates crypto shredding verification", () => {
 
 test("DataEncryptionKeyService creates DEK", () => {
   const store = createMockStore();
-  const service = new DataEncryptionKeyService(store as any, store);
+  const service = new DataEncryptionKeyService(asCompositeStore(store), asCompositeStore(store));
 
   const input: CreateDekInput = {
     tenantId: "tenant_123",
@@ -304,7 +308,7 @@ test("DataEncryptionKeyService creates DEK", () => {
 
 test("DataEncryptionKeyService rotates DEK", () => {
   const store = createMockStore();
-  const service = new DataEncryptionKeyService(store as any, store);
+  const service = new DataEncryptionKeyService(asCompositeStore(store), asCompositeStore(store));
 
   const input: CreateDekInput = {
     tenantId: "tenant_123",
@@ -321,7 +325,7 @@ test("DataEncryptionKeyService rotates DEK", () => {
 
 test("DataEncryptionKeyService destroys DEK", () => {
   const store = createMockStore();
-  const service = new DataEncryptionKeyService(store as any, store);
+  const service = new DataEncryptionKeyService(asCompositeStore(store), asCompositeStore(store));
 
   const input: CreateDekInput = {
     tenantId: "tenant_123",
@@ -342,7 +346,7 @@ test("DataEncryptionKeyService destroys DEK", () => {
 
 test("DataResidencyService checks residency compliance", () => {
   const store = createMockStore();
-  const service = new DataResidencyService(store as any, store);
+  const service = new DataResidencyService(asCompositeStore(store), asCompositeStore(store));
 
   const input: CheckResidencyInput = {
     tenantId: "tenant_123",
@@ -358,7 +362,7 @@ test("DataResidencyService checks residency compliance", () => {
 
 test("DataResidencyService detects residency violation", () => {
   const store = createMockStore();
-  const service = new DataResidencyService(store as any, store);
+  const service = new DataResidencyService(asCompositeStore(store), asCompositeStore(store));
 
   const input: CheckResidencyInput = {
     tenantId: "tenant_123",

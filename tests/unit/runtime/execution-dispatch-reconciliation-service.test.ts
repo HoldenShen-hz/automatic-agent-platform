@@ -67,6 +67,7 @@ function seedTaskAndExecution(
       taskId: input.taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-1",
       roleId: "general_executor",
       runKind: "task_run",
@@ -76,6 +77,8 @@ function seedTaskAndExecution(
       attempt: 1,
       timeoutMs: 60000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -112,7 +115,7 @@ function createTicket(
     ticketId: string;
     executionId: string;
     taskId: string;
-    status?: "pending" | "claimed";
+    status?: "pending" | "claimed" | "consumed" | "cancelled" | "expired";
     priority?: TaskPriority;
     queueName?: string;
     assignedWorkerId?: string | null;
@@ -126,6 +129,7 @@ function createTicket(
       id: input.ticketId,
       executionId: input.executionId,
       taskId: input.taskId,
+      tenantId: "tenant-default",
       status: input.status ?? "pending",
       priority: input.priority ?? "normal",
       queueName: input.queueName ?? "default",
@@ -135,7 +139,10 @@ function createTicket(
       dispatchTarget: "any",
       requiredIsolationLevel: "standard",
       dispatchAfter: null,
+      attempt: 1,
       claimedAt: input.status === "claimed" ? now : null,
+      consumedAt: input.status === "consumed" ? now : null,
+      invalidatedAt: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -429,12 +436,12 @@ test("findIssueByTicketId returns null for already processed ticket (not pending
     const ticketId = newId("ticket");
 
     seedTaskAndExecution(harness.store, harness.db, { taskId, executionId, executionStatus: "executing" });
-    // Ticket with status "cancelled" - not eligible for reconciliation
+    // Consumed ticket is not eligible for reconciliation
     createTicket(harness.store, harness.db, {
       ticketId,
       executionId,
       taskId,
-      status: "cancelled",
+      status: "consumed",
     });
 
     const issue = harness.service.findIssueByTicketId(ticketId);

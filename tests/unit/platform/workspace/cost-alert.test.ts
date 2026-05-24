@@ -150,7 +150,7 @@ test("CostAlertService emits critical threshold event on recordCost", async () =
   });
 
   const event = await new Promise<CostThresholdExceededEvent>((resolve) => {
-    service.once("cost:limit_reached", resolve);
+    service.once("cost:limit_reached", resolve as unknown as (payload: unknown) => void);
     service.recordCost({
       scope: "platform",
       scopeId: "platform-root",

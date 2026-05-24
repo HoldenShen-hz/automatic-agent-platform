@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { TenantBoundaryRegistryService } from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import type {
   DeploymentBindingRecord,
   OrganizationMembershipRecord,
@@ -121,13 +122,13 @@ test("TenantBoundaryRegistryService authorizes members and governance exceptions
   });
 
   assert.equal(service.authorizeTenantAccess({ userId: "user_123", tenantId: "tenant_123" }).decision, "allow");
-  assert.equal(
-    service.authorizeTenantAccess({
+  assert.throws(
+    () => service.authorizeTenantAccess({
       userId: "user_missing",
       tenantId: "tenant_123",
       governanceRef: "gov_123",
-    }).reasonCode,
-    "tenant.invalid_user_id",
+    }),
+    (error: unknown) => error instanceof ValidationError && error.code === "tenant.user_not_found",
   );
 });
 

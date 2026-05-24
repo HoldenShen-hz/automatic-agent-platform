@@ -336,7 +336,7 @@ test("FailoverReconciliationJob: acknowledgeIssue returns true for valid ids", (
   job.runReconciliation(input);
 
   const scan = job.getLastScanResult()!;
-  const issueId = scan.issues[0].issueId;
+  const issueId = scan.issues[0]!.issueId;
   const result = job.acknowledgeIssue(scan.scanId, issueId);
 
   assert.equal(result, true);

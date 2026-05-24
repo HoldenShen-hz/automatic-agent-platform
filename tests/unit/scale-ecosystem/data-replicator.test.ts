@@ -118,7 +118,7 @@ test("ReplicationEventBuffer.flush clears buffer and returns events", () => {
   const flushed = buffer.flush();
 
   assert.equal(flushed.length, 1);
-  assert.equal(flushed[0].eventId, "evt-1");
+  assert.equal(flushed[0]!.eventId, "evt-1");
   assert.equal(buffer.size(), 0);
 });
 

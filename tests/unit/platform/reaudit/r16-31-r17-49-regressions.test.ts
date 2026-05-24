@@ -41,7 +41,7 @@ function createCheckpoint() {
     stepId: "step-1",
     roleId: "role-1",
     outputKey: "summary",
-    status: "completed",
+    status: "succeeded",
     producedAt: "2026-05-10T00:00:00.000Z",
     output: { summary: "done" },
     decisionContext: {

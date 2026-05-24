@@ -262,7 +262,11 @@ export class OrgRoutingService {
    */
   public getCostCenterForNode(orgNodeId: string): string | null {
     const node = this.nodes.find((n) => n.orgNodeId === orgNodeId);
-    return node?.costCenter ?? null;
+    if (node == null) {
+      return null;
+    }
+    const costCenter = node.costCenter?.trim();
+    return costCenter != null && costCenter.length > 0 ? costCenter : null;
   }
 
   private resolveCostCenterFromParent(orgNodeId: string, requestedBudget: number): CostCenterAllocationResult {

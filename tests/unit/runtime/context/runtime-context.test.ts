@@ -149,8 +149,8 @@ test("assertContext returns context when all required keys present", () => {
 test("assertContext throws with list of missing fields", () => {
   const snapshot = createSnapshot({
     traceId: "trace_missing",
-    taskId: null,
-    executionId: null,
+    taskId: "",
+    executionId: "",
   });
 
   provideContext(snapshot, () => {

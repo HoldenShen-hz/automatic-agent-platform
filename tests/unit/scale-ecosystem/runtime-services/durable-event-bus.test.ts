@@ -7,6 +7,6 @@ test("DurableEventBus is exported and is a class", () => {
 });
 
 test("DurableEventBus can be instantiated", () => {
-  const bus = new DurableEventBus({ retentionMs: 5000 });
+  const bus = new DurableEventBus({} as never, {} as never);
   assert.ok(bus instanceof DurableEventBus);
 });

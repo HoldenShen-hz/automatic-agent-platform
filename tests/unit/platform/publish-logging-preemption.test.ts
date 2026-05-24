@@ -12,6 +12,8 @@ import { KeywordKnowledgeIndex } from "../../../src/platform/five-plane-state-ev
 import { KnowledgeRetrievalService } from "../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
 import { KnowledgeQueryService, QueryLevel } from "../../../src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.js";
 import { SemanticKnowledgeGraph } from "../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import { NamespacePolicyStore } from "../../../src/platform/five-plane-state-evidence/knowledge/governance/namespace-policy.js";
+import type { SemanticVectorStore } from "../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
 import {
   createWorkflowStepCheckpoint,
   restoreWorkflowStepCheckpoint,
@@ -240,7 +242,15 @@ test("R24-17: ResourcePoolService requires the owning consumer to release alloca
   service.registerPool({
     poolId: "pool-r24-17",
     resourceType: "worker",
+    scopeType: "shared",
     capacityUnits: 10,
+    allocatedUnits: 0,
+    burstUnits: 0,
+    failureRateThreshold: 0.3,
+    minSampleSize: 20,
+    failureRate: 0,
+    sampleCount: 0,
+    isolationStatus: "active",
   });
   service.allocate("pool-r24-17", "consumer-a", 4);
 
@@ -256,25 +266,30 @@ test("R24-18: KnowledgeRetrievalService returns semantic candidates when a vecto
   const archive = new KnowledgeArchive();
   const index = new KeywordKnowledgeIndex();
   const graph = new SemanticKnowledgeGraph();
-  const namespaces = new Map<string, KnowledgeNamespace>([
-    ["ns-a", createNamespace({ namespaceId: "ns-a", path: "ns-a" })],
-  ]);
+  const namespaceStore = new NamespacePolicyStore();
+  namespaceStore.register(createNamespace({ namespaceId: "ns-a", path: "ns-a" }));
   archive.upsert({
     source: createSource({ checksum: "checksum-r24-18" }),
     document: createDocument({ documentId: "doc-r24-18", sourceId: "source-1" }),
     chunks: [createChunk({ chunkId: "chunk-r24-18", documentId: "doc-r24-18", keywords: ["semantic"], summary: "semantic summary" })],
   });
 
+  const vectorStore: SemanticVectorStore = {
+    backend: "local_hash",
+    async upsertChunks() {},
+    async querySimilar() {
+      return [{ knowledgeRef: "knowledge:chunk-r24-18", namespace: "ns-a", similarity: 0.92 }];
+    },
+    inspect() {
+      return { backend: "local_hash", ready: true, details: {} };
+    },
+  };
   const retrieval = new KnowledgeRetrievalService(
     index,
     archive,
-    { get: (path: string) => namespaces.get(path) ?? null } as { get(path: string): KnowledgeNamespace | null },
+    namespaceStore,
     graph,
-    {
-      async querySimilar() {
-        return [{ knowledgeRef: "knowledge:chunk-r24-18", similarity: 0.92 }];
-      },
-    },
+    vectorStore,
   );
 
   const hits = await retrieval.queryAsync("federated semantic lookup", {
@@ -341,14 +356,13 @@ test("R24-25/R24-26: federated knowledge queries merge namespaces and archive re
   const archive = new KnowledgeArchive();
   const index = new KeywordKnowledgeIndex();
   const graph = new SemanticKnowledgeGraph();
-  const namespaces = new Map<string, KnowledgeNamespace>([
-    ["ns-a", createNamespace({ namespaceId: "ns-a", path: "ns-a", ownerDomainId: "domain-a" })],
-    ["ns-b", createNamespace({ namespaceId: "ns-b", path: "ns-b", ownerDomainId: "domain-b" })],
-  ]);
+  const namespaceStore = new NamespacePolicyStore();
+  namespaceStore.register(createNamespace({ namespaceId: "ns-a", path: "ns-a", ownerDomainId: "domain-a" }));
+  namespaceStore.register(createNamespace({ namespaceId: "ns-b", path: "ns-b", ownerDomainId: "domain-b" }));
   const retrieval = new KnowledgeRetrievalService(
     index,
     archive,
-    { get: (path: string) => namespaces.get(path) ?? null } as { get(path: string): KnowledgeNamespace | null },
+    namespaceStore,
     graph,
   );
   const service = new KnowledgeQueryService(retrieval);
@@ -409,7 +423,7 @@ test("R24-27/R24-28: workflow step checkpoints expose restore state and version 
     stepId: "step-1",
     roleId: "role-1",
     outputKey: "result",
-    status: "completed",
+    status: "succeeded",
     producedAt: "2026-05-09T00:00:00.000Z",
     output: { summary: "done" },
     decisionContext: {
@@ -462,7 +476,7 @@ test("workflow checkpoint diff treats compensation model key order as stable", (
     stepId: "step-1",
     roleId: "role-1",
     outputKey: "result",
-    status: "completed",
+    status: "succeeded",
     producedAt: "2026-05-09T00:00:00.000Z",
     output: { summary: "done" },
     decisionContext: {
@@ -477,11 +491,11 @@ test("workflow checkpoint diff treats compensation model key order as stable", (
       nextStepId: "step-2",
       outputKeys: ["result"],
     },
-    compensationModel: { b: 2, a: 1 },
+    compensationModel: { strategy: "idempotent_replay", b: 2, a: 1 },
   });
   const next = createWorkflowStepCheckpoint({
     ...previous,
-    compensationModel: { a: 1, b: 2 },
+    compensationModel: { strategy: "idempotent_replay", a: 1, b: 2 },
   });
 
   const diff = compareWorkflowStepCheckpointVersions(previous, next);

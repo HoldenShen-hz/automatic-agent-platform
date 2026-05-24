@@ -103,6 +103,7 @@ test("getOrCreateGlobalSingleton allows same fingerprint on subsequent calls", (
 
   assert.strictEqual(first, slot.instance);
   assert.strictEqual(second, slot.instance);
+  assert.ok(slot.instance !== null);
   assert.strictEqual(slot.instance.value, 1); // Original value preserved
 });
 
@@ -226,6 +227,7 @@ test("getOrCreateGlobalSingletonAsync allows same fingerprint on subsequent call
 
   assert.strictEqual(first, slot.instance);
   assert.strictEqual(second, slot.instance);
+  assert.ok(slot.instance !== null);
   assert.strictEqual(slot.instance.value, 1);
 });
 

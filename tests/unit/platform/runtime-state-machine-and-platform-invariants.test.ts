@@ -30,6 +30,19 @@ function createMachine(): RuntimeStateMachine {
   return new RuntimeStateMachine({ persistEvent: () => {} });
 }
 
+function baseCommandFields(
+  entityType: "NodeRun" | "SideEffectRecord" | "BudgetReservation",
+  entityId: string,
+  commandId: string,
+) {
+  return {
+    commandId,
+    entityType,
+    entityId,
+    principal: "system:test",
+  };
+}
+
 test("1899/1903/1909: execution-state terminal NodeRun transitions require lease+fencing and preserve transition results", () => {
   const machine = createMachine();
   const runningNode = createNodeRun({
@@ -44,6 +57,7 @@ test("1899/1903/1909: execution-state terminal NodeRun transitions require lease
   });
 
   const cancelCommand: RuntimeTransitionCommand<typeof runningNode> = {
+    ...baseCommandFields("NodeRun", runningNode.nodeRunId, "cmd-node-cancel"),
     aggregateType: "NodeRun",
     aggregate: runningNode,
     fromStatus: "running",
@@ -81,6 +95,7 @@ test("1899/1903/1909: execution-state terminal NodeRun transitions require lease
     currentSeq: 0,
   });
   const aborted = machine.transition({
+    ...baseCommandFields("NodeRun", createdNode.nodeRunId, "cmd-node-abort"),
     aggregateType: "NodeRun",
     aggregate: createdNode,
     fromStatus: "created",
@@ -108,6 +123,7 @@ test("1899/1903/1909: execution-state terminal NodeRun transitions require lease
     version: 7,
   });
   const sideEffectResult = machine.transition({
+    ...baseCommandFields("SideEffectRecord", sideEffect.sideEffectId, "cmd-sidefx-approve"),
     aggregateType: "SideEffectRecord",
     aggregate: sideEffect,
     fromStatus: "proposed",
@@ -132,6 +148,7 @@ test("1899/1903/1909: execution-state terminal NodeRun transitions require lease
     version: 2,
   });
   const reservationResult = machine.transition({
+    ...baseCommandFields("BudgetReservation", reservation.budgetReservationId, "cmd-budget-settle"),
     aggregateType: "BudgetReservation",
     aggregate: reservation,
     fromStatus: "reserved",

@@ -163,7 +163,7 @@ test("orderFairQueue returns new array instance", () => {
 
 test("orderFairQueue handles items with optional fields as undefined", () => {
   const items: FairQueueItem[] = [
-    makeItem({ itemId: "a", slaTier: undefined, guaranteedQuotaShare: undefined, borrowedCredits: undefined, reclaimedCredits: undefined, orgId: undefined, domainId: undefined }),
+    makeItem({ itemId: "a" }),
     makeItem({ itemId: "b", slaTier: 1 }),
   ];
 

@@ -456,7 +456,9 @@ test("trust-relationship: getRecentEvents returns sorted events", async () => {
   const recentEvents = manager.getRecentEvents(10);
   assert.ok(recentEvents.length > 0);
   // Most recent first
-  assert.ok(recentEvents[0]?.timestamp >= recentEvents[recentEvents.length - 1]?.timestamp);
+  assert.ok(recentEvents[0] != null);
+  assert.ok(recentEvents[recentEvents.length - 1] != null);
+  assert.ok(recentEvents[0]!.timestamp >= recentEvents[recentEvents.length - 1]!.timestamp);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

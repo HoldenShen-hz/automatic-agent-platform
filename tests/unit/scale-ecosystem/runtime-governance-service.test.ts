@@ -3,6 +3,14 @@ import test from "node:test";
 
 import { RuntimeGovernanceService, type RuntimeGovernanceRequest } from "../../../src/scale-ecosystem/runtime-governance-service.js";
 
+function createQuotaPolicy(currentUsage: number): RuntimeGovernanceRequest["quotaPolicy"] {
+  return {
+    scope: "tenant",
+    scopeId: "tenant_1",
+    workerUnits: { hardLimit: 10, currentUsage },
+  };
+}
+
 function createBaseRequest(overrides: Partial<RuntimeGovernanceRequest> = {}): RuntimeGovernanceRequest {
   return {
     capability: "notify",
@@ -19,7 +27,7 @@ function createBaseRequest(overrides: Partial<RuntimeGovernanceRequest> = {}): R
       { regionId: "us-west-2", jurisdiction: "US", latencyScore: 80, residencyAllowed: true },
     ],
     primaryRegionHealthy: true,
-    quotaPolicy: { scopeId: "tenant_1", hardLimit: 10, currentUsage: 3 },
+    quotaPolicy: createQuotaPolicy(3),
     requestedUnits: 2,
     queueItems: [
       { itemId: "job_1", tenantId: "tenant_1", priority: 1, ageMs: 60_000 },
@@ -50,7 +58,7 @@ test("RuntimeGovernanceService evaluates with empty inputs", () => {
     connectors: [],
     connectorHealthReports: [],
     regions: [],
-    quotaPolicy: { scopeId: "tenant_1", hardLimit: 10, currentUsage: 0 },
+    quotaPolicy: createQuotaPolicy(0),
     requestedUnits: 0,
     queueItems: [],
     preemptionCandidates: [],
@@ -180,7 +188,7 @@ test("RuntimeGovernanceService skips non-residency-allowed regions for failover"
 test("RuntimeGovernanceService denies quota when hard limit exceeded", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
-    quotaPolicy: { scopeId: "tenant_1", hardLimit: 10, currentUsage: 9 },
+    quotaPolicy: createQuotaPolicy(9),
     requestedUnits: 2,
   });
 
@@ -192,7 +200,7 @@ test("RuntimeGovernanceService denies quota when hard limit exceeded", () => {
 test("RuntimeGovernanceService allows quota when within hard limit", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
-    quotaPolicy: { scopeId: "tenant_1", hardLimit: 10, currentUsage: 3 },
+    quotaPolicy: createQuotaPolicy(3),
     requestedUnits: 2,
   });
 
@@ -415,7 +423,7 @@ test("RuntimeGovernanceService combines connector, region, quota, queue, and SLA
       { regionId: "us-west-2", jurisdiction: "US", latencyScore: 80, residencyAllowed: true },
     ],
     primaryRegionHealthy: false,
-    quotaPolicy: { scopeId: "tenant_1", hardLimit: 10, currentUsage: 3 },
+    quotaPolicy: createQuotaPolicy(3),
     requestedUnits: 2,
     queueItems: [
       { itemId: "job_1", tenantId: "tenant_1", priority: 1, ageMs: 60_000 },

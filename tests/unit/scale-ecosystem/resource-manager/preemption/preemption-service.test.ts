@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PreemptionService, type PreemptionCandidate, type PreemptionServiceOptions } from "../../../../../src/scale-ecosystem/resource-manager/preemption/preemption-service.js";
+import { PreemptionService, type PreemptionServiceOptions } from "../../../../../src/scale-ecosystem/resource-manager/preemption/preemption-service.js";
+import type { PreemptionCandidate } from "../../../../../src/scale-ecosystem/resource-manager/preemption/index.js";
 
 const NOW = Date.now();
 const RECENT_CHECKPOINT_MS = NOW - 1_000;

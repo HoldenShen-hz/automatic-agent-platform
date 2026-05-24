@@ -107,7 +107,7 @@ test("R23-24/R23-25: AWS KMS provider signs with date scope and sends base64 Cip
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
     const headers = init?.headers as Record<string, string>;
-    authorization = headers.Authorization;
+    authorization = headers.Authorization ?? "";
     body = String(init?.body ?? "");
     return {
       ok: true,

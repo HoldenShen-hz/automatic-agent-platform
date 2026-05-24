@@ -120,6 +120,7 @@ describe("PerceptionService exportBrief", () => {
     assert.equal(result.jsonArtifact.kind, "intel_brief");
     assert.ok(result.jsonArtifact.artifactId);
     assert.ok(result.jsonArtifact.checksum);
+    assert.ok(result.jsonArtifact.sizeBytes != null);
     assert.ok(result.jsonArtifact.sizeBytes > 0);
   });
 

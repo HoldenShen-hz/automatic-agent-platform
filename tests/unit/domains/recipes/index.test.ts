@@ -24,6 +24,23 @@ function makeRecipe(overrides: Partial<DomainRecipe>): DomainRecipe {
   });
 }
 
+function makeRecipeInput(overrides: Partial<DomainRecipe>): DomainRecipe {
+  return {
+    recipeId: "recipe_default",
+    domainId: "coding",
+    archetype: "crud_heavy",
+    riskProfileRef: "coding.risk",
+    guardrailOverlay: {},
+    triggerPhrases: [],
+    defaultWorkflowId: "workflow_default",
+    recommendedWorkflowIds: [],
+    defaultToolBundleIds: [],
+    defaultPromptBundleRef: "coding.default-prompt",
+    acceptanceChecklistRef: "coding.acceptance",
+    ...overrides,
+  };
+}
+
 test("DomainRecipeSchema parses valid recipe", () => {
   const recipe = makeRecipe({
     recipeId: "recipe_coding",
@@ -50,7 +67,7 @@ test("DomainRecipeSchema applies default values", () => {
 });
 
 test("DomainRecipeSchema requires recipeId to be non-empty", () => {
-  const recipe = makeRecipe({
+  const recipe = makeRecipeInput({
     recipeId: "",
   });
   const result = DomainRecipeSchema.safeParse(recipe);
@@ -58,7 +75,7 @@ test("DomainRecipeSchema requires recipeId to be non-empty", () => {
 });
 
 test("DomainRecipeSchema requires domainId to be non-empty", () => {
-  const recipe = makeRecipe({
+  const recipe = makeRecipeInput({
     recipeId: "recipe_1",
     domainId: "",
   });
@@ -67,7 +84,7 @@ test("DomainRecipeSchema requires domainId to be non-empty", () => {
 });
 
 test("DomainRecipeSchema requires defaultWorkflowId to be non-empty", () => {
-  const recipe = makeRecipe({
+  const recipe = makeRecipeInput({
     recipeId: "recipe_1",
     defaultWorkflowId: "",
   });

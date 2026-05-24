@@ -308,6 +308,7 @@ test("DataReplicatorService records events", () => {
 
   const event = replicator.recordEvent("eu-west", "task", "task-123", { status: "completed" });
 
+  assert.ok(event);
   assert.ok(event.eventId);
   assert.equal(event.sourceRegionId, "us-east");
   assert.equal(event.targetRegionId, "eu-west");
@@ -877,5 +878,6 @@ test("createDataReplicator keeps sha256 checksum algorithm", () => {
   }, { checksumAlgorithm: "sha256" });
 
   const event = replicator.recordEvent("eu-west", "task", "task-1", { data: "test" });
+  assert.ok(event);
   assert.equal(event.checksum.length, 64);
 });

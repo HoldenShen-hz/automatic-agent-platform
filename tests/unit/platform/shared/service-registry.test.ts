@@ -206,7 +206,9 @@ test("ServiceRegistry - register throws while reset is in progress", async () =>
     /service_registry.reset_in_progress/,
   );
 
-  releaseTeardown?.();
+  const teardown = releaseTeardown as (() => void) | null;
+  assert.ok(teardown);
+  teardown();
   await resetPromise;
 });
 

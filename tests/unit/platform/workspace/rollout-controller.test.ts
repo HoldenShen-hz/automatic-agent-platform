@@ -71,7 +71,7 @@ test("TrafficRoutingService adds routing rule", () => {
   });
 
   assert.equal(updated.rules.length, 1);
-  assert.ok(updated.rules[0].matchCriteria.header !== undefined);
+  assert.ok(updated.rules[0]!.matchCriteria.header !== undefined);
 });
 
 test("TrafficRoutingService removes routing rule", () => {

@@ -87,7 +87,7 @@ test("PackSecurityService with custom fetch returns vulnerability results", asyn
           }],
         }],
       }),
-    })) as typeof fetch,
+    })) as unknown as typeof fetch,
   });
 
   const vulnerabilities = await service.scanDependencyVulnerabilitiesAsync([

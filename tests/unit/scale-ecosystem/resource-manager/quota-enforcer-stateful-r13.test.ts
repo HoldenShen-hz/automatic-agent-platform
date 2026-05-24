@@ -24,6 +24,13 @@ function makeQuotaVector(scopeId: string): Omit<MultiResourceQuotaVector, "scope
   };
 }
 
+function assertQuotaVector(
+  quota: ReturnType<QuotaEnforcerService["getQuota"]>,
+): asserts quota is MultiResourceQuotaVector {
+  assert.ok(quota != null);
+  assert.ok("workerUnits" in quota || "qps" in quota);
+}
+
 test("QuotaEnforcerService registers tenant-scoped quota with mandatory scope binding", () => {
   const service = new QuotaEnforcerService();
   const quota = service.registerTenant("tenant-alpha", makeQuotaVector("tenant-alpha"));
@@ -46,8 +53,9 @@ test("QuotaEnforcerService persists usage across service restarts via file-backe
   const serviceB = new QuotaEnforcerService(store);
   const restored = serviceB.getQuota("tenant", "tenant-bravo");
 
-  assert.equal(restored?.workerUnits?.currentUsage, 4);
-  assert.equal(restored?.qps?.currentUsage, 25);
+  assertQuotaVector(restored);
+  assert.equal(restored.workerUnits?.currentUsage, 4);
+  assert.equal(restored.qps?.currentUsage, 25);
   rmSync(STATE_FILE, { force: true });
 });
 
@@ -67,8 +75,9 @@ test("QuotaEnforcerService merges concurrent file-backed updates instead of last
   });
 
   const restored = new QuotaEnforcerService(store).getQuota("tenant", "tenant-charlie");
-  assert.equal(restored?.workerUnits?.currentUsage, 4);
-  assert.equal(restored?.qps?.currentUsage, 25);
+  assertQuotaVector(restored);
+  assert.equal(restored.workerUnits?.currentUsage, 4);
+  assert.equal(restored.qps?.currentUsage, 25);
   rmSync(STATE_FILE, { force: true });
 });
 
@@ -109,13 +118,19 @@ test("FileQuotaStateStore fails closed under held lock without corrupting persis
     const lockFd = openSync(`${stateFile}.lock`, "wx");
     try {
       const snapshot = store.load();
-      snapshot.registrations["tenant:tenant-delta"] = {
-        scope: "tenant",
-        scopeId: "tenant-delta",
-        ...makeQuotaVector("tenant-delta"),
-        workerUnits: { hardLimit: 10, softLimit: 8, currentUsage: 3 },
+      const updatedSnapshot = {
+        ...snapshot,
+        registrations: {
+          ...snapshot.registrations,
+          "tenant:tenant-delta": {
+            scope: "tenant",
+            scopeId: "tenant-delta",
+            ...makeQuotaVector("tenant-delta"),
+            workerUnits: { hardLimit: 10, softLimit: 8, currentUsage: 3 },
+          },
+        },
       };
-      assert.throws(() => store.save(snapshot), /quota_state\.lock_timeout/);
+      assert.throws(() => store.save(updatedSnapshot), /quota_state\.lock_timeout/);
     } finally {
       closeSync(lockFd);
       rmSync(`${stateFile}.lock`, { force: true });

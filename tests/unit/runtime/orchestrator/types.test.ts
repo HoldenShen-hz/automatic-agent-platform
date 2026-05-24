@@ -4,7 +4,7 @@ import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
   StepFailurePlan,
-} from "../../../src/core/runtime/orchestrator/types.js";
+} from "../../../../src/core/runtime/orchestrator/types.js";
 
 /**
  * Tests for src/core/runtime/orchestrator/types.ts

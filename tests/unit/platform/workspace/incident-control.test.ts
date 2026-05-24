@@ -102,24 +102,25 @@ test("IncidentDetector detects from checks - creates SEV2 for degraded", () => {
 
 test("IncidentDetector maps check ID to category", () => {
   const detector = new IncidentDetector();
+  const dbIncident = detector.detectFromChecks([{
+    checkId: "db",
+    status: "fail_closed",
+    summary: "DB check",
+    findings: ["db"],
+    metrics: {},
+  }])[0];
 
-  const dbIncident = detector.createIncident({
-    category: detector.mapCheckIdToCategory("db"),
-    severity: "SEV1",
-    title: "DB check",
-    description: "test",
-  });
+  assert.equal(dbIncident?.category, "data_integrity");
 
-  assert.equal(dbIncident.category, "data_integrity");
+  const configIncident = detector.detectFromChecks([{
+    checkId: "config",
+    status: "degraded",
+    summary: "Config check",
+    findings: ["config"],
+    metrics: {},
+  }])[0];
 
-  const configIncident = detector.createIncident({
-    category: detector.mapCheckIdToCategory("config"),
-    severity: "SEV2",
-    title: "Config check",
-    description: "test",
-  });
-
-  assert.equal(configIncident.category, "configuration");
+  assert.equal(configIncident?.category, "configuration");
 });
 
 // ============================================================================

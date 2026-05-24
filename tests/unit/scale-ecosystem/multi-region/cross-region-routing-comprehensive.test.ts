@@ -9,10 +9,9 @@ import test from "node:test";
 import {
   CrossRegionRoutingService,
   type CrossRegionRouteRequest,
-  type RegionDescriptor,
   type ResidencyPolicy,
 } from "../../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
-import { RegionDescriptorSchema } from "../../../../src/scale-ecosystem/multi-region/region-router/index.js";
+import { RegionDescriptorSchema, type RegionDescriptor } from "../../../../src/scale-ecosystem/multi-region/region-router/index.js";
 
 function createTestRegion(overrides: Partial<RegionDescriptor> = {}): RegionDescriptor {
   return RegionDescriptorSchema.parse({
@@ -262,7 +261,7 @@ test("CrossRegionRoutingService.route allows read-only to any healthy replica", 
     policy: createTestPolicy(),
     primaryRegionId: "us-east-1",
     primaryRegionHealthy: true,
-    readOnly: true,
+    operationType: "read",
   };
 
   const decision = service.route(request);
@@ -283,7 +282,7 @@ test("CrossRegionRoutingService.route blocks write to unhealthy primary", () => 
     policy: createTestPolicy(),
     primaryRegionId: "us-east-1",
     primaryRegionHealthy: false,
-    readOnly: false,
+    operationType: "write",
   };
 
   const decision = service.route(request);

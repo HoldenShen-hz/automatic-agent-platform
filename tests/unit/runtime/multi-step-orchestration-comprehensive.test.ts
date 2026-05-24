@@ -443,6 +443,7 @@ test("runMultiStepOrchestration workflow outputsJson is valid JSON", async () =>
 
   try {
     const result = await runMultiStepOrchestration(input);
+    assert.ok(result.snapshot.workflow != null);
 
     assert.ok(result.snapshot.workflow.outputsJson);
     const outputs = JSON.parse(result.snapshot.workflow.outputsJson);
@@ -464,6 +465,7 @@ test("runMultiStepOrchestration workflow retryCount starts at 0", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
+    assert.ok(result.snapshot.workflow != null);
 
     assert.equal(result.snapshot.workflow.retryCount, 0);
   } finally {
@@ -483,6 +485,7 @@ test("runMultiStepOrchestration workflow lastErrorCode is null initially", async
 
   try {
     const result = await runMultiStepOrchestration(input);
+    assert.ok(result.snapshot.workflow != null);
 
     // lastErrorCode should be null for successful workflows
     if (result.snapshot.task.status === "done") {
@@ -509,6 +512,7 @@ test("runMultiStepOrchestration workflow startedAt is set", async () => {
 
   try {
     const result = await runMultiStepOrchestration(input);
+    assert.ok(result.snapshot.workflow != null);
 
     assert.ok(result.snapshot.workflow.startedAt);
   } finally {

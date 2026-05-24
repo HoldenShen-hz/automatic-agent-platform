@@ -133,7 +133,7 @@ test("calculateQuorumStatus detects quorum met", () => {
     createVote("user_2", VoteType.APPROVE),
   ];
 
-  const status = calculateQuorumStatus(votes, config, votes[0].votedAt, votes[1].votedAt);
+  const status = calculateQuorumStatus(votes, config, votes[0]!.votedAt, votes[1]!.votedAt);
 
   assert.equal(isQuorumMet(status), true);
   assert.equal(isDenied(status), false);
@@ -150,7 +150,7 @@ test("calculateQuorumStatus detects denial", () => {
     createVote("user_2", VoteType.REJECT),
   ];
 
-  const status = calculateQuorumStatus(votes, config, votes[0].votedAt, votes[1].votedAt);
+  const status = calculateQuorumStatus(votes, config, votes[0]!.votedAt, votes[1]!.votedAt);
 
   assert.equal(isQuorumMet(status), false);
   assert.equal(isDenied(status), true);

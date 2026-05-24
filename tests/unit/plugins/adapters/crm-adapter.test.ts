@@ -187,12 +187,14 @@ test("CrmAdapter.execute makes real API call with correct URL and headers", asyn
   const result = await adapter.execute("contacts", { limit: 50, properties: "email" });
 
   assert.ok(capturedUrl !== null);
-  assert.ok(capturedUrl!.startsWith("https://api.hubspot.com/crm/v3/objects/contacts"));
-  assert.ok(capturedUrl!.includes("limit=50"));
-  assert.ok(capturedUrl!.includes("properties=email"));
+  const requestUrl = capturedUrl as string;
+  assert.ok(requestUrl.startsWith("https://api.hubspot.com/crm/v3/objects/contacts"));
+  assert.ok(requestUrl.includes("limit=50"));
+  assert.ok(requestUrl.includes("properties=email"));
   assert.ok(capturedRequest !== null);
-  assert.equal(capturedRequest!.method, "GET");
-  assert.equal((capturedRequest!.headers as Record<string, string>)["Authorization"], "Bearer real_hubspot_token_abc12345");
+  const request = capturedRequest as RequestInit;
+  assert.equal(request.method, "GET");
+  assert.equal((request.headers as Record<string, string>)["Authorization"], "Bearer real_hubspot_token_abc12345");
   assert.equal((result as any).ok, true);
   assert.deepEqual((result as any).data.result, mockResponse);
 
@@ -219,9 +221,10 @@ test("CrmAdapter.execute makes POST request with body for whitelisted mutating a
   const result = await adapter.execute("upsert_contact", { param1: "value1", param2: 42 });
 
   assert.ok(capturedRequest !== null);
-  assert.equal(capturedRequest!.method, "POST");
-  assert.ok(capturedRequest!.body !== undefined);
-  const body = JSON.parse(capturedRequest!.body as string);
+  const request = capturedRequest as RequestInit & { body?: string };
+  assert.equal(request.method, "POST");
+  assert.ok(request.body !== undefined);
+  const body = JSON.parse(request.body as string);
   assert.equal(body.param1, "value1");
   assert.equal(body.param2, 42);
   assert.equal((result as any).ok, true);

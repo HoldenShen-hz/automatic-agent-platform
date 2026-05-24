@@ -47,7 +47,7 @@ function approvalRecord(overrides: Partial<ApprovalRecord> = {}): ApprovalRecord
     id: "approval-1",
     taskId: "task-1",
     executionId: "exec-1",
-    status: "pending",
+    status: "requested",
     requestJson: '{"reason":"high_value_task"}',
     responseJson: null,
     timeoutPolicy: "30m",
@@ -63,7 +63,7 @@ function takeoverSessionRecord(overrides: Partial<TakeoverSessionRecord> = {}): 
     taskId: "task-1",
     executionId: "exec-1",
     operatorId: "operator-1",
-    status: "active",
+    status: "open",
     reasonCode: "manual_intervention",
     startedAt: now,
     closedAt: null,
@@ -78,7 +78,7 @@ function operatorActionRecord(overrides: Partial<OperatorActionRecord> = {}): Op
     taskId: "task-1",
     executionId: "exec-1",
     operatorId: "operator-1",
-    actionType: "resume",
+    actionType: "retry_execution",
     reasonCode: "user_requested",
     actionPayloadJson: "{}",
     beforeStateJson: '{"status":"paused"}',
@@ -180,7 +180,7 @@ test("AsyncApprovalRepository listApprovalsByStatus returns approvals by status"
   const { connection, calls } = createConnection({ queryRows: [[approval]] });
   const repo = new AsyncApprovalRepository(connection);
 
-  const result = await repo.listApprovalsByStatus("pending");
+  const result = await repo.listApprovalsByStatus("requested");
 
   assert.deepEqual(result, [approval]);
   assert.match(calls[0]!.sql, /FROM approvals/);

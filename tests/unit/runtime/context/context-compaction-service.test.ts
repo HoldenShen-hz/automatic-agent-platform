@@ -233,7 +233,7 @@ test("fixedPrefixEndIndex identifies system messages at start", () => {
 
   let fixedPrefixEndIndex = 0;
   for (let i = 0; i < messages.length; i++) {
-    if (messages[i].direction === "system") {
+    if (messages[i]!.direction === "system") {
       fixedPrefixEndIndex = i + 1;
     } else {
       break;
@@ -251,7 +251,7 @@ test("fixedPrefixEndIndex is 0 when first message is not system", () => {
 
   let fixedPrefixEndIndex = 0;
   for (let i = 0; i < messages.length; i++) {
-    if (messages[i].direction === "system") {
+    if (messages[i]!.direction === "system") {
       fixedPrefixEndIndex = i + 1;
     } else {
       break;
@@ -301,7 +301,7 @@ function applyRedaction(value: unknown, redactPatterns: string[], replacementMas
 test("applyRedaction redacts matching patterns", () => {
   const value = "api_key=secret123 token=abc123";
   const patterns = ["api_key", "token"];
-  const result = applyRedaction(value, patterns);
+  const result = applyRedaction(value, patterns) as string;
 
   assert.ok(result.includes("api_key: ***"));
   assert.ok(result.includes("token: ***"));
@@ -310,7 +310,7 @@ test("applyRedaction redacts matching patterns", () => {
 test("applyRedaction preserves non-matching content", () => {
   const value = "username=user123 password=pass456";
   const patterns = ["api_key"];
-  const result = applyRedaction(value, patterns);
+  const result = applyRedaction(value, patterns) as string;
 
   assert.ok(result.includes("username=user123"));
   assert.ok(result.includes("password=pass456"));
@@ -327,7 +327,7 @@ test("applyRedaction handles non-string values", () => {
 test("applyRedaction uses custom replacement mask", () => {
   const value = "api_key=secret";
   const patterns = ["api_key"];
-  const result = applyRedaction(value, patterns, "REDACTED");
+  const result = applyRedaction(value, patterns, "REDACTED") as string;
 
   assert.ok(result.includes("api_key: REDACTED"));
 });
