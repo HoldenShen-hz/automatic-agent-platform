@@ -203,7 +203,7 @@ describe("CheckpointEnvelope", () => {
   describe("CheckpointSizeExceededError", () => {
     it("should throw when checkpoint exceeds default size limit", async () => {
       const largeOutput = {
-        data: randomBytes(Math.floor(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES / 2) + 2_048).toString("hex"),
+        data: randomBytes(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES).toString("base64"),
       };
       const checkpoint = createTestCheckpoint({ output: largeOutput });
 
@@ -226,7 +226,7 @@ describe("CheckpointEnvelope", () => {
 
     it("should include size information in error details", async () => {
       const largeOutput = {
-        data: randomBytes(Math.floor(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES / 2) + 4_096).toString("hex"),
+        data: randomBytes(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES).toString("base64"),
       };
       const checkpoint = createTestCheckpoint({ output: largeOutput });
 
