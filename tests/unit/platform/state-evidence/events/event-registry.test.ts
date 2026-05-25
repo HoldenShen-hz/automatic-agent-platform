@@ -83,6 +83,14 @@ test("projection runtime events expose replay-safe synthesized metadata", () => 
   assert.equal(metadata.replayBehavior, "simulate");
 });
 
+test("registered events without explicit replay metadata default to forbidden replay", () => {
+  const metadata = getEventReplayMetadata("task:status_changed");
+
+  assert.equal(metadata.eventType, "task:status_changed");
+  assert.equal(metadata.replayable, false);
+  assert.equal(metadata.replayBehavior, "forbidden");
+});
+
 test("getEventSchema throws ValidationError for unknown event", () => {
   assert.throws(
     () => getEventSchema("unknown:event"),

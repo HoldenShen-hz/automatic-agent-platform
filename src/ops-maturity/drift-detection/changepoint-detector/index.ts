@@ -517,6 +517,8 @@ export class ChangepointDetectorService {
 }
 
 function hoursToSamples(hours: number, samplesPerHour: number): number {
+  // Round to the nearest sample bucket, then clamp to at least one sample so
+  // very small windows such as 15 minutes still evaluate a non-empty slice.
   return Math.max(1, Math.round(hours * samplesPerHour));
 }
 

@@ -38,6 +38,8 @@ export class AutonomyGovernanceService {
   }
 
   public canPromote(agentId: string, _capabilityId: string, targetLevel: AutonomyLevel): boolean {
+    // `<= 0` deliberately allows no-op requests that keep an agent at its
+    // current maximum autonomy level while still blocking overshoot.
     return !this.isFrozen(agentId) && compareAutonomyLevels(targetLevel, this.getMaxAutonomyLevel(agentId)) <= 0;
   }
 

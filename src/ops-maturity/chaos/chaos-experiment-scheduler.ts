@@ -438,6 +438,18 @@ export class ChaosExperimentScheduler {
   private executeRollbackWithTimeout(experimentId: string, timeoutMs: number): void {
     const rollbackRunId = newId("rollback_run");
     const controller = new AbortController();
+    const actions = this.rollbackQueue.get(experimentId);
+    if (!actions) {
+      controller.abort(new Error("chaos.rollback.no_actions"));
+      this.completeRollbackActions(experimentId, "failed", "No rollback actions");
+      return;
+    }
+    const experiment = this.experiments.get(experimentId);
+    if (!experiment) {
+      controller.abort(new Error("chaos.rollback.experiment_not_found"));
+      this.completeRollbackActions(experimentId, "failed", "Experiment not found");
+      return;
+    }
     this.rollbackRunIds.set(experimentId, rollbackRunId);
     let settled = false;
     const finalize = (status: "completed" | "failed", result: string): void => {
@@ -454,7 +466,7 @@ export class ChaosExperimentScheduler {
     }, timeoutMs);
     timeout.unref?.();
 
-    this.executeRollbackActions(experimentId, controller.signal).then((result) => {
+    this.executeRollbackActions(experiment, actions, controller.signal).then((result) => {
       clearTimeout(timeout);
       finalize("completed", result);
     }).catch((error) => {
@@ -466,14 +478,11 @@ export class ChaosExperimentScheduler {
   /**
    * Executes rollback actions for an experiment.
    */
-  private async executeRollbackActions(experimentId: string, signal: AbortSignal): Promise<string> {
-    const actions = this.rollbackQueue.get(experimentId);
-    if (!actions) return "No rollback actions";
-    const experiment = this.experiments.get(experimentId);
-    if (!experiment) {
-      return "Experiment not found";
-    }
-
+  private async executeRollbackActions(
+    experiment: ChaosExperiment,
+    actions: readonly RollbackAction[],
+    signal: AbortSignal,
+  ): Promise<string> {
     for (const action of actions) {
       if (signal.aborted) {
         throw new Error("chaos.rollback.aborted");

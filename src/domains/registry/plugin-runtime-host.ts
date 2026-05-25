@@ -740,7 +740,7 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
   let template: unknown;
   try {
     template = JSON.parse(rawTemplate);
-  } catch {
+  } catch (error) {
     throw new ValidationError(
       "plugin_spi.container_launcher_invalid_json",
       "plugin_spi.container_launcher_invalid_json",
@@ -748,6 +748,7 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
         retryable: false,
         details: {
           pluginId: options.pluginId,
+          error: error instanceof Error ? error.message : String(error),
         },
       },
     );

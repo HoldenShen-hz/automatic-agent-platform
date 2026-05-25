@@ -13,6 +13,7 @@ test("AutoRollbackService evaluates insufficient sample size", () => {
   };
 
   const result = service.evaluate({} as any, metrics);
+  assert.equal(result.evaluable, false);
   assert.equal(result.rollback, false);
   assert.ok(result.reasonCodes.includes("rollout.metrics_insufficient_sample"));
 });
@@ -28,6 +29,7 @@ test("AutoRollbackService evaluates insufficient observation window", () => {
   };
 
   const result = service.evaluate({} as any, metrics);
+  assert.equal(result.evaluable, false);
   assert.equal(result.rollback, false);
   assert.ok(result.reasonCodes.includes("rollout.metrics_insufficient_window"));
 });
@@ -43,6 +45,7 @@ test("AutoRollbackService triggers rollback on high failure rate", () => {
   };
 
   const result = service.evaluate({} as any, metrics);
+  assert.equal(result.evaluable, true);
   assert.equal(result.rollback, true);
   assert.ok(result.reasonCodes.includes("rollout.failure_rate_exceeded"));
 });
@@ -73,6 +76,7 @@ test("AutoRollbackService does not rollback when metrics are healthy", () => {
   };
 
   const result = service.evaluate({} as any, metrics);
+  assert.equal(result.evaluable, true);
   assert.equal(result.rollback, false);
   assert.deepEqual(result.reasonCodes, []);
 });

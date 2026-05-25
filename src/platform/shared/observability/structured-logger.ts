@@ -467,7 +467,7 @@ export class StructuredLogger {
       } else {
         fsPromises.appendFile(sink.filePath, serialized, "utf8")
           .catch((error) => {
-            process.stderr.write(`structured_logger.file_sink_error:${error instanceof Error ? error.message : String(error)}\n`);
+            reportStructuredLoggerInternalError("structured_logger.file_sink_error", error);
           })
           .finally(() => {
             const latestState = StructuredLogger.rotationStateByPath.get(sink.filePath);

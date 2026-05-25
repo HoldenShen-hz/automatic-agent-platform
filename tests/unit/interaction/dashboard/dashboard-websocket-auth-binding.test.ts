@@ -35,15 +35,15 @@ test("DashboardWebSocketServer registerClient rejects missing auth binding input
 
   assert.throws(
     () => server.registerClient([{ channel: "global" }], "", "tenant-1"),
-    /Principal is required/,
+    /dashboard_ws\.identity_required:principal/,
   );
   assert.throws(
     () => server.registerClient([{ channel: "global" }], "principal-1", ""),
-    /Tenant ID is required/,
+    /dashboard_ws\.identity_required:tenant/,
   );
   assert.throws(
     () => server.registerClient([{ channel: "global" }]),
-    /Principal is required/,
+    /dashboard_ws\.identity_required:principal/,
   );
 });
 

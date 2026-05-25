@@ -117,6 +117,8 @@ test("FailoverReconciliationJob: runReconciliation returns scan result with corr
   assert.equal(result.targetRegionId, input.targetRegionId);
   assert.equal(result.issues.length, 0, "no issues for empty input");
   assert.equal(result.canProceed, true, "can proceed with no issues");
+  assert.equal(result.evaluationMode, "caller_supplied_evidence");
+  assert.ok(result.warnings.includes("failover_reconciliation.caller_supplied_evidence_only"));
 });
 
 test("FailoverReconciliationJob: detects unreplicated writes", () => {
@@ -213,6 +215,28 @@ test("FailoverReconciliationJob: restricted writes are always critical", () => {
   const restrictedIssues = result.issues.filter(i => i.issueType === "restricted_write");
   assert.ok(restrictedIssues.every(i => i.severity === "critical"));
   assert.ok(restrictedIssues.every(i => i.requiresAttention === true));
+});
+
+test("FailoverReconciliationJob: active leases held by the source region block promotion", () => {
+  const job = new FailoverReconciliationJob();
+  const input: ReconciliationJobInput = {
+    ...createMinimalInput(),
+    activeLeaseCount: 4,
+    staleLeaseCount: 1,
+    activeLeaseHolderRegionDistribution: {
+      "region-us-east-1": 3,
+      "region-us-west-2": 1,
+    },
+  };
+
+  const result = job.runReconciliation(input);
+
+  assert.equal(result.activeLeaseCount, 4);
+  assert.equal(result.staleLeaseCount, 1);
+  assert.equal(result.canProceed, false);
+  const activeLeaseIssue = result.issues.find((issue) => issue.issueType === "active_lease");
+  assert.ok(activeLeaseIssue);
+  assert.equal(activeLeaseIssue?.severity, "critical");
 });
 
 test("FailoverReconciliationJob: multiple issue types are correctly counted", () => {

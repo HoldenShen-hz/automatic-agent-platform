@@ -51,6 +51,18 @@ export interface SessionEvent {
   payload: Record<string, unknown>;
 }
 
+export interface SessionPluginReferenceIssue {
+  readonly eventType: SessionEventType;
+  readonly pluginId: string;
+  readonly reason: "plugin_not_registered" | "plugin_unhealthy";
+}
+
+export interface SessionPluginValidationResult {
+  readonly valid: boolean;
+  readonly referencesChecked: number;
+  readonly issues: readonly SessionPluginReferenceIssue[];
+}
+
 /**
  * Configuration options for SessionDualStorageService.
  */
@@ -423,6 +435,61 @@ export class SessionDualStorageService {
       issues,
     };
   }
+
+  public validateSessionPluginReferences(
+    events: readonly SessionEvent[],
+    options: {
+      readonly installedPluginIds: ReadonlySet<string> | readonly string[];
+      readonly healthyPluginIds: ReadonlySet<string> | readonly string[];
+    },
+  ): SessionPluginValidationResult {
+    const installedPluginIds = options.installedPluginIds instanceof Set
+      ? options.installedPluginIds
+      : new Set(options.installedPluginIds);
+    const healthyPluginIds = options.healthyPluginIds instanceof Set
+      ? options.healthyPluginIds
+      : new Set(options.healthyPluginIds);
+    const issues: SessionPluginReferenceIssue[] = [];
+    let referencesChecked = 0;
+
+    for (const event of events) {
+      for (const pluginId of collectPluginIds(event.payload)) {
+        referencesChecked += 1;
+        if (!installedPluginIds.has(pluginId)) {
+          issues.push({ eventType: event.eventType, pluginId, reason: "plugin_not_registered" });
+          continue;
+        }
+        if (!healthyPluginIds.has(pluginId)) {
+          issues.push({ eventType: event.eventType, pluginId, reason: "plugin_unhealthy" });
+        }
+      }
+    }
+
+    return {
+      valid: issues.length === 0,
+      referencesChecked,
+      issues,
+    };
+  }
+}
+
+function collectPluginIds(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectPluginIds(item));
+  }
+  if (value == null || typeof value !== "object") {
+    return [];
+  }
+  const record = value as Record<string, unknown>;
+  const result: string[] = [];
+  for (const [key, nestedValue] of Object.entries(record)) {
+    if (key === "pluginId" && typeof nestedValue === "string" && nestedValue.trim().length > 0) {
+      result.push(nestedValue.trim());
+      continue;
+    }
+    result.push(...collectPluginIds(nestedValue));
+  }
+  return result;
 }
 
 function mapSessionStatusEventToStatus(event: SessionEvent | undefined): SessionRecord["status"] | null {

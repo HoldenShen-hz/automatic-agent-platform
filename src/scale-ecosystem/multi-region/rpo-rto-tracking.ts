@@ -210,6 +210,10 @@ export class RpoRtoTrackingService {
     targetRegionId: string,
   ): FailoverEvent {
     const key = this.toPairKey(sourceRegionId, targetRegionId);
+    const existing = this.failoverEvents.get(key);
+    if (existing != null && existing.completedAt == null) {
+      throw new Error(`failover_already_in_progress:${key}`);
+    }
     const event: FailoverEvent = {
       eventId: newId("failover"),
       sourceRegionId,

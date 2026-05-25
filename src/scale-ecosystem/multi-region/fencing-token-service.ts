@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
@@ -82,40 +82,46 @@ export class FencingTokenService {
    * @returns Fencing token if leadership acquired, null if leadership already held by another region
    */
   public acquireLeadership(regionId: string, entityId: string | null = null): FencingToken | null {
-    const key = entityId ?? "GLOBAL";
+    const releaseLock = this.acquirePersistenceLock();
+    try {
+      this.reloadPersistedState();
+      const key = entityId ?? "GLOBAL";
 
-    // Check if there's existing leadership
-    const existing = this.entityLeadership.get(key);
-    if (existing && existing.isActive && existing.regionId !== regionId) {
-      // Leadership already held by another region
-      return null;
+      // Check if there's existing leadership
+      const existing = this.entityLeadership.get(key);
+      if (existing && existing.isActive && existing.regionId !== regionId) {
+        // Leadership already held by another region
+        return null;
+      }
+
+      // Increment epoch for new leadership
+      this.epochCounter++;
+      const issuedAt = nowIso();
+
+      const fencingToken: FencingToken = {
+        tokenId: newId("fence"),
+        regionId,
+        epoch: this.epochCounter,
+        issuedAt,
+        entityId,
+      };
+
+      const leadershipState: LeadershipState = {
+        regionId,
+        epoch: this.epochCounter,
+        acquiredAt: issuedAt,
+        fencingToken,
+        isActive: true,
+      };
+
+      this.entityLeadership.set(key, leadershipState);
+      this.leaderships.set(regionId, leadershipState);
+      this.persistState();
+
+      return fencingToken;
+    } finally {
+      releaseLock();
     }
-
-    // Increment epoch for new leadership
-    this.epochCounter++;
-    const issuedAt = nowIso();
-
-    const fencingToken: FencingToken = {
-      tokenId: newId("fence"),
-      regionId,
-      epoch: this.epochCounter,
-      issuedAt,
-      entityId,
-    };
-
-    const leadershipState: LeadershipState = {
-      regionId,
-      epoch: this.epochCounter,
-      acquiredAt: issuedAt,
-      fencingToken,
-      isActive: true,
-    };
-
-    this.entityLeadership.set(key, leadershipState);
-    this.leaderships.set(regionId, leadershipState);
-    this.persistState();
-
-    return fencingToken;
   }
 
   /**
@@ -127,24 +133,30 @@ export class FencingTokenService {
    * @returns true if leadership was released, false if region didn't hold leadership
    */
   public releaseLeadership(regionId: string, entityId: string | null = null): boolean {
-    const key = entityId ?? "GLOBAL";
+    const releaseLock = this.acquirePersistenceLock();
+    try {
+      this.reloadPersistedState();
+      const key = entityId ?? "GLOBAL";
 
-    const existing = this.entityLeadership.get(key);
-    if (!existing || !existing.isActive || existing.regionId !== regionId) {
-      return false;
+      const existing = this.entityLeadership.get(key);
+      if (!existing || !existing.isActive || existing.regionId !== regionId) {
+        return false;
+      }
+
+      // Mark leadership as inactive
+      const released: LeadershipState = {
+        ...existing,
+        isActive: false,
+      };
+
+      this.entityLeadership.set(key, released);
+      this.leaderships.set(regionId, released);
+      this.persistState();
+
+      return true;
+    } finally {
+      releaseLock();
     }
-
-    // Mark leadership as inactive
-    const released: LeadershipState = {
-      ...existing,
-      isActive: false,
-    };
-
-    this.entityLeadership.set(key, released);
-    this.leaderships.set(regionId, released);
-    this.persistState();
-
-    return true;
   }
 
   /**
@@ -204,6 +216,15 @@ export class FencingTokenService {
       return {
         valid: false,
         reason: "token_entity_mismatch",
+        currentEpoch: current.epoch,
+        tokenEpoch: token.epoch,
+      };
+    }
+
+    if (current.fencingToken.tokenId !== token.tokenId) {
+      return {
+        valid: false,
+        reason: "token_id_mismatch",
         currentEpoch: current.epoch,
         tokenEpoch: token.epoch,
       };
@@ -282,6 +303,13 @@ export class FencingTokenService {
     }
   }
 
+  private reloadPersistedState(): void {
+    this.entityLeadership.clear();
+    this.leaderships.clear();
+    this.epochCounter = 0;
+    this.loadPersistedState();
+  }
+
   private persistState(): void {
     if (this.storagePath == null) {
       return;
@@ -306,6 +334,22 @@ export class FencingTokenService {
         }
       }
     }
+  }
+
+  private acquirePersistenceLock(): () => void {
+    if (this.storagePath == null) {
+      return () => {};
+    }
+    mkdirSync(dirname(this.storagePath), { recursive: true });
+    const lockPath = `${this.storagePath}.lock`;
+    const lockFd = openSync(lockPath, "wx");
+    return () => {
+      try {
+        closeSync(lockFd);
+      } finally {
+        unlinkSync(lockPath);
+      }
+    };
   }
 }
 

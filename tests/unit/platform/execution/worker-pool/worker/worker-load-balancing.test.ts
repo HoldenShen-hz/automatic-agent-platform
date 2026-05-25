@@ -183,6 +183,21 @@ test("summarizeWorkerLoadSkew result includes maxRecommendedStickyShare", () => 
   assert.equal(result.maxRecommendedStickyShare, 0.6);
 });
 
+test("summarizeWorkerLoadSkew respects caller-provided sticky share threshold", () => {
+  const signals = [
+    makeSignal({ workerId: "worker-1", activeLeaseCount: 6, runningExecutionCount: 6, maxConcurrency: 4, availableSlots: 0 }),
+    makeSignal({ workerId: "worker-2", activeLeaseCount: 3, runningExecutionCount: 3, maxConcurrency: 4, availableSlots: 1 }),
+    makeSignal({ workerId: "worker-3", activeLeaseCount: 1, runningExecutionCount: 1, maxConcurrency: 4, availableSlots: 3 }),
+  ];
+
+  const relaxed = summarizeWorkerLoadSkew(signals, { maxRecommendedStickyShare: 0.7 });
+  const strict = summarizeWorkerLoadSkew(signals, { maxRecommendedStickyShare: 0.55 });
+
+  assert.equal(relaxed.detected, false);
+  assert.equal(strict.detected, true);
+  assert.equal(strict.maxRecommendedStickyShare, 0.55);
+});
+
 test("summarizeWorkerLoadSkew dominant worker is selected by lease count then load score", () => {
   // worker-1 has more leases and higher saturation (higher load score)
   // total = 7, worker-1 share = 6/7 ≈ 0.857 > 0.6 threshold

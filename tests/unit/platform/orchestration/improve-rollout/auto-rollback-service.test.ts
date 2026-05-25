@@ -42,6 +42,7 @@ test("AutoRollbackService evaluates metrics and does not rollback when within th
 
   const decision = service.evaluate(rollout, metrics);
 
+  assert.equal(decision.evaluable, true);
   assert.equal(decision.rollback, false);
   assert.ok(decision.reasonCodes.length === 0);
 });
@@ -90,6 +91,7 @@ test("AutoRollbackService returns insufficient sample when requestCount below mi
 
   const decision = service.evaluate(rollout, metrics);
 
+  assert.equal(decision.evaluable, false);
   assert.equal(decision.rollback, false);
   assert.ok(decision.reasonCodes.includes("rollout.metrics_insufficient_sample"));
 });
@@ -107,6 +109,7 @@ test("AutoRollbackService returns insufficient window when observationWindowMs b
 
   const decision = service.evaluate(rollout, metrics);
 
+  assert.equal(decision.evaluable, false);
   assert.equal(decision.rollback, false);
   assert.ok(decision.reasonCodes.includes("rollout.metrics_insufficient_window"));
 });

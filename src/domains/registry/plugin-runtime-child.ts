@@ -13,6 +13,7 @@ import { parsePluginRuntimeChildMessage } from "./plugin-runtime-protocol.js";
 const require = createRequire(import.meta.url);
 const logger = new StructuredLogger({ retentionLimit: 100, service: "plugin-runtime-child" });
 const runtimeChildEntryPath = fileURLToPath(import.meta.url);
+const bootCorrelationId = `boot:${process.pid}:${Date.now()}`;
 
 let currentPluginId: string | null = null;
 let currentPlugin: RegisteredPlugin | null = null;
@@ -131,11 +132,16 @@ function installStdioProtocolConsoleRedirection(): void {
     const entry = logger.log({
       level,
       message,
-      ...(requestId == null ? {} : {
-        requestId,
-        traceId: requestId,
-        correlationId: requestId,
-      }),
+      ...(requestId == null
+        ? {
+          traceId: bootCorrelationId,
+          correlationId: bootCorrelationId,
+        }
+        : {
+          requestId,
+          traceId: requestId,
+          correlationId: requestId,
+        }),
       data: {
         pluginId: currentRequest?.pluginId ?? process.env.AA_PLUGIN_RUNTIME_PLUGIN_ID ?? currentPluginId,
         action: currentRequest?.action ?? null,

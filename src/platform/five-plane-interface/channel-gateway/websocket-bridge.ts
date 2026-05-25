@@ -39,6 +39,12 @@ const DEFAULT_MAX_PAYLOAD_BYTES = 64 * 1024;
 const DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES = 500_000;
 const RESUME_PROTOCOL_KEYS = new Set(["taskId", "lastEventId"]);
 
+function detachWebSocketListeners(socket: WebSocket): void {
+  if ("removeAllListeners" in socket && typeof socket.removeAllListeners === "function") {
+    socket.removeAllListeners();
+  }
+}
+
 /**
  * Zod schema for validating WebSocket messages at the inter-plane boundary.
  * This provides runtime validation to ensure message structure matches the declared types.
@@ -396,7 +402,7 @@ export class WebSocketBridge {
     client.subscribedTasks.clear();
     client.bufferedEventCount = 0;
     this.slowConsumers.delete(ws);
-    ws.removeAllListeners?.();
+    detachWebSocketListeners(ws);
     this.clients.delete(ws);
   }
 
@@ -637,6 +643,8 @@ export class WebSocketBridge {
 
     const sequenceNum = client.nextExpectedSequenceNum++;
     if (client.lastEventId != null && client.lastAcknowledgedSequenceNum < sequenceNum - 1) {
+      // Replay hints are emitted only after authorization succeeds for the
+      // task subscription, so these identifiers stay within that task scope.
       this.sendStreamGap(ws, {
         taskId,
         fromEventId: client.lastEventId,

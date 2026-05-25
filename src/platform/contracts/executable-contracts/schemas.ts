@@ -542,7 +542,7 @@ export const BudgetLedgerSchema = z.object({
   reservedAmount: z.number().nonnegative(),
   settledAmount: z.number().nonnegative(),
   releasedAmount: z.number().nonnegative(),
-  status: z.enum(["open", "soft_cap_reached", "hard_cap_reached", "closed"]),
+  status: z.enum(["open", "soft_cap_reached", "hard_cap_reached", "closed", "settling", "reserving", "releasing"]),
   version: z.number().int().nonnegative(),
 });
 

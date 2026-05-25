@@ -34,7 +34,10 @@
 
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
-import { summarizeWorkerLoadSkew } from "../../five-plane-execution/worker-pool/worker-load-balancing.js";
+import {
+  MAX_RECOMMENDED_STICKY_SHARE,
+  summarizeWorkerLoadSkew,
+} from "../../five-plane-execution/worker-pool/worker-load-balancing.js";
 import { DEFAULT_WORKER_HEARTBEAT_STALENESS_MS } from "../runtime/worker-heartbeat-policy.js";
 import {
   mapHealthDegradationModeToUnifiedRuntimeMode,
@@ -91,6 +94,8 @@ export interface HealthServiceOptions {
   syncSnapshotMaxAgeMs?: number;
   /** Allow synchronous runtime sampling in getReport(); when false, getReport falls back to cached/degraded data */
   allowSynchronousSampling?: boolean;
+  /** Sticky-share threshold for worker load skew detection. */
+  maxRecommendedStickyShare?: number;
 }
 
 export interface QueueGovernanceHealthSummary {
@@ -197,6 +202,7 @@ export class HealthService {
       recoveryWindowReports: options.recoveryWindowReports ?? 2,
       syncSnapshotMaxAgeMs: options.syncSnapshotMaxAgeMs ?? 5_000,
       allowSynchronousSampling: options.allowSynchronousSampling ?? true,
+      maxRecommendedStickyShare: options.maxRecommendedStickyShare ?? MAX_RECOMMENDED_STICKY_SHARE,
     };
   }
 
@@ -407,6 +413,7 @@ export class HealthService {
           cpuPct: worker.cpuPct ?? null,
         };
       }),
+      { maxRecommendedStickyShare: this.options.maxRecommendedStickyShare },
     );
     return {
       totalWorkers: workers.length,

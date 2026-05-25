@@ -60,6 +60,7 @@ export interface StructuredMemoryContent {
   recentHistory: string[];
   longTermBackground: string[];
   facts: StructuredMemoryFact[];
+  metadata: Record<string, unknown>;
 }
 
 /**
@@ -85,6 +86,7 @@ const STRUCTURED_KEYS = new Set([
   "recentHistory",
   "longTermBackground",
   "facts",
+  "metadata",
 ]);
 
 // Type guard for plain objects
@@ -152,6 +154,7 @@ function createEmptyStructuredMemoryContent(): StructuredMemoryContent {
     recentHistory: [],
     longTermBackground: [],
     facts: [],
+    metadata: {},
   };
 }
 
@@ -279,6 +282,9 @@ function normalizeStructuredObject(
       }
     }
   }
+  if (isRecord(value.metadata)) {
+    result.metadata = { ...value.metadata };
+  }
 
   // Handle additional field names that map to structured fields
   for (const [key, rawValue] of Object.entries(value)) {
@@ -328,6 +334,7 @@ function normalizeStructuredObject(
 
     // Array fields -> facts with key as category
     if (Array.isArray(rawValue)) {
+      result.metadata[key] = [...rawValue];
       for (const item of rawValue) {
         if (typeof item === "string") {
           appendFact(result.facts, item, key, fallbackConfidence, fallbackProvenance);
@@ -336,8 +343,14 @@ function normalizeStructuredObject(
       continue;
     }
 
+    if (isRecord(rawValue)) {
+      result.metadata[key] = { ...rawValue };
+      continue;
+    }
+
     // Primitive values -> fact with key=value format
     if (typeof rawValue === "string" || typeof rawValue === "number" || typeof rawValue === "boolean") {
+      result.metadata[key] = rawValue;
       appendFact(result.facts, `${key}=${String(rawValue)}`, key, fallbackConfidence, fallbackProvenance);
     }
   }

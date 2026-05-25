@@ -115,7 +115,6 @@ export class RegionHealthCheckService {
   private readonly configs = new Map<string, RegionHealthCheckConfig>();
   private readonly healthResults = new Map<string, RegionHealthCheckResult>();
   private readonly consecutiveFailures = new Map<string, number>();
-  private readonly lastCheckTime = new Map<string, string>();
   private readonly circuitBreakers = new Map<string, CircuitBreaker>();
 
   /**
@@ -142,7 +141,6 @@ export class RegionHealthCheckService {
     this.configs.delete(regionId);
     this.healthResults.delete(regionId);
     this.consecutiveFailures.delete(regionId);
-    this.lastCheckTime.delete(regionId);
     this.circuitBreakers.delete(regionId);
   }
 
@@ -208,7 +206,6 @@ export class RegionHealthCheckService {
         errorMessage: error instanceof Error ? error.message : "Health check failed",
       };
       this.healthResults.set(regionId, healthResult);
-      this.lastCheckTime.set(regionId, healthResult.checkedAt);
       return healthResult;
     }
   }
@@ -228,7 +225,7 @@ export class RegionHealthCheckService {
     const config = this.configs.get(regionId);
     const result = this.healthResults.get(regionId);
     const failures = this.consecutiveFailures.get(regionId) ?? 0;
-    const lastChecked = this.lastCheckTime.get(regionId);
+    const lastChecked = result?.checkedAt ?? null;
 
     if (!config) {
       return null;
@@ -479,7 +476,6 @@ export class RegionHealthCheckService {
    */
   private updateHealthState(regionId: string, result: RegionHealthCheckResult): void {
     this.healthResults.set(regionId, result);
-    this.lastCheckTime.set(regionId, result.checkedAt);
 
     if (result.status === "healthy") {
       this.consecutiveFailures.set(regionId, 0);

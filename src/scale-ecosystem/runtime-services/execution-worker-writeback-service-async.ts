@@ -18,7 +18,6 @@
 
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { randomUUID } from "node:crypto";
 import type {
   WorkerWritebackInput,
   WorkerWritebackDecision,
@@ -27,6 +26,7 @@ import type {
 import { ExecutionWorkerWritebackService } from "../../platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
+import { newId } from "../../platform/contracts/types/ids.js";
 
 export type {
   WorkerWritebackInput,
@@ -863,7 +863,7 @@ export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter
    * Generates a unique operation ID.
    */
   private generateOperationId(): string {
-    return `wb_${randomUUID()}`;
+    return newId("writeback_op");
   }
 
   /**

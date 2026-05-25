@@ -396,6 +396,8 @@ export class DriftDetectorService implements IDriftDetector {
 }
 
 function safeHashEquals(left: string, right: string): boolean {
+  // Fingerprints are not secrets, but keeping comparisons constant-time avoids
+  // turning this helper into a future footgun when reused for signed hashes.
   if (left.length !== right.length) {
     return false;
   }

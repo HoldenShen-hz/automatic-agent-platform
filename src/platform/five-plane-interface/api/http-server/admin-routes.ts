@@ -40,7 +40,7 @@ import { ProjectionInventoryService } from "../../../five-plane-state-evidence/e
 import { SchemaInventoryService } from "../../../five-plane-state-evidence/truth/schema-inventory-service.js";
 import { JudgeProviderRegistryService } from "../../../prompt-engine/eval/judge-provider-registry-service.js";
 import { ComplianceProgramTemplateService } from "../../../compliance/compliance-program-template-service.js";
-import { AppError } from "../../../contracts/errors.js";
+import { AppError, isAppError } from "../../../contracts/errors.js";
 import type { ResumePlan } from "../api-external-support.js";
 import { z } from "zod";
 
@@ -179,7 +179,7 @@ function resolveWorkflowLookupId(missionControlService: MissionControlService, w
     missionControlService.getWorkflowCockpit(workflowOrTaskId);
     return workflowOrTaskId;
   } catch (error) {
-    if (!(error instanceof AppError) || error.code !== "workflow.not_found") {
+    if (!isAppError(error) || error.code !== "workflow.not_found") {
       throw error;
     }
     const fallback = missionControlService

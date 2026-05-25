@@ -71,7 +71,7 @@ export interface IntentParseResult {
   readonly blockedByPolicy: boolean;
   readonly priorConversationTurns: readonly ConversationTurn[];
   // R5-16: Independent risk classification result (separate pipeline stage from intent parsing)
-  readonly riskClassification?: {
+  readonly riskClassification: {
     readonly riskLevel: "low" | "medium" | "high" | "critical";
     readonly riskFactors: readonly string[];
     readonly requiresApproval: boolean;

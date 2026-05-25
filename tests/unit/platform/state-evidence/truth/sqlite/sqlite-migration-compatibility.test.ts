@@ -18,7 +18,9 @@ test("evaluateSqliteMigrationCompatibility returns valid report structure", () =
   assert.equal(typeof report.migrationCount, "number");
   assert.equal(typeof report.statementCount, "number");
   assert.equal(typeof report.issueCount, "number");
+  assert.equal(typeof report.warningCount, "number");
   assert.ok(Array.isArray(report.issues));
+  assert.ok(Array.isArray(report.warnings));
   assert.ok(Array.isArray(report.migrations));
 });
 
@@ -28,7 +30,24 @@ test("evaluateSqliteMigrationCompatibility works with empty migration list", () 
   assert.equal(report.migrationCount, 0);
   assert.equal(report.statementCount, 0);
   assert.equal(report.issueCount, 0);
+  assert.equal(report.warningCount, 0);
   assert.equal(report.compatible, true);
+});
+
+test("evaluateSqliteMigrationCompatibility warns on checksum drift", () => {
+  const report = evaluateSqliteMigrationCompatibility([
+    {
+      version: 1,
+      name: "drifted",
+      sql: "SELECT 1;",
+      checksum: "a".repeat(64),
+      appliedChecksum: "b".repeat(64),
+    } as any,
+  ]);
+
+  assert.equal(report.compatible, true);
+  assert.equal(report.warningCount, 1);
+  assert.equal(report.warnings[0]?.warningCode, "sqlite_checksum_drift_detected");
 });
 
 test("evaluateSqliteMigrationCompatibility detects PRAGMA statements", () => {

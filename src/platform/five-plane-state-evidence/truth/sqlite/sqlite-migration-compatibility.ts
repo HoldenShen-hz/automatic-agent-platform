@@ -36,6 +36,17 @@ export interface SqliteMigrationCompatibilityMigrationResult {
   compatible: boolean;
   statementCount: number;
   issues: SqliteMigrationCompatibilityIssue[];
+  warnings: SqliteMigrationCompatibilityWarning[];
+}
+
+export interface SqliteMigrationCompatibilityWarning {
+  warningCode: "sqlite_checksum_drift_detected";
+  migrationVersion: number;
+  migrationName: string;
+  detail: string;
+  checksum: string;
+  appliedChecksum: string;
+  compatibleChecksums: readonly string[];
 }
 
 /**
@@ -48,7 +59,9 @@ export interface SqliteMigrationCompatibilityReport {
   migrationCount: number;
   statementCount: number;
   issueCount: number;
+  warningCount: number;
   issues: SqliteMigrationCompatibilityIssue[];
+  warnings: SqliteMigrationCompatibilityWarning[];
   migrations: SqliteMigrationCompatibilityMigrationResult[];
 }
 
@@ -143,6 +156,7 @@ export function evaluateSqliteMigrationCompatibility(
   const migrations: SqliteMigrationCompatibilityMigrationResult[] = migrationPlan.map((migration) => {
     const statements = splitSqlStatements(migration.sql);
     const issues: SqliteMigrationCompatibilityIssue[] = [];
+    const warnings: SqliteMigrationCompatibilityWarning[] = [];
 
     statements.forEach((statement, index) => {
       COMPATIBILITY_RULES.forEach((rule) => {
@@ -162,16 +176,30 @@ export function evaluateSqliteMigrationCompatibility(
       });
     });
 
+    if (typeof migration.appliedChecksum === "string" && migration.appliedChecksum !== migration.checksum) {
+      warnings.push({
+        warningCode: "sqlite_checksum_drift_detected",
+        migrationVersion: migration.version,
+        migrationName: migration.name,
+        detail: "Current migration SQL checksum differs from the checksum recorded as applied.",
+        checksum: migration.checksum,
+        appliedChecksum: migration.appliedChecksum,
+        compatibleChecksums: migration.compatibleChecksums ?? [],
+      });
+    }
+
     return {
       version: migration.version,
       name: migration.name,
       compatible: issues.length === 0,
       statementCount: statements.length,
       issues,
+      warnings,
     };
   });
 
   const issues = migrations.flatMap((migration) => migration.issues);
+  const warnings = migrations.flatMap((migration) => migration.warnings);
 
   return {
     checkedAt: new Date().toISOString(),
@@ -180,7 +208,9 @@ export function evaluateSqliteMigrationCompatibility(
     migrationCount: migrations.length,
     statementCount: migrations.reduce((sum, migration) => sum + migration.statementCount, 0),
     issueCount: issues.length,
+    warningCount: warnings.length,
     issues,
+    warnings,
     migrations,
   };
 }

@@ -222,6 +222,41 @@ test("SessionDualStorageService getSessionReplaySummary returns correct summary"
   }
 });
 
+test("SessionDualStorageService validates plugin references against installed and healthy sets", () => {
+  const { storage, rootDir } = createTestStorage();
+  try {
+    const events: SessionEvent[] = [
+      {
+        eventType: "message_added",
+        sessionId: "session-plugins",
+        taskId: "task-plugins",
+        timestamp: "2026-04-08T00:00:00.000Z",
+        payload: {
+          pluginId: "plugin-ok",
+          nested: {
+            pluginId: "plugin-unhealthy",
+          },
+          attachments: [{ pluginId: "plugin-missing" }],
+        },
+      },
+    ];
+
+    const result = storage.validateSessionPluginReferences(events, {
+      installedPluginIds: ["plugin-ok", "plugin-unhealthy"],
+      healthyPluginIds: ["plugin-ok"],
+    });
+
+    assert.equal(result.valid, false);
+    assert.equal(result.referencesChecked, 3);
+    assert.deepEqual(
+      result.issues.map((issue) => `${issue.pluginId}:${issue.reason}`).sort(),
+      ["plugin-missing:plugin_not_registered", "plugin-unhealthy:plugin_unhealthy"],
+    );
+  } finally {
+    cleanup(rootDir);
+  }
+});
+
 test("SessionDualStorageService replaySessionEvents returns empty array for non-existent session", () => {
   const { storage, rootDir } = createTestStorage();
   try {

@@ -107,6 +107,8 @@ export class PromotionGate {
       nextStage = 'reviewed';
     }
 
+    // Preserve every failed criterion in `reasons` so reviewers get the full
+    // diagnosis instead of only the first violated threshold.
     return {
       allowed: reasons.length === 0,
       reasons,

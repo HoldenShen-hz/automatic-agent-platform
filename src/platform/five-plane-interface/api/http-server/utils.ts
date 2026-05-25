@@ -24,6 +24,8 @@ class ApiError extends AppError {
   }
 }
 
+export const API_INVALID_JSON_ERROR_CODE = "api.invalid_json";
+
 export function readRequestId(request: ApiRequestLike): string {
   const candidate = request.headers["x-request-id"];
   if (typeof candidate === "string" && candidate.trim().length > 0) {
@@ -96,7 +98,7 @@ export function readJsonBody(body: string | null | undefined): unknown {
   try {
     return JSON.parse(body) as unknown;
   } catch {
-    throw new ApiError(400, "api.invalid_json", "Request body must be valid JSON.");
+    throw new ApiError(400, API_INVALID_JSON_ERROR_CODE, "Request body must be valid JSON.");
   }
 }
 

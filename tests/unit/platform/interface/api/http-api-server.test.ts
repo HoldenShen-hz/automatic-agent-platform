@@ -539,6 +539,21 @@ async function renderNetworkStyleResponse(server: HttpApiServer, input: {
 
 // ─── Route Tests ─────────────────────────────────────────────────────────────
 
+test("inject attaches unlimited rate limit header when limiter is disabled", async () => {
+  const { server } = createTestServer({ rateLimiter: null as never });
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+    });
+
+    assert.equal(response.headers["x-ratelimit-remaining"], "unlimited");
+  } finally {
+    await server.stop();
+  }
+});
+
 test("POST /v1/auth/token exchanges API key for bearer token", async () => {
   const { server } = createTestServer();
 

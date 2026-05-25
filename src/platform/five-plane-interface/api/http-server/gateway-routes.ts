@@ -13,7 +13,7 @@
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseGatewaySendPayload, parseGatewayWebhookPayload } from "./schemas.js";
-import { buildJsonResponse, requirePrincipal, readLimit, readQueryParam } from "./utils.js";
+import { API_INVALID_JSON_ERROR_CODE, buildJsonResponse, requirePrincipal, readLimit, readQueryParam } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { GatewayTargetDirectoryService } from "../../channel-gateway/gateway-target-directory-service.js";
 import type { ChannelGatewayService } from "../../channel-gateway/channel-gateway-service.js";
@@ -158,7 +158,7 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
           logger.warn("gateway.parse_webhook_payload_failed", {
             error: err instanceof Error ? err.message : String(err),
           });
-          if (err instanceof AppError && err.code === "api.invalid_json") {
+          if (err instanceof AppError && err.code === API_INVALID_JSON_ERROR_CODE) {
             throw new ApiError(400, "gateway.invalid_payload", "Webhook payload must be valid JSON");
           }
           throw err;

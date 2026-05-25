@@ -381,7 +381,7 @@ ${CONTROL_PLANE_LOAD_BALANCING_DDL}
 const SKILL_GOVERNANCE_FOUNDATION_SQL = `
 CREATE TABLE IF NOT EXISTS skill_registry (
   id TEXT NULL,
-  skill_id TEXT PRIMARY KEY,
+  skill_id TEXT PRIMARY KEY CHECK(skill_id GLOB '[A-Za-z][A-Za-z0-9_-]*'),
   name TEXT NOT NULL,
   version TEXT NOT NULL,
   description TEXT NOT NULL,
@@ -407,7 +407,7 @@ CREATE INDEX IF NOT EXISTS idx_skill_registry_risk_updated_at
   ON skill_registry(risk_level, updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS skill_execution_policies (
-  skill_id TEXT PRIMARY KEY,
+  skill_id TEXT PRIMARY KEY CHECK(skill_id GLOB '[A-Za-z][A-Za-z0-9_-]*'),
   allow_execution INTEGER NOT NULL DEFAULT 1,
   require_approval INTEGER NOT NULL DEFAULT 0,
   max_concurrent_executions INTEGER NOT NULL DEFAULT 5,

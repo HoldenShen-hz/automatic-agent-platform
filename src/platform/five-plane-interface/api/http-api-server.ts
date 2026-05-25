@@ -105,9 +105,10 @@ import type {
 import { DEFAULT_WORKER_HEARTBEAT_STALENESS_MS } from "../../shared/runtime/worker-heartbeat-policy.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
-const SERVER_HEADERS_TIMEOUT_MS = 60_000;
 const SERVER_KEEP_ALIVE_TIMEOUT_MS = 5_000;
 const SERVER_REQUEST_TIMEOUT_MS = 30_000;
+const SERVER_HEADERS_TIMEOUT_GRACE_MS = 30_000;
+const SERVER_HEADERS_TIMEOUT_MS = SERVER_REQUEST_TIMEOUT_MS + SERVER_HEADERS_TIMEOUT_GRACE_MS;
 const SERVER_MAX_HEADERS_COUNT = 2_000;
 const SERVER_MAX_REQUESTS_PER_SOCKET = 1_000;
 const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
@@ -371,12 +372,12 @@ export class HttpApiServer {
           body: options.body ?? null,
         }), result);
     } else {
-      payload = await this.dispatchRequest({
+      payload = this.attachUnlimitedRateLimitHeaders(await this.dispatchRequest({
         method,
         url: options.url,
         headers,
         body: options.body ?? null,
-      });
+      }));
     }
     payload.headers["x-api-version"] ??= versionDecision.version;
     if (sdkHandshakeDecision != null) {
@@ -490,7 +491,7 @@ export class HttpApiServer {
       }
       // 3. No rate limiter — normal routing
       else {
-        payload = await this.routeRequest(requestId, request, headers);
+        payload = this.attachUnlimitedRateLimitHeaders(await this.routeRequest(requestId, request, headers));
       }
       payload.headers["x-api-version"] ??= versionDecision.version;
       if (sdkHandshakeDecision != null) {
@@ -1136,6 +1137,16 @@ export class HttpApiServer {
     return {
       ...payload,
       headers,
+    };
+  }
+
+  private attachUnlimitedRateLimitHeaders(payload: ApiResponsePayload): ApiResponsePayload {
+    return {
+      ...payload,
+      headers: {
+        ...payload.headers,
+        "x-ratelimit-remaining": payload.headers["x-ratelimit-remaining"] ?? "unlimited",
+      },
     };
   }
 

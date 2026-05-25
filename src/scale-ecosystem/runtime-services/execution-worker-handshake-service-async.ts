@@ -17,7 +17,6 @@
 
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { randomUUID } from "node:crypto";
 import type {
   ExecutionWorkerHandshakeServiceOptions,
   WorkerClaimExecutionInput,
@@ -28,6 +27,7 @@ import type {
 import { ExecutionWorkerHandshakeService } from "../../platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
+import { newId } from "../../platform/contracts/types/ids.js";
 
 export type {
   ExecutionWorkerHandshakeServiceOptions,
@@ -792,7 +792,7 @@ export class ExecutionWorkerHandshakeServiceAsync extends LocalTypedEventEmitter
    * Generates a unique operation ID.
    */
   private generateOperationId(): string {
-    return `op_${randomUUID()}`;
+    return newId("handshake_op");
   }
 
   /**

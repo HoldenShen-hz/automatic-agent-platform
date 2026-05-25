@@ -84,6 +84,7 @@ interface ConnectionState {
 }
 
 type ProjectionPollingSource = { consumePendingDeltas(): readonly DashboardDelta[] };
+const MAX_PROJECTION_POLL_BACKOFF_MS = 60_000;
 
 const REPLAY_EVENT_ID_PATTERN = /^[A-Za-z0-9:_-]{1,128}$/u;
 const REJECTED_CLIENT_ID_MAX_CLIENTS = "rejected:max_clients";
@@ -114,6 +115,7 @@ export class DashboardWebSocketServer {
   private projectionPollingInFlight = false;
   private projectionPollingSource: ProjectionPollingSource | null = null;
   private projectionPollingBaseIntervalMs = 100;
+  private projectionPollingFailureCount = 0;
 
   public constructor(config?: Partial<WebSocketServerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -360,18 +362,19 @@ export class DashboardWebSocketServer {
   public stopProjectionIntegration(): void {
     if (this.projectionPollingTimer !== null) {
       clearTimeout(this.projectionPollingTimer);
-      this.projectionPollingTimer = null;
-    }
-    this.projectionPollingInFlight = false;
-    this.projectionPollingSource = null;
+    this.projectionPollingTimer = null;
+  }
+  this.projectionPollingInFlight = false;
+  this.projectionPollingSource = null;
+  this.projectionPollingFailureCount = 0;
   }
 
   private assertRequiredIdentity(principal?: string, tenantId?: string): void {
     if (principal == null || principal.trim().length === 0) {
-      throw new Error("Principal is required");
+      throw new Error("dashboard_ws.identity_required:principal");
     }
     if (tenantId == null || tenantId.trim().length === 0) {
-      throw new Error("Tenant ID is required");
+      throw new Error("dashboard_ws.identity_required:tenant");
     }
   }
 
@@ -590,14 +593,19 @@ export class DashboardWebSocketServer {
       for (const delta of deltas) {
         this.handleProjectionDelta(delta);
       }
+      this.projectionPollingFailureCount = 0;
       if (deltas.length === 0) {
-        nextDelayMs = Math.max(this.projectionPollingBaseIntervalMs * 4, 1000);
+        nextDelayMs = Math.min(Math.max(this.projectionPollingBaseIntervalMs * 4, 1000), MAX_PROJECTION_POLL_BACKOFF_MS);
       }
     } catch (error) {
+      this.projectionPollingFailureCount += 1;
       logger.warn("dashboard_websocket_server.projection_poll_backoff", {
         error: error instanceof Error ? (error.stack ?? error.message) : String(error),
       });
-      nextDelayMs = Math.max(this.projectionPollingBaseIntervalMs * 4, 1000);
+      nextDelayMs = Math.min(
+        Math.max(this.projectionPollingBaseIntervalMs * (2 ** this.projectionPollingFailureCount), 1000),
+        MAX_PROJECTION_POLL_BACKOFF_MS,
+      );
     } finally {
       this.projectionPollingInFlight = false;
       if (this.projectionPollingSource != null) {

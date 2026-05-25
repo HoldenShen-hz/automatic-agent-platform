@@ -228,7 +228,7 @@ export async function unpackCheckpointEnvelope<T = unknown>(
   const actualChecksum = createChecksum(decompressedBuffer);
   if (actualChecksum !== envelope.metadata.checksum) {
     logger.log({
-      level: "error",
+      level: "warn",
       message: "Checkpoint envelope checksum mismatch",
       data: {
         expected: envelope.metadata.checksum,

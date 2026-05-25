@@ -8,8 +8,7 @@
  * - Proposals are created (to feed into the approval workflow)
  */
 
-import { randomUUID } from "node:crypto";
-
+import { newId } from "../../platform/contracts/types/ids.js";
 import type { EvidenceRecord } from './learning/evidence-store.js';
 import type { ReflectionRecord } from './learning/reflection-engine.js';
 import type { ProposalKind } from './learning/proposal-engine.js';
@@ -48,7 +47,7 @@ export const DEFAULT_CONFIG: EvolutionIntegrationConfig = {
 };
 
 function createEvidenceId(): string {
-  return `ev_${randomUUID()}`;
+  return newId("evidence");
 }
 
 /**

@@ -92,6 +92,16 @@ test("RpoRtoTrackingService.startFailover begins failover tracking", () => {
   assert.equal(event.success, false);
 });
 
+test("RpoRtoTrackingService.startFailover rejects overlapping failovers for the same pair", () => {
+  const service = new RpoRtoTrackingService();
+  service.startFailover("us-east", "eu-west");
+
+  assert.throws(
+    () => service.startFailover("us-east", "eu-west"),
+    /failover_already_in_progress/,
+  );
+});
+
 test("RpoRtoTrackingService.completeFailover calculates actual RTO", async () => {
   const service = new RpoRtoTrackingService();
   service.startFailover("us-east", "eu-west");

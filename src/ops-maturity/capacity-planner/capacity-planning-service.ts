@@ -112,7 +112,7 @@ export class CapacityPlanningService {
     }
     const usageValues = window.map((item) => item.usage);
     const variance = usageValues.reduce((sum, usage) => sum + (usage - latestUsage) ** 2, 0) / Math.max(1, usageValues.length - 1);
-    const standardDeviation = Math.sqrt(Math.max(variance, 0));
+    const standardDeviation = Math.sqrt(Math.max(0, variance));
     const band = Math.max(1, Number((standardDeviation * this.confidenceBandStdDevMultiplier).toFixed(2)));
 
     return {

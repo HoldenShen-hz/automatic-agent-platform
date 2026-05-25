@@ -284,6 +284,9 @@ export class CDCReplicationService {
     if (!checkpoint) {
       return null;
     }
+    if ((this.replicationQueues.get(key)?.length ?? 0) > 0) {
+      return null;
+    }
 
     const config = this.configs.get(key);
     const batchSize = config?.batchSize ?? 100;

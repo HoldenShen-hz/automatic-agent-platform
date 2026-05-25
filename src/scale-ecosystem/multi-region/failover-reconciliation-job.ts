@@ -24,7 +24,8 @@ export type ReconciliationIssueType =
   | "open_budget"
   | "pending_approval"
   | "outbox_gap"
-  | "restricted_write";
+  | "restricted_write"
+  | "active_lease";
 
 /**
  * §52.3 + §31: Severity of reconciliation issues.
@@ -66,6 +67,10 @@ export interface ReconciliationScanResult {
   readonly openBudgetCount: number;
   readonly pendingApprovalCount: number;
   readonly unreplicatedWriteCount: number;
+  readonly activeLeaseCount: number;
+  readonly staleLeaseCount: number;
+  readonly evaluationMode: "caller_supplied_evidence";
+  readonly warnings: readonly string[];
 }
 
 /**
@@ -81,6 +86,9 @@ export interface ReconciliationJobInput {
   readonly openBudgets: readonly { budgetId: string; resourceType: string; allocatedAmount: number }[];
   readonly outboxMessages: readonly { messageId: string; createdAt: string; retryCount: number }[];
   readonly restrictedWrites: readonly { writeId: string; resourceId: string; blockedAt: string }[];
+  readonly activeLeaseCount?: number;
+  readonly activeLeaseHolderRegionDistribution?: Readonly<Record<string, number>>;
+  readonly staleLeaseCount?: number;
 }
 
 /**
@@ -115,6 +123,9 @@ export class FailoverReconciliationJob {
    */
   public runReconciliation(input: ReconciliationJobInput): ReconciliationScanResult {
     const issues: ReconciliationIssue[] = [];
+    const warnings = [
+      "failover_reconciliation.caller_supplied_evidence_only",
+    ];
 
     // §52.3 + §31: Check for unreplicated writes
     for (let i = 0; i < input.pendingWriteCount; i++) {
@@ -182,6 +193,22 @@ export class FailoverReconciliationJob {
       ));
     }
 
+    const activeLeaseCount = Math.max(0, input.activeLeaseCount ?? 0);
+    const staleLeaseCount = Math.max(0, input.staleLeaseCount ?? 0);
+    const sourceHeldLeaseCount = Math.max(0, input.activeLeaseHolderRegionDistribution?.[input.sourceRegionId] ?? 0);
+    if (activeLeaseCount > 0 || staleLeaseCount > 0) {
+      const severity: ReconciliationSeverity = sourceHeldLeaseCount > 0 || staleLeaseCount > 0 ? "critical" : "high";
+      issues.push(this.createIssue(
+        "active_lease",
+        input.sourceRegionId,
+        input.targetRegionId,
+        `leases:${input.sourceRegionId}->${input.targetRegionId}`,
+        `Active leases=${activeLeaseCount}, source-held=${sourceHeldLeaseCount}, stale=${staleLeaseCount}`,
+        severity,
+        activeLeaseCount + staleLeaseCount,
+      ));
+    }
+
     // Count issues by type
     const restrictedWriteCount = issues.filter((i) => i.issueType === "restricted_write").length;
     const outboxGapCount = issues.filter((i) => i.issueType === "outbox_gap").length;
@@ -209,6 +236,10 @@ export class FailoverReconciliationJob {
       openBudgetCount,
       pendingApprovalCount,
       unreplicatedWriteCount,
+      activeLeaseCount,
+      staleLeaseCount,
+      evaluationMode: "caller_supplied_evidence",
+      warnings,
     };
 
     this.history.push(result);

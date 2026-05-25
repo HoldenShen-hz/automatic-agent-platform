@@ -52,6 +52,10 @@ export interface WorkerLoadSkewSummary {
   maxRecommendedStickyShare: number;
 }
 
+export interface WorkerLoadSkewOptions {
+  readonly maxRecommendedStickyShare?: number;
+}
+
 /**
  * Computes the effective active lease count for a worker.
  * Takes the max of activeLeaseCount and runningExecutionCount to account
@@ -90,7 +94,11 @@ export function computeWorkerLoadScore(signal: WorkerLoadSignal): number {
  * (60%) of total active leases AND alternative capacity exists on other workers.
  * This prevents overloading a single worker while ensuring load balancing is possible.
  */
-export function summarizeWorkerLoadSkew(signals: ReadonlyArray<WorkerLoadSignal>): WorkerLoadSkewSummary {
+export function summarizeWorkerLoadSkew(
+  signals: ReadonlyArray<WorkerLoadSignal>,
+  options: WorkerLoadSkewOptions = {},
+): WorkerLoadSkewSummary {
+  const maxRecommendedStickyShare = options.maxRecommendedStickyShare ?? MAX_RECOMMENDED_STICKY_SHARE;
   const workersWithLoad = signals
     .map((signal) => ({
       signal,
@@ -110,7 +118,7 @@ export function summarizeWorkerLoadSkew(signals: ReadonlyArray<WorkerLoadSignal>
       dominantWorkerShare: null,
       skewedWorkerIds: [],
       totalActiveLeaseCount,
-      maxRecommendedStickyShare: MAX_RECOMMENDED_STICKY_SHARE,
+      maxRecommendedStickyShare,
     };
   }
 
@@ -131,7 +139,7 @@ export function summarizeWorkerLoadSkew(signals: ReadonlyArray<WorkerLoadSignal>
       signal.availableSlots > 0 &&
       computeWorkerLoadScore(signal) + LOAD_SKEW_SCORE_MARGIN < dominant.loadScore,
   );
-  const detected = dominantWorkerShare > MAX_RECOMMENDED_STICKY_SHARE && alternativeCapacityExists;
+  const detected = dominantWorkerShare > maxRecommendedStickyShare && alternativeCapacityExists;
 
   return {
     detected,
@@ -139,6 +147,6 @@ export function summarizeWorkerLoadSkew(signals: ReadonlyArray<WorkerLoadSignal>
     dominantWorkerShare: detected ? dominantWorkerShare : null,
     skewedWorkerIds: detected ? [dominant.signal.workerId] : [],
     totalActiveLeaseCount,
-    maxRecommendedStickyShare: MAX_RECOMMENDED_STICKY_SHARE,
+    maxRecommendedStickyShare,
   };
 }

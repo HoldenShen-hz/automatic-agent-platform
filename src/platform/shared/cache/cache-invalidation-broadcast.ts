@@ -6,12 +6,12 @@
  * receive the invalidation event and clear their local cache.
  */
 
-import { randomUUID } from "node:crypto";
 import { Redis } from "ioredis";
 import type { RedisConnectionConfig } from "../utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../utils/redis-client-options.js";
 import { StructuredLogger } from "../observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../observability/runtime-metrics-registry.js";
+import { newId } from "../../contracts/types/ids.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 const BROADCAST_MAX_ATTEMPTS = 3;
@@ -40,7 +40,7 @@ export class CacheInvalidationBroadcast {
     private readonly config: CacheInvalidationBroadcastConfig,
     onInvalidate: (msg: CacheInvalidationMessage) => Promise<void>,
   ) {
-    this.instanceId = `inst_${randomUUID()}`;
+    this.instanceId = newId("inst");
     this.channel = config.channel ?? "aacache:invalidation";
     this.onInvalidate = onInvalidate;
 

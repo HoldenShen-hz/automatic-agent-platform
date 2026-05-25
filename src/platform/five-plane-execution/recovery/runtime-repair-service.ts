@@ -558,12 +558,33 @@ export class RuntimeRepairService {
    */
   private async rebuildAck(action: RepairAction, occurredAt: string): Promise<RepairExecutionResult> {
     const event = this.store.event.getEvent(action.targetId);
+    if (event == null) {
+      return {
+        action: action.action,
+        targetId: action.targetId,
+        applied: false,
+        detail: "event_not_found_skipped",
+      };
+    }
+    if (event.eventTier !== "tier_1") {
+      return {
+        action: action.action,
+        targetId: action.targetId,
+        applied: false,
+        detail: `event_not_tier1_skipped:${event.eventTier}`,
+      };
+    }
+    if (!hasEventSchema(event.eventType)) {
+      return {
+        action: action.action,
+        targetId: action.targetId,
+        applied: false,
+        detail: `event_schema_missing_skipped:${event.eventType}`,
+      };
+    }
     // Only rebuild acks for tier-1 events with registered schemas
-    if (event && event.eventTier === "tier_1" && hasEventSchema(event.eventType)) {
-      // Re-create pending ack records for all registered consumers
-      for (const consumerId of getRegisteredConsumers(event.eventType)) {
-        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
-      }
+    for (const consumerId of getRegisteredConsumers(event.eventType)) {
+      this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
     }
 
     // Count pending acks before drainage
@@ -584,6 +605,7 @@ export class RuntimeRepairService {
         payloadJson: JSON.stringify({
           repairAction: action.action,
           targetId: action.targetId,
+          eventTier: event.eventTier,
           beforePending,
           afterPending,
         }),

@@ -1551,7 +1551,7 @@ test("BudgetLedgerSchema allows optional softCap", () => {
 });
 
 test("BudgetLedgerSchema accepts all status values", () => {
-  const statuses = ["open", "soft_cap_reached", "hard_cap_reached", "closed"];
+  const statuses = ["open", "soft_cap_reached", "hard_cap_reached", "closed", "settling", "reserving", "releasing"];
   for (const status of statuses) {
     const valid = {
       budgetLedgerId: "bledger_123",

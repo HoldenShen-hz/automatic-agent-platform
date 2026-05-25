@@ -90,7 +90,7 @@ class PluginTaintTracker {
   }
 }
 
-const globalPluginTaintTracker = new PluginTaintTracker();
+let globalPluginTaintTracker = new PluginTaintTracker();
 const pluginLifecycleStates = new Map<string, PluginLifecycleState>();
 
 const BUILTIN_PLUGIN_FACTORIES = new Map<string, PluginFactory>([
@@ -631,6 +631,11 @@ export function listBuiltinPluginIds(): string[] {
  */
 export function getPluginTaintTracker(): PluginTaintTracker {
   return globalPluginTaintTracker;
+}
+
+export function resetBuiltinPluginRegistryStateForTests(): void {
+  globalPluginTaintTracker = new PluginTaintTracker();
+  pluginLifecycleStates.clear();
 }
 
 /**

@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { CheckpointManifest } from "./checkpoint-manifest.js";
+import type { CheckpointEnvelope } from "./checkpoint-envelope.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -237,6 +238,9 @@ export class CheckpointGCService {
           continue;
         }
         const filePath = join(executionPath, f);
+        if (!this.isCheckpointEnvelopeFile(filePath)) {
+          continue;
+        }
         try {
           const s = statSync(filePath);
           checkpointFiles.push({ file: f, path: filePath, stat: s });
@@ -377,6 +381,9 @@ export class CheckpointGCService {
 
       for (const file of checkpointFiles) {
         const filePath = join(executionPath, file);
+        if (!this.isCheckpointEnvelopeFile(filePath)) {
+          continue;
+        }
         let stats;
         try {
           stats = statSync(filePath);
@@ -512,6 +519,22 @@ export class CheckpointGCService {
       return birthtime;
     }
     return stats.mtimeMs;
+  }
+
+  private isCheckpointEnvelopeFile(filePath: string): boolean {
+    try {
+      const parsed = JSON.parse(readFileSync(filePath, "utf8")) as Partial<CheckpointEnvelope> & {
+        checkpointId?: unknown;
+      };
+      return (typeof parsed.version === "string"
+        && typeof parsed.schema === "string"
+        && typeof parsed.payload === "string"
+        && typeof parsed.metadata === "object"
+        && parsed.metadata !== null)
+        || typeof parsed.checkpointId === "string";
+    } catch {
+      return false;
+    }
   }
 
   private acquireRunLock(): boolean {

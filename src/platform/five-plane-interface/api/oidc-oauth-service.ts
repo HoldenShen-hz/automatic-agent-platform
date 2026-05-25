@@ -231,7 +231,7 @@ export class OidcOAuthService {
       // Decode JWT without verification first to get header
       const parts = token.split(".");
       if (parts.length !== 3) {
-        return { valid: false, error: "jwt.malformed", claims: null, provider: null };
+        return { valid: false, error: "jwt.malformed", errorStack: null, claims: null, provider: null };
       }
 
       const header = parseJwtHeader(decodeJwtJsonSegment(parts[0]!, "header"));
@@ -239,39 +239,40 @@ export class OidcOAuthService {
 
       // Verify issuer is trusted
       if (!this.trustedIssuers.includes(payload.iss)) {
-        return { valid: false, error: "jwt.untrusted_issuer", claims: null, provider: null };
+        return { valid: false, error: "jwt.untrusted_issuer", errorStack: null, claims: null, provider: null };
       }
 
       // Verify audience
       const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
       if (!aud.includes(this.audience)) {
-        return { valid: false, error: "jwt.invalid_audience", claims: null, provider: null };
+        return { valid: false, error: "jwt.invalid_audience", errorStack: null, claims: null, provider: null };
       }
 
       const now = Date.now();
 
       // Verify expiration with bounded clock skew tolerance.
       if (payload.exp * 1000 + FEDERATED_TOKEN_CLOCK_SKEW_MS < now) {
-        return { valid: false, error: "jwt.token_expired", claims: null, provider: null };
+        return { valid: false, error: "jwt.token_expired", errorStack: null, claims: null, provider: null };
       }
       if (payload.nbf != null && payload.nbf * 1000 - FEDERATED_TOKEN_CLOCK_SKEW_MS > now) {
-        return { valid: false, error: "jwt.not_yet_valid", claims: null, provider: null };
+        return { valid: false, error: "jwt.not_yet_valid", errorStack: null, claims: null, provider: null };
       }
       if (payload.iat * 1000 - FEDERATED_TOKEN_CLOCK_SKEW_MS > now) {
-        return { valid: false, error: "jwt.issued_in_future", claims: null, provider: null };
+        return { valid: false, error: "jwt.issued_in_future", errorStack: null, claims: null, provider: null };
       }
 
       // Skip signature verification if configured (for unit testing with mock tokens)
       if (!this._skipSignatureVerification) {
         const signatureValid = await this.verifySignature(token, header, parts[2]!, payload.iss);
         if (!signatureValid) {
-          return { valid: false, error: "jwt.signature_invalid", claims: null, provider: null };
+          return { valid: false, error: "jwt.signature_invalid", errorStack: null, claims: null, provider: null };
         }
       }
 
       return {
         valid: true,
         error: null,
+        errorStack: null,
         claims: payload,
         provider: payload.iss,
       };
@@ -282,6 +283,7 @@ export class OidcOAuthService {
       return {
         valid: false,
         error: err instanceof Error ? err.message : "jwt.validation_failed",
+        errorStack: err instanceof Error ? err.stack ?? null : null,
         claims: null,
         provider: null,
       };

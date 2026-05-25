@@ -176,6 +176,7 @@ export interface BudgetGuardResult {
   allowed: boolean;
   requiresApproval: boolean;
   reasonCode: string | null;
+  /** Remaining spend allowed by the most restrictive active scope. Use allowed/violatedScope for deny decisions. */
   remainingBudgetUsd: number;
 }
 
@@ -260,6 +261,20 @@ export interface BudgetStateTransitionResult {
   readonly success: boolean;
   readonly reasonCode: string | null;
   error?: Error;
+}
+
+function resolveReservationExpiryIso(
+  policy: Pick<BudgetPolicy, "maxDurationMs">,
+  expiresAt?: string,
+): string {
+  if (expiresAt != null) {
+    return expiresAt;
+  }
+  const fallbackTtlMs = 5 * 60 * 1000;
+  const ttlMs = policy.maxDurationMs == null
+    ? fallbackTtlMs
+    : Math.max(1_000, Math.min(policy.maxDurationMs, fallbackTtlMs));
+  return new Date(Date.now() + ttlMs).toISOString();
 }
 
 /**
@@ -721,7 +736,7 @@ export class BudgetGuard {
       ledger,
       amount: Number(input.spend.nextEstimatedCostUsd.toFixed(4)),
       resourceKind: input.resourceKind ?? "token",
-      expiresAt: input.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      expiresAt: resolveReservationExpiryIso(input.policy, input.expiresAt),
       expectedVersion: ledger.version,
       context: {
         tenantId: input.tenantId,
@@ -763,7 +778,7 @@ export class BudgetExecutionSessionManager {
       ledger,
       amount,
       resourceKind: request.resourceKind ?? "token",
-      expiresAt: request.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      expiresAt: resolveReservationExpiryIso(request.policy, request.expiresAt),
       expectedVersion: ledger.version,
       context: {
         tenantId: request.tenantId,

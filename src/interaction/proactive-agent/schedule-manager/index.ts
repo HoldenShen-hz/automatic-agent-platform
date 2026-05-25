@@ -18,5 +18,10 @@ export function shouldRunScheduleTrigger(lastFiredAt: string | null, nowIso: str
   if (lastFiredAt == null) {
     return true;
   }
-  return Date.parse(nowIso) - Date.parse(lastFiredAt) >= parseDurationMs(cooldown);
+  const nowMs = new Date(nowIso).getTime();
+  const lastFiredAtMs = new Date(lastFiredAt).getTime();
+  if (Number.isNaN(nowMs) || Number.isNaN(lastFiredAtMs)) {
+    return false;
+  }
+  return nowMs - lastFiredAtMs >= parseDurationMs(cooldown);
 }

@@ -17,7 +17,7 @@ import { buildJsonResponse, requirePrincipal, readLimit, readStatusFilter } from
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { ApprovalService } from "../../../five-plane-control-plane/approval-center/approval-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
-import { AppError } from "../../../contracts/errors.js";
+import { AppError, isAppError } from "../../../contracts/errors.js";
 import type { ApiPrincipal } from "../api-auth-service.js";
 
 class ApiError extends AppError {
@@ -110,7 +110,7 @@ function getAuthorizedApprovalView(
     assertApprovalAccess(principal, actorId, approvalView);
     return approvalView;
   } catch (error) {
-    if ((error as { code?: string })?.code === "inspect.approval_not_found") {
+    if (isAppError(error) && error.code === "inspect.approval_not_found") {
       throw new ApiError(404, "api.approval_not_found", `Approval not found: ${approvalId}`);
     }
     throw error;

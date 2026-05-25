@@ -366,12 +366,7 @@ export class BudgetAllocator {
     readonly hierarchyLedgers?: readonly { readonly ledger: BudgetLedger; readonly expectedVersion: number }[];
     readonly context: BudgetAllocatorContext;
   }): BudgetSettlementResult | Promise<BudgetSettlementResult> {
-    // R11-12: CAS version check for atomic settle - prevents concurrent modifications
     const expectedVersion = input.expectedVersion ?? input.ledger.version;
-    if (input.ledger.version !== expectedVersion) {
-      throwVersionCasError("settle", input.context);
-    }
-
     const context = normalizeContext(input.context);
     if (input.actualAmount > input.reservation.amount) {
       throw new WorkflowStateError(

@@ -1089,11 +1089,6 @@ export function getEventSchema(type: string): EventSchemaDefinition {
   if (type in EVENT_SCHEMA_REGISTRY) {
     return EVENT_SCHEMA_REGISTRY[type as KnownEventType];
   }
-  if (!hasEventSchema(type)) {
-    throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
-      details: { eventType: type },
-    });
-  }
   throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
     details: { eventType: type },
   });
@@ -1106,25 +1101,19 @@ export function getEventReplayMetadata(type: string): EventReplayMetadata {
   }
   if (type in EVENT_SCHEMA_REGISTRY) {
     const schema = EVENT_SCHEMA_REGISTRY[type as KnownEventType];
-    if (type.startsWith("platform.") || type.startsWith("oapeflir.")) {
-      return {
-        eventType: type,
-        sourceOfTruth: type.startsWith("oapeflir.view.") || type.startsWith("oapeflir.phase.")
-          ? "projection"
-          : "platform",
-        replayable: true,
-        sideEffectSafeToReplay: !type.startsWith("platform.side_effect."),
-        schemaOwner: schema.producer,
-        replayBehavior: type.startsWith("platform.side_effect.") ? "skip_side_effect" : "replay_as_fact",
-        consumerContractTests: [],
-      };
-    }
+    return {
+      eventType: type,
+      sourceOfTruth: type.startsWith("oapeflir.view.") || type.startsWith("oapeflir.phase.") ? "projection" : "platform",
+      replayable: false,
+      sideEffectSafeToReplay: false,
+      schemaOwner: schema.producer,
+      replayBehavior: "forbidden",
+      consumerContractTests: [],
+    };
   }
-  {
-    throw new ValidationError("event.replay_metadata_missing", `Event replay metadata not found for type: ${type}`, {
-      details: { eventType: type },
-    });
-  }
+  throw new ValidationError("event.replay_metadata_missing", `Event replay metadata not found for type: ${type}`, {
+    details: { eventType: type },
+  });
 }
 
 export function isCanonicalEventName(eventName: string): boolean {

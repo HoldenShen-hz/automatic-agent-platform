@@ -16,6 +16,8 @@ export interface BulkheadConfig {
 
 /**
  * Default bulkhead configuration per §9.1.
+ * The 30s timeout intentionally aligns with the API and delivery timeout
+ * ceiling so isolation does not outlive the request lifecycle it protects.
  */
 export const DEFAULT_BULKHEAD_CONFIG: BulkheadConfig = {
   maxConcurrentCalls: 100,

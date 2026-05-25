@@ -49,6 +49,7 @@ export interface FederatedTokenClaims {
 export interface TokenValidationResult {
   valid: boolean;
   error: string | null;
+  errorStack?: string | null;
   claims: FederatedTokenClaims | null;
   provider: string | null;
 }

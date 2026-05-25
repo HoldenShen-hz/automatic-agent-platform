@@ -136,6 +136,30 @@ test("CDCReplicationService returns null when no new events", () => {
   assert.equal(batch2, null);
 });
 
+test("CDCReplicationService does not enqueue a second batch while one is already pending", () => {
+  const service = new CDCReplicationService();
+  service.registerReplication({
+    sourceRegionId: "us-east",
+    targetRegionId: "eu-west",
+    batchSize: 2,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  });
+
+  const events = [
+    { id: "evt_1", sequence: 1, eventType: "task:created", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:00:00Z" },
+    { id: "evt_2", sequence: 2, eventType: "task:updated", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:01:00Z" },
+    { id: "evt_3", sequence: 3, eventType: "task:completed", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:02:00Z" },
+  ] as any;
+
+  const firstBatch = service.prepareBatch("us-east", "eu-west", events);
+  const secondBatch = service.prepareBatch("us-east", "eu-west", events);
+
+  assert.ok(firstBatch != null);
+  assert.equal(secondBatch, null);
+});
+
 test("CDCReplicationService isEnabled returns correct value", () => {
   const service = new CDCReplicationService();
 

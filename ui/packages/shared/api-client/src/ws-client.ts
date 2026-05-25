@@ -408,6 +408,7 @@ export class SharedWorkerWSClient implements WSClient {
   private readonly port: MessagePort;
   private readonly replayBufferByChannel = new Map<string, WSEventEnvelope[]>();
   private disconnected = false;
+  private disconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   public constructor(worker: SharedWorkerLike) {
     this.port = worker.port;
@@ -416,17 +417,30 @@ export class SharedWorkerWSClient implements WSClient {
   }
 
   public connect(url: string, token: string): void {
+    this.disconnected = false;
+    if (this.disconnectTimer != null) {
+      clearTimeout(this.disconnectTimer);
+      this.disconnectTimer = null;
+    }
     this.port.postMessage({ action: "connect", url, token });
   }
 
   public disconnect(): void {
     this.disconnected = true;
     this.port.postMessage({ action: "disconnect" });
-    this.port.removeEventListener("message", this.handleMessage);
-    this.replayBufferByChannel.clear();
-    this.handlers.clear();
-    this.statusHandlers.clear();
-    this.port.close();
+    if (this.disconnectTimer != null) {
+      clearTimeout(this.disconnectTimer);
+    }
+    // Give the shared worker one macrotask to process queued publish/disconnect
+    // messages before we detach and close the port.
+    this.disconnectTimer = setTimeout(() => {
+      this.port.removeEventListener("message", this.handleMessage);
+      this.replayBufferByChannel.clear();
+      this.handlers.clear();
+      this.statusHandlers.clear();
+      this.port.close();
+      this.disconnectTimer = null;
+    }, 0);
   }
 
   public subscribe(channel: string, handler: EventHandler): () => void {

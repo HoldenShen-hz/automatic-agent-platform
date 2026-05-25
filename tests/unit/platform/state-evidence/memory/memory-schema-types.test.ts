@@ -98,6 +98,7 @@ test("StructuredMemoryContent structure is correct", () => {
         },
       },
     ],
+    metadata: {},
   };
   assert.equal(content.schemaVersion, "memory.v2");
   assert.equal(content.workContext, "Working on project X");
@@ -112,6 +113,7 @@ test("StructuredMemoryContent allows empty arrays", () => {
     recentHistory: [],
     longTermBackground: [],
     facts: [],
+    metadata: {},
   };
   assert.equal(content.workContext, null);
   assert.equal(content.topOfMind.length, 0);
@@ -155,6 +157,7 @@ test("StructuredMemoryContent facts can contain multiple items", () => {
         },
       },
     ],
+    metadata: {},
   };
   assert.equal(content.facts.length, 2);
   assert.equal(content.facts[0]?.content, "Fact 1");
@@ -187,6 +190,7 @@ test("NormalizeMemoryContentInput structure with StructuredMemoryContent", () =>
     recentHistory: [],
     longTermBackground: [],
     facts: [],
+    metadata: {},
   };
   const input: NormalizeMemoryContentInput = {
     content: structured,

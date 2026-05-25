@@ -65,12 +65,14 @@ export {
 } from "./channel-gateway-delivery-support.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const NONCE_CLEANUP_INTERVAL_MS = MS_PER_HOUR;
 
 export class ChannelGatewayDeliveryService {
   private readonly deliveryConfig: DeliveryGuaranteeConfig;
   private readonly rateLimitConfig: RateLimitConfig;
   private readonly recentRateLimitHits = new Map<string, number[]>();
   private _deliverySchemaInitialized = false;
+  private lastNonceCleanupAtMs = 0;
 
   constructor(
     /** SQLite database connection for persistence */
@@ -329,11 +331,20 @@ export class ChannelGatewayDeliveryService {
       .prepare(`INSERT INTO replay_nonces (nonce, created_at, expires_at) VALUES (?, ?, ?)`)
       .run(nonce, createdAt, expiresAt);
 
+    this.maybeCleanupExpiredNonces(now);
+
+    return { valid: true, error: null, nonce, ageSeconds: 0 };
+  }
+
+  private maybeCleanupExpiredNonces(now: Date): void {
+    const nowMs = now.getTime();
+    if (nowMs - this.lastNonceCleanupAtMs < NONCE_CLEANUP_INTERVAL_MS) {
+      return;
+    }
     this.db.connection
       .prepare(`DELETE FROM replay_nonces WHERE expires_at < ?`)
       .run(now.toISOString());
-
-    return { valid: true, error: null, nonce, ageSeconds: 0 };
+    this.lastNonceCleanupAtMs = nowMs;
   }
 
   /**

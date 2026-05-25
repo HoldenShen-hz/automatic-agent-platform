@@ -3,6 +3,7 @@ import type { ComplianceReport, PolicyCheck, ViolationRecord } from "./types.js"
 
 export class ComplianceReporterService {
   private readonly violations: ViolationRecord[] = [];
+  private readonly defaultActiveViolationLimit = 100;
 
   public async generateReport(input: {
     readonly tenantId: string;
@@ -27,8 +28,11 @@ export class ComplianceReporterService {
     this.violations.push(violation);
   }
 
-  public getActiveViolations(_tenantId: string): ViolationRecord[] {
-    return this.violations.filter((item) => item.remediatedAt == null);
+  public getActiveViolations(_tenantId: string, limit = this.defaultActiveViolationLimit): ViolationRecord[] {
+    return this.violations
+      .filter((item) => item.remediatedAt == null)
+      .sort((left, right) => right.detectedAt.localeCompare(left.detectedAt))
+      .slice(0, Math.max(1, limit));
   }
 
   public async executeCheck(_tenantId: string, check: PolicyCheck): Promise<PolicyCheck> {

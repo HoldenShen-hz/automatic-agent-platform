@@ -198,7 +198,7 @@ test("BudgetAllocator.settle emits fact events for both reservation and ledger v
   assert.equal(settled.reservation.event.eventType, "platform.budget_reservation.status_changed");
 });
 
-test("BudgetAllocator.settle ledger goes through RSM with proper version tracking", () => {
+test("BudgetAllocator.settle defers CAS enforcement to persistence instead of local prechecks", () => {
   const stateMachine = new RuntimeStateMachine({
     persistEvent: () => {}, // intentionally no-op
   });
@@ -220,23 +220,18 @@ test("BudgetAllocator.settle ledger goes through RSM with proper version trackin
     expectedVersion: ledger.version,
   });
 
-  // Attempt settle with wrong version should fail via RSM CAS
-  assert.throws(
-    () =>
-      allocator.settle({
-        ledger: reserved.ledger,
-        reservation: reserved.reservation,
-        actualAmount: 30,
-        expectedVersion: 99, // Wrong version
-        context: {
-          tenantId: "tenant-1",
-          traceId: "trace-1",
-          emittedBy: "budget-allocator",
-          principal: "test-principal",
-        },
-      }),
-    (error: unknown) =>
-      error instanceof WorkflowStateError &&
-      error.code === "runtime_state_machine.version_cas_failed",
-  );
+  const result = allocator.settle({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    actualAmount: 30,
+    expectedVersion: 99,
+    context: {
+      tenantId: "tenant-1",
+      traceId: "trace-1",
+      emittedBy: "budget-allocator",
+      principal: "test-principal",
+    },
+  });
+
+  assert.equal(result.ledger.version, reserved.ledger.version + 1);
 });

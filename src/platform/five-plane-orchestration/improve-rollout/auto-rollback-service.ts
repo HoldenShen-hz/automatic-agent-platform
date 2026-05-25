@@ -16,6 +16,7 @@ export interface AutoRollbackConfig {
 }
 
 export interface AutoRollbackDecision {
+  evaluable: boolean;
   rollback: boolean;
   reasonCodes: string[];
 }
@@ -75,12 +76,14 @@ export class AutoRollbackService {
     const reasonCodes: string[] = [];
     if (metrics.requestCount < this.config.minimumRequestCount) {
       return {
+        evaluable: false,
         rollback: false,
         reasonCodes: ["rollout.metrics_insufficient_sample"],
       };
     }
     if ((metrics.observationWindowMs ?? this.config.minimumObservationWindowMs) < this.config.minimumObservationWindowMs) {
       return {
+        evaluable: false,
         rollback: false,
         reasonCodes: ["rollout.metrics_insufficient_window"],
       };
@@ -98,6 +101,7 @@ export class AutoRollbackService {
       this.rollbackHandler(rollout, reasonCodes);
     }
     return {
+      evaluable: true,
       rollback: shouldRollback,
       reasonCodes,
     };

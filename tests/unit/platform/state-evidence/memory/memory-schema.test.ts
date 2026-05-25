@@ -176,6 +176,23 @@ test("normalizeMemoryContent handles primitive values as facts", () => {
   });
   assert.ok(result.facts.some((f: any) => f.content === "priority=1" && f.category === "priority"));
   assert.ok(result.facts.some((f: any) => f.content === "active=true" && f.category === "active"));
+  assert.equal(result.metadata.priority, 1);
+  assert.equal(result.metadata.active, true);
+});
+
+test("normalizeMemoryContent preserves unknown object metadata", () => {
+  const result = normalizeMemoryContent({
+    content: {
+      details: {
+        priority: "high",
+        notes: "test",
+      },
+      labels: ["urgent"],
+    },
+  });
+
+  assert.deepEqual(result.metadata.details, { priority: "high", notes: "test" });
+  assert.deepEqual(result.metadata.labels, ["urgent"]);
 });
 
 test("stringifyStructuredMemoryContent serializes to JSON", () => {
@@ -186,6 +203,7 @@ test("stringifyStructuredMemoryContent serializes to JSON", () => {
     recentHistory: [],
     longTermBackground: [],
     facts: [],
+    metadata: {},
   };
   const json = stringifyStructuredMemoryContent(content);
   const parsed = JSON.parse(json);
@@ -203,6 +221,7 @@ test("extractStructuredMemoryText extracts text from all fields", () => {
     facts: [
       { content: "fact1", category: "cat", confidence: 0.5, provenance: { source: "s", classification: null, taskId: null, sessionId: null, agentId: null, executionId: null, observedAt: null } },
     ],
+    metadata: {},
   };
   const text = extractStructuredMemoryText(content);
   assert.ok(text.includes("main context"));
@@ -221,6 +240,7 @@ test("extractStructuredMemoryText deduplicates results", () => {
     recentHistory: [],
     longTermBackground: [],
     facts: [],
+    metadata: {},
   };
   const text = extractStructuredMemoryText(content);
   const duplicates = text.filter((t: string) => t === "duplicate");

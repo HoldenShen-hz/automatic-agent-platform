@@ -91,6 +91,7 @@ export async function executeStepLoop(
 
     if (hardBlockers.length > 0) {
       skippedStepIds.add(step.stepId);
+      workflowLastErrorCode = null;
       const skipNow = nowIso();
       const skipOutput: StepOutputRecord = {
         id: newId("step"),

@@ -41,6 +41,35 @@ export const DEFAULT_CORS_CONFIG: CorsConfig = {
   exposeTraceId: true,
 };
 
+function validateCorsConfigInternal(config: CorsConfig): void {
+  const hasWildcard = config.allowedOrigins.some(
+    (origin) => origin === "*" || origin === "*.*",
+  );
+  if (hasWildcard && config.allowCredentials) {
+    throw new Error("cors.security: Wildcard origin '*' is not allowed when credentials are enabled. Specify explicit origins.");
+  }
+  for (const origin of config.allowedOrigins) {
+    if (origin === "*" || origin === "*.*") {
+      continue;
+    }
+    if (/[\u0000-\u001f\u007f]/u.test(origin)) {
+      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+    }
+    if (origin === "null" || origin.startsWith("*.")) {
+      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+    }
+    if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.origin !== origin) {
+      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+    }
+  }
+}
+
 /**
  * CORS middleware that enforces secure CORS policy.
  * Rejects insecure configurations (wildcard origin with credentials).
@@ -50,8 +79,7 @@ export class CorsMiddleware {
   private readonly normalizedConfig: ResponseHardeningCorsConfig;
 
   public constructor(config: Partial<CorsConfig> = {}) {
-    this.config = { ...DEFAULT_CORS_CONFIG, ...config };
-    this.validateConfig();
+    this.config = CorsMiddleware.resolveConfig(config);
     this.normalizedConfig = normalizeCorsConfig({
       allowedOrigins: [...this.config.allowedOrigins],
       allowedMethods: [...this.config.allowedMethods],
@@ -62,33 +90,10 @@ export class CorsMiddleware {
     });
   }
 
-  /**
-   * Validate CORS configuration for security.
-   */
-  private validateConfig(): void {
-    const hasWildcard = this.config.allowedOrigins.some(
-      (origin) => origin === "*" || origin === "*.*",
-    );
-    if (hasWildcard && this.config.allowCredentials) {
-      throw new Error("cors.security: Wildcard origin '*' is not allowed when credentials are enabled. Specify explicit origins.");
-    }
-    for (const origin of this.config.allowedOrigins) {
-      if (origin === "*" || origin === "*.*") {
-        continue;
-      }
-      if (origin === "null" || origin.startsWith("*.")) {
-        throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
-      }
-      let parsed: URL;
-      try {
-        parsed = new URL(origin);
-      } catch {
-        throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
-      }
-      if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.origin !== origin) {
-        throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
-      }
-    }
+  private static resolveConfig(config: Partial<CorsConfig>): CorsConfig {
+    const resolved = { ...DEFAULT_CORS_CONFIG, ...config };
+    validateCorsConfigInternal(resolved);
+    return resolved;
   }
 
   /**
@@ -147,8 +152,5 @@ export class CorsMiddleware {
  * ValidateOriginList validates that origins don't mix wildcards with credentials.
  */
 export function validateCorsConfig(config: CorsConfig): void {
-  const hasWildcard = config.allowedOrigins.some((origin) => origin === "*" || origin === "*.*");
-  if (hasWildcard && config.allowCredentials) {
-    throw new Error("cors.security: Wildcard origin '*' is not allowed when credentials are enabled");
-  }
+  validateCorsConfigInternal(config);
 }

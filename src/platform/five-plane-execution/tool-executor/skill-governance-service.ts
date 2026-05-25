@@ -122,8 +122,14 @@ interface SkillExecutionAuditEntry {
 }
 
 export function computeSkillHealth(executionCount: number, successRate: number): number {
-  if (executionCount === 0) return 0.5; // Neutral for never-executed skills
-  return successRate * Math.min(1.0, executionCount / 100);
+  if (executionCount <= 0) {
+    return 0.5;
+  }
+  const boundedSuccessRate = Math.max(0, Math.min(1, successRate));
+  const inferredSuccesses = boundedSuccessRate * executionCount;
+  const priorSuccesses = 1;
+  const priorFailures = 1;
+  return (inferredSuccesses + priorSuccesses) / (executionCount + priorSuccesses + priorFailures);
 }
 
 function escapeLikePattern(value: string): string {

@@ -63,7 +63,7 @@ interface IntentSignal {
  * Multiple signals can match; the highest-confidence result is used.
  */
 const INTENT_SIGNALS: readonly IntentSignal[] = [
-  { pattern: /(?:approve|审批通过|批准|通行)/i, intent: "approval_action", confidence: 0.92, reasoning: "Approval keyword detected" },
+  { pattern: /(?:approve|审批|审批通过|通过|批准|同意|通行)/i, intent: "approval_action", confidence: 0.92, reasoning: "Approval keyword detected" },
   { pattern: /(?:reject|驳回|否决)/i, intent: "approval_action", confidence: 0.90, reasoning: "Rejection keyword detected" },
   { pattern: /(?:status|状态|进度|情况|情况如何)/i, intent: "status_inquiry", confidence: 0.84, reasoning: "Status inquiry keyword detected" },
   { pattern: /(?:summary|摘要|概览|同步)/i, intent: "status_inquiry", confidence: 0.83, reasoning: "Summary request keyword detected" },
@@ -112,6 +112,16 @@ function matchIntentSignal(message: string): IntentSignal | null {
   return bestMatch;
 }
 
+function countCodePoints(value: string): number {
+  return [...value].length;
+}
+
+function isShortApprovalPhrase(message: string): boolean {
+  const normalized = message.trim();
+  return /^(?:approve|approved|审批|审批通过|通过|批准|同意|驳回|否决)$/iu.test(normalized)
+    && countCodePoints(normalized) < 10;
+}
+
 export function detectInputLanguage(message: string): string {
   if (/[\u3040-\u30ff]/.test(message)) {
     return "ja-JP";
@@ -129,7 +139,7 @@ export function parseIntentTokens(message: string): ParsedIntentToken[] {
   const normalized = message.trim().toLowerCase();
 
   // Single-word approval commands get high confidence
-  if (/(?:approve|审批|通过|批准)/i.test(message) && message.trim().length < 10) {
+  if (isShortApprovalPhrase(message)) {
     return [{ intentType: "approval_action", confidence: 0.92 }];
   }
 

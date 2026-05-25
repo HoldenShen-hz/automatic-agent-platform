@@ -63,12 +63,16 @@ export interface CostSimulationResult {
 }
 
 export class CostOptimizationService {
+  private static readonly MAX_UNSOURCED_RECORD_COUNT = 1000;
   private readonly records: CostAttributionRecord[] = [];
   private unsourcedRecordCount = 0;
 
   public recordCost(record: CostAttributionRecord): CostAttributionRecord {
     if (record.decisionRef.trim().length === 0) {
-      this.unsourcedRecordCount = Math.min(Number.MAX_SAFE_INTEGER, this.unsourcedRecordCount + 1);
+      this.unsourcedRecordCount = Math.min(
+        CostOptimizationService.MAX_UNSOURCED_RECORD_COUNT,
+        this.unsourcedRecordCount + 1,
+      );
       throw new Error(`cost_optimizer.unsourced_record:${this.resolveSubjectId(record)}`);
     }
     if (this.unsourcedRecordCount > 0) {

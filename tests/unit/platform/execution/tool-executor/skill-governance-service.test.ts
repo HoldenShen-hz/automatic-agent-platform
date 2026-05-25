@@ -5,6 +5,7 @@ import {
   SkillGovernanceService,
   computeSkillHealth,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/skill-governance-service.js";
+import { SKILL_GOVERNANCE_FOUNDATION_SQL } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-runtime-part3.js";
 
 const createMockStore = () => {
   const policies = new Map<string, {
@@ -51,16 +52,21 @@ test("computeSkillHealth returns 0.5 for never-executed skills", () => {
   assert.equal(health, 0.5);
 });
 
-test("computeSkillHealth returns success rate for executed skills", () => {
+test("computeSkillHealth converges toward success rate for executed skills", () => {
   const health = computeSkillHealth(100, 0.9);
-  assert.equal(health, 0.9);
+  assert.ok(Math.abs(health - 0.8921568627450981) < 1e-12);
 });
 
-test("computeSkillHealth caps execution factor at 1.0", () => {
-  // With 1000 executions and 0.5 success rate
+test("computeSkillHealth uses smoothing for sparse samples and converges at scale", () => {
+  const lowSampleHealth = computeSkillHealth(1, 1);
+  assert.equal(lowSampleHealth, 2 / 3);
+
   const health = computeSkillHealth(1000, 0.5);
-  // successRate * min(1, 1000/100) = 0.5 * 1 = 0.5
-  assert.equal(health, 0.5);
+  assert.ok(Math.abs(health - 0.5) < 0.001);
+});
+
+test("skill governance schema constrains skill ids at the database layer", () => {
+  assert.match(SKILL_GOVERNANCE_FOUNDATION_SQL, /skill_id TEXT PRIMARY KEY CHECK\(skill_id GLOB '\[A-Za-z\]\[A-Za-z0-9_-\]\*'\)/);
 });
 
 test("SkillGovernanceService.validateSkill returns valid for correct input", () => {
