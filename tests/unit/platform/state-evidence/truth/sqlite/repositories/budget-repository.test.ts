@@ -110,6 +110,7 @@ test("BudgetRepository has all required CAS methods", () => {
 
   assert.equal(typeof repo.updateLedgerWithSettle, "function");
   assert.equal(typeof repo.updateLedgerWithRelease, "function");
+  assert.equal(typeof repo.updateLedgerWithReservation, "function");
   assert.equal(typeof repo.listSettlementsByReservation, "function");
 });
 
@@ -240,6 +241,51 @@ test("BudgetRepository updateLedgerWithSettle returns success=true on version ma
   assert.equal(result.ledger.version, 6);
   assert.equal(result.ledger.reservedAmount, Math.max(0, 50 - 25)); // 25
   assert.equal(result.ledger.settledAmount, 10 + 20); // 30
+});
+
+test("BudgetRepository updateLedgerWithReservation returns success=true on version match", () => {
+  const mockConn = {
+    prepare: () => ({
+      run: () => ({ changes: 1 }),
+    }),
+  } as any;
+
+  const repo = new BudgetRepository(mockConn);
+
+  const ledger = {
+    budgetLedgerId: "ledger-1",
+    tenantId: "tenant-1",
+    harnessRunId: "run-1",
+    currency: "USD",
+    hardCap: 1000,
+    reservedAmount: 75,
+    settledAmount: 10,
+    releasedAmount: 5,
+    status: "reserving" as const,
+    version: 6,
+  };
+
+  const reservation = {
+    budgetReservationId: "res-1",
+    budgetLedgerId: "ledger-1",
+    harnessRunId: "run-1",
+    nodeRunId: null,
+    amount: 25,
+    resourceKind: "compute" as const,
+    status: "active" as const,
+    expiresAt: "2026-05-01T00:00:00.000Z",
+    createdAt: "2026-04-27T10:00:00.000Z",
+    version: 0,
+  };
+
+  const result = repo.updateLedgerWithReservation(ledger, reservation, 5);
+
+  assert.equal(result.success, true);
+  assert.equal(result.rowsAffected, 1);
+  assert.ok(result.ledger);
+  assert.equal(result.ledger.version, 6);
+  assert.equal(result.ledger.reservedAmount, 75);
+  assert.equal(result.ledger.status, "reserving");
 });
 
 test("BudgetRepository updateLedgerWithRelease returns success=false on version mismatch", () => {

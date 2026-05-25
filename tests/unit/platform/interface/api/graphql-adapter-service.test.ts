@@ -126,6 +126,7 @@ test("GraphQLAdapterService execute validates required arguments", async () => {
 
   assert.equal(result.success, false);
   assert.match(result.errors?.[0]?.message ?? "", /Missing required argument 'message'/);
+  assert.equal(result.errors?.[0]?.extensions?.code, "graphql.missing_required_argument");
 });
 
 test("GraphQLAdapterService execute sanitizes internal execution errors", async () => {

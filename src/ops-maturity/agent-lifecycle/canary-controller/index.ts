@@ -75,7 +75,17 @@ export function getNextCanaryStage(currentPercent: number): CanaryStage | null {
  * Checks if canary should rollback based on metrics.
  */
 export function shouldRollbackCanary(progress: CanaryProgress): boolean {
-  return progress.errorRate > 0.05 || progress.successRate < 0.90;
+  const hasRequiredMetrics = Number.isFinite(progress.successRate)
+    && Number.isFinite(progress.errorRate)
+    && Number.isFinite(progress.latencyP50Ms);
+  if (!hasRequiredMetrics) {
+    return false;
+  }
+  return (
+    progress.successRate < DEFAULT_PROMOTION_CRITERIA.minSuccessRate
+    || progress.errorRate > DEFAULT_PROMOTION_CRITERIA.maxErrorRate
+    || progress.latencyP50Ms > DEFAULT_PROMOTION_CRITERIA.maxLatencyP50Ms
+  );
 }
 
 /**

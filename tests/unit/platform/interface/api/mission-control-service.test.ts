@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { WorkflowStateError } from "../../../../../src/platform/contracts/errors.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { createSeededApiContext } from "../../../../helpers/api.js";
 
@@ -80,6 +81,26 @@ test("mission control getWorkflowCockpit returns timeline entries with correct s
       assert.ok(entry.traceId !== undefined);
       assert.ok(entry.occurredAt !== undefined);
     }
+
+    context.db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("mission control getWorkflowCockpit classifies missing workflow as workflow state error", () => {
+  const workspace = createTempWorkspace("aa-mission-control-missing-");
+
+  try {
+    const context = createSeededApiContext(workspace);
+
+    assert.throws(
+      () => context.missionControlService.getWorkflowCockpit("task-missing"),
+      (error: unknown) =>
+        error instanceof WorkflowStateError
+        && error.code === "workflow.not_found"
+        && error.category === "workflow",
+    );
 
     context.db.close();
   } finally {

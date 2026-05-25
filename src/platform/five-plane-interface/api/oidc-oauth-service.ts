@@ -82,11 +82,13 @@ function throwOidcProviderError(
   code: string,
   details: Record<string, unknown> = {},
   statusCode = 502,
+  cause?: Error,
 ): never {
   throw new ProviderError(code, code, {
     statusCode,
     retryable: statusCode >= 500,
     details,
+    ...(cause != null ? { cause } : {}),
   });
 }
 
@@ -601,7 +603,7 @@ export class OidcOAuthService {
       throwOidcProviderError("oauth.token_exchange_transport_failed", {
         issuer: provider.issuer,
         error: error instanceof Error ? error.message : String(error),
-      });
+      }, 502, error instanceof Error ? error : undefined);
     }
 
     if (!response.ok) {

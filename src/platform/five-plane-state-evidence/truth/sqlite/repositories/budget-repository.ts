@@ -132,6 +132,41 @@ export class BudgetRepository {
     };
   }
 
+  public updateLedgerWithReservation(
+    ledger: BudgetLedger,
+    reservation: BudgetReservation,
+    expectedVersion: number,
+  ): CasUpdateResult {
+    const result = this.conn.prepare(
+      `UPDATE budget_ledgers
+       SET reserved_amount = ?,
+           status = ?,
+           version = ?
+       WHERE budget_ledger_id = ?
+         AND version = ?`,
+    ).run(
+      ledger.reservedAmount,
+      ledger.status,
+      ledger.version,
+      ledger.budgetLedgerId,
+      expectedVersion,
+    );
+
+    if (result.changes === 0) {
+      return { success: false, rowsAffected: 0 };
+    }
+
+    this.insertReservation(reservation);
+
+    return {
+      success: true,
+      rowsAffected: Number(result.changes),
+      ledger: {
+        ...ledger,
+      },
+    };
+  }
+
   /**
    * R11-12: CAS atomic settle - updates ledger with version check.
    *

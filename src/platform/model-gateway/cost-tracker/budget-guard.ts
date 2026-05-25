@@ -7,6 +7,7 @@
  */
 
 import { newId } from "../../contracts/types/ids.js";
+import { ValidationError } from "../../contracts/errors.js";
 import {
   createBudgetLedger,
   type BudgetLedger,
@@ -127,7 +128,14 @@ export function actualizeCostEvent(input: {
   const governanceOverheadUsd = Math.max(0, input.governanceOverheadUsd ?? 0);
   const observedCostUsd = Math.max(0, input.observedCostUsd);
   const byok = input.byok ?? false;
-  const split = input.policy?.byokCostIsolation?.defaultChargeTarget ?? "split";
+  const rawSplit = input.policy?.byokCostIsolation?.defaultChargeTarget ?? "split";
+  if (rawSplit !== "split" && rawSplit !== "platform_governance" && rawSplit !== "tenant_model") {
+    throw new ValidationError(
+      "budget_guard.invalid_charge_target",
+      `budget_guard.invalid_charge_target:${String(rawSplit)}`,
+    );
+  }
+  const split = rawSplit;
   let platformGovernanceCostUsd = governanceOverheadUsd;
   let tenantModelCostUsd = observedCostUsd;
 

@@ -21,7 +21,7 @@ import type {
   PmfValidationReportRecord,
 } from "../../contracts/types/domain.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { StorageError, TenantBoundaryError } from "../../contracts/errors.js";
+import { TenantBoundaryError, WorkflowStateError } from "../../contracts/errors.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -238,7 +238,7 @@ export class MissionControlService {
       inspect = this.inspectService.getTaskInspectView(taskId, tenantId);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Task not found:")) {
-        throw new StorageError("workflow.not_found", "workflow.not_found", {
+        throw new WorkflowStateError("workflow.not_found", "workflow.not_found", {
           statusCode: 404,
           retryable: false,
           details: { taskId, tenantId: tenantId ?? null },
@@ -247,7 +247,7 @@ export class MissionControlService {
       throw error;
     }
     if (inspect.workflowState == null) {
-      throw new StorageError("workflow.not_found", "workflow.not_found", {
+      throw new WorkflowStateError("workflow.not_found", "workflow.not_found", {
         statusCode: 404,
         retryable: false,
         details: { taskId, tenantId: tenantId ?? null },
@@ -261,7 +261,7 @@ export class MissionControlService {
       })
       .find((item) => item.taskId === taskId);
     if (!summary) {
-      throw new StorageError("workflow.not_found", "workflow.not_found", {
+      throw new WorkflowStateError("workflow.not_found", "workflow.not_found", {
         statusCode: 404,
         retryable: false,
         details: { taskId, tenantId: tenantId ?? null },

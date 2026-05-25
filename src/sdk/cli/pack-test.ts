@@ -9,7 +9,11 @@
 
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
+import {
+  requirePackCompatibilityMetadata,
+  validateBusinessPackManifest,
+  type BusinessPackManifest,
+} from "../pack-sdk/pack-manifest.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 interface PackTestOptions {
@@ -54,6 +58,7 @@ function main(): number {
 
     // Validate manifest structure
     const validated = validateBusinessPackManifest(manifest);
+    const compatibility = requirePackCompatibilityMetadata(validated);
     result.checks.push(`manifest_valid:true`);
     result.checks.push(`pack_id:${validated.packId}`);
     result.checks.push(`capabilities_count:${validated.capabilities.length}`);
@@ -62,24 +67,10 @@ function main(): number {
       result.checks.push(`version:${validated.version}`);
       result.checks.push(`domain:${validated.domainId}`);
       result.checks.push(`owner:${validated.owner}`);
-      result.checks.push(`sdk_semver:${validated.sdk_semver ?? "not_set"}`);
-      result.checks.push(`platform_min_version:${validated.platform_min_version ?? "not_set"}`);
-      result.checks.push(`platform_max_version:${validated.platform_max_version ?? "not_set"}`);
+      result.checks.push(`sdk_semver:${compatibility.sdkSemver}`);
+      result.checks.push(`platform_min_version:${compatibility.platformMinVersion}`);
+      result.checks.push(`platform_max_version:${compatibility.platformMaxVersion}`);
       result.checks.push(`contract_test_generator:${validated.contract_test_generator ?? "not_set"}`);
-    }
-
-    // Check required fields per §22.2
-    if (!validated.sdk_semver) {
-      result.passed = false;
-      result.errors.push("missing_required_field:sdk_semver");
-    }
-    if (!validated.platform_min_version) {
-      result.passed = false;
-      result.errors.push("missing_required_field:platform_min_version");
-    }
-    if (!validated.platform_max_version) {
-      result.passed = false;
-      result.errors.push("missing_required_field:platform_max_version");
     }
   } catch (err) {
     result.passed = false;

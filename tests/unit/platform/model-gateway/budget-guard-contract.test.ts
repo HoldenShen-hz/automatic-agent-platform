@@ -9,6 +9,7 @@ import {
   type StageBudgetPolicy,
   DEFAULT_COST_ESTIMATION_TEMPLATES,
 } from "../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 function makePolicy(overrides: Partial<BudgetPolicy> = {}): BudgetPolicy {
   return {
@@ -106,4 +107,27 @@ test("cost event contracts support runtime attribution and BYOK isolation", () =
   assert.equal(event.totalCostUsd, 3);
   assert.equal(event.platformGovernanceCostUsd, 0.5);
   assert.equal(event.tenantModelCostUsd, 2.5);
+});
+
+test("actualizeCostEvent rejects unknown BYOK charge target", () => {
+  assert.throws(
+    () => actualizeCostEvent({
+      tenantId: "tenant-1",
+      harnessRunId: "run-1",
+      traceId: "trace-1",
+      stage: "execute",
+      scope: "step",
+      observedCostUsd: 2.5,
+      governanceOverheadUsd: 0.5,
+      byok: true,
+      recordedAt: "2026-05-09T00:00:00.000Z",
+      policy: {
+        byokCostIsolation: {
+          enabled: true,
+          defaultChargeTarget: "unexpected" as "split",
+        },
+      },
+    }),
+    ValidationError,
+  );
 });

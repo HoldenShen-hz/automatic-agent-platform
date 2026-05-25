@@ -82,13 +82,14 @@ test("buildRiskPreview sets reversible false for IRREVERSIBLE_KEYWORDS", () => {
   assert.equal(result.reversible, false);
 });
 
-test("buildRiskPreview includes backward-compatible fields", () => {
+test("buildRiskPreview returns canonical camelCase fields only", () => {
   const result = buildRiskPreview("deploy to staging", "task_create");
 
-  assert.equal(result.overall_risk, result.overallRisk);
-  assert.deepEqual(result.risk_factors, result.riskFactors);
-  assert.deepEqual(result.side_effects, result.sideEffects);
-  assert.equal(result.approval_needed, result.approvalNeeded);
+  assert.equal(result.overallRisk, "high");
+  assert.ok(!("overall_risk" in result));
+  assert.ok(!("risk_factors" in result));
+  assert.ok(!("side_effects" in result));
+  assert.ok(!("approval_needed" in result));
 });
 
 test("buildRiskPreview handles Chinese critical keywords", () => {

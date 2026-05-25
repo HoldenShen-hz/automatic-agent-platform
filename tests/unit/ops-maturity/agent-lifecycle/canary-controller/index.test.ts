@@ -92,22 +92,22 @@ test("getNextCanaryStage returns null when at 100%", () => {
   assert.equal(getNextCanaryStage(100), null);
 });
 
-test("shouldRollbackCanary returns true when error rate exceeds 5%", () => {
+test("shouldRollbackCanary returns true when error rate exceeds promotion ceiling", () => {
   const progress = {
     rolloutPercent: 20,
     successRate: 0.95,
     latencyP50Ms: 500,
-    errorRate: 0.06,
+    errorRate: 0.02,
     currentStage: 20 as const,
   };
 
   assert.equal(shouldRollbackCanary(progress), true);
 });
 
-test("shouldRollbackCanary returns true when success rate below 90%", () => {
+test("shouldRollbackCanary returns true when success rate drops below promotion floor", () => {
   const progress = {
     rolloutPercent: 20,
-    successRate: 0.89,
+    successRate: 0.98,
     latencyP50Ms: 500,
     errorRate: 0.01,
     currentStage: 20 as const,
@@ -119,13 +119,25 @@ test("shouldRollbackCanary returns true when success rate below 90%", () => {
 test("shouldRollbackCanary returns false when metrics are acceptable", () => {
   const progress = {
     rolloutPercent: 20,
-    successRate: 0.95,
+    successRate: 0.995,
     latencyP50Ms: 500,
-    errorRate: 0.01,
+    errorRate: 0.005,
     currentStage: 20 as const,
   };
 
   assert.equal(shouldRollbackCanary(progress), false);
+});
+
+test("shouldRollbackCanary returns true when latency exceeds promotion ceiling", () => {
+  const progress = {
+    rolloutPercent: 20,
+    successRate: 0.995,
+    latencyP50Ms: 2500,
+    errorRate: 0.005,
+    currentStage: 20 as const,
+  };
+
+  assert.equal(shouldRollbackCanary(progress), true);
 });
 
 test("calculateTrafficSplit returns correct percentages", () => {

@@ -412,13 +412,11 @@ describe("CheckpointManifest", () => {
       assert.strictEqual(combined, expected);
     });
 
-    it("should handle empty checkpoint array", () => {
-      const combined = computeCombinedChecksum([]);
-
-      assert.strictEqual(combined.length, 64);
+    it("should reject empty checkpoint array", () => {
+      assert.throws(() => computeCombinedChecksum([]), ValidationError);
     });
 
-    it("should filter out checkpoints without checksums", () => {
+    it("should reject checkpoints without checksums", () => {
       const checkpointRefs: CheckpointRef[] = [
         {
           checkpointId: "cp-001",
@@ -432,10 +430,7 @@ describe("CheckpointManifest", () => {
         },
       ];
 
-      const combined = computeCombinedChecksum(checkpointRefs);
-
-      // Should only include cp-001's checksum in the hash
-      assert.strictEqual(combined.length, 64);
+      assert.throws(() => computeCombinedChecksum(checkpointRefs), ValidationError);
     });
   });
 
@@ -499,6 +494,23 @@ describe("CheckpointManifest", () => {
         schemaVersion: "checkpoint_manifest.v1",
         checkpoints: [],
         createdAt: new Date().toISOString(),
+      };
+
+      assert.strictEqual(verifyManifestChecksum(manifest), false);
+    });
+
+    it("should return false when manifest contains missing checkpoint checksum", () => {
+      const manifest: CheckpointManifest = {
+        manifestId: "manifest-001",
+        schemaVersion: "checkpoint_manifest.v1",
+        checkpoints: [
+          {
+            checkpointId: "cp-001",
+            storageUri: "file:///cp-001.json",
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        combinedChecksum: "a".repeat(64),
       };
 
       assert.strictEqual(verifyManifestChecksum(manifest), false);

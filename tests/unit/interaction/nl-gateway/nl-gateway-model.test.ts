@@ -122,14 +122,9 @@ test("RiskPreview interface structure", () => {
     reversible: true,
     sideEffects: ["可能影响环境配置"],
     approvalNeeded: false,
-    overall_risk: "medium",
-    risk_factors: ["请求可能影响线上系统"],
-    side_effects: ["可能影响环境配置"],
-    approval_needed: false,
   };
 
   assert.equal(riskPreview.overallRisk, "medium");
-  assert.equal(riskPreview.overall_risk, "medium");
   assert.equal(riskPreview.reversible, true);
   assert.equal(riskPreview.approvalNeeded, false);
 });

@@ -10,7 +10,7 @@
  * Incident lifecycle states: open -> triaged -> mitigating -> reviewed -> resolved -> closed (§R14-03).
  */
 
-import { nowIso } from "../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { UnifiedSeverity } from "../../contracts/types/unified-severity.js";
 
 export type IncidentSeverity = UnifiedSeverity | "p1" | "p2" | "p3" | "p4";
@@ -190,7 +190,7 @@ export class IncidentDetector {
    * Generates a cryptographically unique incident ID.
    */
   private generateIncidentId(): string {
-    return `incident_${crypto.randomUUID()}`;
+    return newId("incident");
   }
 }
 

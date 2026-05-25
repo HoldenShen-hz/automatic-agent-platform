@@ -163,23 +163,29 @@ export function validateCheckpointManifest(
  * Computes a combined checksum for a manifest from individual checkpoint checksums.
  */
 export function computeCombinedChecksum(checkpointRefs: CheckpointRef[]): string {
-  // Sort checkpoints by ID for deterministic ordering
-  const sorted = [...checkpointRefs].sort((a, b) =>
-    (a.checkpointId ?? "").localeCompare(b.checkpointId ?? "")
-  );
-
-  // Concatenate checksums and hash
-  const combined = sorted
-    .map((ref) => ref.checksum ?? "")
-    .filter(Boolean)
-    .join("|");
-
-  if (combined.length === 0) {
-    // Return hash of empty string if no checksums available
-    return createHash("sha256").update("").digest("hex");
+  if (checkpointRefs.length === 0) {
+    throw new ValidationError(
+      "checkpoint.manifest_checksums_required",
+      "checkpoint.manifest_checksums_required: at least one checkpoint checksum is required.",
+    );
   }
 
-  return createHash("sha256").update(combined).digest("hex");
+  const serializedChecksums = JSON.stringify(
+    [...checkpointRefs]
+      .sort((a, b) => (a.checkpointId ?? "").localeCompare(b.checkpointId ?? ""))
+      .map((ref) => {
+        const checksum = ref.checksum?.trim();
+        if (checksum == null || checksum.length === 0) {
+          throw new ValidationError(
+            "checkpoint.manifest_checksums_required",
+            `checkpoint.manifest_checksums_required:${ref.checkpointId ?? "unknown_checkpoint"}`,
+          );
+        }
+        return [ref.checkpointId ?? "", checksum];
+      }),
+  );
+
+  return createHash("sha256").update(serializedChecksums).digest("hex");
 }
 
 /**
@@ -190,8 +196,12 @@ export function verifyManifestChecksum(manifest: CheckpointManifest): boolean {
     return false;
   }
 
-  const computed = computeCombinedChecksum(manifest.checkpoints);
-  return computed.toLowerCase() === manifest.combinedChecksum.toLowerCase();
+  try {
+    const computed = computeCombinedChecksum(manifest.checkpoints);
+    return computed.toLowerCase() === manifest.combinedChecksum.toLowerCase();
+  } catch {
+    return false;
+  }
 }
 
 /**

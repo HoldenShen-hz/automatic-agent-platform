@@ -136,16 +136,11 @@ export async function createCheckpointEnvelope<T = unknown>(
   const uncompressedBuffer = Buffer.from(jsonPayload, "utf8");
   const originalSizeBytes = uncompressedBuffer.length;
 
-  // Check size limit before compression
-  if (originalSizeBytes > maxSizeBytes) {
-    throw new CheckpointSizeExceededError(originalSizeBytes, maxSizeBytes);
-  }
-
   // Compress the payload using gzip
   const compressedBuffer = await asyncGzip(uncompressedBuffer);
   const compressedSizeBytes = compressedBuffer.length;
 
-  // Verify compressed size doesn't exceed limit (compression could still be too large)
+  // Storage quota is paid on the serialized artifact, so only the compressed size gates writes.
   if (compressedSizeBytes > maxSizeBytes) {
     throw new CheckpointSizeExceededError(originalSizeBytes, maxSizeBytes);
   }

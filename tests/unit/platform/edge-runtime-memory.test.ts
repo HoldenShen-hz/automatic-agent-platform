@@ -154,10 +154,11 @@ test("R27-27 memory layer model exposes canonical ADR layer aliases", () => {
 
 test("R27-28/R27-29 NL gateway and risk engine source stay aligned with ADR naming and config-driven weighting", () => {
   const nlGatewaySource = readFileSync(join(process.cwd(), "src/interaction/nl-gateway/index.ts"), "utf8");
-  assert.match(nlGatewaySource, /overall_risk\?/);
-  assert.match(nlGatewaySource, /risk_factors\?/);
-  assert.match(nlGatewaySource, /side_effects\?/);
-  assert.match(nlGatewaySource, /approval_needed\?/);
+  assert.doesNotMatch(nlGatewaySource, /overall_risk\?/);
+  assert.doesNotMatch(nlGatewaySource, /risk_factors\?/);
+  assert.doesNotMatch(nlGatewaySource, /side_effects\?/);
+  assert.doesNotMatch(nlGatewaySource, /approval_needed\?/);
+  assert.match(nlGatewaySource, /RiskPreview/);
 
   const riskEngineSource = readFileSync(join(process.cwd(), "src/platform/five-plane-control-plane/risk-control/risk-evaluation-engine.ts"), "utf8");
   assert.match(riskEngineSource, /weights are sourced from `config\/risk\/default\.json`/);

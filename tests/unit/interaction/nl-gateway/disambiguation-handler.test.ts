@@ -20,7 +20,7 @@ test("DisambiguationHandler returns correct confidence levels", () => {
   const handler = new DisambiguationHandler();
 
   assert.equal(handler.getConfidenceLevel(0.9), "high");
-  assert.equal(handler.getConfidenceLevel(0.75), "medium");
+  assert.equal(handler.getConfidenceLevel(0.8), "medium");
   assert.equal(handler.getConfidenceLevel(0.6), "low");
   assert.equal(handler.getConfidenceLevel(0.3), "very_low");
 });
@@ -173,10 +173,8 @@ test("DisambiguationHandler generates deploy-specific questions", () => {
 test("DisambiguationHandler requires clarification at threshold boundary", () => {
   const handler = new DisambiguationHandler();
 
-  // Exactly at threshold (0.7) should trigger medium confidence
-  assert.equal(handler.getConfidenceLevel(0.7), "medium");
-  // Below threshold (0.69) should trigger low confidence
-  assert.equal(handler.getConfidenceLevel(0.69), "low");
+  assert.equal(handler.getConfidenceLevel(0.8), "medium");
+  assert.equal(handler.getConfidenceLevel(0.79), "low");
 });
 
 test("DisambiguationHandler returns high confidence for 0.85+", () => {
@@ -355,10 +353,10 @@ test("DisambiguationHandler medium confidence with entities does not require cla
     domainHint: null,
     entities: [{ entityType: "task_name", value: "Test Task", normalized: "test task", sourceSpan: [0, 10] }],
     urgency: "normal",
-    confidence: 0.75,
+    confidence: 0.8,
   };
 
-  const result = handler.generateClarification("创建一个测试任务", 0.75, intent, intent.entities);
+  const result = handler.generateClarification("创建一个测试任务", 0.8, intent, intent.entities);
 
   assert.equal(result.requiresClarification, false);
 });
@@ -371,10 +369,10 @@ test("DisambiguationHandler buildReason for medium confidence without entities",
     domainHint: null,
     entities: [],
     urgency: "normal",
-    confidence: 0.75,
+    confidence: 0.8,
   };
 
-  const result = handler.generateClarification("修改任务", 0.75, intent, []);
+  const result = handler.generateClarification("修改任务", 0.8, intent, []);
 
   assert.equal(result.requiresClarification, true);
   assert.equal(result.reason, "缺少必要参数，需要补充信息");
@@ -388,10 +386,10 @@ test("DisambiguationHandler buildReason for medium confidence with entities", ()
     domainHint: null,
     entities: [{ entityType: "task_name", value: "Test", normalized: "test", sourceSpan: [0, 4] }],
     urgency: "normal",
-    confidence: 0.75,
+    confidence: 0.8,
   };
 
-  const result = handler.generateClarification("创建一个测试任务", 0.75, intent, intent.entities);
+  const result = handler.generateClarification("创建一个测试任务", 0.8, intent, intent.entities);
 
   assert.equal(result.reason, "意图基本明确，但可以确认");
 });
@@ -492,9 +490,8 @@ test("DisambiguationHandler uses custom lowConfidenceThreshold", () => {
 test("DisambiguationHandler default config values", () => {
   const handler = new DisambiguationHandler();
 
-  // Test that default threshold (0.7) works as expected
-  assert.equal(handler.getConfidenceLevel(0.7), "medium");
-  assert.equal(handler.getConfidenceLevel(0.69), "low");
+  assert.equal(handler.getConfidenceLevel(0.8), "medium");
+  assert.equal(handler.getConfidenceLevel(0.79), "low");
   // 0.49 is strictly below lowConfidenceThreshold (0.5)
   assert.equal(handler.getConfidenceLevel(0.49), "very_low");
 });
@@ -507,8 +504,7 @@ test("detectAmbiguity with exact boundary values", () => {
   assert.equal(detectAmbiguity("abcde", 0.8, 1, 1), false);
   assert.equal(detectAmbiguity("abcde", 0.69, 1, 1), true);
 
-  // Confidence exactly 0.7 should not trigger ambiguity
-  assert.equal(detectAmbiguity("这是一个测试消息", 0.7, 1, 1), false);
+  assert.equal(detectAmbiguity("这是一个测试消息", 0.8, 1, 1), false);
 
   // Confidence below 0.7 still needs another ambiguity signal
   assert.equal(detectAmbiguity("这是一个测试消息", 0.69, 1, 1), false);

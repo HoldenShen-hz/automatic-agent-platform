@@ -52,6 +52,12 @@ export interface SdkReleaseDescriptor {
   deprecation_policy: "notify_only" | "block" | "migration_required" | "hard_cutoff";
 }
 
+export interface RequiredPackCompatibilityMetadata {
+  sdkSemver: string;
+  platformMinVersion: string;
+  platformMaxVersion: string;
+}
+
 // ── Security Scanning ─────────────────────────────────────────────────
 
 /**
@@ -391,6 +397,30 @@ export function validateBusinessPackManifest(
       maturity: capability.profile?.maturity ?? capability.maturity ?? "experimental",
       requiredContracts: dedupeTrimmed(capability.profile?.requiredContracts ?? capability.requiredContracts),
     })),
+  };
+}
+
+export function requirePackCompatibilityMetadata(
+  manifest: BusinessPackManifest,
+): RequiredPackCompatibilityMetadata {
+  const sdkSemver = (manifest.sdk_semver ?? manifest.deprecation_policy?.sdk_semver ?? "").trim();
+  const platformMinVersion = (manifest.platform_min_version ?? manifest.deprecation_policy?.platform_min_version ?? "").trim();
+  const platformMaxVersion = (manifest.platform_max_version ?? manifest.deprecation_policy?.platform_max_version ?? "").trim();
+
+  if (!sdkSemver) {
+    throw new ValidationError("pack_sdk.missing_sdk_semver", "Business pack manifest requires sdk_semver.");
+  }
+  if (!platformMinVersion) {
+    throw new ValidationError("pack_sdk.missing_platform_min_version", "Business pack manifest requires platform_min_version.");
+  }
+  if (!platformMaxVersion) {
+    throw new ValidationError("pack_sdk.missing_platform_max_version", "Business pack manifest requires platform_max_version.");
+  }
+
+  return {
+    sdkSemver,
+    platformMinVersion,
+    platformMaxVersion,
   };
 }
 

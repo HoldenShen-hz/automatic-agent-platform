@@ -60,7 +60,7 @@ import {
   type LlmModelCallResult,
 } from "./model-call-provider.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { BudgetAllocator, type BudgetAllocatorContext } from "../budget-allocator.js";
+import { reserveBudgetLedger } from "../budget-ledger-reservation.js";
 import {
   DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
   DEFAULT_SINGLE_TASK_MAX_RETRIES,
@@ -328,81 +328,20 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
 
     const budgetLimit = execution.budgetUsdLimit ?? 1;
     if (harnessRun.budgetLedgerId) {
-      const ledgerRow = db.connection.prepare(
-        `SELECT budget_ledger_id, tenant_id, harness_run_id, currency, hard_cap, reserved_amount, settled_amount, released_amount, status, version
-         FROM budget_ledgers WHERE budget_ledger_id = ?`,
-      ).get(harnessRun.budgetLedgerId) as {
-        budget_ledger_id: string;
-        tenant_id: string;
-        harness_run_id: string;
-        currency: string;
-        hard_cap: number;
-        reserved_amount: number;
-        settled_amount: number;
-        released_amount: number;
-        status: string;
-        version: number;
-      } | undefined;
-      if (ledgerRow) {
-        const budgetAllocator = new BudgetAllocator();
-        const allocatorContext: BudgetAllocatorContext = {
-          tenantId: ledgerRow.tenant_id,
-          traceId,
-          emittedBy: "single-task-happy-path",
-          principal: "single-task-happy-path",
-        };
-        const reserveResult = budgetAllocator.reserve({
-          ledger: {
-            budgetLedgerId: ledgerRow.budget_ledger_id,
-            tenantId: ledgerRow.tenant_id,
-            harnessRunId: ledgerRow.harness_run_id,
-            currency: ledgerRow.currency,
-            hardCap: ledgerRow.hard_cap,
-            reservedAmount: ledgerRow.reserved_amount,
-            settledAmount: ledgerRow.settled_amount,
-            releasedAmount: ledgerRow.released_amount,
-            status: ledgerRow.status as "open" | "soft_cap_reached" | "hard_cap_reached" | "closed" | "settling" | "reserving" | "releasing",
-            version: ledgerRow.version,
-          },
+      db.transaction(() => {
+        reserveBudgetLedger({
+          connection: db.connection,
+          budgetLedgerId: harnessRun.budgetLedgerId,
           amount: budgetLimit,
-          resourceKind: "token",
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-          expectedVersion: ledgerRow.version,
-          context: allocatorContext,
+          resourceKind: "api",
+          allocatorContext: {
+            tenantId: input.tenantId ?? "tenant:local",
+            traceId,
+            emittedBy: "single-task-happy-path",
+            principal: "single-task-happy-path",
+          },
         });
-        db.transaction(() => {
-          const updateResult = db.connection.prepare(
-            `UPDATE budget_ledgers
-             SET reserved_amount = ?, status = ?, version = ?
-             WHERE budget_ledger_id = ? AND version = ?`,
-          ).run(
-            reserveResult.ledger.reservedAmount,
-            reserveResult.ledger.status,
-            reserveResult.ledger.version,
-            reserveResult.ledger.budgetLedgerId,
-            ledgerRow.version,
-          );
-          if (updateResult.changes !== 1) {
-            throw new ValidationError(
-              "budget_reservation.sql_cas_failed",
-              "budget_reservation.sql_cas_failed: concurrent reserve detected for budget ledger.",
-            );
-          }
-          db.connection.prepare(
-            `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).run(
-            reserveResult.reservation.budgetReservationId,
-            reserveResult.reservation.budgetLedgerId,
-            reserveResult.reservation.harnessRunId,
-            reserveResult.reservation.amount,
-            reserveResult.reservation.resourceKind,
-            reserveResult.reservation.status,
-            reserveResult.reservation.expiresAt,
-            reserveResult.reservation.createdAt,
-          );
-        });
-      }
+      });
     }
 
     let recordedCostEvent: CostEventRecord | null = null;

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { AppError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 /**
@@ -119,12 +120,17 @@ export const GRAPHQL_ERROR_CODES = {
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
-class GraphQLAdapterError extends Error {
+class GraphQLAdapterError extends AppError {
   public constructor(
     public readonly code: string,
     message: string,
   ) {
-    super(message);
+    super(code, message, {
+      category: "validation",
+      source: "gateway",
+      statusCode: 400,
+      retryable: false,
+    });
     this.name = "GraphQLAdapterError";
   }
 }
@@ -254,7 +260,7 @@ export class GraphQLAdapterService {
           success: false,
           errors: [{
             message: error.message,
-            extensions: { code: GRAPHQL_ERROR_CODES.GRAPHQL_EXECUTION_ERROR },
+            extensions: { code: error.code },
           }],
         };
       }

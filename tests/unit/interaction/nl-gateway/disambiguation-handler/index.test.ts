@@ -16,7 +16,7 @@ import type { DetectedIntent, ExtractedEntity } from "../../../../../src/interac
 
 // Local constant matching the expected default config values from the source
 const DEFAULT_DISAMBIGUATION_CONFIG = {
-  threshold: 0.7,
+  threshold: 0.8,
   lowConfidenceThreshold: 0.5,
   maxClarificationQuestions: 3,
   enableProactiveClarification: true,
@@ -76,7 +76,7 @@ test("detectAmbiguity returns false for longer message with enough entities", ()
 // ---------------------------------------------------------------------------
 
 test("DEFAULT_DISAMBIGUATION_CONFIG has expected values", () => {
-  assert.equal(DEFAULT_DISAMBIGUATION_CONFIG.threshold, 0.7);
+  assert.equal(DEFAULT_DISAMBIGUATION_CONFIG.threshold, 0.8);
   assert.equal(DEFAULT_DISAMBIGUATION_CONFIG.lowConfidenceThreshold, 0.5);
   assert.equal(DEFAULT_DISAMBIGUATION_CONFIG.maxClarificationQuestions, 3);
   assert.equal(DEFAULT_DISAMBIGUATION_CONFIG.enableProactiveClarification, true);

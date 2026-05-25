@@ -535,10 +535,6 @@ export function buildRiskPreview(
     reversible: !irreversible,
     sideEffects,
     approvalNeeded: critical || high || requiresApprovalIntent(intentType),
-    overall_risk: critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low",
-    risk_factors: riskFactors,
-    side_effects: sideEffects,
-    approval_needed: critical || high || requiresApprovalIntent(intentType),
   };
 }
 
@@ -609,10 +605,6 @@ export async function buildRiskPreviewWithDryRun(
     reversible: !irreversible,
     sideEffects,
     approvalNeeded: overallRisk === "critical" || overallRisk === "high" || requiresApprovalIntent(intentType),
-    overall_risk: overallRisk,
-    risk_factors: riskFactors,
-    side_effects: sideEffects,
-    approval_needed: overallRisk === "critical" || overallRisk === "high" || requiresApprovalIntent(intentType),
   };
 }
 

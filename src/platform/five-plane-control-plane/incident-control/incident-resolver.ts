@@ -10,7 +10,7 @@
  * §R14-04: Post-mortem automation with 72h Post-Incident Report generation.
  */
 
-import { nowIso } from "../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 import type {
   IncidentDetection,
   IncidentSeverity,
@@ -331,14 +331,14 @@ export class IncidentResolver {
    * Generates a unique resolution ID.
    */
   private generateResolutionId(): string {
-    return `resolution_${crypto.randomUUID()}`;
+    return newId("resolution");
   }
 
   /**
    * Generates a cryptographically unique post-mortem report ID.
    */
   private generateReportId(): string {
-    return `postmortem_${crypto.randomUUID()}`;
+    return newId("postmortem");
   }
 
   /**
@@ -484,7 +484,7 @@ export class IncidentResolver {
     for (let i = 0; i < lessons.length; i++) {
       const lesson = lessons[i]!;
       actionItems.push({
-        actionId: `actionitem_${crypto.randomUUID()}`,
+        actionId: newId("actionitem"),
         description: lesson,
         owner: null,
         dueInHours: i === 0 ? 168 : 720, // First item due in 1 week
@@ -496,7 +496,7 @@ export class IncidentResolver {
     // Add resolution-specific action items
     if (resolution.strategy === "manual") {
       actionItems.push({
-        actionId: `actionitem_${crypto.randomUUID()}`,
+        actionId: newId("actionitem"),
         description: "Evaluate automation opportunities to prevent similar manual interventions",
         owner: null,
         dueInHours: 720,

@@ -66,8 +66,7 @@ import { HarnessLoopController } from "../harness/loop/index.js";
 import { newId } from "../../contracts/types/ids.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
-import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
-import { ValidationError } from "../../contracts/errors.js";
+import { reserveBudgetLedger } from "../../five-plane-execution/budget-ledger-reservation.js";
 import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 
 import type { OapeflirLoopInput, OapeflirLoopResult } from "./oapeflir-loop-core.js";
@@ -193,84 +192,25 @@ export abstract class OapeflirLoopSupport {
     const storage = openAuthoritativeStorageContext({ dbPath: this.dbPath });
     storage.migrate();
     try {
-      // Query budget ledger via raw SQL since AuthoritativeTaskStore doesn't expose getBudgetLedger
-      const ledgerRow = storage.sql.connection.prepare("SELECT * FROM budget_ledgers WHERE budget_ledger_id = ?").get(context.budgetLedgerId) as {
-        budget_ledger_id: string;
-        tenant_id: string;
-        harness_run_id: string;
-        hard_cap: number;
-        reserved_amount: number;
-        settled_amount: number;
-        released_amount: number;
-        status: string;
-        version: number;
-        currency: string;
-      } | undefined;
-      if (!ledgerRow) {
-        this.boundaryLogger.warn("[budget] No ledger found for budget reservation", {
-          data: { budgetLedgerId: context.budgetLedgerId, taskId },
-        });
-        return;
-      }
-      const ledger = {
-        budgetLedgerId: ledgerRow.budget_ledger_id,
-        tenantId: ledgerRow.tenant_id,
-        harnessRunId: ledgerRow.harness_run_id,
-        hardCap: ledgerRow.hard_cap,
-        reservedAmount: ledgerRow.reserved_amount,
-        settledAmount: ledgerRow.settled_amount,
-        releasedAmount: ledgerRow.released_amount,
-        status: ledgerRow.status as "open" | "soft_cap_reached" | "hard_cap_reached" | "closed" | "settling" | "reserving" | "releasing",
-        version: ledgerRow.version,
-        currency: ledgerRow.currency,
-      };
-      const budgetAllocator = new BudgetAllocator();
-      const allocatorContext: BudgetAllocatorContext = {
-        tenantId: ledger.tenantId,
-        traceId: taskId,
-        emittedBy: "oapeflir-loop-service",
-        principal: "oapeflir",
-      };
       const amount = this.estimateUsdFromTokens(context.tokenBudget ?? 1_000, context.modelId);
-      const result = budgetAllocator.reserve({
-        ledger,
-        amount,
-        resourceKind: "api",
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        expectedVersion: ledger.version,
-        context: allocatorContext,
-      });
       storage.sql.transaction(() => {
-        const updateResult = storage.sql.connection.prepare(
-          `UPDATE budget_ledgers
-         SET reserved_amount = ?, status = ?, version = ?
-         WHERE budget_ledger_id = ? AND version = ?`,
-        ).run(
-          result.ledger.reservedAmount,
-          result.ledger.status,
-          result.ledger.version,
-          ledger.budgetLedgerId,
-          ledger.version,
-        );
-        if (updateResult.changes !== 1) {
-          throw new ValidationError(
-            "budget_reservation.sql_cas_failed",
-            "budget_reservation.sql_cas_failed: concurrent reserve detected for budget ledger.",
-          );
-        }
-        storage.sql.connection.prepare(
-          `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        ).run(
-          result.reservation.budgetReservationId,
-          result.reservation.budgetLedgerId,
-          result.reservation.harnessRunId,
-          result.reservation.amount,
-          result.reservation.resourceKind,
-          result.reservation.status,
-          result.reservation.expiresAt,
-          result.reservation.createdAt,
-        );
+        reserveBudgetLedger({
+          connection: storage.sql.connection,
+          budgetLedgerId: context.budgetLedgerId!,
+          amount,
+          resourceKind: "api",
+          allocatorContext: {
+            tenantId: "tenant:unknown",
+            traceId: taskId,
+            emittedBy: "oapeflir-loop-service",
+            principal: "oapeflir",
+          },
+          onMissingLedger: () => {
+            this.boundaryLogger.warn("[budget] No ledger found for budget reservation", {
+              data: { budgetLedgerId: context.budgetLedgerId, taskId },
+            });
+          },
+        });
       });
     } finally {
       storage.close();

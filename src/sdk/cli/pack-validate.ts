@@ -9,7 +9,11 @@
 
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
+import {
+  requirePackCompatibilityMetadata,
+  validateBusinessPackManifest,
+  type BusinessPackManifest,
+} from "../pack-sdk/pack-manifest.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 interface PackValidateOptions {
@@ -65,14 +69,15 @@ function main(): number {
 
     // Structural validation
     const validated = validateBusinessPackManifest(manifest);
+    const compatibility = requirePackCompatibilityMetadata(validated);
     result.metadata["pack_id"] = validated.packId;
     result.metadata["version"] = validated.version;
     result.metadata["capabilities"] = String(validated.capabilities.length);
 
     // Contract version validation if provided
     if (opts.contractVersion) {
-      const minVersion = validated.platform_min_version ?? "0.0.0";
-      const maxVersion = validated.platform_max_version ?? "999.999.999";
+      const minVersion = compatibility.platformMinVersion;
+      const maxVersion = compatibility.platformMaxVersion;
       const contractMajor = parseMajorVersion(opts.contractVersion);
       const minMajor = parseMajorVersion(minVersion);
       const maxMajor = parseMajorVersion(maxVersion);
@@ -85,20 +90,9 @@ function main(): number {
       }
     }
 
-    // Align required compatibility fields with pack-test so a manifest cannot
-    // pass validation and then fail the test command for the same omission.
-    if (!validated.sdk_semver) {
-      result.valid = false;
-      result.errors.push("missing_field:sdk_semver");
-    }
-    if (!validated.platform_min_version) {
-      result.valid = false;
-      result.errors.push("missing_field:platform_min_version");
-    }
-    if (!validated.platform_max_version) {
-      result.valid = false;
-      result.errors.push("missing_field:platform_max_version");
-    }
+    result.metadata["sdk_semver"] = compatibility.sdkSemver;
+    result.metadata["platform_min_version"] = compatibility.platformMinVersion;
+    result.metadata["platform_max_version"] = compatibility.platformMaxVersion;
 
     // Contract test generator check
     if (!validated.contract_test_generator) {

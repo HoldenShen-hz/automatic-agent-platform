@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { OidcOAuthService, OidcProvider } from "../../../../../src/platform/five-plane-interface/api/oidc-oauth-service.js";
+import { ProviderError } from "../../../../../src/platform/contracts/errors.js";
 
 process.env["NODE_ENV"] = "test";
 
@@ -540,6 +541,35 @@ test("exchangeCodeForTokens sanitizes transport failures", async () => {
       "client-secret",
     ),
     (err: Error) => err.message.includes("oauth.token_exchange_transport_failed"),
+  );
+});
+
+test("exchangeCodeForTokens preserves transport failure cause", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+  };
+  const transportError = new Error("socket hang up");
+  const service = new OidcOAuthService([provider], [], "test-audience", async () => {
+    throw transportError;
+  });
+
+  await assert.rejects(
+    async () => service.exchangeCodeForTokens(
+      "code",
+      "https://app.example.com/callback",
+      "verifier",
+      provider,
+      "client-id",
+      "client-secret",
+    ),
+    (err: unknown) =>
+      err instanceof ProviderError
+      && err.code === "oauth.token_exchange_transport_failed"
+      && err.cause === transportError,
   );
 });
 

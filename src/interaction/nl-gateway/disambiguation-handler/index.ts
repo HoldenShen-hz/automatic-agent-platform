@@ -45,7 +45,7 @@ export interface DisambiguationResult {
 }
 
 const DEFAULT_DISAMBIGUATION_CONFIG: DisambiguationConfig = {
-  threshold: 0.7,
+  threshold: 0.8,
   lowConfidenceThreshold: 0.5,
   maxClarificationQuestions: 3,
   enableProactiveClarification: true,
@@ -59,6 +59,7 @@ export function detectAmbiguity(
   confidence: number,
   requiredEntityCount = 1,
   extractedEntityCount = 0,
+  threshold = DEFAULT_DISAMBIGUATION_CONFIG.threshold,
 ): boolean {
   const normalized = message.trim();
   const isShortMessage = normalized.length < 6;
@@ -69,7 +70,7 @@ export function detectAmbiguity(
   }
 
   if (isShortMessage) {
-    return confidence < 0.7;
+    return confidence < threshold;
   }
 
   return false;
@@ -98,7 +99,7 @@ export class DisambiguationHandler {
     if (!this.config.enableProactiveClarification) {
       return false;
     }
-    return detectAmbiguity(message, confidence, 1, entityCount);
+    return detectAmbiguity(message, confidence, 1, entityCount, this.config.threshold);
   }
 
   /**

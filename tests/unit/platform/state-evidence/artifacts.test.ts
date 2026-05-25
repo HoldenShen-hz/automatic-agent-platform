@@ -333,6 +333,31 @@ test("ArtifactBundleService.build preserves links array", () => {
   assert.equal(bundle.links[1]!.linkId, "link_2");
 });
 
+test("ArtifactBundleService.build derives finalDeliverables from storagePath-backed records", () => {
+  const service = new ArtifactBundleService();
+  const bundle = service.build({
+    taskId: "task_1",
+    domainId: "coding",
+    bundleType: "release_bundle",
+    artifacts: [
+      {
+        artifactId: "artifact_1",
+        harnessRunId: "run_1",
+        nodeRunId: null,
+        type: "document",
+        storagePath: "/artifacts/report.md",
+        mimeType: "text/markdown",
+        sizeBytes: 128,
+        publishStatus: "draft",
+        createdAt: new Date().toISOString(),
+        metadata: {},
+      } as unknown as ArtifactBundleExtended["artifacts"][number],
+    ],
+  });
+
+  assert.deepEqual(bundle.finalDeliverables, ["/artifacts/report.md"]);
+});
+
 test("ArtifactBundleService.build creates bundle with all required timestamps", () => {
   const service = new ArtifactBundleService();
   const before = new Date().toISOString();

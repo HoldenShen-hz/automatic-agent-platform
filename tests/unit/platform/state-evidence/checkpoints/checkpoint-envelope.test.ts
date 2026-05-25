@@ -1,5 +1,6 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
+import { randomBytes } from "node:crypto";
 import {
   createCheckpointEnvelope,
   unpackCheckpointEnvelope,
@@ -201,8 +202,9 @@ describe("CheckpointEnvelope", () => {
 
   describe("CheckpointSizeExceededError", () => {
     it("should throw when checkpoint exceeds default size limit", async () => {
-      // Create a very large checkpoint
-      const largeOutput = { data: "x".repeat(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES + 1) };
+      const largeOutput = {
+        data: randomBytes(Math.floor(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES / 2) + 2_048).toString("hex"),
+      };
       const checkpoint = createTestCheckpoint({ output: largeOutput });
 
       await assert.rejects(
@@ -223,7 +225,9 @@ describe("CheckpointEnvelope", () => {
     });
 
     it("should include size information in error details", async () => {
-      const largeOutput = { data: "x".repeat(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES + 1000) };
+      const largeOutput = {
+        data: randomBytes(Math.floor(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES / 2) + 4_096).toString("hex"),
+      };
       const checkpoint = createTestCheckpoint({ output: largeOutput });
 
       try {

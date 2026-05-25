@@ -277,6 +277,32 @@ test("BudgetRepository updateLedgerWithSettle returns success on valid CAS", () 
   assert.equal(result.ledger.settledAmount, 13.0, "Should increase settled amount");
 });
 
+test("BudgetRepository updateLedgerWithReservation returns success on valid CAS", () => {
+  const mockPrepare = (_sql: string) => {
+    return {
+      run: () => ({ changes: 1 }),
+      all: () => [],
+      get: () => undefined,
+    };
+  };
+
+  const conn = { exec: () => {}, prepare: mockPrepare } as unknown as SqliteConnection;
+  const repo = new BudgetRepository(conn);
+
+  const result = repo.updateLedgerWithReservation(
+    createTestLedger({ reservedAmount: 30.0, status: "reserving", version: 2 }),
+    createTestReservation(),
+    1,
+  );
+
+  assert.equal(result.success, true, "Should return success");
+  assert.equal(result.rowsAffected, 1, "Should return 1 affected row");
+  assert.ok(result.ledger, "Should return updated ledger");
+  assert.equal(result.ledger.reservedAmount, 30.0, "Should persist reserved amount from allocator output");
+  assert.equal(result.ledger.status, "reserving", "Should persist allocator status");
+  assert.equal(result.ledger.version, 2, "Should keep allocator version");
+});
+
 test("BudgetRepository updateLedgerWithSettle returns failure on version mismatch", () => {
   const mockPrepare = (sql: string) => {
     return {

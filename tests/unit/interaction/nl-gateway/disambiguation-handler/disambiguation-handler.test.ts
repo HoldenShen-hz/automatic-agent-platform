@@ -204,7 +204,7 @@ test("DisambiguationHandler uses custom config thresholds", () => {
 
 test("DisambiguationHandler default config values", () => {
   const handler = new DisambiguationHandler();
-  assert.equal(handler.getConfidenceLevel(0.7), "medium");
+  assert.equal(handler.getConfidenceLevel(0.8), "medium");
   assert.equal(handler.getConfidenceLevel(0.5), "low");
 });
 
@@ -246,8 +246,8 @@ test("DisambiguationHandler disambiguate handles approval_action entities requir
 
 test("DisambiguationHandler disambiguate does not ask entity questions for task_create", () => {
   const handler = new DisambiguationHandler();
-  const intent = createMockIntent("task_create", 0.75);
-  const result = handler.generateClarification("create a task", 0.75, intent, []);
+  const intent = createMockIntent("task_create", 0.8);
+  const result = handler.generateClarification("create a task", 0.8, intent, []);
 
   // task_create does not require entities
   assert.equal(result.requiresClarification, false);
@@ -255,8 +255,8 @@ test("DisambiguationHandler disambiguate does not ask entity questions for task_
 
 test("DisambiguationHandler disambiguate handles medium confidence with no entities", () => {
   const handler = new DisambiguationHandler();
-  const intent = createMockIntent("task_query", 0.75);
-  const result = handler.generateClarification("some query", 0.75, intent, []);
+  const intent = createMockIntent("task_query", 0.8);
+  const result = handler.generateClarification("some query", 0.8, intent, []);
 
   // Medium confidence with no entities - reason depends on whether requiresEntities returns true
   assert.equal(result.confidenceLevel, "medium");
@@ -281,10 +281,10 @@ test("DisambiguationHandler disambiguate returns correct reason strings", () => 
   const lowResult = handler.generateClarification("test", 0.6, intent, []);
   assert.equal(lowResult.reason, "意图置信度较低，需要您确认");
 
-  const mediumResultNoEntities = handler.generateClarification("test", 0.75, intent, []);
+  const mediumResultNoEntities = handler.generateClarification("test", 0.8, intent, []);
   assert.equal(mediumResultNoEntities.reason, "缺少必要参数，需要补充信息");
 
-  const mediumResultWithEntities = handler.generateClarification("test", 0.75, intent, [{ entityType: "test", value: "test", normalized: "test" }]);
+  const mediumResultWithEntities = handler.generateClarification("test", 0.8, intent, [{ entityType: "test", value: "test", normalized: "test" }]);
   assert.equal(mediumResultWithEntities.reason, "意图基本明确，但可以确认");
 });
 

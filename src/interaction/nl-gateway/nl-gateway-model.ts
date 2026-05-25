@@ -84,10 +84,6 @@ export interface RiskPreview {
   readonly reversible: boolean;
   readonly sideEffects: readonly string[];
   readonly approvalNeeded: boolean;
-  readonly overall_risk?: "low" | "medium" | "high" | "critical";
-  readonly risk_factors?: readonly string[];
-  readonly side_effects?: readonly string[];
-  readonly approval_needed?: boolean;
 }
 
 export interface NlRequestPayload {

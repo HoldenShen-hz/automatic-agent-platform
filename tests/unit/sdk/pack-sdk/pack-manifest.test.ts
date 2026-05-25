@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import {
+  requirePackCompatibilityMetadata,
   validateBusinessPackManifest,
   summarizeCapabilityMatrix,
   scanPackSecurity,
@@ -95,6 +96,31 @@ test("validateBusinessPackManifest preserves sdk compatibility metadata", () => 
   assert.equal(manifest.platform_max_version, "3.0.0");
   assert.equal(manifest.contract_test_generator, "contract://generator");
   assert.equal(manifest.deprecation_policy?.sdk_semver, "1.2.3");
+});
+
+test("requirePackCompatibilityMetadata accepts deprecation policy as canonical source", () => {
+  const compatibility = requirePackCompatibilityMetadata(validateBusinessPackManifest({
+    packId: "ops-pack",
+    version: "1.0.0",
+    domainId: "operations",
+    domain: "operations",
+    owner: "ops@example.com",
+    capabilities: [
+      { capabilityKey: "triage", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+    ],
+    deprecation_policy: {
+      sdk_semver: " 1.2.3 ",
+      platform_min_version: " 2.0.0 ",
+      platform_max_version: " 3.0.0 ",
+      deprecation_policy: "notify_only",
+    },
+  }));
+
+  assert.deepEqual(compatibility, {
+    sdkSemver: "1.2.3",
+    platformMinVersion: "2.0.0",
+    platformMaxVersion: "3.0.0",
+  });
 });
 
 test("validateBusinessPackManifest rejects empty packId", () => {
