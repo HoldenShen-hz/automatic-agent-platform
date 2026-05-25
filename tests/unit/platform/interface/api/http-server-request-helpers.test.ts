@@ -62,6 +62,20 @@ test("normalizeHeaders joins array values with comma", () => {
   assert.equal(result["x-custom-header"], "value1, value2");
 });
 
+test("normalizeHeaders rejects duplicate singleton headers provided as arrays", () => {
+  assert.throws(
+    () => normalizeHeaders({ "Content-Length": ["10", "20"] }),
+    (error: unknown) => (error as { code?: string }).code === "api.duplicate_header",
+  );
+});
+
+test("normalizeHeaders rejects duplicate header names after lowercasing", () => {
+  assert.throws(
+    () => normalizeHeaders({ "Content-Type": "application/json", "content-type": "text/plain" }),
+    (error: unknown) => (error as { code?: string }).code === "api.duplicate_header",
+  );
+});
+
 test("normalizeHeaders handles mixed array and string values", () => {
   const result = normalizeHeaders({ "Content-Type": "application/json", "X-Array": ["a", "b"] });
   assert.equal(result["content-type"], "application/json");

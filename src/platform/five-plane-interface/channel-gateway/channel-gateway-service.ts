@@ -586,12 +586,12 @@ export class ChannelGatewayService {
       throw new GatewayDeliveryError(`gateway.${channel}_circuit_open`, 503, true);
     }
     if (state?.openUntil != null && state.openUntil <= Date.now()) {
-      this.circuitBreakerState.set(channel, { failureCount: 0, openUntil: null });
+      this.circuitBreakerState.delete(channel);
     }
   }
 
   private resetCircuitBreaker(channel: string): void {
-    this.circuitBreakerState.set(channel, { failureCount: 0, openUntil: null });
+    this.circuitBreakerState.delete(channel);
   }
 
   private recordCircuitBreakerFailure(channel: string, error: unknown): void {

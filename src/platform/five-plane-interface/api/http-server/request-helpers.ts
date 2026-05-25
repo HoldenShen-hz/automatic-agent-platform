@@ -13,6 +13,7 @@ import { ApiError } from "./api-error.js";
 
 /** Maximum HTTP request body size to prevent DoS attacks (1 MB) */
 export const MAX_BODY_BYTES = 1_048_576;
+const DISALLOWED_DUPLICATE_HEADERS = new Set(["content-length", "transfer-encoding", "host"]);
 
 export function matchRoute(request: ApiRequestLike): RouteMatch | null {
   const method = request.method ?? "GET";
@@ -63,7 +64,14 @@ export function normalizeHeaders(
     return normalized;
   }
   for (const [name, value] of Object.entries(headers)) {
-    normalized[name.toLowerCase()] = Array.isArray(value) ? value.join(", ") : value;
+    const normalizedName = name.toLowerCase();
+    if (normalizedName in normalized) {
+      throw new ApiError(400, "api.duplicate_header", `Duplicate header is not allowed: ${normalizedName}.`);
+    }
+    if (Array.isArray(value) && value.length > 1 && DISALLOWED_DUPLICATE_HEADERS.has(normalizedName)) {
+      throw new ApiError(400, "api.duplicate_header", `Duplicate header is not allowed: ${normalizedName}.`);
+    }
+    normalized[normalizedName] = Array.isArray(value) ? value.join(", ") : value;
   }
   return normalized;
 }

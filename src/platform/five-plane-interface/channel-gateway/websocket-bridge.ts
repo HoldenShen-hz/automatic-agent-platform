@@ -7,7 +7,7 @@
  */
 
 import type { IncomingMessage, Server } from "node:http";
-import type { WebSocket } from "ws";
+import type { RawData, WebSocket } from "ws";
 import { WebSocketServer } from "ws";
 import { z } from "zod";
 
@@ -125,6 +125,7 @@ export class WebSocketBridge {
   private readonly slowConsumers = new Set<WebSocket>();
   private readonly tenantScopeFilter: TenantScopeFilter | null;
   private readonly heartbeatTimer: NodeJS.Timeout;
+  private readonly maxPayloadBytes: number;
   private readonly idleTimeoutMs: number;
   private readonly maxConnections: number;
   private readonly maxSubscriptionsPerClient: number;
@@ -143,6 +144,7 @@ export class WebSocketBridge {
     options: WebSocketBridgeOptions = {},
   ) {
     this.tenantScopeFilter = taskScopeResolver == null ? null : new TenantScopeFilter(taskScopeResolver);
+    this.maxPayloadBytes = options.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES;
     this.idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
     this.maxConnections = options.maxConnections ?? DEFAULT_MAX_CONNECTIONS;
     this.maxSubscriptionsPerClient = options.maxSubscriptionsPerClient ?? MAX_SUBSCRIPTIONS_PER_CLIENT;
@@ -158,7 +160,7 @@ export class WebSocketBridge {
     this.wss = new WebSocketServer({
       server,
       path: WS_PATH,
-      maxPayload: options.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES,
+      maxPayload: this.maxPayloadBytes,
       handleProtocols: (protocols) => this.selectProtocol(protocols),
     });
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
@@ -230,20 +232,7 @@ export class WebSocketBridge {
         liveClient.isAlive = true;
         liveClient.lastActivityAt = Date.now();
       }
-      try {
-        const parsed = JSON.parse(data.toString());
-        const result = WebSocketMessageSchema.safeParse(parsed) as { success: true; data: WebSocketMessageType } | { success: false; data: unknown };
-        if (!result.success) {
-          ws.send(JSON.stringify({ type: "error", code: "api.invalid_message", message: "Message schema validation failed" }));
-          return;
-        }
-        this.handleMessage(ws, result.data);
-      } catch (error) {
-        logger.warn("WebSocket message rejected: invalid payload", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        ws.send(JSON.stringify({ type: "error", code: "api.invalid_message", message: "Failed to parse message" }));
-      }
+      this.handleIncomingPayload(ws, data);
     });
     ws.on("close", () => {
       this.handleDisconnection(ws);
@@ -311,6 +300,38 @@ export class WebSocketBridge {
         return;
       default:
         ws.send(JSON.stringify({ type: "error", code: "api.unknown_message", message: "Unknown message type" }));
+    }
+  }
+
+  private handleIncomingPayload(ws: WebSocket, data: RawData): void {
+    const payloadBytes = getRawDataByteLength(data);
+    if (payloadBytes > this.maxPayloadBytes) {
+      logger.warn("websocket.message_rejected", {
+        reasonCode: "message_too_large",
+        payloadBytes,
+        maxPayloadBytes: this.maxPayloadBytes,
+      });
+      ws.send(JSON.stringify({
+        type: "error",
+        code: "api.message_too_large",
+        message: `Message exceeds maximum size of ${this.maxPayloadBytes} bytes`,
+      } satisfies WebSocketMessageType));
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(data.toString());
+      const result = WebSocketMessageSchema.safeParse(parsed) as { success: true; data: WebSocketMessageType } | { success: false; data: unknown };
+      if (!result.success) {
+        ws.send(JSON.stringify({ type: "error", code: "api.invalid_message", message: "Message schema validation failed" }));
+        return;
+      }
+      this.handleMessage(ws, result.data);
+    } catch (error) {
+      logger.warn("WebSocket message rejected: invalid payload", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      ws.send(JSON.stringify({ type: "error", code: "api.invalid_message", message: "Failed to parse message" }));
     }
   }
 
@@ -763,4 +784,17 @@ export class WebSocketBridge {
 
 function isSupportedProtocolToken(protocol: string): boolean {
   return !protocol.includes("=") && /^[A-Za-z0-9!#$%&'*+.^_`|~-]+(?:-[A-Za-z0-9!#$%&'*+.^_`|~-]+)*$/.test(protocol);
+}
+
+function getRawDataByteLength(data: RawData): number {
+  if (typeof data === "string") {
+    return Buffer.byteLength(data);
+  }
+  if (Buffer.isBuffer(data)) {
+    return data.byteLength;
+  }
+  if (Array.isArray(data)) {
+    return data.reduce((total, chunk) => total + chunk.byteLength, 0);
+  }
+  return data.byteLength;
 }

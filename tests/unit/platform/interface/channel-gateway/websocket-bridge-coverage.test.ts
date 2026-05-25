@@ -942,3 +942,30 @@ networkPathTest("WebSocketBridge handles invalid JSON gracefully", (t) => {
     });
   });
 });
+
+test("WebSocketBridge rejects application payloads larger than the configured limit before parsing", () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, {
+    maxPayloadBytes: 8,
+  });
+  try {
+    const messages: WebSocketMessageType[] = [];
+    const fakeWs = {
+      send(payload: string) {
+        messages.push(JSON.parse(payload) as WebSocketMessageType);
+      },
+    } as unknown as WebSocket;
+
+    (bridge as any).handleIncomingPayload(fakeWs, Buffer.from(JSON.stringify({
+      type: "subscribe",
+      taskId: "task-too-large",
+    })));
+
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0]?.type, "error");
+    assert.equal((messages[0] as Extract<WebSocketMessageType, { type: "error" }>)?.code, "api.message_too_large");
+  } finally {
+    void bridge.close();
+    server.close();
+  }
+});

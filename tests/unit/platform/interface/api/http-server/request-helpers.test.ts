@@ -166,6 +166,20 @@ test("normalizeHeaders joins array values with comma", () => {
   assert.equal(normalized["x-custom"], "single");
 });
 
+test("normalizeHeaders rejects duplicate singleton headers", () => {
+  assert.throws(
+    () => normalizeHeaders({ "Content-Length": ["1", "2"] }),
+    (error: unknown) => (error as { code?: string }).code === "api.duplicate_header",
+  );
+});
+
+test("normalizeHeaders rejects duplicate names after lowercasing", () => {
+  assert.throws(
+    () => normalizeHeaders({ "Host": "a.example", "host": "b.example" }),
+    (error: unknown) => (error as { code?: string }).code === "api.duplicate_header",
+  );
+});
+
 test("normalizeHeaders returns empty object for undefined input", () => {
   const normalized = normalizeHeaders(undefined);
   assert.deepEqual(normalized, {});

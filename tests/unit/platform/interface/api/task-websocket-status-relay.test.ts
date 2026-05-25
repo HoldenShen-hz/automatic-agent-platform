@@ -328,12 +328,11 @@ test("TaskWebSocketStatusRelay broadcasts multiple new events in reverse chronol
   assert.equal(broadcasts[1]?.event.status, "in_progress");
 });
 
-test("TaskWebSocketStatusRelay evicts oldest seen event IDs when exceeding backlogLimit * 10", () => {
+test("TaskWebSocketStatusRelay prunes seen event IDs back to backlogLimit once retention is exceeded", () => {
   const broadcasts: Array<{ taskId: string; event: TaskWebSocketEvent }> = [];
   const events: EventRecord[] = [];
 
-  // Create backlogLimit * 10 + 5 events to trigger eviction
-  for (let i = 0; i < 105; i++) {
+  for (let i = 0; i < 25; i++) {
     events.push(
       createEvent({
         id: `evt-${i}`,
@@ -362,28 +361,9 @@ test("TaskWebSocketStatusRelay evicts oldest seen event IDs when exceeding backl
     { backlogLimit: 10 },
   );
 
-  // First poll should broadcast all 105 events
   relay.pollOnce();
-  assert.equal(broadcasts.length, 105);
-
-  // Add 5 more events and poll again
-  const newEvents: EventRecord[] = [];
-  for (let i = 0; i < 5; i++) {
-    newEvents.push(
-      createEvent({
-        id: `evt-new-${i}`,
-        taskId: `task-new-${i}`,
-        payloadJson: JSON.stringify({
-          toStatus: `new_status_${i}`,
-          occurredAt: `2026-04-17T00:${String(i).padStart(2, "0")}:00.000Z`,
-        }),
-      }),
-    );
-  }
-
-  // This test just verifies the markSeen mechanism works - the eviction logic
-  // itself is tested implicitly through the fact that new events get broadcast
-  // after the old ones filled up the backlog
+  assert.equal(broadcasts.length, 25);
+  assert.equal(((relay as any).seenEventIds as Set<string>).size, 14);
 });
 
 test("TaskWebSocketStatusRelay pollOnce catches and logs errors from listEventsByType", () => {

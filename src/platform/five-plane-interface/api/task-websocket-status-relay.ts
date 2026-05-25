@@ -4,6 +4,7 @@ import type { EventRecord } from "../../contracts/types/domain.js";
 import type { HttpApiServer } from "./http-api-server.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const SEEN_EVENT_RETENTION_MULTIPLIER = 2;
 
 export interface TaskWebSocketStatusRelayOptions {
   pollIntervalMs?: number;
@@ -97,11 +98,12 @@ export class TaskWebSocketStatusRelay {
 
   private markSeen(eventId: string): void {
     this.seenEventIds.add(eventId);
-    if (this.seenEventIds.size <= this.backlogLimit * 10) {
+    const maxSeenEventIds = Math.max(this.backlogLimit, this.backlogLimit * SEEN_EVENT_RETENTION_MULTIPLIER);
+    if (this.seenEventIds.size <= maxSeenEventIds) {
       return;
     }
 
-    const overflow = this.seenEventIds.size - this.backlogLimit * 10;
+    const overflow = this.seenEventIds.size - this.backlogLimit;
     const iterator = this.seenEventIds.values();
     for (let i = 0; i < overflow; i++) {
       const next = iterator.next();

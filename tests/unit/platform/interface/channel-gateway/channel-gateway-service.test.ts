@@ -221,6 +221,21 @@ test("channel gateway service sanitizes webhook receipt URLs that contain query 
   }
 });
 
+test("channel gateway service deletes closed circuit breaker entries after reset", () => {
+  const harness = createHarness();
+  try {
+    const service = harness.createService();
+    const state = (service as any).circuitBreakerState as Map<string, { failureCount: number; openUntil: number | null }>;
+
+    state.set("slack", { failureCount: 0, openUntil: null });
+    (service as any).resetCircuitBreaker("slack");
+
+    assert.equal(state.has("slack"), false);
+  } finally {
+    harness.close();
+  }
+});
+
 test("channel gateway service rejects internal webhook URLs", async () => {
   const harness = createHarness();
   try {

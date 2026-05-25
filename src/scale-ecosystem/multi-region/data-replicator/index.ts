@@ -6,8 +6,8 @@
  */
 
 import { z } from "zod";
-import { createHash, randomUUID } from "node:crypto";
-import { nowIso } from "../../../platform/contracts/types/ids.js";
+import { createHash } from "node:crypto";
+import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import { CrossBorderTransferComplianceService } from "../cross-border-transfer-compliance-service.js";
 import { getRpoRtoTrackingService } from "../rpo-rto-tracking.js";
 
@@ -366,7 +366,7 @@ export class DataReplicatorService {
       effectivePayload = assessment.dataMinimizer.minimizedPayload ?? payload;
     }
     const event: ReplicationEvent = {
-      eventId: `repl_${randomUUID()}`,
+      eventId: newId("repl"),
       sequenceNumber: this.nextSequenceNumber(targetRegionId),
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
@@ -546,7 +546,7 @@ export class DataReplicatorService {
     const lagMs = pendingEvents * (this.config.flushIntervalMs / Math.max(1, this.config.batchSize));
 
     const measurement: ReplicationLagMeasurement = {
-      measurementId: `lag_${randomUUID()}`,
+      measurementId: newId("lag"),
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
       measuredAt: nowIso(),

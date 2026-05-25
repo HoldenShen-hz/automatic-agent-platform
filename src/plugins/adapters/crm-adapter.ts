@@ -24,6 +24,8 @@ export interface CrmAdapterPluginOptions {
 }
 
 const MUTATING_ACTIONS = new Set(["upsert_contact", "upsert_company", "append_note"]);
+const READ_ACTIONS = new Set(["contacts", "companies", "deals", "contact", "company", "deal", "campaigns"]);
+const ALLOWED_ACTIONS = new Set([...READ_ACTIONS, ...MUTATING_ACTIONS]);
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -99,7 +101,7 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
       if (credentialFingerprint == null || credentialSecret == null) {
         throw new Error("crm_adapter.not_authenticated");
       }
-      if (!/^[a-zA-Z0-9_]+$/.test(action)) {
+      if (!ALLOWED_ACTIONS.has(action)) {
         throw new Error("crm_adapter.invalid_action");
       }
       const decision = await policy.evaluate(`${apiBaseUrl}/crm/v3/objects/${action}`);

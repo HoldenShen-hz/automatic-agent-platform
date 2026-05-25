@@ -233,13 +233,14 @@ test("CrmAdapter.execute makes POST request with body for whitelisted mutating a
   delete (globalThis as any).fetch;
 });
 
-test("CrmAdapter.execute rejects non-whitelisted mutating actions", async () => {
+test("CrmAdapter.execute rejects actions outside the explicit allowlist", async () => {
   globalThis.fetch = createMockFetch({}) as any;
   const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
   await adapter.authenticate({ token: "hubspot_token_xyz" });
-  const result = await adapter.execute("custom_action", { param1: "value1" });
-  assert.equal((result as any).ok, false);
-  assert.match((result as any).data.error, /crm_adapter\.invalid_action/);
+  await assert.rejects(
+    () => adapter.execute("custom_action", { param1: "value1" }),
+    /crm_adapter\.invalid_action/,
+  );
   delete (globalThis as any).fetch;
 });
 
