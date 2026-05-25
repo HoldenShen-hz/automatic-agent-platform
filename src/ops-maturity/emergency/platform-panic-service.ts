@@ -403,6 +403,13 @@ export class PlatformPanicService {
   }
 
   private isDirectiveExpired(directive: PlatformPanicDirective): boolean {
-    return directive.expiresAt != null && Date.parse(directive.expiresAt) <= Date.now();
+    if (directive.expiresAt == null) {
+      return false;
+    }
+    const expiresAtMs = Date.parse(directive.expiresAt);
+    if (Number.isNaN(expiresAtMs)) {
+      return true;
+    }
+    return expiresAtMs <= Date.now();
   }
 }

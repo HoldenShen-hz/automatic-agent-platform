@@ -24,6 +24,7 @@ const MCP_TOOL_PREFIX = "mcp_";
  * which could be used for nested tool invocations or prompt injection.
  */
 const FORBIDDEN_MCP_OUTPUT_PATTERN = /"(?:function_call|tool_use|tool_calls)"\s*:/i;
+const FORBIDDEN_MCP_OUTPUT_FIELDS = new Set(["function_call", "tool_use", "tool_calls"]);
 
 /**
  * Set of builtin tool names for collision detection.
@@ -60,6 +61,22 @@ export interface McpGuardedToolCallResult {
   errorSource?: ToolCallErrorSource | null;
   retryable?: boolean;
   durationMs?: number;
+}
+
+function containsForbiddenStructuredPayload(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((entry) => containsForbiddenStructuredPayload(entry));
+  }
+  if (value == null || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return Object.entries(record).some(([key, entry]) => {
+    if (FORBIDDEN_MCP_OUTPUT_FIELDS.has(key)) {
+      return true;
+    }
+    return containsForbiddenStructuredPayload(entry);
+  });
 }
 
 /**
@@ -229,7 +246,8 @@ export function sanitizeMcpToolCallResult(toolName: string, result: McpGuardedTo
   const sanitizedData = sanitizedStructured?.sanitizedValue ?? null;
 
   // Check for forbidden payload patterns in any output field
-  const forbiddenPayloads = [sanitizedSummary, sanitizedOutput, sanitizedData == null ? null : JSON.stringify(sanitizedData)]
+  const forbiddenPayloads = containsForbiddenStructuredPayload(sanitizedData)
+    || [sanitizedSummary, sanitizedOutput]
     .filter((value): value is string => value != null)
     .some((value) => FORBIDDEN_MCP_OUTPUT_PATTERN.test(value));
 

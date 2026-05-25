@@ -134,7 +134,8 @@ export class RedisRateLimiter {
     }
     try {
       await this.redis.quit();
-    } catch {
+    } catch (err) {
+      logger.warn("redis.quit_failed", { error: err instanceof Error ? err.message : String(err) });
       this.redis.disconnect();
     }
   }

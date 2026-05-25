@@ -44,6 +44,26 @@ function detachTimer(timer: ReturnType<typeof setTimeout> | ReturnType<typeof se
   }
 }
 
+function isTrustedReplayEventId(value: unknown): value is string {
+  return typeof value === "string" && /^evt[-_][A-Za-z0-9:-]{3,}$/.test(value);
+}
+
+function resolveTrustedReplayEventId(event: WSEventEnvelope): string | null {
+  if (isTrustedReplayEventId(event.eventId)) {
+    return event.eventId;
+  }
+  if (event.payload != null && typeof event.payload === "object") {
+    const payload = event.payload as Record<string, unknown>;
+    if (isTrustedReplayEventId(payload.eventId)) {
+      return payload.eventId;
+    }
+    if (isTrustedReplayEventId(payload.id)) {
+      return payload.id;
+    }
+  }
+  return null;
+}
+
 export class InMemoryWSClient implements WSClient {
   private readonly handlers = new Map<string, Set<EventHandler>>();
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
@@ -229,6 +249,9 @@ export class BrowserWSClient implements WSClient {
           this.clearHeartbeatDeadline();
           return;
         }
+        if (resolveTrustedReplayEventId(data) == null && (data.eventId != null || (typeof data.payload === "object" && data.payload !== null && ("eventId" in data.payload || "id" in data.payload)))) {
+          return;
+        }
         this.publish(data);
       };
       socket.onclose = (event) => {
@@ -363,17 +386,7 @@ export class BrowserWSClient implements WSClient {
   }
 
   private resolveEventId(event: WSEventEnvelope): string | null {
-    if (typeof event.eventId === "string" && event.eventId.length > 0) {
-      return event.eventId;
-    }
-    if (event.payload != null && typeof event.payload === "object") {
-      const payload = event.payload as Record<string, unknown>;
-      const candidate = payload.eventId ?? payload.id;
-      if (typeof candidate === "string" && candidate.length > 0) {
-        return candidate;
-      }
-    }
-    return null;
+    return resolveTrustedReplayEventId(event);
   }
 
   private setStatus(status: WSStatus): void {

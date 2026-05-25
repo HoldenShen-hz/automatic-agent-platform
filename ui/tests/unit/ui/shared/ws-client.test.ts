@@ -400,6 +400,54 @@ describe("BrowserWSClient", () => {
 
     expect(sockets).toHaveLength(2);
   });
+
+  it("ignores inbound events that carry untrusted replay ids", async () => {
+    let socketRef: InvalidReplaySocket | null = null;
+
+    class InvalidReplaySocket {
+      public static readonly OPEN = 1;
+      public readyState = InvalidReplaySocket.OPEN;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: (() => void) | null = null;
+      public onerror: (() => void) | null = null;
+      public readonly sent: string[] = [];
+
+      public constructor(_url: string, _protocols?: string | string[]) {
+        socketRef = this;
+        queueMicrotask(() => this.onopen?.());
+      }
+
+      public send(message: string): void {
+        this.sent.push(message);
+      }
+
+      public close(): void {}
+    }
+
+    const client = new BrowserWSClient(InvalidReplaySocket as unknown as typeof WebSocket, new InMemoryWSClient());
+    const seen: WSEventEnvelope[] = [];
+    client.subscribe("updates", (event) => seen.push(event));
+    client.connect("ws://example.com/ws", "token");
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(socketRef).not.toBeNull();
+    const socket = socketRef!;
+    socket.onmessage?.({
+      data: JSON.stringify({
+        channel: "updates",
+        type: "task.update",
+        eventId: "injected-id",
+        payload: { status: "ok" },
+      }),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(seen).toHaveLength(0);
+    const subscribeMessage = socket.sent.find((message: string) => message.includes('"action":"subscribe"'));
+    expect(subscribeMessage).toBeDefined();
+    expect(subscribeMessage).not.toContain("injected-id");
+  });
 });
 
 describe("createRuntimeWSClient", () => {

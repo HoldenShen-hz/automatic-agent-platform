@@ -21,6 +21,8 @@ import {
   type StableEvidenceSignedEnvelope,
 } from "../../../../src/platform/stability/stable-evidence-bundle-support.js";
 
+process.env["AA_STABLE_EVIDENCE_HMAC_KEY"] ??= "test-stable-evidence-hmac-key";
+
 describe("stable-evidence-crypto", () => {
   describe("createSignedEnvelope", () => {
     test("creates envelope with payload, signature, algorithm, signedAt, and nonce", () => {

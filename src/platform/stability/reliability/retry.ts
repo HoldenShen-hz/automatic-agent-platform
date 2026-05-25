@@ -183,7 +183,8 @@ export class Retry {
     const cappedDelay = Math.min(exponentialDelay, this.maxDelayMs);
     // Add jitter to prevent thundering herd
     const jitter = cappedDelay * this.jitterFactor * (Math.random() * 2 - 1);
-    return Math.floor(cappedDelay + jitter);
+    const candidateDelay = Math.floor(cappedDelay + jitter);
+    return Math.min(this.maxDelayMs, Math.max(this.initialDelayMs, candidateDelay));
   }
 
   private sleep(ms: number): Promise<void> {

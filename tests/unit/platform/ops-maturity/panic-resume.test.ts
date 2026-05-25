@@ -40,6 +40,20 @@ test("platform panic directives support scopeRef expiry and panic drill lifecycl
   assert.equal(service.listDrills().length, 1);
 });
 
+test("platform panic directives treat malformed expiresAt as expired", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "platform/core",
+    reasonCode: "security.compromise",
+    activeIncidents: 1,
+    issuedBy: "secops",
+    expiresAt: "invalid-date",
+    requiredApprovers: ["secops", "platform-admin"],
+  });
+
+  assert.equal(service.evaluateExecution({ scope: "platform/core", mode: "deploy" }).blocked, false);
+});
+
 test("resume protocol requires canonical plan metadata before panic can clear", () => {
   const invalidPlan: ResumePlan = {
     planId: "",

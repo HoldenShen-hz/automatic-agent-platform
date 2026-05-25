@@ -152,6 +152,20 @@ test("github adapter rejects unauthenticated, policy-denied, and unsupported act
     () => unsupported.execute("unknown_action", { repository: "owner/repo" }),
     /github_adapter\.unsupported_action:unknown_action/,
   );
+
+  const restricted = {
+    ...createGithubAdapterPlugin({ policy: createPolicy() }),
+    capabilityIds: ["external.github"],
+  };
+  await restricted.authenticate({ token: "ghp_test1234567890" });
+  await assert.rejects(
+    () => restricted.execute("create_issue", {
+      repository: "owner/repo",
+      title: "A",
+      body: "B",
+    }),
+    /github_adapter\.action_not_allowed:create_issue/,
+  );
 });
 
 test("github adapter plugin signature helpers use current hashing contract", () => {

@@ -224,6 +224,35 @@ test("GithubAdapter.execute rejects path traversal input", async () => {
   );
 });
 
+test("GithubAdapter.execute rejects workflow path traversal and undeclared action capabilities", async () => {
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  await adapter.authenticate({ token: "ghp_test1234567890" });
+
+  await assert.rejects(
+    async () => adapter.execute("dispatch_workflow", {
+      repository: "owner/repo",
+      workflowId: "../build.yml",
+      ref: "main",
+    }),
+    { message: "github_adapter.invalid_workflowId" },
+  );
+
+  const restrictedAdapter = {
+    ...createGithubAdapterPlugin({ policy: createMockPolicy() }),
+    capabilityIds: ["external.github"],
+  };
+  await restrictedAdapter.authenticate({ token: "ghp_test1234567890" });
+
+  await assert.rejects(
+    async () => restrictedAdapter.execute("create_issue", {
+      repository: "owner/repo",
+      title: "Test",
+      body: "Body",
+    }),
+    { message: "github_adapter.action_not_allowed:create_issue" },
+  );
+});
+
 test("GithubAdapter.verifyPluginSignature uses HMAC validation", () => {
   const pluginId = "plugin.shared.github_adapter";
   const manifestHash = "abc123";

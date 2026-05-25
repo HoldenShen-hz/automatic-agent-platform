@@ -44,6 +44,20 @@ export interface PluginSpiRegistryOptions {
   maxConsecutiveFailures?: number;
 }
 
+function resolveCapabilityIds(
+  plugin: RegisteredPlugin,
+  builtinManifest: PluginManifest | undefined,
+  manifest: PluginManifest | undefined,
+): string[] {
+  const explicitCapabilityIds =
+    manifest?.capabilityIds
+    ?? plugin.manifest?.capabilityIds
+    ?? plugin.capabilityIds
+    ?? builtinManifest?.capabilityIds
+    ?? [];
+  return Array.from(new Set(explicitCapabilityIds));
+}
+
 function defaultManifestFor(plugin: RegisteredPlugin): PluginManifest {
   return PluginManifestSchema.parse({
     pluginId: plugin.pluginId,
@@ -60,7 +74,7 @@ function defaultManifestFor(plugin: RegisteredPlugin): PluginManifest {
     sandbox: {
       timeoutMs: 5000,
       allowFilesystemWrite: false,
-      allowNetworkEgress: plugin.spiType === "adapter",
+      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: [],
       maxConcurrentInvocations: 1,
       maxQueuedInvocations: 8,
@@ -141,12 +155,7 @@ export class PluginSpiRegistry {
         ...(plugin.manifest?.spiTypes ?? []),
         ...(manifest?.spiTypes ?? []),
       ])),
-      capabilityIds: Array.from(new Set([
-        ...(plugin.capabilityIds ?? []),
-        ...(builtinManifest?.capabilityIds ?? []),
-        ...(plugin.manifest?.capabilityIds ?? []),
-        ...(manifest?.capabilityIds ?? []),
-      ])),
+      capabilityIds: resolveCapabilityIds(plugin, builtinManifest, manifest),
       domainIds:
         "domainId" in plugin
           ? Array.from(new Set([

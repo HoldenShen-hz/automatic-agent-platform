@@ -287,6 +287,11 @@ export class RedisCacheStore implements CacheStore {
       this.redis.disconnect();
       return;
     }
-    await this.redis.quit();
+    try {
+      await this.redis.quit();
+    } catch (error) {
+      logger.warn("redis.quit_failed", { error: error instanceof Error ? error.message : String(error) });
+      this.redis.disconnect();
+    }
   }
 }

@@ -205,6 +205,20 @@ test("PluginSpiRegistry enforces namespace sandbox and timeout", async () => {
   }), /timed out/);
 });
 
+test("PluginSpiRegistry keeps adapter network egress deny-by-default and does not widen capabilities from builtin manifests", () => {
+  const registry = new PluginSpiRegistry();
+  const github = createBuiltinPlugin("plugin.shared.github_adapter");
+  assert.ok(github);
+
+  const record = registry.register({
+    ...github,
+    capabilityIds: ["external.github"],
+  });
+
+  assert.equal(record.manifest.sandbox.allowNetworkEgress, true);
+  assert.deepEqual(record.manifest.capabilityIds, ["external.github"]);
+});
+
 test("PluginSpiRegistry serializes plugin invocations under isolation limits", async () => {
   const registry = new PluginSpiRegistry();
   let inFlight = 0;

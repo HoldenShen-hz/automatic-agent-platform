@@ -289,6 +289,15 @@ return updated`;
       this.redis.disconnect();
       return;
     }
-    await this.redis.quit();
+    try {
+      await this.redis.quit();
+    } catch (err) {
+      lockLogger.log({
+        level: "warn",
+        message: "redis.quit_failed",
+        data: { err: err instanceof Error ? err.message : String(err) },
+      });
+      this.redis.disconnect();
+    }
   }
 }

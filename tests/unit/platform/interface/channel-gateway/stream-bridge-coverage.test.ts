@@ -201,7 +201,7 @@ test("StreamBridge emits from EventRecord with division:completed maps to comple
   assert.equal(frame.eventType, "completed");
 });
 
-test("StreamBridge critical events are never dropped from buffer", () => {
+test("StreamBridge keeps replay buffer bounded even when only critical events remain", () => {
   const bridge = new StreamBridge({ maxReplayFrames: 2 });
   const streamId = bridge.createStreamId("task-1", "updates");
 
@@ -215,8 +215,8 @@ test("StreamBridge critical events are never dropped from buffer", () => {
   bridge.emitFrame({ streamId, taskId: "task-1", channel: "updates", eventType: "approval_requested", payload: {} });
 
   const window = bridge.getReplayWindow(streamId);
-  // Buffer should retain critical events despite maxReplayFrames being 2
-  assert.ok(window.bufferedFrameCount >= 3);
+  assert.equal(window.bufferedFrameCount, 2);
+  assert.ok(window.droppedBeforeSequence >= 1);
 });
 
 test("StreamBridge replay window metadata is accurate", () => {

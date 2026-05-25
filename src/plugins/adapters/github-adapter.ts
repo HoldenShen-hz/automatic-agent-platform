@@ -23,6 +23,13 @@ export interface PluginSignatureVerificationResult {
   readonly verifiedAt: string;
 }
 
+const ACTION_CAPABILITY_MAP = {
+  create_issue: "external.github.issue",
+  create_pr_comment: "external.github.issue",
+  dispatch_workflow: "external.github.workflow",
+  get_file: "external.github",
+} as const satisfies Record<string, string>;
+
 /**
  * R8-25 FIX: Verify plugin manifest signature for secure loading.
  * Uses HMAC-SHA256 for integrity verification.
@@ -180,6 +187,31 @@ function requireRepository(value: unknown): string {
   return normalized;
 }
 
+function requirePathSegment(value: unknown, field: string): string {
+  const segment = requireString(value, field);
+  if (
+    /[\\/]/.test(segment)
+    || segment === "."
+    || segment === ".."
+    || segment.includes("..")
+    || /%2f|%5c|%2e/i.test(segment)
+  ) {
+    throw new Error(`github_adapter.invalid_${field}`);
+  }
+  return segment;
+}
+
+function assertActionAllowed(capabilityIds: readonly string[] | undefined, action: string): void {
+  const requiredCapability = ACTION_CAPABILITY_MAP[action as keyof typeof ACTION_CAPABILITY_MAP];
+  if (requiredCapability == null) {
+    throw new Error(`github_adapter.unsupported_action:${action}`);
+  }
+  const allowedCapabilities = new Set(capabilityIds ?? []);
+  if (!allowedCapabilities.has(requiredCapability)) {
+    throw new Error(`github_adapter.action_not_allowed:${action}`);
+  }
+}
+
 export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = {}): ExternalAdapterPlugin {
   const apiBaseUrl = normalizeApiBaseUrl(options.apiBaseUrl);
   const policy = options.policy ?? new NetworkEgressPolicyService({
@@ -221,6 +253,7 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
       if (!credentialFingerprint) {
         throw new Error("github_adapter.not_authenticated");
       }
+      assertActionAllowed(this.capabilityIds, action);
       const repository = requireRepository(params["repository"]);
       const endpoint = buildEndpoint(apiBaseUrl, action, repository, params);
       const decision = policy.evaluate(endpoint);
@@ -275,7 +308,7 @@ function buildEndpoint(apiBaseUrl: string, action: string, repository: string, p
     case "create_pr_comment":
       return `${apiBaseUrl}/repos/${repository}/issues/${requireIssueNumber(params["issueNumber"])}/comments`;
     case "dispatch_workflow":
-      return `${apiBaseUrl}/repos/${repository}/actions/workflows/${requireString(params["workflowId"], "workflowId")}/dispatches`;
+      return `${apiBaseUrl}/repos/${repository}/actions/workflows/${encodeURIComponent(requirePathSegment(params["workflowId"], "workflowId"))}/dispatches`;
     case "get_file":
       return `${apiBaseUrl}/repos/${repository}/contents/${encodeRepositoryPath(requireString(params["path"], "path"))}`;
     default:

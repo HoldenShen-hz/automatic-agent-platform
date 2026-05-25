@@ -686,13 +686,9 @@ export class StreamBridge {
   /**
    * Appends a frame to the replay buffer, evicting old frames if necessary.
    *
-   * When the buffer exceeds maxReplayFrames, it attempts to drop the oldest
-   * frame that is marked as droppable. If no droppable frames exist, it drops
-   * the oldest frame regardless of type. Critical events (completed, failed,
-   * approval_requested) are preserved by checking the type before dropping.
-   *
-   * R12-09: Fixed to ensure critical events are never dropped via splice(0,1).
-   * Instead, only non-critical (droppable) events are removed first.
+ * When the buffer exceeds maxReplayFrames, it attempts to drop the oldest
+ * frame that is marked as droppable. If no droppable frames exist, it drops
+ * the oldest frame regardless of type so the replay buffer stays bounded.
    *
    * @param frame - The frame to append
    */
@@ -700,10 +696,7 @@ export class StreamBridge {
     const next = [...(this.replayBuffer.get(frame.streamId) ?? []), frame];
 
     while (next.length > this.options.maxReplayFrames) {
-      // R12-09: Critical events are NEVER dropped - find droppable events only
       const criticalEventTypes = new Set(["completed", "failed", "approval_requested"]);
-
-      // Find index of first droppable (non-critical) frame from oldest (index 0)
       let indexToDrop = -1;
       for (let i = 0; i < next.length; i++) {
         const candidateFrame = next[i];
@@ -712,23 +705,16 @@ export class StreamBridge {
           break;
         }
       }
-
-      // R12-09: If no droppable found, buffer is full of critical events
-      // In this case, we cannot drop any events - stop buffering
       if (indexToDrop < 0) {
-        // Buffer is full and all events are critical - log warning and stop
+        indexToDrop = 0;
         logger?.warn?.("stream.replay_buffer_full_critical", {
           streamId: frame.streamId,
           frameSequence: frame.sequence,
           bufferedCount: next.length,
         });
-        break;
       }
-
-      // Drop the droppable event
       const removed = next.splice(indexToDrop, 1)[0];
       if (removed != null) {
-        // Track the lowest dropped sequence so clients know buffer was truncated
         const previousDropped = this.droppedBeforeSequenceByStream.get(frame.streamId) ?? 0;
         this.droppedBeforeSequenceByStream.set(frame.streamId, Math.max(previousDropped, removed.sequence));
       }

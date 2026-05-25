@@ -1,0 +1,11 @@
+{
+  "task": "test",
+  "command": [
+    "vitest",
+    "run",
+    "--run",
+    "tests/unit/ui/shared/ws-client.test.ts"
+  ],
+  "startedAt": "2026-05-24T17:14:33.076Z",
+  "completedAt": "2026-05-24T17:14:33.546Z"
+}

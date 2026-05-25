@@ -34,7 +34,7 @@
  * @see docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md for chaos testing
  */
 
-import { mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
@@ -463,12 +463,42 @@ export function writeJson(path: string, value: unknown): void {
 // Cryptographic Signing / Tamper-Evident Evidence
 // ---------------------------------------------------------------------------
 
-/**
- * R12-16: HMAC secret key for stable evidence bundle integrity.
- * In production, this should come from a secure secrets manager.
- */
-const STABLE_EVIDENCE_HMAC_KEY =
-  process.env["AA_STABLE_EVIDENCE_HMAC_KEY"] ?? "stable-evidence-integrity-secret-key-32!";
+let cachedStableEvidenceHmacKey: string | null = null;
+
+function resolveStableEvidenceHmacKeyPath(): string {
+  const override = process.env["AA_STABLE_EVIDENCE_HMAC_KEY_PATH"]?.trim();
+  if (override != null && override.length > 0) {
+    return override;
+  }
+  return join(process.cwd(), "data", "stability", ".stable-evidence-hmac.key");
+}
+
+function getStableEvidenceHmacKey(): string {
+  const envSecretKey = process.env["AA_STABLE_EVIDENCE_HMAC_KEY"]?.trim() ?? "";
+  if (envSecretKey.length > 0) {
+    cachedStableEvidenceHmacKey = envSecretKey;
+    return envSecretKey;
+  }
+  if (cachedStableEvidenceHmacKey != null) {
+    return cachedStableEvidenceHmacKey;
+  }
+
+  const keyPath = resolveStableEvidenceHmacKeyPath();
+  if (existsSync(keyPath)) {
+    const persistedKey = readFileSync(keyPath, "utf8").trim();
+    if (persistedKey.length === 0) {
+      throw new Error("stable_evidence.hmac_key_invalid");
+    }
+    cachedStableEvidenceHmacKey = persistedKey;
+    return persistedKey;
+  }
+
+  const generatedKey = randomBytes(32).toString("hex");
+  mkdirSync(dirname(keyPath), { recursive: true });
+  writeFileSync(keyPath, `${generatedKey}\n`, { encoding: "utf8", mode: 0o600 });
+  cachedStableEvidenceHmacKey = generatedKey;
+  return generatedKey;
+}
 
 /**
  * R12-16: Algorithm used for evidence integrity (HMAC-SHA256).
@@ -508,7 +538,7 @@ export interface StableEvidenceVerificationResult {
  * R12-16: Computes HMAC-SHA256 signature for evidence data.
  */
 function hmacSha256(value: string): string {
-  return createHmac("sha256", STABLE_EVIDENCE_HMAC_KEY).update(value, "utf8").digest("hex");
+  return createHmac("sha256", getStableEvidenceHmacKey()).update(value, "utf8").digest("hex");
 }
 
 /**

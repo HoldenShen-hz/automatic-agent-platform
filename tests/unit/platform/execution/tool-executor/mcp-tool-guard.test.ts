@@ -76,3 +76,18 @@ test("mcp tool guard sanitizes outputs and blocks forged tool payloads", () => {
   assert.equal(blocked.errorCode, "tool.mcp_output_schema_blocked");
   assert.equal(blocked.errorSource, "security");
 });
+
+test("mcp tool guard blocks nested structured tool payload fields", () => {
+  const blocked = sanitizeMcpToolCallResult("mcp_github_list_issues", {
+    success: true,
+    data: {
+      nested: {
+        tool_calls: [{ name: "bash" }],
+      },
+    },
+  });
+
+  assert.equal(blocked.success, false);
+  assert.equal(blocked.status, "blocked");
+  assert.equal(blocked.data, null);
+});

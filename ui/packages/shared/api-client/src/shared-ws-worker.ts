@@ -41,6 +41,26 @@ const replayBufferByChannel = new Map<string, WorkerSocketEvent[]>();
 const lastEventIdByChannel = new Map<string, string>();
 let lastEventId: string | null = null;
 
+function isTrustedReplayEventId(value: unknown): value is string {
+  return typeof value === "string" && /^evt[-_][A-Za-z0-9:-]{3,}$/.test(value);
+}
+
+function resolveTrustedReplayEventId(event: WorkerSocketEvent): string | null {
+  if (isTrustedReplayEventId(event.eventId)) {
+    return event.eventId;
+  }
+  if (event.payload != null && typeof event.payload === "object") {
+    const payload = event.payload as Record<string, unknown>;
+    if (isTrustedReplayEventId(payload.eventId)) {
+      return payload.eventId;
+    }
+    if (isTrustedReplayEventId(payload.id)) {
+      return payload.id;
+    }
+  }
+  return null;
+}
+
 function broadcast(message: WorkerOutboundMessage): void {
   for (const port of ports) {
     port.postMessage(message);
@@ -122,6 +142,9 @@ function connectSocket(url: string, token: string): void {
         clearHeartbeatDeadline();
         return;
       }
+      if (resolveTrustedReplayEventId(data) == null && (data.eventId != null || (typeof data.payload === "object" && data.payload !== null && ("eventId" in data.payload || "id" in data.payload)))) {
+        return;
+      }
       rememberEvent(data);
       broadcast({ type: "event", event: data });
     };
@@ -172,12 +195,7 @@ function disconnectSocket(): void {
 }
 
 function rememberEvent(event: WorkerSocketEvent): void {
-  const payload = event.payload != null && typeof event.payload === "object"
-    ? event.payload as Record<string, unknown>
-    : null;
-  const resolvedEventId = event.eventId
-    ?? (typeof payload?.eventId === "string" ? payload.eventId : null)
-    ?? (typeof payload?.id === "string" ? payload.id : null);
+  const resolvedEventId = resolveTrustedReplayEventId(event);
   if (resolvedEventId != null) {
     lastEventId = resolvedEventId;
     lastEventIdByChannel.set(event.channel, resolvedEventId);
