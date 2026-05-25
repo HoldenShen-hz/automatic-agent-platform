@@ -84,6 +84,7 @@ export class DomainKnowledgeSchemaService {
   }
 
   public register(schema: DomainKnowledgeSchema): void {
+    this.removeSchemaSources(this.schemas.get(schema.domainId));
     this.schemas.delete(schema.domainId);
     this.schemas.set(schema.domainId, schema);
     this.initializeSources(schema);
@@ -259,6 +260,13 @@ export class DomainKnowledgeSchemaService {
     }
   }
 
+  private removeSchemaSources(schema: DomainKnowledgeSchema | undefined): void {
+    for (const source of schema?.knowledgeSources ?? []) {
+      this.sourceContent.delete(source.sourceId);
+      this.sourceTimestamps.delete(source.sourceId);
+    }
+  }
+
   private executeRetrieval(
     schema: DomainKnowledgeSchema,
     query: KnowledgeQuery,
@@ -388,10 +396,7 @@ export class DomainKnowledgeSchemaService {
       }
       const evictedSchema = this.schemas.get(oldestDomainId);
       this.schemas.delete(oldestDomainId);
-      for (const source of evictedSchema?.knowledgeSources ?? []) {
-        this.sourceContent.delete(source.sourceId);
-        this.sourceTimestamps.delete(source.sourceId);
-      }
+      this.removeSchemaSources(evictedSchema);
     }
   }
 

@@ -41,6 +41,13 @@ export interface HealingPolicy {
   readonly enableAutomaticRollback: boolean;
 }
 
+interface HealingOperationProfile {
+  readonly minimumStatus: readonly ComponentHealthState["status"][];
+  readonly failureBudget: number;
+  readonly requiresReasonCode: boolean;
+  readonly verificationMessage: string;
+}
+
 const DEFAULT_HEALING_POLICY: HealingPolicy = {
   maxRetries: 3,
   cooldownPeriodMs: 30_000,
@@ -48,17 +55,53 @@ const DEFAULT_HEALING_POLICY: HealingPolicy = {
   enableAutomaticRollback: true,
 };
 
-function simulateHealthCheck(componentId: string, operation: SelfHealingAction["operation"]): VerificationResult {
-  const checkDelay = 100 + componentId.length * 10 + operation.length * 5;
-  const healthCheckPassed = !/(rollback|failover)/.test(operation) || componentId.length % 2 === 0;
+const OPERATION_PROFILES: Record<SelfHealingAction["operation"], HealingOperationProfile> = {
+  restart: {
+    minimumStatus: ["healthy", "degraded", "unhealthy", "unknown"],
+    failureBudget: 3,
+    requiresReasonCode: false,
+    verificationMessage: "Restart verification confirms the component responds to probes again.",
+  },
+  throttle: {
+    minimumStatus: ["healthy", "degraded"],
+    failureBudget: 2,
+    requiresReasonCode: false,
+    verificationMessage: "Throttle verification confirms the component can absorb load within limits.",
+  },
+  failover: {
+    minimumStatus: ["degraded", "unhealthy"],
+    failureBudget: 1,
+    requiresReasonCode: true,
+    verificationMessage: "Failover verification confirms traffic moved to the standby path.",
+  },
+  rollback: {
+    minimumStatus: ["degraded", "unhealthy"],
+    failureBudget: 2,
+    requiresReasonCode: true,
+    verificationMessage: "Rollback verification confirms the last known good release is serving traffic.",
+  },
+};
+
+function simulateHealthCheck(
+  componentId: string,
+  action: SelfHealingAction,
+  postActionState: ComponentHealthState,
+  operationApplied: boolean,
+): VerificationResult {
+  const checkDelay = 100 + componentId.length * 10 + action.operation.length * 5;
+  const profile = OPERATION_PROFILES[action.operation];
   const recoveryTimeMs = Math.round(checkDelay);
+  const reasonPresent = (action.reasonCode ?? "").trim().length > 0;
+  const healthCheckPassed = operationApplied
+    && postActionState.status === "healthy"
+    && (!profile.requiresReasonCode || reasonPresent);
 
   if (healthCheckPassed) {
     return {
       verified: true,
       healthCheckPassed: true,
       recoveryTimeMs,
-      message: `Health check passed for \${componentId} after \${operation}`,
+      message: profile.verificationMessage,
     };
   }
 
@@ -66,7 +109,7 @@ function simulateHealthCheck(componentId: string, operation: SelfHealingAction["
     verified: false,
     healthCheckPassed: false,
     recoveryTimeMs,
-    message: `Health check failed for \${componentId} - healing may need more time`,
+    message: `Health check failed for ${componentId}; ${action.operation} did not restore a healthy state.`,
   };
 }
 
@@ -85,20 +128,20 @@ export class SelfHealingService {
   }
 
   public execute(action: SelfHealingAction): SelfHealingReceipt {
-    if ((action.runbookRef ?? "").trim().length === 0 || (action.approvalRef ?? "").trim().length === 0) {
-      return {
-        healed: false,
-        targetComponent: action.targetComponent,
-        operation: action.operation,
-        executedAt: nowIso(),
-        actionId: action.actionId,
-        rollbackAvailable: isRollbackAvailable(action.operation),
-      };
-    }
     const executedAt = nowIso();
-
     const previousState = this.componentHealth.get(action.targetComponent);
     const consecutiveFailures = previousState?.consecutiveFailures ?? 0;
+    const reasonPresent = (action.reasonCode ?? "").trim().length > 0;
+    const profile = OPERATION_PROFILES[action.operation];
+
+    if ((action.runbookRef ?? "").trim().length === 0 || (action.approvalRef ?? "").trim().length === 0) {
+      return this.recordFailedAttempt(
+        action,
+        executedAt,
+        previousState,
+        "Healing prerequisites are missing; runbookRef and approvalRef are both required.",
+      );
+    }
 
     if (consecutiveFailures >= this.policy.maxRetries) {
       const lastAttempt = this.healingHistory.find(
@@ -106,20 +149,36 @@ export class SelfHealingService {
       );
       if (lastAttempt) {
         const timeSinceLastAttempt = Date.now() - new Date(lastAttempt.executedAt).getTime();
-        if (timeSinceLastAttempt < this.policy.cooldownPeriodMs) {
-          return {
-            healed: false,
-            targetComponent: action.targetComponent,
-            operation: action.operation,
+        if (timeSinceLastAttempt < this.computeCooldownMs(consecutiveFailures)) {
+          return this.recordFailedAttempt(
+            action,
             executedAt,
-            actionId: action.actionId,
-            rollbackAvailable: isRollbackAvailable(action.operation),
-          };
+            previousState,
+            "Healing cooldown is active after repeated failures; operator intervention is required before retry.",
+          );
         }
       }
     }
 
-    const healingSuccess = this.performHealingOperation(action);
+    if (!profile.minimumStatus.includes(previousState?.status ?? "unknown")) {
+      return this.recordFailedAttempt(
+        action,
+        executedAt,
+        previousState,
+        `Operation ${action.operation} is not allowed while component is ${previousState?.status ?? "unknown"}.`,
+      );
+    }
+
+    if (profile.requiresReasonCode && !reasonPresent) {
+      return this.recordFailedAttempt(
+        action,
+        executedAt,
+        previousState,
+        `Operation ${action.operation} requires a reasonCode to support audit and verification.`,
+      );
+    }
+
+    const healingSuccess = this.performHealingOperation(action, previousState);
 
     const newConsecutiveFailures = healingSuccess ? 0 : consecutiveFailures + 1;
     const newStatus: ComponentHealthState["status"] = healingSuccess
@@ -128,14 +187,20 @@ export class SelfHealingService {
         ? "unhealthy"
         : "degraded";
 
-    this.componentHealth.set(action.targetComponent, {
+    const nextState: ComponentHealthState = {
       componentId: action.targetComponent,
       status: newStatus,
       lastCheckAt: executedAt,
       consecutiveFailures: newConsecutiveFailures,
-    });
+    };
+    this.componentHealth.set(action.targetComponent, nextState);
 
-    const verificationResult = simulateHealthCheck(action.targetComponent, action.operation);
+    const verificationResult = simulateHealthCheck(
+      action.targetComponent,
+      action,
+      nextState,
+      healingSuccess,
+    );
 
     const receipt: SelfHealingReceipt = {
       healed: healingSuccess && verificationResult.healthCheckPassed,
@@ -207,9 +272,70 @@ export class SelfHealingService {
     };
   }
 
-  private performHealingOperation(action: SelfHealingAction): boolean {
-    const deterministicScore = action.targetComponent.length + action.operation.length + (action.reasonCode?.length ?? 0);
-    return deterministicScore % (action.operation === "failover" ? 5 : 4) !== 0;
+  private recordFailedAttempt(
+    action: SelfHealingAction,
+    executedAt: string,
+    previousState: ComponentHealthState | undefined,
+    message: string,
+  ): SelfHealingReceipt {
+    const nextFailures = (previousState?.consecutiveFailures ?? 0) + 1;
+    const nextState: ComponentHealthState = {
+      componentId: action.targetComponent,
+      status: nextFailures >= this.policy.maxRetries ? "unhealthy" : "degraded",
+      lastCheckAt: executedAt,
+      consecutiveFailures: nextFailures,
+    };
+    this.componentHealth.set(action.targetComponent, nextState);
+    const verificationResult: VerificationResult = {
+      verified: false,
+      healthCheckPassed: false,
+      recoveryTimeMs: 0,
+      message,
+    };
+    const receipt: SelfHealingReceipt = {
+      healed: false,
+      targetComponent: action.targetComponent,
+      operation: action.operation,
+      executedAt,
+      actionId: action.actionId,
+      verificationResult,
+      rollbackAvailable: isRollbackAvailable(action.operation),
+    };
+    this.healingHistory.push(receipt);
+    this.evictOldHistory();
+    return receipt;
+  }
+
+  private computeCooldownMs(consecutiveFailures: number): number {
+    const penaltyMultiplier = Math.max(1, consecutiveFailures - this.policy.maxRetries + 1);
+    return this.policy.cooldownPeriodMs * penaltyMultiplier;
+  }
+
+  private performHealingOperation(
+    action: SelfHealingAction,
+    previousState: ComponentHealthState | undefined,
+  ): boolean {
+    const profile = OPERATION_PROFILES[action.operation];
+    const failureBudget = Math.max(1, profile.failureBudget);
+    const priorFailures = previousState?.consecutiveFailures ?? 0;
+
+    if (priorFailures >= this.policy.maxRetries + failureBudget) {
+      return false;
+    }
+
+    if (action.operation === "rollback" && !this.policy.enableAutomaticRollback) {
+      return false;
+    }
+
+    if (action.operation === "throttle" && previousState?.status === "unhealthy") {
+      return false;
+    }
+
+    if (action.operation === "failover" && previousState?.status === "unknown") {
+      return false;
+    }
+
+    return true;
   }
 
   private evictOldHistory(): void {

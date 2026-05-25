@@ -491,7 +491,8 @@ test("ProjectionRebuildService logs trace and correlation ids when event fetch f
       },
     } as any);
 
-    service.rebuildProjection("task_summary");
+    const result = service.rebuildProjection("task_summary");
+    assert.ok(result.errors.some((error) => error.includes("projection_rebuild.fetch_events_failed:task_summary")));
 
     const entry = captured.find((candidate) => candidate.message === "projection_rebuild.fetch_events_failed");
     assert.ok(entry);

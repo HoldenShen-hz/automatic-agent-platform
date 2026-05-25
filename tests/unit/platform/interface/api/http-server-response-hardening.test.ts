@@ -255,6 +255,18 @@ test("decorateResponseHeaders adds exposed headers", () => {
   assert.equal(result.headers["access-control-expose-headers"], "x-custom-header");
 });
 
+test("decorateResponseHeaders preserves custom vary values and appends Accept-Encoding", () => {
+  const payload: ApiResponsePayload = {
+    statusCode: 200,
+    headers: { vary: "Accept-Language" },
+    body: "test",
+  };
+
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+
+  assert.equal(result.headers["vary"], "Accept-Language, Accept-Encoding");
+});
+
 test("decorateResponseHeaders calculates content-length when not present", () => {
   const payload: ApiResponsePayload = {
     statusCode: 200,

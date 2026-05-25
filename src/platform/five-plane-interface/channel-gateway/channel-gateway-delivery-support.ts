@@ -163,7 +163,7 @@ export interface DeadLetterEntry {
   messageId: string;
   channel: string;
   targetId: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, unknown> | null;
   failureReason: string;
   lastErrorMessage: string | null;
   lastResponseStatus: number | null;
@@ -176,7 +176,7 @@ export interface PendingDelivery {
   messageId: string;
   channel: string;
   targetId: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, unknown> | null;
   attempts: number;
   maxRetries: number;
   createdAt: string;
@@ -186,7 +186,7 @@ export interface RetryableDelivery {
   messageId: string;
   channel: string;
   targetId: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, unknown> | null;
   attempts: number;
   maxRetries: number;
   nextRetryAt: string | null;

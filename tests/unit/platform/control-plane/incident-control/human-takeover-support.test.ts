@@ -68,14 +68,18 @@ test("parseOutputs handles nested objects", () => {
   assert.deepEqual(result, { outer: { inner: "value" } });
 });
 
-test("parseOutputs returns empty object for invalid JSON", () => {
-  const result = parseOutputs("not json");
-  assert.deepEqual(result, {});
+test("parseOutputs throws for invalid JSON", () => {
+  assert.throws(
+    () => parseOutputs("not json"),
+    (error: any) => error.code === "takeover.outputs_json_invalid",
+  );
 });
 
-test("parseOutputs handles empty string", () => {
-  const result = parseOutputs("");
-  assert.deepEqual(result, {});
+test("parseOutputs throws for empty string", () => {
+  assert.throws(
+    () => parseOutputs(""),
+    (error: any) => error.code === "takeover.outputs_json_invalid",
+  );
 });
 
 test("resolveManualStepOutputSummary returns summary field when present", () => {

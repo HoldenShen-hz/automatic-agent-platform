@@ -82,6 +82,8 @@ export {
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
 function writeJsonToStdout(payload: unknown): void {
+  // Intentional CLI contract: structured command output is written to stdout,
+  // while runtime logs continue to flow through StructuredLogger transports.
   process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
 }
 

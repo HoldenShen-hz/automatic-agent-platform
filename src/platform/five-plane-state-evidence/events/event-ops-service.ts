@@ -29,8 +29,12 @@ export interface EventDrainResult {
   delivered: number;
   pendingAfter: number;
   failedAfter: number;
-  outcome: "delivered" | "failed";
+  outcome: "delivered" | "failed" | "timeout";
   errorCode: string | null;
+}
+
+export interface EventOpsServiceOptions {
+  replayTimeoutMs?: number;
 }
 
 /**
@@ -48,13 +52,16 @@ const DEFAULT_TIER1_CONSUMERS = new Set(
 export class EventOpsService {
   private readonly bus: DurableEventBus;
   private readonly store: AuthoritativeTaskStore;
+  private readonly replayTimeoutMs: number;
 
   public constructor(
     db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
+    options: EventOpsServiceOptions = {},
   ) {
     this.store = store;
     this.bus = new DurableEventBus(db, store);
+    this.replayTimeoutMs = options.replayTimeoutMs ?? 30_000;
     this.registerDefaultConsumers();
   }
 
@@ -126,11 +133,27 @@ export class EventOpsService {
    * @returns The replay result
    */
   public async replayConsumer(consumerId: string): Promise<EventDrainResult> {
-    const replayedFromHistoryCount = this.store.event.resetConsumerReplayState(consumerId);
-    const result = await this.drainConsumer(consumerId);
+    const replayedFromHistoryCount = this.withTimeout(
+      Promise.resolve(this.store.event.resetConsumerReplayState(consumerId)),
+      `event_ops.replay_timeout:${consumerId}:reset`,
+    );
+    const result = await this.withTimeout(
+      this.drainConsumer(consumerId),
+      `event_ops.replay_timeout:${consumerId}:drain`,
+    ).catch((error) => ({
+      consumerId,
+      pendingBefore: this.bus.pendingForConsumer(consumerId).length,
+      failedBefore: this.store.event.listFailedEventsForConsumer(consumerId).length,
+      replayedFromHistoryCount: 0,
+      delivered: 0,
+      pendingAfter: this.bus.pendingForConsumer(consumerId).length,
+      failedAfter: this.store.event.listFailedEventsForConsumer(consumerId).length,
+      outcome: this.isTimeoutError(error) ? "timeout" : "failed",
+      errorCode: error instanceof Error ? error.message : String(error),
+    }));
     return {
       ...result,
-      replayedFromHistoryCount,
+      replayedFromHistoryCount: await replayedFromHistoryCount,
     };
   }
 
@@ -169,5 +192,26 @@ export class EventOpsService {
         // Phase 1a reads from the authoritative store directly; this consumer exists to provide durable ack/replay semantics.
       });
     }
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutCode: string): Promise<T> {
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(timeoutCode)), this.replayTimeoutMs);
+          timeoutHandle.unref?.();
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle != null) {
+        clearTimeout(timeoutHandle);
+      }
+    }
+  }
+
+  private isTimeoutError(error: unknown): boolean {
+    return error instanceof Error && error.message.startsWith("event_ops.replay_timeout:");
   }
 }

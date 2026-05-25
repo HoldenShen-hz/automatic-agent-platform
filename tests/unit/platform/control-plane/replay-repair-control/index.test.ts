@@ -99,7 +99,7 @@ test("buildStartupConsistencyReport generates random reportId and current timest
   assert.ok(report.generatedAt.includes("T"));
 });
 
-test("listRecoveryCandidates excludes non-recoverable non-P0 findings", () => {
+test("listRecoveryCandidates includes non-recoverable non-P0 findings for manual follow-up", () => {
   const service = new ReplayRepairControlService();
   const report = service.buildStartupConsistencyReport({
     findings: [
@@ -123,7 +123,10 @@ test("listRecoveryCandidates excludes non-recoverable non-P0 findings", () => {
   });
 
   const candidates = service.listRecoveryCandidates(report);
-  assert.equal(candidates.length, 0);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0]?.entityRef, "wf:1");
+  assert.equal(candidates[0]?.requiresManualApproval, true);
+  assert.equal(candidates[0]?.disposition, "manual_handoff");
 });
 
 test("listRecoveryCandidates includes recoverable findings", () => {

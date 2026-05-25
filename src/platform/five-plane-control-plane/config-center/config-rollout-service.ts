@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 
 import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { MS_PER_DAY } from "../../contracts/constants/time.js";
+import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**
@@ -67,7 +68,7 @@ export interface ConfigRollout {
   targetPercentage: number;
   currentPercentage: number;
   metadata: Record<string, unknown> | undefined;
-  healthGates?: Record<string, unknown>;
+  healthGates?: HealthGateConfig;
   lastHealthCheckAt?: string | null;
   lastHealthCheckPassed?: boolean | null;
   lastObservedErrorRate?: number | null;
@@ -107,6 +108,12 @@ export interface RolloutHealthSnapshot {
   incidentRate: number;
 }
 
+export interface HealthGateConfig {
+  maxErrorRate?: number;
+  maxLatencyRegression?: number;
+  maxIncidentRate?: number;
+}
+
 export interface ConfigRolloutStore {
   save(rollout: ConfigRollout): void;
   loadAll(): ConfigRollout[];
@@ -115,6 +122,39 @@ export interface ConfigRolloutStore {
 
 function toFiniteThreshold(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function parseHealthGateValue(
+  healthGates: Record<string, unknown> | undefined,
+  key: keyof HealthGateConfig,
+  maxInclusive: number,
+): number | undefined {
+  const value = healthGates?.[key];
+  if (value == null) {
+    return undefined;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > maxInclusive) {
+    throw new ValidationError(
+      "config_rollout.invalid_health_gate",
+      `config_rollout.invalid_health_gate:${String(key)}`,
+      {
+        details: { key, value, maxInclusive },
+        retryable: false,
+      },
+    );
+  }
+  return value;
+}
+
+function normalizeHealthGates(healthGates?: Record<string, unknown>): HealthGateConfig | undefined {
+  if (healthGates == null) {
+    return undefined;
+  }
+  return {
+    ...(parseHealthGateValue(healthGates, "maxErrorRate", 1) === undefined ? {} : { maxErrorRate: parseHealthGateValue(healthGates, "maxErrorRate", 1) }),
+    ...(parseHealthGateValue(healthGates, "maxLatencyRegression", 10) === undefined ? {} : { maxLatencyRegression: parseHealthGateValue(healthGates, "maxLatencyRegression", 10) }),
+    ...(parseHealthGateValue(healthGates, "maxIncidentRate", 1) === undefined ? {} : { maxIncidentRate: parseHealthGateValue(healthGates, "maxIncidentRate", 1) }),
+  };
 }
 
 /**
@@ -180,6 +220,7 @@ export class ConfigRolloutService {
 
     const startStage = this.resolveInitialStage(targetPercentage);
 
+    const normalizedHealthGates = normalizeHealthGates(healthGates);
     const rollout: ConfigRollout = {
       rolloutId,
       configPath,
@@ -191,7 +232,7 @@ export class ConfigRolloutService {
       targetPercentage,
       currentPercentage: startStage.percentage,
       metadata,
-      ...(healthGates !== undefined ? { healthGates } : {}),
+      ...(normalizedHealthGates !== undefined ? { healthGates: normalizedHealthGates } : {}),
     };
 
     this.activeRollouts.set(rolloutId, rollout);
@@ -511,10 +552,10 @@ export class ConfigRolloutService {
       return { passed: false, reasons: ["missing_health_snapshot"] };
     }
 
-    const thresholds = {
-      maxErrorRate: toFiniteThreshold(rollout.healthGates?.["maxErrorRate"], this.healthThresholds.maxErrorRate),
-      maxLatencyRegression: toFiniteThreshold(rollout.healthGates?.["maxLatencyRegression"], this.healthThresholds.maxLatencyRegression),
-      maxIncidentRate: toFiniteThreshold(rollout.healthGates?.["maxIncidentRate"], this.healthThresholds.maxIncidentRate),
+      const thresholds = {
+      maxErrorRate: toFiniteThreshold(rollout.healthGates?.maxErrorRate, this.healthThresholds.maxErrorRate),
+      maxLatencyRegression: toFiniteThreshold(rollout.healthGates?.maxLatencyRegression, this.healthThresholds.maxLatencyRegression),
+      maxIncidentRate: toFiniteThreshold(rollout.healthGates?.maxIncidentRate, this.healthThresholds.maxIncidentRate),
     };
     const reasons: string[] = [];
     if (snapshot.errorRate > thresholds.maxErrorRate) {

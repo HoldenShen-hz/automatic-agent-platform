@@ -1,6 +1,7 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import type { ArtifactRef } from "../../platform/five-plane-orchestration/oapeflir/ref-types.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { getBuiltinPluginManifest, hasBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import type {
   HumanOutput,
@@ -16,6 +17,8 @@ import type {
 import { PluginLifecycleStateSchema, PluginManifestSchema } from "./plugin-spi.js";
 import type { TypedEventPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import { ContainerizedPluginRuntimeHost, ForkedPluginRuntimeHost } from "./plugin-runtime-host.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export interface RegisteredPluginRecord<TPlugin extends RegisteredPlugin = RegisteredPlugin> {
   manifest: PluginManifest;
@@ -540,6 +543,11 @@ export class PluginSpiRegistry {
       this.runtimeHosts.delete(record.manifest.pluginId);
       record.runtimeProcessId = null;
       record.runtimeSandboxRoot = null;
+      logger.error("plugin_spi.runtime_host_start_failed", {
+        pluginId: record.manifest.pluginId,
+        runtimeIsolation: record.manifest.sandbox.runtimeIsolation,
+        error: error instanceof Error ? error.stack ?? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -703,6 +711,8 @@ export class PluginSpiRegistry {
   }
 
   private assertNamespaceAllowed(policy: PluginSandboxPolicy, namespace: string | null, pluginId: string): void {
+    // `null` means the caller is not asking for any namespaced knowledge access.
+    // The allowlist only constrains explicit namespace reads/writes.
     if (namespace == null) {
       return;
     }
@@ -783,6 +793,14 @@ export class PluginSpiRegistry {
     record.failureCount += 1;
     record.lastErrorAt = nowIso();
     record.lastErrorMessage = extractPluginErrorMessage(error);
+    logger.error("plugin_spi.operation_failed", {
+      pluginId: record.manifest.pluginId,
+      phase,
+      domainId: context.domainId,
+      bindingId: context.bindingId,
+      failureCount: record.failureCount,
+      error: error instanceof Error ? error.stack ?? error.message : String(error),
+    });
     if (record.manifest.sandbox.cooldownMs > 0) {
       record.cooldownUntil = new Date(Date.now() + record.manifest.sandbox.cooldownMs).toISOString();
     }

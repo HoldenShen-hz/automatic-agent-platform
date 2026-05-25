@@ -274,6 +274,9 @@ export class OidcOAuthService {
         provider: payload.iss,
       };
     } catch (err) {
+      logger.warn("oidc_oauth.validate_federated_token_failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return {
         valid: false,
         error: err instanceof Error ? err.message : "jwt.validation_failed",

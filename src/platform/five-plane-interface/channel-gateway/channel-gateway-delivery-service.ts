@@ -15,9 +15,9 @@ const DeliveryPayloadSchema = z.record(z.unknown());
  * Safely parses JSON with schema validation for inter-plane boundary.
  * @param jsonString - Raw JSON string to parse
  * @param errorContext - Context string for error messages
- * @returns Validated parsed object
+ * @returns Validated parsed object, or null when validation fails
  */
-function safeJsonParsePayload(jsonString: string, errorContext: string): Record<string, unknown> {
+function safeJsonParsePayload(jsonString: string, errorContext: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(jsonString);
     return DeliveryPayloadSchema.parse(parsed);
@@ -26,8 +26,7 @@ function safeJsonParsePayload(jsonString: string, errorContext: string): Record<
       errorContext,
       error: err instanceof Error ? err.message : String(err),
     });
-    // Return empty object on validation failure to allow processing to continue
-    return {};
+    return null;
   }
 }
 import {

@@ -810,7 +810,7 @@ function resolveConfiguredCrossDivisionDagFlag(options: ConfiguredDivisionRegist
     const allowCrossDivisionDag = bundle.layers.workflows?.allowCrossDivisionDag;
     return typeof allowCrossDivisionDag === "boolean" ? allowCrossDivisionDag : false;
   } catch (err) {
-    logger.debug("getAllowCrossDivisionDag failed", { error: err });
+    logger.warn("getAllowCrossDivisionDag failed", { error: err });
     return false;
   }
 }
@@ -835,7 +835,7 @@ export function getDefaultDivisionRegistry(): DivisionRegistry | null {
     defaultRegistryCache = loadConfiguredDivisionRegistry();
     return defaultRegistryCache;
   } catch (err) {
-    logger.debug("getDefaultDivisionRegistry failed", { error: err });
+    logger.warn("getDefaultDivisionRegistry failed", { error: err });
     // Cache null to indicate loading failed (don't retry)
     defaultRegistryCache = null;
     return defaultRegistryCache;

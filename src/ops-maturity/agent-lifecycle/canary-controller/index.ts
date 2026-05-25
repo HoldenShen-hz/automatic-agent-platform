@@ -42,11 +42,15 @@ export function shouldPromoteCanary(
   progress: CanaryProgress,
   criteria: CanaryPromotionCriteria = DEFAULT_PROMOTION_CRITERIA,
 ): boolean {
-  // Treat missing or undefined metrics as "perfect" to avoid blocking promotion
-  const hasRequiredMetrics = "successRate" in progress || "errorRate" in progress || "latencyP50Ms" in progress;
-  const successRate = hasRequiredMetrics ? (progress.successRate ?? 0) : 1.0;
-  const errorRate = hasRequiredMetrics ? (progress.errorRate ?? 0) : 0.0;
-  const latencyP50Ms = hasRequiredMetrics ? (progress.latencyP50Ms ?? Infinity) : 0;
+  const hasRequiredMetrics = Number.isFinite(progress.successRate)
+    && Number.isFinite(progress.errorRate)
+    && Number.isFinite(progress.latencyP50Ms);
+  if (!hasRequiredMetrics) {
+    return false;
+  }
+  const successRate = progress.successRate;
+  const errorRate = progress.errorRate;
+  const latencyP50Ms = progress.latencyP50Ms;
   return (
     progress.rolloutPercent >= criteria.minRolloutPercent &&
     successRate >= criteria.minSuccessRate &&

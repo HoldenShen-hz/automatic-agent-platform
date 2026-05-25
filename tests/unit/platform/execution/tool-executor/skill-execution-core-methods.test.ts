@@ -11,7 +11,10 @@ import {
   type SkillToolCallResult,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/skill-execution-service.js";
 import { skillExecutionCoreMethods } from "../../../../../src/platform/five-plane-execution/tool-executor/skill-execution-core-methods.js";
-import type { ToolExecutionMetadata } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
+import {
+  resolveToolExecutionMetadata,
+  type ToolExecutionMetadata,
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
@@ -29,7 +32,7 @@ function createService(
     traceId: "trace-core-methods",
   });
   const service = new SkillExecutionService(db, store, runner, {
-    toolMetadataResolver: toolMetadataResolver ?? (() => null),
+    toolMetadataResolver: toolMetadataResolver ?? resolveToolExecutionMetadata,
   });
   return { workspace, db, store, service };
 }
@@ -270,6 +273,31 @@ test("validateSkillDefinition rejects skill with model override using undeclared
     assert.throws(
       () => service.validateSkillDefinition(skill),
       /skill\.definition_override_tool_not_declared:s1:edit/,
+    );
+  } finally {
+    db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("validateSkillDefinition rejects skill with unknown required tool", () => {
+  const { workspace, db, service } = createService(async () => ({
+    success: true,
+    summary: "ok",
+  }));
+
+  try {
+    const skill: SkillDefinition = {
+      skillId: "unknown-tool",
+      version: "1.0.0",
+      description: "Unknown tool",
+      requiredTools: ["not_registered_tool"],
+      steps: [{ stepId: "s1", toolName: "not_registered_tool" }],
+    };
+
+    assert.throws(
+      () => service.validateSkillDefinition(skill),
+      /skill\.definition_unknown_tool:not_registered_tool/,
     );
   } finally {
     db.close();

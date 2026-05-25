@@ -128,11 +128,9 @@ export function decorateResponseHeaders(
     if (corsConfig.exposedHeaders.length > 0) {
       headers["access-control-expose-headers"] = corsConfig.exposedHeaders.join(", ");
     }
-    headers.vary = headers.vary != null && headers.vary.length > 0 ? `${headers.vary}, Origin` : "Origin";
+    headers.vary = appendVaryHeader(headers.vary, "Origin");
   }
-  headers.vary = headers.vary != null && headers.vary.length > 0
-    ? headers.vary
-    : "Accept-Encoding";
+  headers.vary = appendVaryHeader(headers.vary, "Accept-Encoding");
   if (
     headers["content-length"] == null
     && headers["content-encoding"] == null
@@ -144,4 +142,15 @@ export function decorateResponseHeaders(
     ...payload,
     headers,
   };
+}
+
+function appendVaryHeader(existing: string | undefined, nextValue: string): string {
+  const values = (existing ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  if (!values.includes(nextValue)) {
+    values.push(nextValue);
+  }
+  return values.join(", ");
 }

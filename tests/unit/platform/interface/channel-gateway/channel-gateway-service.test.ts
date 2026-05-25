@@ -286,6 +286,7 @@ test("channel gateway service enforces per-channel rate limits before delivery",
     );
     assert.equal(harness.requests.length, 1);
     assert.equal(deliveryService.getRateLimitStatus().webhook?.currentCount, 1);
+    assert.equal(deliveryService.getPendingDeliveries().length, 0);
   } finally {
     harness.close();
   }

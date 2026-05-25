@@ -1,6 +1,9 @@
 import { DomainRecipeSchema, type DomainRecipe } from "./index.js";
 import type { WorkflowRegistry } from "../registry/workflow-registry.js";
 import { getWorkflowDefinition } from "../../platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export interface RecipeExecutionContext {
   executionId: string;
@@ -109,6 +112,14 @@ export class RecipeExecutor {
       };
       return result;
     } catch (error) {
+      logger.error("recipe_executor.execution_failed", {
+        executionId: context.executionId,
+        taskId: context.taskId,
+        tenantId: context.tenantId,
+        recipeId: parsedRecipe?.recipeId ?? recipe?.recipeId ?? "unknown_recipe",
+        workflowId: parsedRecipe?.defaultWorkflowId ?? recipe?.defaultWorkflowId ?? "unknown_workflow",
+        error: error instanceof Error ? error.stack ?? error.message : String(error),
+      });
       const result = {
         success: false,
         executionId: context.executionId,

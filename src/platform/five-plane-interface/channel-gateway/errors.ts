@@ -56,6 +56,13 @@ export function normalizeGatewayDeliveryFailure(
     };
   }
   if (error instanceof Error) {
+    if (error instanceof AppError) {
+      return {
+        responseStatus: error.statusCode ?? null,
+        errorMessage: error.message,
+        retryable: error.retryable,
+      };
+    }
     const statusMatch = error.message.match(/(?::|^)(\d{3})(?::|$)/);
     const responseStatus = statusMatch ? Number(statusMatch[1]) : null;
     if (responseStatus != null) {
@@ -68,11 +75,11 @@ export function normalizeGatewayDeliveryFailure(
     return {
       responseStatus: null,
       errorMessage: error.message,
-      retryable: true,
+      retryable: false,
     };
   }
   return {
     errorMessage: String(error),
-    retryable: true,
+    retryable: false,
   };
 }

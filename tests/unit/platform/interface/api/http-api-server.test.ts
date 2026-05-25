@@ -456,6 +456,15 @@ function buildBillingWebhookHeaders(body: string, secret = "test-webhook-secret"
   };
 }
 
+test("HttpApiServer.stop clears stale worker incident cache even when server never started", async () => {
+  const { server } = createTestServer();
+  (server as unknown as { staleWorkerIncidentIds: Set<string> }).staleWorkerIncidentIds.add("worker-1");
+
+  await server.stop();
+
+  assert.equal((server as unknown as { staleWorkerIncidentIds: Set<string> }).staleWorkerIncidentIds.size, 0);
+});
+
 function createMockServerResponse(): {
   response: PassThrough & {
     statusCode: number;
@@ -1388,6 +1397,7 @@ test("rejects expired tokens", async () => {
     jwtSecret: "test-secret",
     tokenTtlMs: -1000, // Already expired
   });
+  const expiredToken = authService.exchangeApiKey("test-key").accessToken;
 
   const server = new HttpApiServer({
     approvalService: createMockApprovalService(),
@@ -1397,15 +1407,19 @@ test("rejects expired tokens", async () => {
   });
 
   try {
-    const response = await server.inject({
-      method: "GET",
-      url: "/v1/tasks",
-      headers: {
-        authorization: "Bearer invalid_token",
+    await assert.rejects(
+      async () => server.inject({
+        method: "GET",
+        url: "/v1/tasks",
+        headers: {
+          authorization: `Bearer ${expiredToken}`,
+        },
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        return "code" in error && error.code === "api.token_expired";
       },
-    });
-
-    assert.equal(response.statusCode, 401);
+    );
   } finally {
     await server.stop();
   }

@@ -344,6 +344,18 @@ export function validateBusinessPackManifest(
     domainId: normalizedDomainId,
     domain: normalizedDomainId,
     owner: manifest.owner.trim(),
+    ...(manifest.sdk_semver !== undefined ? { sdk_semver: manifest.sdk_semver.trim() } : {}),
+    ...(manifest.platform_min_version !== undefined ? { platform_min_version: manifest.platform_min_version.trim() } : {}),
+    ...(manifest.platform_max_version !== undefined ? { platform_max_version: manifest.platform_max_version.trim() } : {}),
+    ...(manifest.contract_test_generator !== undefined ? { contract_test_generator: manifest.contract_test_generator.trim() } : {}),
+    ...(manifest.deprecation_policy !== undefined ? {
+      deprecation_policy: {
+        sdk_semver: manifest.deprecation_policy.sdk_semver.trim(),
+        platform_min_version: manifest.deprecation_policy.platform_min_version.trim(),
+        platform_max_version: manifest.deprecation_policy.platform_max_version.trim(),
+        deprecation_policy: manifest.deprecation_policy.deprecation_policy,
+      },
+    } : {}),
     sideEffects: dedupeTrimmed(manifest.sideEffects),
     dataClasses: dedupeTrimmed(manifest.dataClasses),
     tools: dedupeTrimmed(manifest.tools),

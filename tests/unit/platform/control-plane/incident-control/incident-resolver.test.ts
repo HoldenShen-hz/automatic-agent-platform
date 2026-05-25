@@ -73,6 +73,34 @@ test("IncidentResolver determines self_heal strategy for performance incidents",
   assert.equal(strategy, "self_heal");
 });
 
+test("IncidentResolver escalates repeated self-healing failures to assisted", () => {
+  const resolver = new IncidentResolver({ maxSelfHealAttempts: 3 });
+
+  const incident = createMockIncident({
+    category: "performance",
+    metrics: {
+      self_healing_failures: 3,
+    },
+  });
+  const strategy = resolver.determineStrategy(incident);
+
+  assert.equal(strategy, "assisted");
+});
+
+test("IncidentResolver escalates unhealthy component incidents to assisted", () => {
+  const resolver = new IncidentResolver();
+
+  const incident = createMockIncident({
+    category: "availability",
+    metrics: {
+      component_health_status: "unhealthy",
+    },
+  });
+  const strategy = resolver.determineStrategy(incident);
+
+  assert.equal(strategy, "assisted");
+});
+
 test("IncidentResolver determines automated strategy for availability with symptoms", () => {
   const resolver = new IncidentResolver();
 

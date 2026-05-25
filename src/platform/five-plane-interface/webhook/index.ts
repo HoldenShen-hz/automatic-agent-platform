@@ -172,6 +172,8 @@ export class WebhookIngressService {
 
   public rollbackAcceptedEnvelope(endpointId: string, idempotencyKey: string, envelopeId: string): void {
     const scopedIdempotencyKey = `${endpointId}:${idempotencyKey}`;
+    // This method performs no awaits and mutates only in-memory state, so the
+    // lookup and delete execute within one event-loop turn.
     const existing = this.envelopesByIdempotencyKey.get(scopedIdempotencyKey);
     if (existing?.envelopeId !== envelopeId) {
       return;

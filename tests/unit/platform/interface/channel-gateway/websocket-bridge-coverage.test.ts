@@ -807,6 +807,69 @@ test("WebSocketBridge selects the first offered subprotocol for handshake echo",
   }
 });
 
+test("WebSocketBridge rejects unsupported websocket protocol parameters", () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+  try {
+    const selected = (bridge as any).selectProtocol(new Set(["token-one", "debug=true"]));
+    assert.equal(selected, false);
+  } finally {
+    void bridge.close();
+    server.close();
+  }
+});
+
+test("WebSocketBridge bounds pending acknowledgements and forces a stream gap resync", () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, {
+    maxPendingAcksPerClient: 1,
+  });
+
+  try {
+    const messages: WebSocketMessageType[] = [];
+    const fakeWs = {
+      OPEN: 1,
+      readyState: 1,
+      bufferedAmount: 0,
+      send(payload: string) {
+        messages.push(JSON.parse(payload) as WebSocketMessageType);
+      },
+      removeAllListeners: (() => {}) as WebSocket["removeAllListeners"],
+    } as unknown as WebSocket;
+
+    const client = {
+      webSocket: fakeWs,
+      principal: { actorId: "actor-1", tenantId: "tenant-1", scopes: ["user"] },
+      subscribedTasks: new Set(["task-overflow"]),
+      lastEventId: "evt-1",
+      nextExpectedSequenceNum: 1,
+      lastAcknowledgedSequenceNum: -1,
+      pendingAcks: new Map([[0, { eventId: "evt-1", taskId: "task-overflow", sentAt: new Date().toISOString() }]]),
+      bufferedEventCount: 1,
+      isAlive: true,
+      connectedAt: Date.now(),
+      lastActivityAt: Date.now(),
+    };
+
+    (bridge as any).sendTaskUpdate(fakeWs, client, "task-overflow", {
+      eventType: "status_changed",
+      taskId: "task-overflow",
+      status: "running",
+      timestamp: new Date().toISOString(),
+    }, "evt-2");
+
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0]?.type, "stream_gap");
+    assert.equal(client.pendingAcks.size, 0);
+    assert.equal(client.bufferedEventCount, 0);
+    assert.equal(client.nextExpectedSequenceNum, 0);
+    assert.equal(bridge.getSlowConsumerCount(), 1);
+  } finally {
+    void bridge.close();
+    server.close();
+  }
+});
+
 test("WebSocketBridge honors zero backpressure threshold overrides", () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);

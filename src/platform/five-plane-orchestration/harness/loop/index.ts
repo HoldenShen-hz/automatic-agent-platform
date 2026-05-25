@@ -86,7 +86,7 @@ export class HarnessLoopController {
     const exponentialDelay = BACKOFF_BASE_MS * Math.pow(2, this.state.retryAttempt - 1);
     const cappedDelay = Math.min(exponentialDelay, BACKOFF_MAX_MS);
     const jitter = cappedDelay * JITTER_FACTOR * Math.random();
-    return Math.floor(cappedDelay + jitter);
+    return Math.min(BACKOFF_MAX_MS, Math.floor(cappedDelay + jitter));
   }
 
   public shouldContinue(lastAction: HarnessDecisionAction, hasRemainingIterations = true): boolean {

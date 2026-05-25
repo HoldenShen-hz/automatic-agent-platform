@@ -86,8 +86,8 @@ export class Retry {
         throw timeoutError;
       }
 
-      attempt++;
       this.throwIfAborted(executionOptions.signal);
+      attempt++;
       const attemptStart = Date.now();
 
       try {

@@ -139,6 +139,7 @@ test("extractDestination returns original for unparseable", () => {
 test("createEgressAuditEvent creates event with all fields", () => {
   const event = createEgressAuditEvent("example.com", "url", "fetch", true);
   assert.ok(event.id.startsWith("egress_"));
+  assert.match(event.id, /^egress_[0-9a-f-]{36}$/);
   assert.equal(event.destination, "example.com");
   assert.equal(event.destinationType, "url");
   assert.equal(event.action, "fetch");

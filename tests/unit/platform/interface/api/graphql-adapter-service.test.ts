@@ -128,6 +128,27 @@ test("GraphQLAdapterService execute validates required arguments", async () => {
   assert.match(result.errors?.[0]?.message ?? "", /Missing required argument 'message'/);
 });
 
+test("GraphQLAdapterService execute sanitizes internal execution errors", async () => {
+  const adapter = new GraphQLAdapterService({ endpoint: "http://localhost:4000/graphql" });
+  adapter.registerSchema("test", {
+    schema: createTestSchema().schema,
+    resolvers: {
+      "Query.hello": async () => {
+        throw new Error("database path /tmp/secret.db exploded");
+      },
+    },
+  });
+
+  const result = await adapter.execute("test", { query: "query { hello }" });
+
+  assert.equal(result.success, false);
+  assert.equal(
+    result.errors?.[0]?.message,
+    "An internal error occurred while processing the GraphQL request.",
+  );
+  assert.equal(result.errors?.[0]?.extensions?.code, GRAPHQL_ERROR_CODES.GRAPHQL_EXECUTION_ERROR);
+});
+
 test("GraphQLAdapterService subscribe returns operation result", () => {
   const adapter = new GraphQLAdapterService({ endpoint: "http://localhost:4000/graphql" });
   const schema = createTestSchema();

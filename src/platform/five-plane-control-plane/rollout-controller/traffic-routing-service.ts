@@ -57,6 +57,7 @@ export type DeploymentSlotStatus = "active" | "standby" | "draining" | "retired"
 export type TrafficShiftStatus = "pending" | "in_progress" | "completed" | "rolled_back" | "failed";
 /** Trigger reason for a rollback */
 export type RollbackTrigger = "manual" | "health_check_failed" | "error_rate_exceeded" | "latency_exceeded" | "auto_timeout";
+const ROLLBACK_TRIGGER_VALUES = ["manual", "health_check_failed", "error_rate_exceeded", "latency_exceeded", "auto_timeout"] as const satisfies readonly RollbackTrigger[];
 
 /**
  * A registered deployment slot with its current state.
@@ -376,6 +377,12 @@ export class TrafficRoutingService {
    * Updates the health score for a deployment slot.
    */
   updateHealth(slotId: string, healthScore: number): void {
+    if (!Number.isFinite(healthScore) || healthScore < 0 || healthScore > 1) {
+      throw new ValidationError(
+        "traffic_routing.invalid_health_score",
+        "traffic_routing.invalid_health_score: healthScore must be between 0 and 1.",
+      );
+    }
     const now = nowIso();
     this.db.connection
       .prepare(`UPDATE deployment_slots SET health_score = ?, updated_at = ? WHERE id = ?`)
@@ -461,6 +468,11 @@ export class TrafficRoutingService {
 
     if (!row) return null;
 
+    const health = this.evaluateSlotHealth(String(row.to_slot) as DeploymentSlot, DEFAULT_CANARY_CONFIG);
+    if (!health.healthy) {
+      return null;
+    }
+
     const steps: number[] = JSON.parse(String(row.shift_steps));
     const currentStep = Number(row.current_step) + 1;
 
@@ -497,6 +509,11 @@ export class TrafficRoutingService {
    * Rolls back a traffic shift, restoring traffic to the original slot.
    */
   rollbackShift(shiftId: string, trigger: RollbackTrigger, reason: string): RollbackRecord {
+    if (!ROLLBACK_TRIGGER_VALUES.includes(trigger)) {
+      throw new ValidationError("traffic_routing.invalid_rollback_trigger", "Rollback trigger is invalid.", {
+        details: { shiftId, trigger },
+      });
+    }
     const now = nowIso();
     const shift = this.getShift(shiftId);
 

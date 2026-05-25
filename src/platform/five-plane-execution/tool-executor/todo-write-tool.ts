@@ -9,7 +9,7 @@
  * This tool manages todo state within a session context.
  */
 
-import { randomUUID } from "node:crypto";
+import { newId } from "../../contracts/types/ids.js";
 import { AppError, ValidationError } from "../../contracts/errors.js";
 import type { ToolExecutionRequest } from "./tool-metadata.js";
 import { coerceTodoWriteToolRequest } from "./tool-argument-coercion.js";
@@ -130,7 +130,7 @@ export class TodoWriteToolService {
    * Generates a new todo ID
    */
   generateTodoId(): string {
-    return `todo_${Date.now()}_${randomUUID()}`;
+    return newId("todo");
   }
 
   /**

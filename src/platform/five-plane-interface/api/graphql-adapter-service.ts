@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 /**
  * GraphQL Adapter Service
@@ -115,6 +116,8 @@ export const GRAPHQL_ERROR_CODES = {
   FORBIDDEN: "FORBIDDEN",
   NOT_FOUND: "NOT_FOUND",
 } as const;
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 class GraphQLAdapterError extends Error {
   public constructor(
@@ -246,10 +249,24 @@ export class GraphQLAdapterService {
         data: result,
       };
     } catch (error) {
+      if (error instanceof GraphQLAdapterError) {
+        return {
+          success: false,
+          errors: [{
+            message: error.message,
+            extensions: { code: GRAPHQL_ERROR_CODES.GRAPHQL_EXECUTION_ERROR },
+          }],
+        };
+      }
+      logger.error("graphql_adapter.execute_failed", {
+        schemaName,
+        operationName: request.operationName ?? null,
+        error: error instanceof Error ? error.stack ?? error.message : String(error),
+      });
       return {
         success: false,
         errors: [{
-          message: error instanceof Error ? error.message : "Unknown error",
+          message: "An internal error occurred while processing the GraphQL request.",
           extensions: { code: GRAPHQL_ERROR_CODES.GRAPHQL_EXECUTION_ERROR },
         }],
       };

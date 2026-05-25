@@ -153,6 +153,26 @@ test("StreamBridge unregisterClient removes client", () => {
   assert.equal(bridge.getConnectedClientCount(streamId), 0);
 });
 
+test("StreamBridge registerClient rejects enumerable numeric client IDs", () => {
+  const bridge = new StreamBridge();
+  const streamId = bridge.createStreamId("task_abc", "updates");
+
+  assert.throws(
+    () => bridge.registerClient("123456", streamId, 0),
+    /stream\.client_id_enumerable/,
+  );
+});
+
+test("StreamBridge registerClient rejects malformed client IDs", () => {
+  const bridge = new StreamBridge();
+  const streamId = bridge.createStreamId("task_abc", "updates");
+
+  assert.throws(
+    () => bridge.registerClient("bad id", streamId, 0),
+    /stream\.client_id_invalid/,
+  );
+});
+
 test("StreamBridge updateClientCursor updates sequence", () => {
   const bridge = new StreamBridge();
   const streamId = bridge.createStreamId("task_abc", "updates");

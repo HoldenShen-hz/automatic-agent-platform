@@ -30,10 +30,13 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { ValidationError } from "../../contracts/errors.js";
 import type { EventRecord } from "../../contracts/types/domain.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { z } from "zod";
 
-const logger = console;
+const logger = new StructuredLogger({ retentionLimit: 100 });
+const CLIENT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_.:-]{5,127}$/;
 
 /**
  * Schema for validating task status change payloads.
@@ -376,6 +379,7 @@ export class StreamBridge {
    * Registers a connected client against a stream so lag and replay gap can be tracked.
    */
   public registerClient(clientId: string, streamId: string, lastSequence = 0): void {
+    assertValidClientId(clientId);
     const now = nowIso();
     this.clientCursors.set(clientId, {
       clientId,
@@ -764,5 +768,28 @@ export class StreamBridge {
    */
   public getSlowConsumerThresholdBytes(): number {
     return this.SLOW_CONSUMER_BYTES_THRESHOLD;
+  }
+}
+
+function assertValidClientId(clientId: string): void {
+  if (/^\d+$/.test(clientId)) {
+    throw new ValidationError(
+      "stream.client_id_enumerable",
+      `stream.client_id_enumerable:${clientId}`,
+      {
+        source: "gateway",
+        details: { clientId },
+      },
+    );
+  }
+  if (!CLIENT_ID_PATTERN.test(clientId)) {
+    throw new ValidationError(
+      "stream.client_id_invalid",
+      `stream.client_id_invalid:${clientId}`,
+      {
+        source: "gateway",
+        details: { clientId },
+      },
+    );
   }
 }

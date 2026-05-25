@@ -29,6 +29,10 @@ export interface ChannelGatewayRetryPassResult extends GatewayRetryQueueSummary 
   completedAt: string;
   /** True if a previous pass was still running when this one started */
   busy: boolean;
+  /** True when the pass completed without executor-level failure */
+  success: boolean;
+  /** Populated when the executor failed before producing a valid summary */
+  errorMessage?: string;
 }
 
 /**
@@ -123,6 +127,8 @@ export class ChannelGatewayRetryExecutor {
         startedAt,
         completedAt: nowIso(),
         busy: true,
+        success: false,
+        errorMessage: "channel_gateway.retry_executor_busy",
         scanned: 0,
         delivered: 0,
         retryScheduled: 0,
@@ -138,6 +144,7 @@ export class ChannelGatewayRetryExecutor {
         startedAt,
         completedAt: nowIso(),
         busy: false,
+        success: true,
         ...summary,
       };
     } catch (error) {
@@ -153,6 +160,8 @@ export class ChannelGatewayRetryExecutor {
         startedAt,
         completedAt: nowIso(),
         busy: false,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
         scanned: 0,
         delivered: 0,
         retryScheduled: 0,

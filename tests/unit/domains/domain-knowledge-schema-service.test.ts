@@ -54,6 +54,26 @@ test("DomainKnowledgeSchemaService registers and retrieves schema", () => {
   assert.equal(retrieved!.domainId, "test_domain");
 });
 
+test("DomainKnowledgeSchemaService register replaces stale source state for removed sources", () => {
+  const service = new DomainKnowledgeSchemaService();
+  const schema = createTestSchema("test_domain");
+  service.register(schema);
+  service.refreshSource("test_domain", "src_doc_1", "legacy content");
+
+  service.register({
+    ...schema,
+    knowledgeSources: [schema.knowledgeSources[1]!],
+  });
+
+  const query: KnowledgeQuery = {
+    query: "legacy",
+    domainId: "test_domain",
+    minRelevanceScore: 0,
+  };
+  const result = service.retrieve(query);
+  assert.equal(result.results.some((item) => item.sourceId === "src_doc_1"), false);
+});
+
 test("DomainKnowledgeSchemaService returns null for unregistered domain", () => {
   const service = new DomainKnowledgeSchemaService();
   const result = service.getSchema("nonexistent");

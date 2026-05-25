@@ -66,17 +66,22 @@ function buildDependencyServiceIds(
 }
 
 export class InteractionGovernanceRuntimeOrchestrator {
+  private startupPlan: InteractionGovernanceStartupPlan | undefined;
+
   public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
 
   public prepare(): InteractionGovernanceStartupPlan {
     registerInteractionBootstrap(this.registry);
     registerGovernanceBootstrap(this.registry);
     registerInteractionGovernanceRuntimeCatalog(this.registry);
-    return registerInteractionGovernanceStartupPlan(this.registry);
+    const startupPlan = registerInteractionGovernanceStartupPlan(this.registry);
+    this.startupPlan = startupPlan;
+    return startupPlan;
   }
 
   public startup(): InteractionGovernanceRuntimeStartupResult {
     const startupPlan = this.prepare();
+    this.startupPlan = startupPlan;
     const steps = startupPlan.steps.map((step) => {
       const initializedDependencyServiceIds = buildDependencyServiceIds(step, startupPlan).filter((serviceId) =>
         this.registry.isInitialized(serviceId),
@@ -102,7 +107,10 @@ export class InteractionGovernanceRuntimeOrchestrator {
   }
 
   public snapshotReadiness(): InteractionGovernanceReadinessSnapshot {
-    const startupPlan = buildInteractionGovernanceStartupPlan();
+    const startupPlan = this.startupPlan
+      ?? (this.registry.isInitialized(INTERACTION_GOVERNANCE_STARTUP_PLAN_SERVICE_ID)
+        ? this.registry.get<InteractionGovernanceStartupPlan>(INTERACTION_GOVERNANCE_STARTUP_PLAN_SERVICE_ID)
+        : buildInteractionGovernanceStartupPlan());
     return {
       runtimeCatalogInitialized: this.registry.isInitialized(INTERACTION_GOVERNANCE_RUNTIME_CATALOG_SERVICE_ID),
       startupPlanInitialized: this.registry.isInitialized(INTERACTION_GOVERNANCE_STARTUP_PLAN_SERVICE_ID),

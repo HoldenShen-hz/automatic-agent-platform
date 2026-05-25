@@ -174,6 +174,7 @@ export interface ExecutionChainBudgetSpend {
   readonly currentPackCostUsd?: number;
   readonly currentPlatformCostUsd?: number;
   readonly currentStepCostUsd?: number;
+  readonly currentStageCostUsd?: number;
   readonly currentDailyCostUsd: number;
   readonly currentMonthlyCostUsd: number;
   readonly stage?: BudgetExecutionStage;
@@ -600,6 +601,7 @@ export class BudgetGuard {
     const projectedPack = (input.spend.currentPackCostUsd ?? input.spend.currentTaskCostUsd) + next;
     const projectedPlatform = (input.spend.currentPlatformCostUsd ?? input.spend.currentTaskCostUsd) + next;
     const projectedStep = (input.spend.currentStepCostUsd ?? 0) + next;
+    const projectedStage = (input.spend.currentStageCostUsd ?? 0) + next;
     const projectedDaily = input.spend.currentDailyCostUsd + next;
     const projectedMonthly = input.spend.currentMonthlyCostUsd + next;
 
@@ -623,7 +625,7 @@ export class BudgetGuard {
       ? null
       : input.policy.stageBudgets?.find((policy) => policy.stage === input.spend.stage) ?? null;
     if (stageBudget != null && stageBudget.maxCostUsd > 0) {
-      checks.push({ scope: "stage", projected: next, limit: stageBudget.maxCostUsd });
+      checks.push({ scope: "stage", projected: projectedStage, limit: stageBudget.maxCostUsd });
     }
     const violation = checks.find((check) => check.projected > check.limit) ?? null;
     const warningScopes = checks
@@ -643,7 +645,7 @@ export class BudgetGuard {
         input.policy.maxStepCostUsd != null && input.policy.maxStepCostUsd > 0 ? input.policy.maxStepCostUsd - projectedStep : Number.POSITIVE_INFINITY,
         input.policy.maxDailyCostUsd - projectedDaily,
         input.policy.maxMonthlyCostUsd - projectedMonthly,
-        stageBudget != null ? stageBudget.maxCostUsd - next : Number.POSITIVE_INFINITY,
+        stageBudget != null ? stageBudget.maxCostUsd - projectedStage : Number.POSITIVE_INFINITY,
       ),
     );
 

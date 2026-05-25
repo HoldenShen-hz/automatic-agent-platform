@@ -96,6 +96,17 @@ test("startRollout does not emit event when eventBus is null", () => {
   // No error means success - event bus is null so no event emitted
 });
 
+test("startRollout rejects out-of-range health gate values", () => {
+  const service = new ConfigRolloutService();
+
+  assert.throws(
+    () => service.startRollout("runtime.timeout", "platform", null, 100, undefined, {
+      maxErrorRate: 999,
+    }),
+    /config_rollout\.invalid_health_gate:maxErrorRate/,
+  );
+});
+
 test("shouldApplyConfig returns shouldApply:true when no active rollout", () => {
   const service = new ConfigRolloutService();
   const decision = service.shouldApplyConfig("runtime.timeout", "platform", null, "hash-123");

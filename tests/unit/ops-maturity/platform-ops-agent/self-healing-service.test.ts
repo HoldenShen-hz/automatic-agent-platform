@@ -152,6 +152,65 @@ test.describe("SelfHealingService", () => {
       assert.ok(typeof receipt.verificationResult?.recoveryTimeMs === "number");
       assert.ok(typeof receipt.verificationResult?.message === "string");
     });
+
+    test("fails closed and tracks health when prerequisites are missing", () => {
+      const service = new SelfHealingService({ maxRetries: 2 });
+      const receipt = service.execute(createAction({
+        targetComponent: "missing_refs_component",
+        runbookRef: "",
+        approvalRef: "",
+      }));
+
+      assert.equal(receipt.healed, false);
+      assert.match(receipt.verificationResult?.message ?? "", /required/i);
+      const health = service.getComponentHealth("missing_refs_component");
+      assert.equal(health?.status, "degraded");
+      assert.equal(health?.consecutiveFailures, 1);
+    });
+
+    test("failover does not depend on component id length parity", () => {
+      const service = new SelfHealingService();
+      service.execute(createAction({
+        targetComponent: "odd",
+        operation: "restart",
+        runbookRef: "",
+        approvalRef: "",
+      }));
+
+      const receipt = service.execute(createAction({
+        targetComponent: "odd",
+        operation: "failover",
+        reasonCode: "region_capacity_exhausted",
+      }));
+
+      assert.equal(receipt.healed, true);
+      assert.equal(receipt.verificationResult?.healthCheckPassed, true);
+    });
+
+    test("repeated failures trigger stronger cooldown protection", () => {
+      const service = new SelfHealingService({
+        maxRetries: 1,
+        cooldownPeriodMs: 60_000,
+      });
+
+      const first = service.execute(createAction({
+        targetComponent: "unknown_failover_component",
+        operation: "failover",
+        reasonCode: "region_unreachable",
+      }));
+      const second = service.execute(createAction({
+        actionId: "action_second",
+        targetComponent: "unknown_failover_component",
+        operation: "failover",
+        reasonCode: "region_unreachable",
+      }));
+
+      assert.equal(first.healed, false);
+      assert.equal(second.healed, false);
+      assert.match(second.verificationResult?.message ?? "", /cooldown/i);
+      const health = service.getComponentHealth("unknown_failover_component");
+      assert.equal(health?.status, "unhealthy");
+    });
   });
 
   test.describe("getComponentHealth", () => {

@@ -195,6 +195,36 @@ test("BudgetGuard evaluateExecutionChain warningScopes can be empty array", () =
   assert.deepEqual(result.warningScopes, []);
 });
 
+test("BudgetGuard evaluateExecutionChain enforces cumulative stage budget", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 1000,
+    maxMonthlyCostUsd: 10000,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+    stageBudgets: [
+      { stage: "execute", maxCostUsd: 1 },
+    ],
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 0.8,
+      nextEstimatedCostUsd: 0.4,
+      currentStageCostUsd: 0.8,
+      currentDailyCostUsd: 0.8,
+      currentMonthlyCostUsd: 0.8,
+      stage: "execute",
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.violatedScope, "stage");
+  assert.equal(result.reasonCode, "budget.stage_limit_exceeded");
+});
+
 test("BudgetGuard evaluateExecutionChain remainingBudgetUsd is zero when exceeded", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {

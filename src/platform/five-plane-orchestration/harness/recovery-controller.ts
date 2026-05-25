@@ -37,7 +37,7 @@ function computeBackoffDelayMs(attempt: number): number {
   const exponentialDelay = RETRY_BACKOFF_BASE_MS * 2 ** Math.max(0, attempt - 1);
   const cappedDelay = Math.min(exponentialDelay, RETRY_BACKOFF_MAX_MS);
   const jitter = cappedDelay * RETRY_JITTER_FACTOR * Math.random();
-  return Math.floor(cappedDelay + jitter);
+  return Math.min(RETRY_BACKOFF_MAX_MS, Math.floor(cappedDelay + jitter));
 }
 
 export class RecoveryController {

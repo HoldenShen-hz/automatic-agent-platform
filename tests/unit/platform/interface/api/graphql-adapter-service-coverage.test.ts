@@ -126,6 +126,37 @@ test("GraphQLAdapterService execute returns data on valid query", async () => {
   assert.ok(response.data != null);
 });
 
+test("GraphQLAdapterService execute returns sanitized message on resolver failure", async () => {
+  const service = new GraphQLAdapterService({ endpoint: "http://localhost/graphql" });
+
+  const schema: GraphQLSchemaDefinition = {
+    queryType: "Query",
+    types: [
+      {
+        name: "Query",
+        fields: [{ name: "hello", type: "String", required: false }],
+      },
+    ],
+  };
+
+  service.registerSchema("test-schema", {
+    schema,
+    resolvers: {
+      "Query.hello": async () => {
+        throw new Error("internal file /tmp/secret.txt not readable");
+      },
+    },
+  });
+
+  const response = await service.execute("test-schema", { query: "{ hello }" });
+
+  assert.equal(response.success, false);
+  assert.equal(
+    response.errors?.[0]?.message,
+    "An internal error occurred while processing the GraphQL request.",
+  );
+});
+
 test("GraphQLAdapterService subscribe creates subscription and returns operationId", () => {
   const service = new GraphQLAdapterService({ endpoint: "http://localhost/graphql" });
 

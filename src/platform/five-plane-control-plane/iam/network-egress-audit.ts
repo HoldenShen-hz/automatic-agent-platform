@@ -25,8 +25,7 @@
  * @see SEC-37: Establish network egress audit
  */
 
-import { randomUUID } from "node:crypto";
-import { nowIso } from "../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
 import {
   createGlobalSingletonSlot,
@@ -268,7 +267,7 @@ export function createEgressAuditEvent(
   },
 ): EgressAuditEvent {
   const event: EgressAuditEvent = {
-    id: `egress_${Date.now()}_${randomUUID()}`,
+    id: newId("egress"),
     timestamp: nowIso(),
     destinationType,
     destination,

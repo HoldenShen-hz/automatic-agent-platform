@@ -26,6 +26,20 @@ import { createBackgroundTaskTraceContext } from "../../shared/observability/bac
 
 const projectionLogger = new StructuredLogger({ retentionLimit: 500 });
 
+class ProjectionRebuildFetchError extends Error {
+  public constructor(
+    public readonly projectionName: string,
+    public readonly offset: number,
+    public readonly limit: number,
+    cause: unknown,
+  ) {
+    super(
+      `projection_rebuild.fetch_events_failed:${projectionName}:${offset}:${limit}:${cause instanceof Error ? cause.message : String(cause)}`,
+    );
+    this.name = "ProjectionRebuildFetchError";
+  }
+}
+
 // §28 Projection handlers - events/projections/
 import { incidentProjectionHandler } from "../events/projections/incident-projection.js";
 import { workflowRunProjectionHandler } from "../events/projections/workflow-run-projection.js";
@@ -338,7 +352,13 @@ export class ProjectionRebuildService {
     let accumulatedState: Record<string, unknown> | null = null;
 
     while (hasMore) {
-      const events = this.fetchEvents(projectionName, options, batchSize, offset);
+      let events: EventRecord[];
+      try {
+        events = this.fetchEvents(projectionName, options, batchSize, offset);
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error));
+        break;
+      }
 
       if (events.length === 0) {
         hasMore = false;
@@ -449,7 +469,7 @@ export class ProjectionRebuildService {
           errorMessage: error instanceof Error ? error.message : String(error),
         },
       });
-      return [];
+      throw new ProjectionRebuildFetchError(projectionName, offset, limit, error);
     }
   }
 

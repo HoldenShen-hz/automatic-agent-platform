@@ -1,5 +1,5 @@
 import { buildGovernanceAuditRecord, type GovernanceAuditRecord } from "../compliance-engine/audit-enforcer/index.js";
-import { newId, nowIso, randomUUID } from "../../platform/contracts/types/ids.js";
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { type ApprovalDelegation, resolveDelegatedApprover } from "./delegation/index.js";
 import {
   evaluateApprovalEscalation,
@@ -165,7 +165,7 @@ export class ApprovalRoutingService {
       escalationRuleId: escalation.escalationRuleId,
       slaBreachNotificationTargetIds: escalation.slaBreachNotificationTargetIds,
       auditRecord: buildGovernanceAuditRecord({
-        recordId: `approval_route_audit_${request.requesterId}_${base.matchedOrgNodeId}_${Date.now()}_${randomUUID()}`,
+        recordId: newId("approval_route_audit"),
         action: "approval.route",
         actorId: request.requesterId,
         orgNodeId: base.matchedOrgNodeId,

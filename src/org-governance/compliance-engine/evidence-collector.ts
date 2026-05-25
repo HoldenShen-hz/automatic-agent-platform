@@ -3,6 +3,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, r
 import { dirname } from "node:path";
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 
 export interface ComplianceEvidenceRecord {
   readonly evidenceId: string;
@@ -58,6 +59,7 @@ interface EvidenceCollectorSnapshot {
 }
 
 const SNAPSHOT_LOCK_TIMEOUT_MS = 250;
+const evidenceCollectorLogger = new StructuredLogger({ retentionLimit: 100 });
 
 function firstNonBlank(...values: Array<string | null | undefined>): string | null {
   for (const value of values) {
@@ -143,8 +145,11 @@ function releaseSnapshotLock(lockFd: number, lockPath: string): void {
   } finally {
     try {
       rmSync(lockPath, { force: true });
-    } catch {
-      // Best effort cleanup for lock release.
+    } catch (error) {
+      evidenceCollectorLogger.warn("compliance_evidence.lock_cleanup_failed", {
+        lockPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }
@@ -161,8 +166,11 @@ function writeSnapshotAtomically(path: string, snapshot: EvidenceCollectorSnapsh
     if (!renamed) {
       try {
         rmSync(tempPath, { force: true });
-      } catch {
-        // Best effort cleanup for failed temp snapshot writes.
+      } catch (error) {
+        evidenceCollectorLogger.warn("compliance_evidence.temp_snapshot_cleanup_failed", {
+          tempPath,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }

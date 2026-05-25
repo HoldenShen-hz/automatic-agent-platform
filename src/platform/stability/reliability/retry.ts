@@ -118,7 +118,7 @@ export class Retry {
 
     for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
       const attemptStart = Date.now();
-      const elapsed = startTime - Date.now();
+      const elapsed = Date.now() - startTime;
 
       if (elapsed >= this.maxDurationMs) {
         throw new RetryTimeoutError(

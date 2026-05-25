@@ -86,7 +86,7 @@ test("shouldEnterPanicMode returns false for zero incidents and non-security rea
   assert.strictEqual(result, false);
 });
 
-test("shouldEnterPanicMode handles security. prefix case sensitively", () => {
+test("shouldEnterPanicMode normalizes security reasonCode casing", () => {
   const input: PanicDirectiveInput = {
     scope: "tenant-1",
     reasonCode: "Security.Injection",
@@ -95,7 +95,7 @@ test("shouldEnterPanicMode handles security. prefix case sensitively", () => {
 
   const result = shouldEnterPanicMode(input);
 
-  assert.strictEqual(result, false);
+  assert.strictEqual(result, true);
 });
 
 test("shouldEnterPanicMode ignores reasonCode with security. outside prefix", () => {

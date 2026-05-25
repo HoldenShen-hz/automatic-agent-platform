@@ -243,6 +243,18 @@ test("decorateResponseHeaders appends Origin to existing vary", () => {
   assert.equal(result.headers["vary"], "Accept-Encoding, Origin");
 });
 
+test("decorateResponseHeaders preserves custom vary values and appends Accept-Encoding once", () => {
+  const payload: ApiResponsePayload = {
+    statusCode: 200,
+    body: "test",
+    headers: { vary: "Accept-Language" },
+  };
+
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+
+  assert.equal(result.headers["vary"], "Accept-Language, Accept-Encoding");
+});
+
 test("decorateResponseHeaders applies default no-store cache headers", () => {
   const result = decorateResponseHeaders(
     {

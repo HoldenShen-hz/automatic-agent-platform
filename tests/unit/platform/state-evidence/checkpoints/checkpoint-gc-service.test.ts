@@ -10,7 +10,7 @@
 
 import { describe, it, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -266,6 +266,30 @@ describe("CheckpointGCService", () => {
   });
 
   describe("enforceVersionLimits", () => {
+    it("uses checkpoint creation time instead of mtime when selecting oldest files", async () => {
+      const executionPath = join(testRootDir, "exec-birthtime");
+      mkdirSync(executionPath, { recursive: true });
+
+      const oldestPath = join(executionPath, "cp-oldest.checkpoint.json");
+      writeFileSync(oldestPath, JSON.stringify({ checkpointId: "cp-oldest" }), "utf8");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      const newestPath = join(executionPath, "cp-newest.checkpoint.json");
+      writeFileSync(newestPath, JSON.stringify({ checkpointId: "cp-newest" }), "utf8");
+
+      const future = new Date(Date.now() + 60_000);
+      utimesSync(oldestPath, future, future);
+
+      const limited = new CheckpointGCService(testRootDir, { maxCheckpointsPerExecution: 1 });
+      const deleted = limited.enforceVersionLimits("exec-birthtime");
+
+      assert.equal(deleted, 1);
+      assert.equal(existsSync(oldestPath), false);
+      assert.equal(existsSync(newestPath), true);
+    });
+  });
+
+  describe("enforceVersionLimits", () => {
     it("should return 0 when execution directory does not exist", () => {
       const deleted = gcService.enforceVersionLimits("nonexistent-exec");
 
@@ -301,6 +325,41 @@ describe("CheckpointGCService", () => {
       const deleted = gcService.enforceVersionLimits("exec-002");
 
       assert.strictEqual(deleted, checkpointCount - 50);
+    });
+
+    it("should remove deleted version-limited checkpoints from manifests", () => {
+      const executionPath = join(testRootDir, "exec-002-manifest");
+      mkdirSync(executionPath, { recursive: true });
+
+      const checkpoints: Array<{ checkpointId: string; storageUri: string }> = [];
+      for (let i = 0; i < 55; i++) {
+        const checkpointId = `cp-${String(i).padStart(3, "0")}`;
+        const checkpointPath = join(executionPath, `${checkpointId}.checkpoint.json`);
+        writeFileSync(checkpointPath, JSON.stringify({ checkpointId }), "utf8");
+        checkpoints.push({
+          checkpointId,
+          storageUri: `file://${checkpointPath}`,
+        });
+      }
+
+      const manifestPath = join(executionPath, "exec-002-manifest.manifest.json");
+      writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          manifestId: "manifest-version-limit",
+          schemaVersion: "checkpoint_manifest.v1",
+          checkpoints,
+          createdAt: new Date().toISOString(),
+        }),
+        "utf8",
+      );
+
+      const deleted = gcService.enforceVersionLimits("exec-002-manifest");
+
+      assert.strictEqual(deleted, 5);
+      const updatedManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      assert.strictEqual(updatedManifest.checkpoints.length, 50);
+      assert.ok(updatedManifest.checkpoints.every((entry: { checkpointId: string }) => !["cp-000", "cp-001", "cp-002", "cp-003", "cp-004"].includes(entry.checkpointId)));
     });
 
     it("should keep newest checkpoints when enforcing limits", () => {

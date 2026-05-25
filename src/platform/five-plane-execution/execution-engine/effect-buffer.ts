@@ -14,7 +14,7 @@
  * @see Runtime Execution Contract: docs_zh/contracts/runtime_execution_contract.md
  */
 
-import { randomUUID } from "node:crypto";
+import { newId } from "../../contracts/types/ids.js";
 import { BoundedCache } from "../../shared/utils/bounded-cache.js";
 import { RuntimeError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -108,7 +108,7 @@ export class EffectBuilder {
 
   private constructor(type: EffectType, description: string) {
     this.effect = {
-      id: `effect_${Date.now()}_${randomUUID()}`,
+      id: newId("effect"),
       type,
       description,
       priority: "normal",

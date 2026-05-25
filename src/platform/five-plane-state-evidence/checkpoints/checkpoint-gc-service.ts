@@ -100,6 +100,7 @@ export const DEFAULT_CHECKPOINT_RETENTION_POLICY: CheckpointRetentionPolicy = {
 export class CheckpointGCService {
   private readonly rootDir: string;
   private readonly retentionPolicy: CheckpointRetentionPolicy;
+  private gcInProgress = false;
 
   public constructor(
     rootDir: string,
@@ -158,47 +159,54 @@ export class CheckpointGCService {
    * @returns GC run result
    */
   public runGC(candidates: CheckpointGCCandidate[]): CheckpointGCRunResult {
+    if (this.gcInProgress) {
+      throw new Error("checkpoint_gc.concurrent_run_not_allowed");
+    }
+    this.gcInProgress = true;
     const startedAt = nowIso();
     const errors: string[] = [];
     let deletedCount = 0;
     let bytesFreed = 0;
     const skippedCandidates: CheckpointGCCandidate[] = [];
+    try {
+      for (const candidate of candidates) {
+        try {
+          this.removeCandidateFromManifests(candidate);
+          if (existsSync(candidate.storagePath)) {
+            rmSync(candidate.storagePath, { force: true });
+            deletedCount++;
+            bytesFreed += candidate.sizeBytes;
 
-    for (const candidate of candidates) {
-      try {
-        this.removeCandidateFromManifests(candidate);
-        if (existsSync(candidate.storagePath)) {
-          rmSync(candidate.storagePath, { force: true });
-          deletedCount++;
-          bytesFreed += candidate.sizeBytes;
-
-          logger.log({
-            level: "debug",
-            message: "checkpoint_gc.deleted",
-            data: {
-              checkpointId: candidate.checkpointRef.checkpointId,
-              path: candidate.storagePath,
-              sizeBytes: candidate.sizeBytes,
-            },
-          });
+            logger.log({
+              level: "debug",
+              message: "checkpoint_gc.deleted",
+              data: {
+                checkpointId: candidate.checkpointRef.checkpointId,
+                path: candidate.storagePath,
+                sizeBytes: candidate.sizeBytes,
+              },
+            });
+          }
+        } catch (err) {
+          errors.push(`Failed to delete checkpoint ${candidate.checkpointRef.checkpointId}: ${String(err)}`);
+          skippedCandidates.push(candidate);
         }
-      } catch (err) {
-        errors.push(`Failed to delete checkpoint ${candidate.checkpointRef.checkpointId}: ${String(err)}`);
-        skippedCandidates.push(candidate);
       }
+
+      const completedAt = nowIso();
+
+      return {
+        scannedCount: candidates.length,
+        deletedCount,
+        bytesFreed,
+        errors,
+        skippedCandidates,
+        startedAt,
+        completedAt,
+      };
+    } finally {
+      this.gcInProgress = false;
     }
-
-    const completedAt = nowIso();
-
-    return {
-      scannedCount: candidates.length,
-      deletedCount,
-      bytesFreed,
-      errors,
-      skippedCandidates,
-      startedAt,
-      completedAt,
-    };
   }
 
   /**
@@ -214,7 +222,7 @@ export class CheckpointGCService {
       return 0;
     }
 
-    type CheckpointFileInfo = { file: string; path: string; stat: { mtimeMs: number; birthtime: Date; size: number; isDirectory(): boolean } };
+    type CheckpointFileInfo = { file: string; path: string; stat: { mtimeMs: number; birthtime: Date; birthtimeMs?: number; size: number; isDirectory(): boolean } };
 
     const checkpointFiles: CheckpointFileInfo[] = [];
     try {
@@ -235,7 +243,7 @@ export class CheckpointGCService {
       return 0;
     }
 
-    checkpointFiles.sort((a, b) => Number(a.stat.mtimeMs) - Number(b.stat.mtimeMs));
+    checkpointFiles.sort((a, b) => this.resolveCheckpointBirthtimeMs(a.stat) - this.resolveCheckpointBirthtimeMs(b.stat));
 
     const maxToRetain = this.retentionPolicy.maxCheckpointsPerExecution;
     if (checkpointFiles.length <= maxToRetain) {
@@ -247,6 +255,8 @@ export class CheckpointGCService {
 
     for (const file of toDelete) {
       try {
+        const candidate = this.createVersionLimitCandidate(executionId, file);
+        this.removeCandidateFromManifests(candidate);
         rmSync(file.path, { force: true });
         deleted++;
       } catch (err) {
@@ -398,11 +408,11 @@ export class CheckpointGCService {
   private evaluateCheckpointForGC(
     checkpointId: string,
     filePath: string,
-    stats: { mtimeMs: number; birthtime: Date; size: number },
+    stats: { mtimeMs: number; birthtime: Date; birthtimeMs?: number; size: number },
     executionId: string,
     referenceTimestamp: number,
   ): CheckpointGCCandidate | null {
-    const ageMs = referenceTimestamp - stats.mtimeMs;
+    const ageMs = referenceTimestamp - this.resolveCheckpointBirthtimeMs(stats);
     const maxAge = this.retentionPolicy.maxAgeMs;
     const isExpired = ageMs > maxAge;
 
@@ -423,6 +433,26 @@ export class CheckpointGCService {
       executionId,
       isOrphaned: false,
       reason: `expired: age ${ageMs}ms exceeds max ${maxAge}ms`,
+    };
+  }
+
+  private createVersionLimitCandidate(
+    executionId: string,
+    file: { file: string; path: string; stat: { mtimeMs: number; birthtime: Date; birthtimeMs?: number; size: number } },
+  ): CheckpointGCCandidate {
+    const checkpointId = file.file.replace(".checkpoint.json", "");
+    return {
+      checkpointRef: {
+        checkpointId,
+        storageUri: `file://${file.path}`,
+        createdAt: file.stat.birthtime.toISOString(),
+      },
+      storagePath: file.path,
+      sizeBytes: Number(file.stat.size),
+      createdAt: file.stat.birthtime.toISOString(),
+      executionId,
+      isOrphaned: false,
+      reason: "version_limit_exceeded",
     };
   }
 
@@ -458,16 +488,23 @@ export class CheckpointGCService {
           "utf8",
         );
       } catch (error) {
-        logger.log({
-          level: "warn",
-          message: "checkpoint_gc.manifest_update_failed",
-          data: {
-            manifestPath,
-            checkpointId: candidate.checkpointRef.checkpointId,
-            error: error instanceof Error ? error.message : String(error),
-          },
-        });
+        throw new Error(
+          `checkpoint_gc.manifest_update_failed:${manifestPath}:${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
+  }
+
+  private resolveCheckpointBirthtimeMs(
+    stats: { mtimeMs: number; birthtime: Date; birthtimeMs?: number },
+  ): number {
+    if (typeof stats.birthtimeMs === "number" && Number.isFinite(stats.birthtimeMs) && stats.birthtimeMs > 0) {
+      return stats.birthtimeMs;
+    }
+    const birthtime = stats.birthtime.getTime();
+    if (Number.isFinite(birthtime) && birthtime > 0) {
+      return birthtime;
+    }
+    return stats.mtimeMs;
   }
 }

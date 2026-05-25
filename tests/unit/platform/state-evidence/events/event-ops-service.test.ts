@@ -8,11 +8,14 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-function createTestService(workspace: string): EventOpsService {
+function createTestService(
+  workspace: string,
+  options: ConstructorParameters<typeof EventOpsService>[2] = {},
+): EventOpsService {
   const db = new SqliteDatabase(join(workspace, "events.db"));
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-  return new EventOpsService(db, store);
+  return new EventOpsService(db, store, options);
 }
 
 // =============================================================================
@@ -112,7 +115,7 @@ test("EventOpsService.drainConsumer returns EventDrainResult structure", async (
     assert.ok(typeof result.delivered === "number");
     assert.ok(typeof result.pendingAfter === "number");
     assert.ok(typeof result.failedAfter === "number");
-    assert.ok(result.outcome === "delivered" || result.outcome === "failed");
+    assert.ok(result.outcome === "delivered" || result.outcome === "failed" || result.outcome === "timeout");
     assert.ok(result.errorCode === null || typeof result.errorCode === "string");
   } finally {
     cleanupPath(workspace);
@@ -143,7 +146,7 @@ test("EventOpsService.drainConsumer sets outcome based on delivery success", asy
 
     const result = await service.drainConsumer("any_consumer");
 
-    assert.ok(result.outcome === "delivered" || result.outcome === "failed");
+    assert.ok(result.outcome === "delivered" || result.outcome === "failed" || result.outcome === "timeout");
   } finally {
     cleanupPath(workspace);
   }
@@ -237,6 +240,33 @@ test("EventOpsService.replayConsumer replayedFromHistoryCount is non-negative", 
     const result = await service.replayConsumer("test_consumer");
 
     assert.ok(result.replayedFromHistoryCount >= 0);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("EventOpsService.replayConsumer returns timeout outcome when drain stalls", async () => {
+  const workspace = createTempWorkspace("aa-event-ops-");
+  try {
+    const service = createTestService(workspace, { replayTimeoutMs: 10 });
+    (service as EventOpsService & { drainConsumer: typeof service.drainConsumer }).drainConsumer = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return {
+        consumerId: "stalled",
+        pendingBefore: 0,
+        failedBefore: 0,
+        replayedFromHistoryCount: 0,
+        delivered: 0,
+        pendingAfter: 0,
+        failedAfter: 0,
+        outcome: "delivered",
+        errorCode: null,
+      };
+    };
+
+    const result = await service.replayConsumer("stalled");
+    assert.equal(result.outcome, "timeout");
+    assert.match(result.errorCode ?? "", /^event_ops\.replay_timeout:/);
   } finally {
     cleanupPath(workspace);
   }

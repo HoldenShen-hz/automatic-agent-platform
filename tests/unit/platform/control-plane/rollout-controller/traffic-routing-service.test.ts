@@ -130,6 +130,34 @@ test("updateHealth modifies the health score of a slot", () => {
   assert.equal(updated.healthScore, 0.98);
 });
 
+test("updateHealth rejects out-of-range health scores", () => {
+  const db = createTestDb();
+  const service = new TrafficRoutingService(db);
+  const record = service.registerSlot("blue", "v1.0.0", 1);
+
+  assert.throws(
+    () => service.updateHealth(record.id, 1.5),
+    /traffic_routing.invalid_health_score/,
+  );
+});
+
+test("rollbackShift rejects invalid rollback trigger at runtime", () => {
+  const db = createTestDb();
+  const service = new TrafficRoutingService(db);
+  service.registerSlot("blue", "v1.0.0", 1);
+  service.registerSlot("green", "v2.0.0", 1);
+  const shift = service.startCanaryShift("blue", "green");
+
+  assert.throws(
+    () => service.rollbackShift(shift.id, "unexpected_trigger" as RollbackTrigger, "bad"),
+    (error) =>
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "traffic_routing.invalid_rollback_trigger",
+  );
+});
+
 // ---------------------------------------------------------------------------
 // Traffic Shift Tests
 // ---------------------------------------------------------------------------
@@ -204,7 +232,8 @@ test("advanceShift progresses the traffic shift", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const greenSlot = service.registerSlot("green", "v2.0.0", 1);
+  service.updateHealth(greenSlot.id, 0.99);
 
   const shift = service.startCanaryShift("blue", "green");
   const advanced = service.advanceShift(shift.id);
@@ -232,7 +261,8 @@ test("advanceShift completes the shift when all steps are done", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const greenSlot = service.registerSlot("green", "v2.0.0", 1);
+  service.updateHealth(greenSlot.id, 0.99);
 
   const shift = service.startCanaryShift("blue", "green");
 
@@ -253,6 +283,19 @@ test("advanceShift completes the shift when all steps are done", () => {
   assert.ok(green !== null);
   assert.equal(green.trafficWeight, 100);
   assert.equal(green.status, "active");
+});
+
+test("advanceShift blocks progression when canary health is unavailable", () => {
+  const db = createTestDb();
+  const service = new TrafficRoutingService(db);
+
+  service.registerSlot("blue", "v1.0.0", 1);
+  service.registerSlot("green", "v2.0.0", 1);
+
+  const shift = service.startCanaryShift("blue", "green");
+  const result = service.advanceShift(shift.id);
+
+  assert.equal(result, null);
 });
 
 test("getShift retrieves a shift by ID", () => {

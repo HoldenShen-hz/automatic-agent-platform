@@ -54,6 +54,21 @@ test("listRecoveryCandidates with mixed recoverable and P0 findings", () => {
   assert.equal(p0!.disposition, "manual_handoff");
 });
 
+test("listRecoveryCandidates keeps non-recoverable P1/P2 findings as manual candidates", () => {
+  const service = new ReplayRepairControlService();
+  const report = service.buildStartupConsistencyReport({
+    findings: [
+      { checkId: "stale_execution", severity: "p1", entityRef: "exec:manual", summary: "manual", recoverable: false, suggestedRepairAction: "manual_intervention_required" },
+      { checkId: "workflow_alignment", severity: "p2", entityRef: "wf:manual", summary: "manual", recoverable: false, suggestedRepairAction: "manual_intervention_required" },
+    ],
+  });
+
+  const candidates = service.listRecoveryCandidates(report);
+  assert.equal(candidates.length, 2);
+  assert.equal(candidates.every((candidate) => candidate.requiresManualApproval), true);
+  assert.equal(candidates.every((candidate) => candidate.disposition === "manual_handoff"), true);
+});
+
 test("listRecoveryCandidates handles all check ID types", () => {
   const service = new ReplayRepairControlService();
 
@@ -467,10 +482,10 @@ test("runRecoveryDrill with various severity findings produces correct candidate
 
   const result = service.runRecoveryDrill({ scenario: "severity test", findings });
 
-  // info is not recoverable -> not included
+  // info -> not included
   // p2 recoverable -> included
-  // p1 not recoverable -> not included (not p0)
-  assert.equal(result.candidateCount, 1);
+  // p1 non-recoverable -> kept as manual candidate
+  assert.equal(result.candidateCount, 2);
 });
 
 test("assertCanOpenForTraffic with repair_required does not throw", () => {

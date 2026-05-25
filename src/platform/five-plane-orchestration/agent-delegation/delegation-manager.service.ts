@@ -84,6 +84,7 @@ export class DelegationManagerService {
   private readonly delegationRootStore: Map<string, string>;
   private readonly delegationRepository: DelegationRepository | null;
   private readonly eventRepository: DelegationEventRepository | null;
+  private readonly hydrationPromise: Promise<void> | null;
   private readonly useRepositoryAsPrimaryStore: boolean = true;
   private readonly MAX_ENTRIES = 1000;
   private readonly ENTRY_TTL_MS = 60 * 60 * 1000;
@@ -118,14 +119,14 @@ export class DelegationManagerService {
 
     // R9-06: Hydrate active delegations from repository to survive process restarts
     // This MUST complete before the service is ready to handle requests
-    if (this.delegationRepository) {
-      this.hydrateFromRepository().catch((err) => {
-        // Log but don't fail startup - in-memory mode still works as fallback
+    this.hydrationPromise = this.delegationRepository == null
+      ? null
+      : this.hydrateFromRepository().catch((err) => {
         delegationManagerLogger.error("delegation.hydrate_from_repository_failed", {
           error: err instanceof Error ? err.stack ?? err.message : String(err),
         });
+        throw err;
       });
-    }
   }
 
   private evictExpired(): void {
@@ -161,6 +162,7 @@ export class DelegationManagerService {
     parent: AgentContext,
     spec: DelegationSpec,
   ): Promise<AwaitableDelegationHandle> {
+    await this.awaitHydration();
     // Step 0: Call depth budget evaluation - each dimension is distinct.
     // A plain delegation adds one new delegation frame; it does not triple-count
     // the current delegation depth as goal decomposition or global call depth.
@@ -252,6 +254,7 @@ export class DelegationManagerService {
    * @param delegationId - Delegation to cancel
    */
   public async cancel(delegationId: string): Promise<void> {
+    await this.awaitHydration();
     const delegation = this.delegationStore.get(delegationId) ?? await this.getDelegation(delegationId);
     if (!delegation) {
       throw new ValidationError(
@@ -289,6 +292,7 @@ export class DelegationManagerService {
    * @param outputRef - Optional reference to output artifact
    */
   public async complete(delegationId: string, _outputRef?: string): Promise<void> {
+    await this.awaitHydration();
     const delegation = this.requireDelegation(delegationId) ?? await this.getDelegation(delegationId);
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
@@ -301,6 +305,7 @@ export class DelegationManagerService {
   }
 
   public async completeWithEvidence(delegationId: string, evidence: readonly string[], outputRef?: string): Promise<void> {
+    await this.awaitHydration();
     const delegation = this.requireDelegation(delegationId);
     const validation = this.collaborationProtocol.validateAndSend(
       this.collaborationProtocol.createMessage("completion_report", {
@@ -345,6 +350,7 @@ export class DelegationManagerService {
    * @param error - Error message
    */
   public async fail(delegationId: string, error: string): Promise<void> {
+    await this.awaitHydration();
     const delegation = this.requireDelegation(delegationId) ?? await this.getDelegation(delegationId);
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
@@ -364,6 +370,7 @@ export class DelegationManagerService {
   }
 
   public async handleDelegationTimeout(delegationId: string): Promise<void> {
+    await this.awaitHydration();
     const delegation = this.requireDelegation(delegationId) ?? await this.getDelegation(delegationId);
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
@@ -419,6 +426,7 @@ export class DelegationManagerService {
    * @returns DelegationChain or null if not found
    */
   public async getDelegationChain(agentId: string): Promise<DelegationChain | null> {
+    await this.awaitHydration();
     // R9-06: When repository is available, use it as the source of truth for chain data
     if (this.delegationRepository) {
       // R9-06: Find all delegations where this agent is the root (first in chain) or involved
@@ -493,6 +501,7 @@ export class DelegationManagerService {
    * @param delegationId - Delegation ID
    */
   public async getDelegation(delegationId: string): Promise<DelegationResult | null> {
+    await this.awaitHydration();
     // First check in-memory store
     const cached = this.delegationStore.get(delegationId);
     if (cached) {
@@ -540,6 +549,7 @@ export class DelegationManagerService {
    * @param agentId - Agent ID
    */
   public async getActiveDelegations(agentId: string): Promise<DelegationResult[]> {
+    await this.awaitHydration();
     const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active"];
 
     // Get from in-memory store
@@ -593,6 +603,7 @@ export class DelegationManagerService {
    * R9-06: When repository is available, query from repository for comprehensive scan.
    */
   public async revokeExpiredDelegations(): Promise<ExpirationScanResult> {
+    await this.awaitHydration();
     const now = nowIso();
     const errors: string[] = [];
     let expired = 0;
@@ -651,6 +662,7 @@ export class DelegationManagerService {
    * R9-06: When repository is available, query from repository for comprehensive results.
    */
   public async getExpiredDelegations(): Promise<DelegationResult[]> {
+    await this.awaitHydration();
     const now = nowIso();
 
     // R9-06: When repository is available, query from repository for comprehensive results
@@ -685,6 +697,7 @@ export class DelegationManagerService {
    * §49: Gets the count of pending expirations (delegations past expiresAt but not yet processed).
    */
   public async getPendingExpirationCount(): Promise<number> {
+    await this.awaitHydration();
     const expired = await this.getExpiredDelegations();
     return expired.length;
   }
@@ -695,6 +708,10 @@ export class DelegationManagerService {
 
   public recordTakeoverNotice(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] } {
     return this.collaborationProtocol.handleIncoming(message, context);
+  }
+
+  private async awaitHydration(): Promise<void> {
+    await this.hydrationPromise;
   }
 
   // ── Private Methods ───────────────────────────────────────────────────────

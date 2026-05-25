@@ -68,7 +68,7 @@ export class CostOptimizationService {
 
   public recordCost(record: CostAttributionRecord): CostAttributionRecord {
     if (record.decisionRef.trim().length === 0) {
-      this.unsourcedRecordCount += 1;
+      this.unsourcedRecordCount = Math.min(Number.MAX_SAFE_INTEGER, this.unsourcedRecordCount + 1);
       throw new Error(`cost_optimizer.unsourced_record:${this.resolveSubjectId(record)}`);
     }
     if (this.unsourcedRecordCount > 0) {

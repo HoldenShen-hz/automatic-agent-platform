@@ -69,6 +69,18 @@ test("shouldPromoteCanary returns false when error rate too high", () => {
   assert.equal(result, false);
 });
 
+test("shouldPromoteCanary returns false when any required metric is missing or non-finite", () => {
+  const progress = {
+    rolloutPercent: 30,
+    successRate: Number.NaN,
+    latencyP50Ms: 500,
+    errorRate: 0.005,
+    currentStage: 20 as const,
+  };
+
+  assert.equal(shouldPromoteCanary(progress), false);
+});
+
 test("getNextCanaryStage returns next stage below current percent", () => {
   assert.equal(getNextCanaryStage(0), 5);
   assert.equal(getNextCanaryStage(10), 20);

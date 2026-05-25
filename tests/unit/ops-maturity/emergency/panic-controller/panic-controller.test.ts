@@ -66,14 +66,14 @@ test("shouldEnterPanicMode returns false for non-security reason code", () => {
   assert.equal(shouldEnterPanicMode(input), false);
 });
 
-test("shouldEnterPanicMode returns true for security. prefix", () => {
+test("shouldEnterPanicMode returns false for advisory-only security. prefix", () => {
   const input: PanicDirectiveInput = {
     scope: "platform",
     reasonCode: "security.",
     activeIncidents: 0,
   };
 
-  assert.equal(shouldEnterPanicMode(input), true);
+  assert.equal(shouldEnterPanicMode(input), false);
 });
 
 test("shouldEnterPanicMode handles scope correctly", () => {

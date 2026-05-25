@@ -585,7 +585,7 @@ export class CallGovernance {
 
     if (retryPolicy.jitterFactor != null && retryPolicy.jitterFactor > 0) {
       const jitter = cappedDelay * retryPolicy.jitterFactor * Math.random();
-      return Math.floor(cappedDelay + jitter);
+      return Math.min(retryPolicy.maxDelayMs, Math.floor(cappedDelay + jitter));
     }
 
     return Math.floor(cappedDelay);

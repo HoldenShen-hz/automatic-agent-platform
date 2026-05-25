@@ -39,10 +39,20 @@ export function throwTakeoverWorkflowError(code: string, details: Record<string,
 
 export function parseOutputs(outputsJson: string): Record<string, unknown> {
   try {
-    return JSON.parse(outputsJson) as Record<string, unknown>;
+    const parsed = JSON.parse(outputsJson) as unknown;
+    if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    throw new ValidationError("takeover.outputs_json_invalid", "takeover.outputs_json_invalid", {
+      retryable: false,
+      details: { outputsJson },
+    });
   } catch (err) {
     logger.warn("parseOutputs failed", { error: err });
-    return {};
+    throw new ValidationError("takeover.outputs_json_invalid", "takeover.outputs_json_invalid", {
+      retryable: false,
+      details: { outputsJson },
+    });
   }
 }
 

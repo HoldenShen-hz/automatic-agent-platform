@@ -13,6 +13,9 @@ import { stat } from "node:fs/promises";
 
 import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
  * Severity level for config change notifications.
@@ -355,9 +358,13 @@ export class ConfigHotReloadService {
       try {
         await subscriber.onConfigChanged(change, newConfig);
       } catch (error) {
-        process.stderr.write(
-          `[ConfigHotReload] Subscriber ${subscriber.componentName} failed to handle config change: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
-        );
+        logger.error("config_hot_reload.subscriber_failed", {
+          componentName: subscriber.componentName,
+          subscriptionId: subscriber.subscriptionId,
+          configPath: change.configPath,
+          layer: change.layer,
+          error: error instanceof Error ? error.stack ?? error.message : String(error),
+        });
       }
     }
   }
@@ -405,9 +412,9 @@ export class ConfigHotReloadService {
       try {
         await this.checkFileChanges();
       } catch (error) {
-        process.stderr.write(
-          `[ConfigHotReload] File watcher tick failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
-        );
+        logger.error("config_hot_reload.file_watcher_tick_failed", {
+          error: error instanceof Error ? error.stack ?? error.message : String(error),
+        });
       } finally {
         this.fileWatcherTickInFlight = false;
       }

@@ -107,6 +107,26 @@ test("RetryAbortError is thrown when signal is aborted", async () => {
   );
 });
 
+test("Retry does not count an aborted retry loop as a new attempt", async () => {
+  const retry = new Retry({ maxAttempts: 3, initialDelayMs: 0 });
+  const controller = new AbortController();
+  let invocationCount = 0;
+
+  await assert.rejects(
+    async () => retry.execute(
+      async () => {
+        invocationCount += 1;
+        controller.abort(new Error("stop"));
+        throw new Error("first failure");
+      },
+      () => true,
+      { signal: controller.signal },
+    ),
+  );
+
+  assert.equal(invocationCount, 1);
+});
+
 test("Retry uses exponential backoff", async () => {
   const retry = new Retry({
     maxAttempts: 3,

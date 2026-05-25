@@ -134,6 +134,13 @@ export class IncidentResolver {
    * Determines the appropriate resolution strategy based on incident characteristics.
    */
   public determineStrategy(incident: IncidentDetection): ResolutionStrategy {
+    const selfHealingFailures = this.readSelfHealingFailureCount(incident);
+    const componentUnhealthy = this.readComponentHealthStatus(incident) === "unhealthy";
+
+    if (selfHealingFailures >= this.maxSelfHealAttempts || componentUnhealthy) {
+      return normalizeIncidentSeverity(incident.severity) === "SEV1" ? "manual" : "assisted";
+    }
+
     // SEV1 incidents require immediate manual intervention
     if (normalizeIncidentSeverity(incident.severity) === "SEV1") {
       return "manual";
@@ -166,6 +173,20 @@ export class IncidentResolver {
 
     // Default to assisted for unknown categories
     return "assisted";
+  }
+
+  private readSelfHealingFailureCount(incident: IncidentDetection): number {
+    const raw = incident.metrics["self_healing_failures"] ?? incident.metrics["consecutive_failures"];
+    return typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
+  }
+
+  private readComponentHealthStatus(
+    incident: IncidentDetection,
+  ): "healthy" | "degraded" | "unhealthy" | "unknown" | null {
+    const raw = incident.metrics["component_health_status"];
+    return raw === "healthy" || raw === "degraded" || raw === "unhealthy" || raw === "unknown"
+      ? raw
+      : null;
   }
 
   /**

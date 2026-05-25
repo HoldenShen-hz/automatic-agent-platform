@@ -68,6 +68,35 @@ test("validateBusinessPackManifest removes empty contracts", () => {
   assert.deepEqual(manifest.capabilities[0]!.requiredContracts, ["runtime", "contract"]);
 });
 
+test("validateBusinessPackManifest preserves sdk compatibility metadata", () => {
+  const manifest = validateBusinessPackManifest({
+    packId: "ops-pack",
+    version: "1.0.0",
+    domainId: "operations",
+    domain: "operations",
+    owner: "ops@example.com",
+    capabilities: [
+      { capabilityKey: "triage", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+    ],
+    sdk_semver: " 1.2.3 ",
+    platform_min_version: " 2.0.0 ",
+    platform_max_version: " 3.0.0 ",
+    contract_test_generator: " contract://generator ",
+    deprecation_policy: {
+      sdk_semver: " 1.2.3 ",
+      platform_min_version: " 2.0.0 ",
+      platform_max_version: " 3.0.0 ",
+      deprecation_policy: "notify_only",
+    },
+  });
+
+  assert.equal(manifest.sdk_semver, "1.2.3");
+  assert.equal(manifest.platform_min_version, "2.0.0");
+  assert.equal(manifest.platform_max_version, "3.0.0");
+  assert.equal(manifest.contract_test_generator, "contract://generator");
+  assert.equal(manifest.deprecation_policy?.sdk_semver, "1.2.3");
+});
+
 test("validateBusinessPackManifest rejects empty packId", () => {
   assert.throws(
     () =>

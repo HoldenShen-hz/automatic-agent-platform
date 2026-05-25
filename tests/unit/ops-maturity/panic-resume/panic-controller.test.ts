@@ -31,7 +31,7 @@ describe("panic-controller", () => {
       assert.strictEqual(result, true);
     });
 
-    it("should return true when reasonCode starts with security.", () => {
+    it("should return true when reasonCode is an emergency security event", () => {
       const input: PanicDirectiveInput = {
         scope: "tenant/prod-tenant",
         reasonCode: "security.intrusion_detected",
@@ -43,7 +43,7 @@ describe("panic-controller", () => {
       assert.strictEqual(result, true);
     });
 
-    it("should return true when reasonCode is exactly security.", () => {
+    it("should return false when reasonCode is only a generic security prefix", () => {
       const input: PanicDirectiveInput = {
         scope: "domain/payment",
         reasonCode: "security.",
@@ -51,7 +51,7 @@ describe("panic-controller", () => {
 
       const result = shouldEnterPanicMode(input);
 
-      assert.strictEqual(result, true);
+      assert.strictEqual(result, false);
     });
 
     it("should return true when both conditions met", () => {
@@ -113,13 +113,13 @@ describe("panic-controller", () => {
       assert.strictEqual(result, false);
     });
 
-    it("should return true for various security reason codes", () => {
+    it("should return true for emergency security reason codes", () => {
       const securityCodes = [
         "security.unauthorized_access",
         "security.data_breach",
         "security.dos_attack",
-        "security.certificate_expiry",
         "security.key_compromise",
+        "security.compromise",
       ];
 
       for (const reasonCode of securityCodes) {
@@ -131,6 +131,25 @@ describe("panic-controller", () => {
 
         const result = shouldEnterPanicMode(input);
         assert.strictEqual(result, true, `Failed for reasonCode: ${reasonCode}`);
+      }
+    });
+
+    it("should not auto-enter panic for advisory-only security reason codes without incidents", () => {
+      const advisoryCodes = [
+        "security.certificate_expiry",
+        "security.vulnerability",
+        "security.advisory",
+      ];
+
+      for (const reasonCode of advisoryCodes) {
+        const input: PanicDirectiveInput = {
+          scope: "platform/global",
+          reasonCode,
+          activeIncidents: 0,
+        };
+
+        const result = shouldEnterPanicMode(input);
+        assert.strictEqual(result, false, `Failed for advisory reasonCode: ${reasonCode}`);
       }
     });
 
@@ -158,13 +177,13 @@ describe("panic-controller", () => {
     it("should handle empty scope string", () => {
       const input: PanicDirectiveInput = {
         scope: "",
-        reasonCode: "security.alert",
+        reasonCode: "security.advisory",
         activeIncidents: 0,
       };
 
       const result = shouldEnterPanicMode(input);
 
-      assert.strictEqual(result, true);
+      assert.strictEqual(result, false);
     });
 
     it("should handle scope with special characters", () => {

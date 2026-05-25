@@ -89,6 +89,7 @@ test("ChannelGatewayRetryExecutor runOnce returns busy when already running", as
   const result2 = await exec.runOnce();
 
   assert.equal(result2.busy, true);
+  assert.equal(result2.success, false);
 
   // Wait for first to complete
   await promise1;
@@ -102,6 +103,7 @@ test("ChannelGatewayRetryExecutor runOnce returns correct structure", async () =
   assert.equal(typeof result.startedAt, "string");
   assert.equal(typeof result.completedAt, "string");
   assert.equal(typeof result.busy, "boolean");
+  assert.equal(typeof result.success, "boolean");
   assert.equal(typeof result.scanned, "number");
   assert.equal(typeof result.delivered, "number");
   assert.equal(typeof result.retryScheduled, "number");
@@ -137,4 +139,6 @@ test("ChannelGatewayRetryExecutor handles errors gracefully", async () => {
   assert.equal(result.deadLettered, 0);
   assert.equal(result.skippedRateLimited, 0);
   assert.equal(result.busy, false);
+  assert.equal(result.success, false);
+  assert.equal(result.errorMessage, "test error");
 });

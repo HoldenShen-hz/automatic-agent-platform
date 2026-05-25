@@ -258,6 +258,7 @@ export class HttpApiServer {
 
   public async stop(): Promise<void> {
     this.isShuttingDown = true;
+    this.staleWorkerIncidentIds.clear();
     if (this.workerHeartbeatSweepTimer != null) {
       clearInterval(this.workerHeartbeatSweepTimer);
       this.workerHeartbeatSweepTimer = null;
@@ -1112,7 +1113,10 @@ export class HttpApiServer {
         Readable.from([payload.body]),
         compress,
         response,
-      ).catch(() => {
+      ).catch((error: unknown) => {
+        logger.warn("http.compression_pipeline_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
         response.destroy();
       });
       return;

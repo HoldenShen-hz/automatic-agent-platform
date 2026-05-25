@@ -16,6 +16,7 @@ import {
   DOMAIN_RING_BOOTSTRAP_SERVICE_IDS,
   registerDomainsBootstrap,
 } from "./domains/domains-bootstrap.js";
+import { ValidationError } from "./platform/contracts/errors.js";
 
 export const DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID = "w5.runtime.orchestrator";
 
@@ -52,7 +53,10 @@ function buildDependencyServiceIds(
   return step.dependsOnStepIds.map((dependencyStepId) => {
     const dependencyStep = plan.steps.find((candidate) => candidate.stepId === dependencyStepId);
     if (dependencyStep == null) {
-      throw new Error(`w5_startup_plan.missing_dependency:${dependencyStepId}`);
+      throw new ValidationError(
+        "w5_startup_plan.missing_dependency",
+        `w5_startup_plan.missing_dependency:${dependencyStepId}`,
+      );
     }
     return dependencyStep.bootstrapServiceId;
   });
@@ -66,7 +70,9 @@ export class DomainsRuntimeOrchestrator {
   public prepare(): DomainsStartupPlan {
     registerDomainsBootstrap(this.registry);
     registerDomainsRuntimeCatalog(this.registry);
-    return registerDomainsStartupPlan(this.registry);
+    const startupPlan = registerDomainsStartupPlan(this.registry);
+    this.startupPlan = startupPlan;
+    return startupPlan;
   }
 
   public startup(): DomainsRuntimeStartupResult {
@@ -109,7 +115,10 @@ export class DomainsRuntimeOrchestrator {
   }
 
   public snapshotReadiness(): DomainsReadinessSnapshot {
-    const startupPlan = this.startupPlan ?? buildDomainsStartupPlan();
+    const startupPlan = this.startupPlan
+      ?? (this.registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID)
+        ? this.registry.get<DomainsStartupPlan>(DOMAINS_STARTUP_PLAN_SERVICE_ID)
+        : buildDomainsStartupPlan());
     return {
       runtimeCatalogInitialized: this.registry.isInitialized(DOMAINS_RUNTIME_CATALOG_SERVICE_ID),
       startupPlanInitialized: this.registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID),
