@@ -31,11 +31,13 @@ const DEFAULT_MAX_CONNECTIONS = 1_000;
 const DEFAULT_MAX_TOTAL_SUBSCRIPTIONS = 10_000;
 const MAX_TASK_EVENT_HISTORY = 200;
 const DEFAULT_MAX_TASK_EVENT_HISTORY_TASKS = 1_000;
+const DEFAULT_MAX_PENDING_ACKS_PER_CLIENT = 256;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
 const DEFAULT_IDLE_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_PAYLOAD_BYTES = 64 * 1024;
 // R12-07: Configurable back-pressure threshold
 const DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES = 500_000;
+const RESUME_PROTOCOL_KEYS = new Set(["taskId", "lastEventId"]);
 
 /**
  * Zod schema for validating WebSocket messages at the inter-plane boundary.
@@ -102,6 +104,7 @@ export interface WebSocketBridgeOptions {
   maxTotalSubscriptions?: number;
   maxTaskEventHistoryTasks?: number;
   maxTaskEventHistoryPerTask?: number;
+  maxPendingAcksPerClient?: number;
   closeTimeoutMs?: number;
   taskHistoryRetentionMs?: number;
 }
@@ -128,6 +131,7 @@ export class WebSocketBridge {
   private readonly maxTotalSubscriptions: number;
   private readonly maxTaskEventHistoryTasks: number;
   private readonly maxTaskEventHistoryPerTask: number;
+  private readonly maxPendingAcksPerClient: number;
   private readonly closeTimeoutMs: number;
   private readonly taskHistoryRetentionMs: number;
   private readonly historyCleanupTimers = new Map<string, NodeJS.Timeout>();
@@ -145,6 +149,10 @@ export class WebSocketBridge {
     this.maxTotalSubscriptions = options.maxTotalSubscriptions ?? DEFAULT_MAX_TOTAL_SUBSCRIPTIONS;
     this.maxTaskEventHistoryTasks = options.maxTaskEventHistoryTasks ?? DEFAULT_MAX_TASK_EVENT_HISTORY_TASKS;
     this.maxTaskEventHistoryPerTask = options.maxTaskEventHistoryPerTask ?? MAX_TASK_EVENT_HISTORY;
+    this.maxPendingAcksPerClient = Math.max(
+      1,
+      Math.trunc(options.maxPendingAcksPerClient ?? DEFAULT_MAX_PENDING_ACKS_PER_CLIENT),
+    );
     this.closeTimeoutMs = options.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS;
     this.taskHistoryRetentionMs = options.taskHistoryRetentionMs ?? DEFAULT_TASK_HISTORY_RETENTION_MS;
     this.wss = new WebSocketServer({
@@ -590,15 +598,30 @@ export class WebSocketBridge {
       return;
     }
 
+    if (client.pendingAcks.size >= this.maxPendingAcksPerClient) {
+      const firstPendingAck = client.pendingAcks.values().next().value;
+      this.sendStreamGap(ws, {
+        taskId,
+        fromEventId: firstPendingAck?.eventId ?? client.lastEventId,
+        toEventId: eventId,
+        reason: "missed_events",
+      });
+      client.pendingAcks.clear();
+      client.bufferedEventCount = 0;
+      client.lastEventId = null;
+      client.nextExpectedSequenceNum = client.lastAcknowledgedSequenceNum + 1;
+      this.slowConsumers.add(ws);
+      return;
+    }
+
     const sequenceNum = client.nextExpectedSequenceNum++;
     if (client.lastEventId != null && client.lastAcknowledgedSequenceNum < sequenceNum - 1) {
-      ws.send(JSON.stringify({
-        type: "stream_gap",
+      this.sendStreamGap(ws, {
         taskId,
         fromEventId: client.lastEventId,
         toEventId: eventId,
         reason: "missed_events",
-      } satisfies WebSocketMessageType));
+      });
     }
     client.lastEventId = eventId;
     client.pendingAcks.set(sequenceNum, {
@@ -639,8 +662,9 @@ export class WebSocketBridge {
   private recordTaskEvent(taskId: string, eventId: string, event: TaskWebSocketEvent): void {
     const history = this.taskEventHistory.get(taskId) ?? [];
     history.push({ eventId, event });
-    while (history.length > this.maxTaskEventHistoryPerTask) {
-      history.shift();
+    const overflow = history.length - this.maxTaskEventHistoryPerTask;
+    if (overflow > 0) {
+      history.splice(0, overflow);
     }
     this.taskEventHistory.set(taskId, history);
     while (this.taskEventHistory.size > this.maxTaskEventHistoryTasks) {
@@ -654,13 +678,25 @@ export class WebSocketBridge {
   }
 
   private selectProtocol(protocols: Set<string> | string[]): string | false {
-    const values = Array.isArray(protocols) ? protocols : [...protocols];
-    for (const protocol of values) {
-      if (protocol.trim().length > 0) {
-        return protocol;
+    const values = (Array.isArray(protocols) ? protocols : [...protocols])
+      .map((protocol) => protocol.trim())
+      .filter((protocol) => protocol.length > 0);
+    const [token, ...resumeParams] = values;
+    if (token == null || !isSupportedProtocolToken(token)) {
+      return false;
+    }
+    for (const resumeParam of resumeParams) {
+      const separatorIndex = resumeParam.indexOf("=");
+      if (separatorIndex <= 0) {
+        return false;
+      }
+      const key = resumeParam.slice(0, separatorIndex);
+      const value = resumeParam.slice(separatorIndex + 1);
+      if (!RESUME_PROTOCOL_KEYS.has(key) || value.length === 0) {
+        return false;
       }
     }
-    return false;
+    return token;
   }
 
   private closeClient(
@@ -710,4 +746,21 @@ export class WebSocketBridge {
     }
     return count;
   }
+
+  private sendStreamGap(
+    ws: WebSocket,
+    message: Extract<WebSocketMessageType, { type: "stream_gap" }>,
+  ): void {
+    ws.send(JSON.stringify({
+      type: "stream_gap",
+      taskId: message.taskId,
+      fromEventId: message.fromEventId,
+      toEventId: message.toEventId,
+      reason: message.reason,
+    } satisfies WebSocketMessageType));
+  }
+}
+
+function isSupportedProtocolToken(protocol: string): boolean {
+  return !protocol.includes("=") && /^[A-Za-z0-9!#$%&'*+.^_`|~-]+(?:-[A-Za-z0-9!#$%&'*+.^_`|~-]+)*$/.test(protocol);
 }

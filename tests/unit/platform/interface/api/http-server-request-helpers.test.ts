@@ -115,12 +115,12 @@ test("authenticateOptionalPrincipal calls authenticate for valid api key", () =>
   assert.deepEqual(authenticateOptionalPrincipal(request, mockAuthService), mockPrincipal);
 });
 
-test("authenticateOptionalPrincipal returns null when authenticate throws ApiAuthError", () => {
+test("authenticateOptionalPrincipal rethrows ApiAuthError when invalid credentials were provided", () => {
   const mockAuthService = {
     authenticate: () => { throw new ApiAuthError(401, "api.token_invalid", "Invalid token"); },
   } as any;
   const request = createMockRequest({ headers: { authorization: "Bearer invalid_token" } });
-  assert.equal(authenticateOptionalPrincipal(request, mockAuthService), null);
+  assert.throws(() => authenticateOptionalPrincipal(request, mockAuthService), /Invalid token/);
 });
 
 test("authenticateOptionalPrincipal propagates non-ApiAuthError exceptions", () => {

@@ -59,6 +59,7 @@ export interface WebhookDispatchEnvelope {
 
 const SIGNED_REQUEST_REPLAY_TTL_MS = 5 * 60 * 1000;
 const MAX_SIGNED_REQUEST_REPLAY_CACHE_ENTRIES = 10_000;
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 
 interface SignedRequestReplayCacheEntry {
   readonly signatureKey: string;
@@ -128,6 +129,7 @@ export class WebhookIngressService {
         details: { endpointId: input.endpointId, eventType },
       });
     }
+    assertValidIdempotencyKey(idempotencyKey, input.endpointId, eventType);
     pruneSignedRequestReplayCache(this.signedRequestReplayCache, Date.now());
     const signatureVerified = verifySignature({
       endpoint,
@@ -349,5 +351,21 @@ function assertNonEmpty(value: string, code: string): void {
     throw new ValidationError(code, `${code}: Webhook configuration value must be non-empty.`, {
       details: { value },
     });
+  }
+}
+
+function assertValidIdempotencyKey(idempotencyKey: string, endpointId: string, eventType: string): void {
+  if (!IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+    throw new ValidationError(
+      "webhook.idempotency_key_invalid",
+      "webhook.idempotency_key_invalid: Webhook idempotency key must be 1-256 chars of [A-Za-z0-9._:-].",
+      {
+        details: {
+          endpointId,
+          eventType,
+          idempotencyKeyLength: idempotencyKey.length,
+        },
+      },
+    );
   }
 }

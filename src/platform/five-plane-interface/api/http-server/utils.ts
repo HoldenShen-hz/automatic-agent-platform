@@ -5,13 +5,12 @@
  */
 
 import { parse as parseUrl } from "node:url";
-import { randomUUID } from "node:crypto";
-
 import type { ApiRequestLike, ApiResponsePayload } from "./types.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiAuthService, ApiPrincipal, ApiRole } from "../api-auth-service.js";
 import { ApiAuthError } from "../api-auth-service.js";
 import { inferApiErrorCategory, inferApiErrorSource } from "./api-error.js";
+import { newId } from "../../../contracts/types/ids.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -30,7 +29,7 @@ export function readRequestId(request: ApiRequestLike): string {
   if (typeof candidate === "string" && candidate.trim().length > 0) {
     return candidate.trim();
   }
-  return `req_${Date.now().toString(36)}_${randomUUID()}`;
+  return newId("req");
 }
 
 export function readLimit(request: ApiRequestLike, fallback: number): number {

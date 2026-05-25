@@ -7,11 +7,14 @@
  * §G8: Growth domain M2 Phase 2 — Ad Platforms + CRM required.
  */
 
-import { createHash } from "node:crypto";
-
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import {
+  buildHashedCredentialFingerprint,
+  createZeroableCredentialSecret,
+  type ZeroableCredentialSecret,
+} from "./credential-hygiene.js";
 
 export interface CrmAdapterPluginOptions {
   apiBaseUrl?: string;
@@ -37,17 +40,17 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     allowedDomains: ["api.hubspot.com", "api.salesforce.com"],
   });
   let credentialFingerprint: string | null = null;
-  let credentialToken: string | null = null;
+  let credentialSecret: ZeroableCredentialSecret | null = null;
 
   async function crmRequest(endpoint: string, method: string = "GET", body?: Record<string, unknown>): Promise<unknown> {
-    if (credentialFingerprint == null) {
+    if (credentialFingerprint == null || credentialSecret == null) {
       throw new Error("crm_adapter.not_authenticated");
     }
     const url = `${apiBaseUrl}/crm/v3/objects/${endpoint}`;
     const requestInit: RequestInit = {
       method,
       headers: {
-        "Authorization": `Bearer ${credentialToken}`,
+        "Authorization": `Bearer ${credentialSecret.reveal()}`,
         "Content-Type": "application/json",
       },
     };
@@ -75,26 +78,31 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
       return undefined;
     },
     async healthCheck() {
-      return policy.evaluate(`${apiBaseUrl}/crm/v3/objects/contacts`).allowed;
+      if (credentialFingerprint == null) {
+        return false;
+      }
+      const decision = await policy.evaluate(`${apiBaseUrl}/crm/v3/objects/contacts`);
+      return decision.allowed;
     },
     async shutdown() {
       credentialFingerprint = null;
-      credentialToken = null;
+      credentialSecret?.clear();
+      credentialSecret = null;
     },
     async authenticate(credentials): Promise<void> {
       const token = requireString(credentials["token"] ?? credentials["managedSecretRef"], "token");
-      const fingerprint = createHash("sha256").update(token).digest("hex").slice(0, 8);
-      credentialToken = token;
-      credentialFingerprint = `crm_${crmType}_${fingerprint}`;
+      credentialSecret?.clear();
+      credentialSecret = createZeroableCredentialSecret(token);
+      credentialFingerprint = buildHashedCredentialFingerprint(`crm_${crmType}`, token);
     },
     async execute(action: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
-      if (credentialFingerprint == null || credentialToken == null) {
+      if (credentialFingerprint == null || credentialSecret == null) {
         throw new Error("crm_adapter.not_authenticated");
       }
       if (!/^[a-zA-Z0-9_]+$/.test(action)) {
         throw new Error("crm_adapter.invalid_action");
       }
-      const decision = policy.evaluate(`${apiBaseUrl}/crm/v3/objects/${action}`);
+      const decision = await policy.evaluate(`${apiBaseUrl}/crm/v3/objects/${action}`);
       if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, `CRM adapter: action "${action}" denied by egress policy`);
       }

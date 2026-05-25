@@ -10,6 +10,7 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, ValidationError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { buildHashedCredentialFingerprint } from "./credential-hygiene.js";
 
 export interface LivestreamAdapterPluginOptions {
   policy?: NetworkEgressPolicyService;
@@ -31,9 +32,14 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
       // OBS WebSocket credentials would be validated here
     },
     async healthCheck(): Promise<boolean> {
-      return credentialFingerprint != null
-        && policy.evaluate("https://api.twitch.tv/helix/streams").allowed
-        && policy.evaluate("https://www.googleapis.com/youtube/v3/liveBroadcasts").allowed;
+      if (credentialFingerprint == null) {
+        return false;
+      }
+      const [twitchDecision, youtubeDecision] = await Promise.all([
+        policy.evaluate("https://api.twitch.tv/helix/streams"),
+        policy.evaluate("https://www.googleapis.com/youtube/v3/liveBroadcasts"),
+      ]);
+      return twitchDecision.allowed && youtubeDecision.allowed;
     },
     async shutdown() {
       credentialFingerprint = null;
@@ -51,15 +57,15 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
           "OBS authentication token format is invalid",
         );
       }
-      credentialFingerprint = `obs_${token.trim().slice(0, 8)}`;
+      credentialFingerprint = buildHashedCredentialFingerprint("obs", token.trim());
     },
     async execute(action: string, params: Record<string, unknown>) {
       if (credentialFingerprint == null) {
         throw new Error("livestream_adapter.not_authenticated");
       }
 
-      const allowed = policy.evaluate("https://api.twitch.tv").allowed;
-      if (!allowed) {
+      const decision = await policy.evaluate("https://api.twitch.tv");
+      if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, "Livestream adapter: egress denied");
       }
 

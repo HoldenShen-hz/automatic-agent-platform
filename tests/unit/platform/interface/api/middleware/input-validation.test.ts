@@ -59,3 +59,11 @@ test("readValidatedJsonBody passes boolean through parser", () => {
   const result = readValidatedJsonBody('true', (data) => data);
   assert.equal(result, true);
 });
+
+test("readValidatedJsonBody unwraps ContractEnvelope payloads before parsing", () => {
+  const result = readValidatedJsonBody(
+    '{"envelopeId":"env_1","schemaVersion":"v4.3","payload":{"taskId":"task_1","title":"wrapped"}}',
+    (data) => data as { taskId: string; title: string },
+  );
+  assert.deepEqual({ ...result }, { taskId: "task_1", title: "wrapped" });
+});

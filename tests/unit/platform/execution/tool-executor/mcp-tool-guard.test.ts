@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  isMcpToolName,
   sanitizeMcpToolCallResult,
   validateMcpToolDefinition,
   validateMcpToolRuntime,
@@ -37,6 +38,8 @@ test("mcp tool guard rejects malformed names and builtin collisions", () => {
   assert.equal(validateMcpToolDefinition("mcp")?.code, "namespace_invalid");
   assert.equal(validateMcpToolDefinition("mcp_github_bash")?.code, "builtin_collision");
   assert.equal(validateMcpToolDefinition("mcp_github_list_issues"), null);
+  assert.equal(isMcpToolName("mcp"), false);
+  assert.equal(isMcpToolName("mcp_github_list_issues"), true);
 });
 
 test("mcp tool guard requires explicit metadata and approval for mutable tools", () => {

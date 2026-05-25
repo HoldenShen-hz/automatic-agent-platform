@@ -13,6 +13,7 @@ interface MockEventStore {
 
 interface MockHttpApiServer {
   broadcastTaskEvent: (taskId: string, event: unknown) => void;
+  getConnectedClientCount?: () => number;
 }
 
 function createMockEventRecord(overrides: Partial<EventRecord> = {}): EventRecord {
@@ -248,6 +249,30 @@ test("TaskWebSocketStatusRelay.pollOnce handles empty event list", () => {
 
   // Should not throw
   relay.pollOnce();
+});
+
+test("TaskWebSocketStatusRelay.pollOnce skips store reads when no websocket clients are connected", () => {
+  let pollCount = 0;
+  const store = {
+    event: {
+      listEventsByType(): EventRecord[] {
+        pollCount++;
+        return [];
+      },
+    },
+  } as unknown as AuthoritativeTaskStore;
+  const server = createMockServer();
+  server.getConnectedClientCount = () => 0;
+
+  const relay = new TaskWebSocketStatusRelay(
+    server as unknown as HttpApiServer,
+    store,
+    { pollIntervalMs: 10_000, backlogLimit: 100 },
+  );
+
+  relay.pollOnce();
+
+  assert.equal(pollCount, 0);
 });
 
 test("TaskWebSocketStatusRelay.start preloads existing events as seen", () => {

@@ -195,6 +195,30 @@ describe("bulkhead-isolation additional tests", () => {
       assert.equal(isolator.getMetrics().activeCalls, 0);
       assert.equal(await isolator.execute(async () => "recovered"), "recovered");
     });
+
+    test("active-call timeout reason uses the actual remaining deadline", async () => {
+      const isolator = new BulkheadIsolator("test-plane", {
+        maxConcurrentCalls: 1,
+        queueSize: 0,
+        timeoutMs: 50,
+      });
+      const slow = createDeferred<void>();
+
+      await assert.rejects(
+        (isolator as unknown as {
+          startCall: (fn: (signal?: AbortSignal) => Promise<string>, deadlineAt: number) => Promise<string>;
+        }).startCall(async () => {
+          await slow.promise;
+          return "slow";
+        }, Date.now() + 5),
+        (error: unknown) => {
+          assert.ok(error instanceof BulkheadTimeoutError);
+          assert.ok(error.timeoutMs <= 10);
+          assert.match(error.message, /timed out after \d+ms/);
+          return true;
+        },
+      );
+    });
   });
 
   describe("BulkheadMetrics accuracy", () => {

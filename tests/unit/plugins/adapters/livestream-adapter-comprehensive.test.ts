@@ -121,7 +121,7 @@ test.describe("LivestreamAdapter authenticate", () => {
     await adapter.authenticate({ obsToken: "ValidBase64-Token_123456789" });
   });
 
-  test("authenticate creates fingerprint with prefix obs_", async () => {
+  test("authenticate accepts credentials and derives a stable hashed fingerprint", async () => {
     const adapter = createLivestreamAdapterPlugin();
     await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
   });

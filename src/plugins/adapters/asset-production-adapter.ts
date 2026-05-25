@@ -26,8 +26,14 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       // Figma API credentials would be validated here
     },
     async healthCheck() {
-      return assetProductionPolicy.evaluate("https://api.figma.com/v1/files").allowed
-        && assetProductionPolicy.evaluate("https://cdn.figma.com").allowed;
+      if (credentialFingerprint == null) {
+        return false;
+      }
+      const [apiDecision, cdnDecision] = await Promise.all([
+        assetProductionPolicy.evaluate("https://api.figma.com/v1/files"),
+        assetProductionPolicy.evaluate("https://cdn.figma.com"),
+      ]);
+      return apiDecision.allowed && cdnDecision.allowed;
     },
     async shutdown() {
       credentialFingerprint = null;
@@ -51,8 +57,8 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
 
       // R28-14 fix: enforce egress policy
       const targetUrl = action.startsWith("cdn_") ? "https://cdn.figma.com" : "https://api.figma.com/v1/files";
-      const allowed = assetProductionPolicy.evaluate(targetUrl).allowed;
-      if (!allowed) {
+      const decision = await assetProductionPolicy.evaluate(targetUrl);
+      if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, "Asset production adapter: egress denied");
       }
 

@@ -153,6 +153,20 @@ test("extractIdempotencyKey uses custom header name", () => {
   assert.equal(result, "key-123");
 });
 
+test("extractIdempotencyKey reads ContractEnvelope idempotency key when header is missing", () => {
+  const result = extractIdempotencyKey(
+    {},
+    "Idempotency-Key",
+    JSON.stringify({
+      envelopeId: "env_1",
+      schemaVersion: "v4.3",
+      payload: { ok: true },
+      idempotencyKey: "env-key-123",
+    }),
+  );
+  assert.equal(result, "env-key-123");
+});
+
 test("buildIdempotencyErrorResponse creates AppError", () => {
   const error = buildIdempotencyErrorResponse("api.idempotency_key_required", "Missing key", 400);
   assert.equal(error.code, "api.idempotency_key_required");

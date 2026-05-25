@@ -96,11 +96,12 @@ export class BulkheadIsolator {
     const controller = new AbortController();
     let settled = false;
     const remainingMs = Math.max(0, deadlineAt - Date.now());
+    const timeoutMs = remainingMs;
     const timeoutError = new BulkheadTimeoutError(
       `bulkhead:timeout:${this.planeName}`,
-      `Bulkhead isolation: ${this.planeName} call timed out after ${this.config.timeoutMs}ms`,
+      `Bulkhead isolation: ${this.planeName} call timed out after ${timeoutMs}ms`,
       this.planeName,
-      this.config.timeoutMs,
+      timeoutMs,
     );
     const timeoutId = setTimeout(() => {
       controller.abort(timeoutError);

@@ -144,8 +144,11 @@ export function resolveExecutionAllowedTools(options: {
   // Priority 2: Execution-level allowlist from database
   const parsed = parseStoredStringArray(options.execution.allowedToolsJson);
   if (parsed.status === "invalid") {
+    toolExecutionAccessLogger.error("tool_execution_access: invalid stored execution allowlist fail-closed", {
+      errorCode: "tool.execution_allowed_tools_invalid",
+    });
     return {
-      allowedTools: undefined,
+      allowedTools: [],
       errorCode: "tool.execution_allowed_tools_invalid",
     };
   }

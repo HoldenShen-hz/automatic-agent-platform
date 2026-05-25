@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -108,6 +109,12 @@ test("buildContainerizedPluginRuntimeLaunchSpec renders container launcher place
     process.execPath,
     "/workspace/dist/plugin-runtime-child.js",
   ]);
+});
+
+test("ContainerizedPluginRuntimeHost logs non-protocol stdout lines", () => {
+  const source = readFileSync("src/domains/registry/plugin-runtime-host.ts", "utf8");
+
+  assert.match(source, /pluginRuntimeHostLogger\.warn\("plugin_runtime_host\.non_protocol_stdout"/);
 });
 
 test("ForkedPluginRuntimeHost executes presenter plugin through a sandboxed child runtime", async () => {

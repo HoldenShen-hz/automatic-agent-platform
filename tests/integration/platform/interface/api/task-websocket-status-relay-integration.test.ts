@@ -250,6 +250,31 @@ test("integration: TaskWebSocketStatusRelay ignores event without taskId", () =>
   assert.equal(broadcasts.length, 0);
 });
 
+test("integration: TaskWebSocketStatusRelay does not poll the event store without connected websocket clients", () => {
+  let pollCount = 0;
+  const relay = new TaskWebSocketStatusRelay(
+    {
+      broadcastTaskEvent(): void {},
+      getConnectedClientCount(): number {
+        return 0;
+      },
+    } as unknown as never,
+    {
+      event: {
+        listEventsByType(): EventRecord[] {
+          pollCount++;
+          return [];
+        },
+      },
+    } as unknown as never,
+    { backlogLimit: 10 },
+  );
+
+  relay.pollOnce();
+
+  assert.equal(pollCount, 0);
+});
+
 test("integration: TaskWebSocketStatusRelay handles empty event list", () => {
   const broadcasts: Array<{ taskId: string; event: TaskWebSocketEvent }> = [];
 

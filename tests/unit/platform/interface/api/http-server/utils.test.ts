@@ -42,20 +42,19 @@ test("readRequestId trims whitespace from header", () => {
 test("readRequestId generates UUID when header is absent", () => {
   const request = makeRequest("/api/test", {});
   const result = readRequestId(request);
-  assert.ok(result.startsWith("req_"));
-  assert.ok(result.length > "req_".length);
+  assert.match(result, /^req_[0-9a-f-]{36}$/);
 });
 
 test("readRequestId generates UUID when header is empty", () => {
   const request = makeRequest("/api/test", { "x-request-id": "" });
   const result = readRequestId(request);
-  assert.ok(result.startsWith("req_"));
+  assert.match(result, /^req_[0-9a-f-]{36}$/);
 });
 
 test("readRequestId generates UUID when header is whitespace only", () => {
   const request = makeRequest("/api/test", { "x-request-id": "   " });
   const result = readRequestId(request);
-  assert.ok(result.startsWith("req_"));
+  assert.match(result, /^req_[0-9a-f-]{36}$/);
 });
 
 // readLimit tests

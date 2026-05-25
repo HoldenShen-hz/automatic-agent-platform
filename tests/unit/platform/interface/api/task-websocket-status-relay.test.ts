@@ -226,6 +226,31 @@ test("TaskWebSocketStatusRelay skips events with null taskId", () => {
   assert.equal(broadcasts.length, 0);
 });
 
+test("TaskWebSocketStatusRelay skips polling when no websocket subscribers are connected", () => {
+  let pollCount = 0;
+  const relay = new TaskWebSocketStatusRelay(
+    {
+      broadcastTaskEvent(): void {},
+      getConnectedClientCount(): number {
+        return 0;
+      },
+    } as unknown as never,
+    {
+      event: {
+        listEventsByType(): EventRecord[] {
+          pollCount++;
+          return [];
+        },
+      },
+    } as unknown as never,
+    { backlogLimit: 10 },
+  );
+
+  relay.pollOnce();
+
+  assert.equal(pollCount, 0);
+});
+
 test("TaskWebSocketStatusRelay skips events where payload has no toStatus", () => {
   const broadcasts: Array<{ taskId: string; event: TaskWebSocketEvent }> = [];
   const relay = new TaskWebSocketStatusRelay(

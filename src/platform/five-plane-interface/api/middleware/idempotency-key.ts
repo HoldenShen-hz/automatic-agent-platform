@@ -379,12 +379,32 @@ export function resetGlobalIdempotencyKeyMiddleware(): void {
 export function extractIdempotencyKey(
   headers: Record<string, string | string[] | undefined>,
   headerName: string = "Idempotency-Key",
+  body?: string | null,
 ): string | undefined {
   const value = headers[headerName.toLowerCase()] ?? headers[headerName];
   if (Array.isArray(value)) {
     return value[0];
   }
-  return value;
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  return readIdempotencyKeyFromEnvelope(body);
+}
+
+function readIdempotencyKeyFromEnvelope(body: string | null | undefined): string | undefined {
+  if (typeof body !== "string" || body.trim().length === 0) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    if (parsed == null || typeof parsed !== "object") {
+      return undefined;
+    }
+    const candidate = (parsed as { idempotencyKey?: unknown }).idempotencyKey;
+    return typeof candidate === "string" && candidate.trim().length > 0 ? candidate.trim() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

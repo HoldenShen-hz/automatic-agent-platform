@@ -27,8 +27,16 @@ test.describe("AssetProductionAdapter Plugin", () => {
     await adapter.shutdown();
   });
 
-  test("healthCheck evaluates Figma API and CDN egress policy", async () => {
+  test("healthCheck stays unhealthy before authentication", async () => {
     const adapter = createAssetProductionAdapterPlugin();
+    assert.ok(adapter.healthCheck);
+    const result = await adapter.healthCheck();
+    assert.equal(result, false);
+  });
+
+  test("healthCheck evaluates Figma API and CDN egress policy after authentication", async () => {
+    const adapter = createAssetProductionAdapterPlugin();
+    await adapter.authenticate({ token: "figma_token_12345" });
     assert.ok(adapter.healthCheck);
     const result = await adapter.healthCheck();
     assert.equal(result, true);

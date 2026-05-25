@@ -58,16 +58,29 @@ export interface HttpTransportOptions {
 export const DEFAULT_ACCEPT_VERSION_HEADER = "2026-04-01,2026-01-01";
 
 export type RestHttpUiAction = "redirect_to_login" | "access_denied" | "backoff_and_retry" | "version_not_supported" | "none";
+export type RestHttpErrorCategory = "network" | "auth" | "validation" | "business" | "contract";
 
 export class RestHttpError extends Error {
   public readonly status: number;
   public readonly uiAction: RestHttpUiAction;
   public readonly retryAfterMs: number | null;
+  public readonly category: RestHttpErrorCategory;
+  public readonly statusCode: number;
+  public readonly isRetryable: boolean;
+  public readonly code: string | null;
 
-  public constructor(status: number, retryAfterMs: number | null = null) {
-    super(`rest.http_error:${status}`);
+  public constructor(
+    status: number,
+    retryAfterMs: number | null = null,
+    details: { message?: string; code?: string | null } = {},
+  ) {
+    super(details.message ?? `rest.http_error:${status}`);
     this.status = status;
+    this.statusCode = status;
     this.retryAfterMs = retryAfterMs;
+    this.category = classifyRestHttpError(status);
+    this.isRetryable = status === 429 || status >= 500;
+    this.code = details.code ?? null;
     this.uiAction = status === 401
       ? "redirect_to_login"
       : status === 403
@@ -207,6 +220,13 @@ interface PlatformEnvelope<T> {
   readonly data: T;
 }
 
+interface ContractEnvelope<T> {
+  readonly envelopeId: string;
+  readonly schemaVersion: string;
+  readonly payload: T;
+  readonly idempotencyKey?: string;
+}
+
 const DEFAULT_RETRY_CONFIG = {
   maxRetries: 3,
   baseDelayMs: 100,
@@ -286,9 +306,12 @@ export class HttpTransport {
     if (!contentType.includes("application/json")) {
       return undefined as T;
     }
-    const parsed = await response.json() as T | PlatformEnvelope<T>;
+    const parsed = await response.json() as T | PlatformEnvelope<T> | ContractEnvelope<T>;
     if (parsed != null && typeof parsed === "object" && "data" in parsed) {
       return (parsed as PlatformEnvelope<T>).data;
+    }
+    if (parsed != null && typeof parsed === "object" && "envelopeId" in parsed && "schemaVersion" in parsed && "payload" in parsed) {
+      return (parsed as ContractEnvelope<T>).payload;
     }
     return parsed as T;
   }
@@ -314,7 +337,7 @@ export class HttpTransport {
 
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
     const url = this.resolveRequestUrl(request.path);
-    const requestBody = request.body == null ? null : JSON.stringify(request.body);
+    const requestBody = request.body == null ? null : JSON.stringify(this.wrapRequestBody(request));
     const requestHeaders = new Headers({
       "content-type": "application/json",
       "Accept-Version": this.options.acceptVersion ?? DEFAULT_ACCEPT_VERSION_HEADER,
@@ -349,9 +372,11 @@ export class HttpTransport {
         if (!response.ok) {
           const retryAfterHeader = response.headers.get("retry-after");
           const retryAfterSeconds = retryAfterHeader == null ? Number.NaN : Number(retryAfterHeader);
+          const details = await this.readErrorDetails(response);
           throw new RestHttpError(
             response.status,
             Number.isFinite(retryAfterSeconds) ? Math.round(retryAfterSeconds * 1000) : null,
+            details,
           );
         }
 
@@ -376,6 +401,66 @@ export class HttpTransport {
     }
     throw lastError;
   }
+
+  private async readErrorDetails(response: Response): Promise<{ message?: string; code?: string | null }> {
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      return {};
+    }
+    try {
+      const parsed = await response.clone().json() as unknown;
+      if (parsed == null || typeof parsed !== "object") {
+        return {};
+      }
+      const root = parsed as {
+        message?: unknown;
+        code?: unknown;
+        error?: { message?: unknown; code?: unknown };
+      };
+      const message = typeof root.error?.message === "string"
+        ? root.error.message
+        : typeof root.message === "string"
+          ? root.message
+          : undefined;
+      const code = typeof root.error?.code === "string"
+        ? root.error.code
+        : typeof root.code === "string"
+          ? root.code
+          : null;
+      return { ...(message == null ? {} : { message }), code };
+    } catch {
+      return {};
+    }
+  }
+
+  private wrapRequestBody(request: RestClientRequest): unknown {
+    if (request.body == null) {
+      return null;
+    }
+    const idempotencyKey = request.headers.get("Idempotency-Key") ?? request.headers.get("x-idempotency-key") ?? undefined;
+    return {
+      envelopeId: `env_${crypto.randomUUID()}`,
+      schemaVersion: "v4.3",
+      payload: request.body,
+      ...(idempotencyKey == null ? {} : { idempotencyKey }),
+    } satisfies ContractEnvelope<unknown>;
+  }
+}
+
+function classifyRestHttpError(status: number): RestHttpErrorCategory {
+  if (status === 401 || status === 403) {
+    return "auth";
+  }
+  if (status === 400 || status === 422) {
+    return "validation";
+  }
+  if (status === 406) {
+    return "contract";
+  }
+  if (status >= 500 || status === 429) {
+    return "network";
+  }
+  return "business";
 }
 
 export class DefaultRESTClient implements RESTClient {

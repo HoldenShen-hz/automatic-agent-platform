@@ -120,3 +120,22 @@ test("ShadowSnapshotService fail-closes when a non-ignored entry exceeds the con
   }
 });
 
+test("ShadowSnapshotService generates normalized snapshot ids when one is not provided", () => {
+  const workspace = createTempWorkspace("aa-shadow-workspace-");
+  const shadowRoot = createTempWorkspace("aa-shadow-root-");
+
+  try {
+    createFile(join(workspace, "src", "index.ts"), "export const value = 1;\n");
+
+    const service = new ShadowSnapshotService({
+      workspaceRoot: workspace,
+      shadowRoot,
+    });
+
+    const snapshot = service.createSnapshot();
+    assert.match(snapshot.snapshotId, /^shadow_snapshot_[0-9a-f-]{36}$/i);
+  } finally {
+    cleanupPath(workspace);
+    cleanupPath(shadowRoot);
+  }
+});

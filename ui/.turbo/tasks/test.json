@@ -4,8 +4,9 @@
     "vitest",
     "run",
     "--run",
+    "tests/shared/api-client-runtime-regressions.test.ts",
     "tests/unit/ui/shared/ws-client.test.ts"
   ],
-  "startedAt": "2026-05-24T17:14:33.076Z",
-  "completedAt": "2026-05-24T17:14:33.546Z"
+  "startedAt": "2026-05-25T01:11:21.558Z",
+  "completedAt": "2026-05-25T01:11:23.009Z"
 }

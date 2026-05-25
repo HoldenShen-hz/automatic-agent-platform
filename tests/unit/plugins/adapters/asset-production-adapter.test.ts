@@ -29,9 +29,16 @@ test("AssetProductionAdapter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("AssetProductionAdapter.healthCheck evaluates Figma API and CDN egress", async () => {
+test("AssetProductionAdapter.healthCheck returns false before authentication", async () => {
   const adapter = createAssetProductionAdapterPlugin();
   assert.ok(adapter.healthCheck !== undefined);
+  const result = await adapter.healthCheck();
+  assert.equal(result, false);
+});
+
+test("AssetProductionAdapter.healthCheck evaluates Figma API and CDN egress after authentication", async () => {
+  const adapter = createAssetProductionAdapterPlugin();
+  await adapter.authenticate({ token: "valid_figma_token_12345" });
   const result = await adapter.healthCheck();
   assert.equal(result, true);
 });

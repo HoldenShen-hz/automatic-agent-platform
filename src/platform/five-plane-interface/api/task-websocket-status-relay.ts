@@ -8,11 +8,13 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 export interface TaskWebSocketStatusRelayOptions {
   pollIntervalMs?: number;
   backlogLimit?: number;
+  hasSubscribers?: () => boolean;
 }
 
 export class TaskWebSocketStatusRelay {
   private readonly pollIntervalMs: number;
   private readonly backlogLimit: number;
+  private readonly hasSubscribers: () => boolean;
   private readonly seenEventIds = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
 
@@ -23,6 +25,7 @@ export class TaskWebSocketStatusRelay {
   ) {
     this.pollIntervalMs = options.pollIntervalMs ?? 1000;
     this.backlogLimit = options.backlogLimit ?? 100;
+    this.hasSubscribers = options.hasSubscribers ?? (() => this.readSubscriberStateFromServer());
   }
 
   public start(): void {
@@ -48,6 +51,10 @@ export class TaskWebSocketStatusRelay {
   }
 
   public pollOnce(): void {
+    if (!this.hasSubscribers()) {
+      return;
+    }
+
     try {
       const recentEvents = this.store.event
         .listEventsByType("task:status_changed", this.backlogLimit)
@@ -103,6 +110,12 @@ export class TaskWebSocketStatusRelay {
       }
       this.seenEventIds.delete(next.value);
     }
+  }
+
+  private readSubscriberStateFromServer(): boolean {
+    const countReader = this.server as HttpApiServer & { getConnectedClientCount?: () => number };
+    const connectedClientCount = countReader.getConnectedClientCount?.();
+    return connectedClientCount == null || connectedClientCount > 0;
   }
 }
 

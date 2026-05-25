@@ -21,6 +21,7 @@ import { basename, dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { PolicyDeniedError, SandboxError, StorageError, ValidationError } from "../../contracts/errors.js";
+import { newId } from "../../contracts/types/ids.js";
 import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 
 /**
@@ -121,8 +122,7 @@ function nowIso(): string {
  * Generates a unique snapshot ID.
  */
 function newSnapshotId(): string {
-  const suffix = randomUUID();
-  return `shadow-${Date.now()}-${suffix}`;
+  return newId("shadow_snapshot");
 }
 
 /**

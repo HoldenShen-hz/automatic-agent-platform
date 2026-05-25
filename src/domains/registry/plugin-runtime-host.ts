@@ -8,6 +8,7 @@ import { ValidationError } from "../../platform/contracts/errors.js";
 import { STDERR_TAIL_BUFFER_BYTES } from "../../platform/contracts/constants/io.js";
 import { getProcessTracker } from "../../platform/five-plane-execution/resource/process-tracker.js";
 import { newId } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import type {
   PluginLifecycleContext,
   PluginRuntimeIsolation,
@@ -21,6 +22,8 @@ import type {
   PluginRuntimeResponse,
 } from "./plugin-runtime-protocol.js";
 import { parsePluginRuntimeMessage } from "./plugin-runtime-protocol.js";
+
+const pluginRuntimeHostLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export interface PluginRuntimeReadyMetadata {
   pid: number;
@@ -436,7 +439,12 @@ export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
       }
       try {
         this.handleMessage(JSON.parse(line));
-      } catch {
+      } catch (error) {
+        pluginRuntimeHostLogger.warn("plugin_runtime_host.non_protocol_stdout", {
+          pluginId: this.pluginId,
+          line: line.slice(0, 512),
+          error: error instanceof Error ? error.message : String(error),
+        });
         this.stderrBuffer = `${this.stderrBuffer}\nnon-protocol-stdout:${line}`.trim().slice(-STDERR_TAIL_BUFFER_BYTES);
       }
     }

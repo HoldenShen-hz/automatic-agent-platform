@@ -56,7 +56,7 @@ test("resolveExecutionAllowedTools returns error for invalid JSON", () => {
     executionRequired: true,
   });
 
-  assert.equal(result.allowedTools, undefined);
+  assert.deepEqual(result.allowedTools, []);
   assert.equal(result.errorCode, "tool.execution_allowed_tools_invalid");
 });
 
@@ -66,8 +66,18 @@ test("resolveExecutionAllowedTools returns error for non-array JSON", () => {
     executionRequired: true,
   });
 
-  assert.equal(result.allowedTools, undefined);
+  assert.deepEqual(result.allowedTools, []);
   assert.equal(result.errorCode, "tool.execution_allowed_tools_invalid");
+});
+
+test("resolveExecutionAllowedTools fail-closes on invalid stored allowlist", () => {
+  const result = resolveExecutionAllowedTools({
+    execution: { allowedToolsJson: '["read", 1]' },
+    executionRequired: true,
+  });
+
+  assert.deepEqual(result.allowedTools, []);
+  assert.equal(isExecutionToolAllowed("read", result.allowedTools), false);
 });
 
 test("resolveExecutionAllowedTools normalizes whitespace in allowlist", () => {

@@ -26,8 +26,16 @@ test.describe("GameDevAdapter Plugin", () => {
     await adapter.shutdown();
   });
 
-  test("healthCheck evaluates Unity Cloud Build egress policy", async () => {
+  test("healthCheck stays unhealthy before authentication", async () => {
     const adapter = createGameDevAdapterPlugin();
+    assert.ok(adapter.healthCheck);
+    const result = await adapter.healthCheck();
+    assert.equal(result, false);
+  });
+
+  test("healthCheck evaluates Unity Cloud Build egress policy after authentication", async () => {
+    const adapter = createGameDevAdapterPlugin();
+    await adapter.authenticate({ token: "unity_token_abc12345" });
     assert.ok(adapter.healthCheck);
     const result = await adapter.healthCheck();
     assert.equal(result, true);
@@ -77,12 +85,12 @@ test.describe("GameDevAdapter authenticate", () => {
     );
   });
 
-  test("authenticate creates fingerprint with prefix unity_", async () => {
+  test("authenticate accepts credentials and derives a stable hashed fingerprint", async () => {
     const adapter = createGameDevAdapterPlugin();
     await adapter.authenticate({ token: "test_unity_token_value" });
   });
 
-  test("authenticate fingerprint uses first 8 chars of token", async () => {
+  test("authenticate does not depend on raw token prefix semantics", async () => {
     const adapter = createGameDevAdapterPlugin();
     await adapter.authenticate({ token: "abcdefghijklmnop" });
   });

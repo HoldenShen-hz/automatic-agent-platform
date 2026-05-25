@@ -29,9 +29,16 @@ test("GameDevAdapter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("GameDevAdapter.healthCheck returns true", async () => {
+test("GameDevAdapter.healthCheck returns false before authentication", async () => {
   const adapter = createGameDevAdapterPlugin();
   assert.ok(adapter.healthCheck !== undefined);
+  const result = await adapter.healthCheck();
+  assert.equal(result, false);
+});
+
+test("GameDevAdapter.healthCheck returns true after authentication", async () => {
+  const adapter = createGameDevAdapterPlugin();
+  await adapter.authenticate({ token: "valid_unity_token_12345" });
   const result = await adapter.healthCheck();
   assert.equal(result, true);
 });

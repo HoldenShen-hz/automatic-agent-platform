@@ -293,6 +293,10 @@ export class HttpApiServer {
     this.webSocketBridge?.broadcastToTask(taskId, event);
   }
 
+  public getConnectedClientCount(): number {
+    return this.webSocketBridge?.getClientCount() ?? 0;
+  }
+
   public async inject(options: InjectRequestOptions): Promise<InjectResponse> {
     const startedAt = Date.now();
     const headers = normalizeHeaders(options.headers);
@@ -631,7 +635,7 @@ export class HttpApiServer {
 
         const tenantId = principal?.tenantId ?? null;
         const method = request.method ?? "GET";
-        const idempotencyKey = extractIdempotencyKey(request.headers);
+        const idempotencyKey = extractIdempotencyKey(request.headers, "Idempotency-Key", request.body);
         const guardPlan = buildRequestGuardPlan({
           method,
           path: route.pathname,

@@ -9,6 +9,7 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { buildHashedCredentialFingerprint } from "./credential-hygiene.js";
 
 // R28-13 fix: add auth check and egress policy to game-dev-adapter
 const gameDevPolicy = new NetworkEgressPolicyService({
@@ -28,7 +29,11 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       // Unity Cloud Build credentials would be validated here
     },
     async healthCheck() {
-      return gameDevPolicy.evaluate("https://build-api.unity.com").allowed;
+      if (credentialFingerprint == null) {
+        return false;
+      }
+      const decision = await gameDevPolicy.evaluate("https://build-api.unity.com");
+      return decision.allowed;
     },
     async shutdown() {
       credentialFingerprint = null;
@@ -38,7 +43,7 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       if (!token || typeof token !== "string") {
         throw new Error("game_dev_adapter.missing_credentials");
       }
-      credentialFingerprint = `unity_${token.slice(0, 8)}`;
+      credentialFingerprint = buildHashedCredentialFingerprint("unity", token);
     },
     async execute(action: string, params: Record<string, unknown>) {
       if (credentialFingerprint == null) {
@@ -51,8 +56,8 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       };
 
       // R28-13 fix: enforce egress policy
-      const allowed = gameDevPolicy.evaluate("https://build-api.unity.com").allowed;
-      if (!allowed) {
+      const decision = await gameDevPolicy.evaluate("https://build-api.unity.com");
+      if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, "Game dev adapter: egress denied");
       }
 

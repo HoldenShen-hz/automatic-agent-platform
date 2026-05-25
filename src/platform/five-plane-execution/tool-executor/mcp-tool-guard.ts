@@ -118,10 +118,10 @@ function parseMcpToolName(toolName: string): { serverName: string; remoteToolNam
 
 /**
  * Checks if a tool name follows the MCP naming convention.
- * Returns true for "mcp" or names starting with "mcp_".
+ * MCP tools must use the namespaced form mcp_<server>_<tool>.
  */
 export function isMcpToolName(toolName: string): boolean {
-  return toolName === "mcp" || toolName.startsWith(MCP_TOOL_PREFIX);
+  return parseMcpToolName(toolName) != null;
 }
 
 /**
@@ -132,6 +132,12 @@ export function isMcpToolName(toolName: string): boolean {
  * @returns Validation issue if found, null if valid
  */
 export function validateMcpToolDefinition(toolName: string): McpToolValidationIssue | null {
+  if (toolName === "mcp") {
+    return {
+      code: "namespace_invalid",
+      detail: `MCP tool ${toolName} must use the namespaced form mcp_<server>_<tool>.`,
+    };
+  }
   if (!isMcpToolName(toolName)) {
     return null;
   }

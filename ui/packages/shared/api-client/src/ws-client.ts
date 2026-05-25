@@ -286,6 +286,7 @@ export class BrowserWSClient implements WSClient {
     }
     this.setStatus("reconnecting");
     if (this.fallbackClient != null) {
+      this.fallbackClient.disconnect();
       this.fallbackClient.connect(url, token);
     }
     this.scheduleReconnect();

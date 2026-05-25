@@ -169,6 +169,35 @@ describe("BrowserWSClient", () => {
     });
   });
 
+  it("resets fallback client state before reconnecting", () => {
+    vi.useFakeTimers();
+    const fallback = new InMemoryWSClient();
+    const disconnectSpy = vi.spyOn(fallback, "disconnect");
+    const connectSpy = vi.spyOn(fallback, "connect");
+
+    class SilentSocket {
+      public static readonly CONNECTING = 0;
+      public static readonly OPEN = 1;
+      public readyState = SilentSocket.CONNECTING;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: ((event?: { code?: number }) => void) | null = null;
+      public onerror: (() => void) | null = null;
+
+      public constructor(_url: string, _protocols?: string | string[]) {}
+      public send(_message: string): void {}
+      public close(): void {}
+    }
+
+    const client = new BrowserWSClient(SilentSocket as unknown as typeof WebSocket, fallback);
+    (client as unknown as { currentUrl: string | null; currentToken: string | null }).currentUrl = "ws://example.test/ws";
+    (client as unknown as { currentUrl: string | null; currentToken: string | null }).currentToken = "token-1";
+    (client as unknown as { handleReconnect: (url: string, token: string) => void }).handleReconnect("ws://example.test/ws", "token-1");
+
+    expect(disconnectSpy).toHaveBeenCalledTimes(1);
+    expect(connectSpy).toHaveBeenCalledWith("ws://example.test/ws", "token-1");
+  });
+
   it("subscribe returns unsubscribe that removes handler", () => {
     class TestSocket {
       public static readonly OPEN = 1;

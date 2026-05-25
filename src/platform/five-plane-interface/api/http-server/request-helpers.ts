@@ -86,7 +86,7 @@ export function authenticateOptionalPrincipal(
   try {
     return authService.authenticate(request.headers);
   } catch (error) {
-    if (error instanceof ApiAuthError) {
+    if (error instanceof ApiAuthError && error.code === "api.auth_required") {
       return null;
     }
     throw error;

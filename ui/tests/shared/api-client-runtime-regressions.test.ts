@@ -74,6 +74,24 @@ describe("shared api-client runtime regressions", () => {
     expect(response.data).toEqual({ ok: true, items: [1, 2, 3] });
   });
 
+  it("unwraps ContractEnvelope responses before returning data to callers", async () => {
+    const transport = new HttpTransport({
+      baseUrl: "https://example.test",
+      fetchImplementation: async () => new Response(JSON.stringify({
+        envelopeId: "env_123",
+        schemaVersion: "v4.3",
+        payload: { ok: true, items: [4, 5, 6] },
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    });
+
+    const response = await transport.send<{ ok: boolean; items: number[] }>(createRequest("/api/v1/tasks"));
+
+    expect(response.data).toEqual({ ok: true, items: [4, 5, 6] });
+  });
+
   it("opens the circuit breaker after repeated terminal failures and fail-closes subsequent requests", async () => {
     vi.useFakeTimers();
     let attempts = 0;
@@ -251,6 +269,7 @@ describe("shared api-client runtime regressions", () => {
   it("adds Idempotency-Key headers to mutating requests before hitting the transport", async () => {
     let idempotencyKey = "";
     let legacyIdempotencyKey = "";
+    let bodyIdempotencyKey = "";
     const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
       idempotencyKey = request.headers.get("Idempotency-Key") ?? "";
       legacyIdempotencyKey = request.headers.get("x-idempotency-key") ?? "";
@@ -264,6 +283,26 @@ describe("shared api-client runtime regressions", () => {
 
     expect(idempotencyKey).toBeTruthy();
     expect(legacyIdempotencyKey).toBe(idempotencyKey);
+
+    const transport = new HttpTransport({
+      baseUrl: "https://example.test",
+      fetchImplementation: async (_input, init) => {
+        bodyIdempotencyKey = JSON.parse(String(init?.body)).idempotencyKey ?? "";
+        return new Response(JSON.stringify({ requestId: "req_1", data: { ok: true } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+    await transport.send({
+      path: "/api/v1/tasks",
+      method: "POST",
+      headers: new Headers({
+        "Idempotency-Key": idempotencyKey,
+      }),
+      body: { title: "dedupe me" },
+    });
+    expect(bodyIdempotencyKey).toBe(idempotencyKey);
   });
 
   it("forwards If-Match on preference updates so optimistic locking reaches the transport", async () => {

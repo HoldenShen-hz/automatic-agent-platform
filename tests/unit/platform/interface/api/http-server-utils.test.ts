@@ -37,13 +37,13 @@ test("readRequestId trims whitespace from header value", () => {
 test("readRequestId generates fallback when header missing", () => {
   const request = createMockRequest({ headers: {} });
   const result = readRequestId(request);
-  assert.ok(result.startsWith("req_"));
+  assert.match(result, /^req_[0-9a-f-]{36}$/);
 });
 
 test("readRequestId returns fallback when header is empty string", () => {
   const request = createMockRequest({ headers: { "x-request-id": "" } });
   const result = readRequestId(request);
-  assert.ok(result.startsWith("req_"));
+  assert.match(result, /^req_[0-9a-f-]{36}$/);
 });
 
 test("readLimit parses valid limit from query", () => {

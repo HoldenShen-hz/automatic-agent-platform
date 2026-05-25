@@ -1,3 +1,5 @@
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
 export interface ChineseWallAccessStep {
   readonly stepId: string;
   readonly action: "prepare_grant" | "commit_grant" | "prepare_release" | "commit_release" | "audit";
@@ -33,6 +35,8 @@ export interface ChineseWallAccessSagaReceipt {
     readonly outcome: "prepared" | "committed" | "compensated" | "audited" | "failed";
   }[];
 }
+
+const chineseWallAccessSagaLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export class ChineseWallAccessSaga {
   public constructor(private readonly handlers: ChineseWallAccessSagaHandlers = {}) {}
@@ -106,7 +110,13 @@ export class ChineseWallAccessSaga {
           case "audit":
             break;
         }
-      } catch {
+      } catch (error) {
+        chineseWallAccessSagaLogger.warn("chinese_wall_access_saga.step_failed", {
+          accessId,
+          stepId: normalizedStep.stepId,
+          action: normalizedStep.action,
+          error: error instanceof Error ? error.message : String(error),
+        });
         failedAction ??= normalizedStep.action;
         const lastLog = executionLog[executionLog.length - 1];
         if (

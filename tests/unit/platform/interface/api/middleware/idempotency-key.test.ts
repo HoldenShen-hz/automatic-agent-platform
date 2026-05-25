@@ -275,6 +275,17 @@ describe("extractIdempotencyKey", () => {
     const headers = { "x-custom-key": "custom123" };
     strictEqual(extractIdempotencyKey(headers, "X-Custom-Key"), "custom123");
   });
+
+  it("should fall back to ContractEnvelope.idempotencyKey when header is absent", () => {
+    const headers = {};
+    const body = JSON.stringify({
+      envelopeId: "env_1",
+      schemaVersion: "v4.3",
+      payload: { ok: true },
+      idempotencyKey: "env-key-123",
+    });
+    strictEqual(extractIdempotencyKey(headers, "Idempotency-Key", body), "env-key-123");
+  });
 });
 
 describe("buildIdempotencyErrorResponse", () => {

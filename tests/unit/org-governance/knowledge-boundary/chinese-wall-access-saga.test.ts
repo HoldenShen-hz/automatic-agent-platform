@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { ChineseWallAccessSaga } from "../../../../src/org-governance/knowledge-boundary/chinese-wall-access-saga.js";
@@ -36,4 +37,10 @@ test("ChineseWallAccessSaga executes release compensation when grant commit fail
   assert.equal(receipt.status, "rolled_back");
   assert.deepEqual(receipt.compensatedActions, ["prepare_grant"]);
   assert.deepEqual(calls, ["prepare_grant", "compensate_grant"]);
+});
+
+test("ChineseWallAccessSaga logs failed workflow steps instead of silently suppressing them", () => {
+  const source = readFileSync("src/org-governance/knowledge-boundary/chinese-wall-access-saga.ts", "utf8");
+
+  assert.match(source, /chineseWallAccessSagaLogger\.warn\("chinese_wall_access_saga\.step_failed"/);
 });

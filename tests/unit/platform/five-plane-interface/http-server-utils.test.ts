@@ -38,8 +38,7 @@ test("readRequestId uses x-request-id header when present", () => {
 test("readRequestId generates UUID when no header", () => {
   const request = makeRequest({ headers: {} });
   const result = readRequestId(request);
-  assert.ok(result.startsWith("req_"), "should start with req_");
-  assert.ok(result.includes("_"), "should contain underscore");
+  assert.match(result, /^req_[0-9a-f-]{36}$/);
 });
 
 test("readRequestId trims whitespace from header value", () => {

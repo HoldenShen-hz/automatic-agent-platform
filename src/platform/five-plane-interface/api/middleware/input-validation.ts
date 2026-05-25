@@ -3,6 +3,12 @@ import { sanitizeJsonValue } from "./sanitize.js";
 import { ApiError } from "../http-server/api-error.js";
 import type { ApiRequestLike } from "../http-server/types.js";
 
+interface ContractEnvelopeLike {
+  readonly envelopeId: string;
+  readonly schemaVersion: string;
+  readonly payload: unknown;
+}
+
 export interface ContentTypeValidationConfig {
   readonly allowedContentTypes: readonly string[];
   readonly requireContentType: boolean;
@@ -83,5 +89,21 @@ export function readValidatedJsonBody<T>(
   parser: (payload: unknown) => T,
 ): T {
   const parsed = readJsonBody(body);
-  return parser(sanitizeJsonValue(parsed));
+  const sanitized = sanitizeJsonValue(parsed);
+  return parser(unwrapContractEnvelopePayload(sanitized));
+}
+
+function unwrapContractEnvelopePayload(value: unknown): unknown {
+  if (!isContractEnvelope(value)) {
+    return value;
+  }
+  return sanitizeJsonValue(value.payload);
+}
+
+function isContractEnvelope(value: unknown): value is ContractEnvelopeLike {
+  return value != null
+    && typeof value === "object"
+    && typeof (value as ContractEnvelopeLike).envelopeId === "string"
+    && typeof (value as ContractEnvelopeLike).schemaVersion === "string"
+    && "payload" in value;
 }
