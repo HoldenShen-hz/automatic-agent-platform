@@ -36,7 +36,7 @@ export const INTERFACE_CAPABILITY_BASELINES: readonly InterfaceCapabilityBaselin
     capabilityId: "ingress",
     entryModule: "src/platform/five-plane-interface/ingress/index.ts",
     description: "Ingress governance, tenant isolation, and route gating baselines.",
-    baselineServices: ["IngressGovernanceService"],
+    baselineServices: ["DistributedRateLimiter"],
   },
   {
     capabilityId: "scheduler",

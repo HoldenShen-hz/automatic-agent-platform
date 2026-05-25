@@ -36,11 +36,11 @@ export const CONTROL_PLANE_CAPABILITY_BASELINES: readonly ControlPlaneCapability
   freezeBaseline({ capabilityId: "cost-alert", entryModule: "src/platform/five-plane-control-plane/cost-alert/index.ts", description: "Budget alerting and threshold-based cost control baselines.", baselineServices: ["CostAlertService"] }),
   freezeBaseline({ capabilityId: "iam", entryModule: "src/platform/five-plane-control-plane/iam/index.ts", description: "Sandbox policy, secret management, egress governance, and IAM baselines.", baselineServices: ["SecretManagementService"] }),
   freezeBaseline({ capabilityId: "incident-control", entryModule: "src/platform/five-plane-control-plane/incident-control/index.ts", description: "Incident, deployment, doctor, and human takeover control baselines.", baselineServices: ["DoctorService", "ReleasePipelineService"] }),
-  freezeBaseline({ capabilityId: "policy-center", entryModule: "src/platform/five-plane-control-plane/policy-center/index.ts", description: "Policy composition, merge, and enforcement baselines.", baselineServices: ["PolicyRegistryService"] }),
+  freezeBaseline({ capabilityId: "policy-center", entryModule: "src/platform/five-plane-control-plane/policy-center/index.ts", description: "Policy composition, merge, and enforcement baselines.", baselineServices: ["PolicyCenterService"] }),
   freezeBaseline({ capabilityId: "replay-repair-control", entryModule: "src/platform/five-plane-control-plane/replay-repair-control/index.ts", description: "Replay, rebuild, and repair control baselines.", baselineServices: ["ReplayRepairControlService"] }),
   freezeBaseline({ capabilityId: "risk-control", entryModule: "src/platform/five-plane-control-plane/risk-control/index.ts", description: "Risk evaluation, stop-loss, and safety gate baselines.", baselineServices: ["RiskEvaluationEngine"] }),
   freezeBaseline({ capabilityId: "rollout-controller", entryModule: "src/platform/five-plane-control-plane/rollout-controller/index.ts", description: "Traffic routing, rollout, and rollout freeze baselines.", baselineServices: ["TrafficRoutingService"] }),
-  freezeBaseline({ capabilityId: "tenant", entryModule: "src/platform/five-plane-control-plane/tenant/index.ts", description: "Tenant registration, isolation, and tenancy lifecycle baselines.", baselineServices: ["TenantManagementService"] }),
+  freezeBaseline({ capabilityId: "tenant", entryModule: "src/platform/five-plane-control-plane/tenant/index.ts", description: "Tenant registration, isolation, and tenancy lifecycle baselines.", baselineServices: ["TenantBoundaryRegistryService"] }),
 ]);
 
 export function listControlPlaneCapabilityBaselines(): readonly ControlPlaneCapabilityBaseline[] {

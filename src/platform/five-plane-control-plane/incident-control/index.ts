@@ -14,3 +14,5 @@
 
 export * from "./incident-resolver.js";
 export * from "./war-room-coordination-service.js";
+export * from "./doctor-service.js";
+export * from "./release-pipeline-service.js";
