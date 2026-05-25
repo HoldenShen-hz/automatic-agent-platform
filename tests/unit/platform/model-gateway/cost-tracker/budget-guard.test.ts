@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { BudgetGuard, type BudgetPolicy } from "../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
+import { StructuredLogger, type StructuredLogEntry } from "../../../../../src/platform/shared/observability/structured-logger.js";
 
 test("BudgetGuard evaluateTaskSpend allows when under budget", () => {
   const guard = new BudgetGuard();
@@ -494,4 +495,45 @@ test("BudgetGuard evaluateTaskSpend with warnAtRatio 0", () => {
   assert.equal(result.allowed, true);
   assert.equal(result.requiresApproval, true);
   assert.equal(result.reasonCode, "budget.approaching_limit");
+});
+
+test("BudgetGuard evaluateExecutionChain logs a warning when platform budget falls back to task cost", () => {
+  const guard = new BudgetGuard();
+  const captured: StructuredLogEntry[] = [];
+  StructuredLogger.addTransport({
+    name: "budget-guard-test-transport",
+    write(entry) {
+      captured.push(entry);
+    },
+  });
+
+  try {
+    const policy: BudgetPolicy = {
+      maxTaskCostUsd: 100,
+      maxDailyCostUsd: 1000,
+      maxMonthlyCostUsd: 10000,
+      maxPlatformCostUsd: 200,
+      warnAtRatio: 0.8,
+      mode: "supervised",
+    };
+
+    guard.evaluateExecutionChain({
+      policy,
+      spend: {
+        currentTaskCostUsd: 40,
+        currentDailyCostUsd: 100,
+        currentMonthlyCostUsd: 500,
+        nextEstimatedCostUsd: 10,
+      },
+    });
+
+    assert.ok(
+      captured.some((entry) =>
+        entry.message === "budget_guard.platform_cost_fallback_to_task_cost"
+        && entry.level === "warn"
+        && entry.data?.note === "platform aggregate spend is unavailable; fallback undercounts parallel task interference"),
+    );
+  } finally {
+    StructuredLogger.removeTransport("budget-guard-test-transport");
+  }
 });

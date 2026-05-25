@@ -10,13 +10,18 @@ export interface TaskWebSocketStatusRelayOptions {
   pollIntervalMs?: number;
   backlogLimit?: number;
   hasSubscribers?: () => boolean;
+  degradedFailureThreshold?: number;
 }
 
 export class TaskWebSocketStatusRelay {
   private readonly pollIntervalMs: number;
   private readonly backlogLimit: number;
   private readonly hasSubscribers: () => boolean;
+  private readonly degradedFailureThreshold: number;
   private readonly seenEventIds = new Set<string>();
+  private readonly knownTaskIds = new Set<string>();
+  private consecutivePollFailures = 0;
+  private degraded = false;
   private timer: NodeJS.Timeout | null = null;
 
   public constructor(
@@ -27,6 +32,7 @@ export class TaskWebSocketStatusRelay {
     this.pollIntervalMs = options.pollIntervalMs ?? 1000;
     this.backlogLimit = options.backlogLimit ?? 100;
     this.hasSubscribers = options.hasSubscribers ?? (() => this.readSubscriberStateFromServer());
+    this.degradedFailureThreshold = Math.max(1, options.degradedFailureThreshold ?? 3);
   }
 
   public start(): void {
@@ -36,6 +42,9 @@ export class TaskWebSocketStatusRelay {
 
     for (const event of this.store.event.listEventsByType("task:status_changed", this.backlogLimit)) {
       this.markSeen(event.id);
+      if (event.taskId != null) {
+        this.markKnownTask(event.taskId);
+      }
     }
 
     this.timer = setInterval(() => {
@@ -69,11 +78,27 @@ export class TaskWebSocketStatusRelay {
         this.markSeen(event.id);
         this.broadcastStatusChanged(event);
       }
+      this.clearPollFailureState();
     } catch (error) {
+      this.consecutivePollFailures += 1;
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn("task websocket status relay poll failed", {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
+        consecutivePollFailures: this.consecutivePollFailures,
+        degradedFailureThreshold: this.degradedFailureThreshold,
       });
+      if (this.consecutivePollFailures >= this.degradedFailureThreshold) {
+        this.markDegraded(errorMessage);
+      }
     }
+  }
+
+  public isDegraded(): boolean {
+    return this.degraded;
+  }
+
+  public getConsecutivePollFailures(): number {
+    return this.consecutivePollFailures;
   }
 
   private broadcastStatusChanged(event: EventRecord): void {
@@ -88,6 +113,7 @@ export class TaskWebSocketStatusRelay {
       return;
     }
 
+    this.markKnownTask(event.taskId);
     this.server.broadcastTaskEvent(event.taskId, {
       eventType: "status_changed",
       taskId: event.taskId,
@@ -118,6 +144,66 @@ export class TaskWebSocketStatusRelay {
     const countReader = this.server as HttpApiServer & { getConnectedClientCount?: () => number };
     const connectedClientCount = countReader.getConnectedClientCount?.();
     return connectedClientCount == null || connectedClientCount > 0;
+  }
+
+  private clearPollFailureState(): void {
+    if (this.consecutivePollFailures === 0 && !this.degraded) {
+      return;
+    }
+    const previousFailureCount = this.consecutivePollFailures;
+    this.consecutivePollFailures = 0;
+    if (!this.degraded) {
+      return;
+    }
+    this.degraded = false;
+    logger.log({
+      level: "info",
+      message: "task websocket status relay recovered",
+      data: {
+        previousFailureCount,
+      },
+    });
+  }
+
+  private markDegraded(errorMessage: string): void {
+    if (!this.degraded) {
+      this.degraded = true;
+      logger.error("task websocket status relay degraded", {
+        error: errorMessage,
+        consecutivePollFailures: this.consecutivePollFailures,
+      });
+    }
+    this.broadcastDegradedEvents(errorMessage);
+  }
+
+  private broadcastDegradedEvents(errorMessage: string): void {
+    const timestamp = new Date().toISOString();
+    for (const taskId of this.knownTaskIds) {
+      this.server.broadcastTaskEvent(taskId, {
+        eventType: "failed",
+        taskId,
+        error: `task_websocket_status_relay_unavailable: ${errorMessage}`,
+        timestamp,
+      });
+    }
+  }
+
+  private markKnownTask(taskId: string): void {
+    this.knownTaskIds.add(taskId);
+    const maxKnownTaskIds = Math.max(this.backlogLimit, this.backlogLimit * SEEN_EVENT_RETENTION_MULTIPLIER);
+    if (this.knownTaskIds.size <= maxKnownTaskIds) {
+      return;
+    }
+
+    const overflow = this.knownTaskIds.size - this.backlogLimit;
+    const iterator = this.knownTaskIds.values();
+    for (let i = 0; i < overflow; i++) {
+      const next = iterator.next();
+      if (next.done) {
+        break;
+      }
+      this.knownTaskIds.delete(next.value);
+    }
   }
 }
 

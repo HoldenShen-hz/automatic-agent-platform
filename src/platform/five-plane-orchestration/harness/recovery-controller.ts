@@ -104,7 +104,9 @@ export class RecoveryController {
   }
 
   private shouldUseBackoffRecovery(run: HarnessRunRuntimeState): boolean {
-    return this.loopController != null || run.loopMetrics != null || run.sleepLease != null;
+    const sleepRetryAttempt = run.sleepLease?.retryAttempt ?? 0;
+    const loopRetryAttempt = this.loopController?.getState().retryAttempt ?? 0;
+    return Math.max(sleepRetryAttempt, loopRetryAttempt) > 0;
   }
 
   /**

@@ -412,6 +412,29 @@ test("rollbackShift restores traffic to source slot", () => {
   assert.equal(rolledBackShift!.rollbackReason, "User requested rollback");
 });
 
+test("rollbackShift preserves captured slot versions even if slot records change after promotion", () => {
+  const db = createTestDb();
+  const service = new TrafficRoutingService(db);
+
+  service.registerSlot("blue", "v1.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
+  service.updateHealth(green.id, 0.99);
+
+  const shift = service.startCanaryShift("blue", "green");
+  for (let i = 0; i < shift.totalSteps; i++) {
+    const result = service.advanceShift(shift.id);
+    assert.ok(result !== null);
+  }
+
+  db.connection.prepare(`UPDATE deployment_slots SET version = 'v9.9.9' WHERE slot = 'green'`).run();
+  db.connection.prepare(`UPDATE deployment_slots SET version = 'v0.0.1' WHERE slot = 'blue'`).run();
+
+  const rollback = service.rollbackShift(shift.id, "manual", "Preserve promotion snapshot");
+
+  assert.equal(rollback.fromVersion, "v2.0.0");
+  assert.equal(rollback.toVersion, "v1.0.0");
+});
+
 test("rollbackShift with health_check_failed trigger", () => {
   const db = createTestDb();
   const service = new TrafficRoutingService(db);

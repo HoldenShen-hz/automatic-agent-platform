@@ -16,6 +16,9 @@ import {
   type BudgetResourceKind,
 } from "../../contracts/executable-contracts/index.js";
 import { BudgetAllocator } from "../../five-plane-execution/budget-allocator.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const budgetGuardLogger = new StructuredLogger({ retentionLimit: 100, service: "budget-guard" });
 
 /**
  * Budget policy defining cost limits and warning thresholds.
@@ -607,6 +610,14 @@ export class BudgetGuard {
     const next = input.spend.nextEstimatedCostUsd;
     const projectedTask = input.spend.currentTaskCostUsd + next;
     const projectedPack = (input.spend.currentPackCostUsd ?? input.spend.currentTaskCostUsd) + next;
+    if (input.policy.maxPlatformCostUsd != null && input.policy.maxPlatformCostUsd > 0 && input.spend.currentPlatformCostUsd == null) {
+      budgetGuardLogger.warn("budget_guard.platform_cost_fallback_to_task_cost", {
+        currentTaskCostUsd: input.spend.currentTaskCostUsd,
+        nextEstimatedCostUsd: next,
+        maxPlatformCostUsd: input.policy.maxPlatformCostUsd,
+        note: "platform aggregate spend is unavailable; fallback undercounts parallel task interference",
+      });
+    }
     const projectedPlatform = (input.spend.currentPlatformCostUsd ?? input.spend.currentTaskCostUsd) + next;
     const projectedStep = (input.spend.currentStepCostUsd ?? 0) + next;
     const projectedStage = (input.spend.currentStageCostUsd ?? 0) + next;

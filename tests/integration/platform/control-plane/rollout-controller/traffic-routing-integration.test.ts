@@ -69,7 +69,8 @@ test("traffic routing: starts canary shift and applies initial traffic weights",
 test("traffic routing: advances progressive rollout stages until completion", () => {
   const service = new TrafficRoutingService(createTestDb());
   service.registerSlot("blue", "1.0.0");
-  service.registerSlot("green", "1.1.0");
+  const green = service.registerSlot("green", "1.1.0");
+  service.updateHealth(green.id, 0.99);
 
   const shift = service.startCanaryShift("blue", "green", {
     ...DEFAULT_CANARY_CONFIG,

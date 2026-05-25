@@ -82,6 +82,8 @@ export interface TrafficShiftRecord {
   id: string;
   fromSlot: DeploymentSlot;
   toSlot: DeploymentSlot;
+  fromVersion: string;
+  toVersion: string;
   fromWeight: number;
   toWeight: number;
   status: TrafficShiftStatus;
@@ -154,6 +156,8 @@ CREATE TABLE IF NOT EXISTS traffic_shifts (
   id TEXT PRIMARY KEY,
   from_slot TEXT NOT NULL,
   to_slot TEXT NOT NULL,
+  from_version TEXT NULL,
+  to_version TEXT NULL,
   from_weight REAL NOT NULL,
   to_weight REAL NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -223,6 +227,7 @@ export class TrafficRoutingService {
     directiveSink: ControlPlaneDirectiveSink = createNoOpDirectiveSink(),
   ) {
     this.directiveSink = directiveSink;
+    this.ensureTrafficShiftVersionColumns();
   }
 
   public createRoute(input: Omit<TrafficRoute, "status" | "createdAt" | "updatedAt">): TrafficRoute {
@@ -399,6 +404,8 @@ export class TrafficRoutingService {
    */
   startCanaryShift(fromSlot: DeploymentSlot, toSlot: DeploymentSlot, config: CanaryConfig = DEFAULT_CANARY_CONFIG, initiatedBy: string = "system"): TrafficShiftRecord {
     const now = nowIso();
+    const fromVersion = this.getSlotVersion(fromSlot);
+    const toVersion = this.getSlotVersion(toSlot);
     const steps: number[] = [];
     let weight = config.initialWeightPct;
     while (weight < 100) {
@@ -411,6 +418,8 @@ export class TrafficRoutingService {
       id: newId("tshift"),
       fromSlot,
       toSlot,
+      fromVersion,
+      toVersion,
       fromWeight: 100,
       toWeight: config.initialWeightPct,
       status: "in_progress",
@@ -425,10 +434,10 @@ export class TrafficRoutingService {
 
     this.db.connection
       .prepare(
-        `INSERT INTO traffic_shifts (id, from_slot, to_slot, from_weight, to_weight, status, shift_steps, current_step, total_steps, started_at, completed_at, initiated_by, rollback_reason)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO traffic_shifts (id, from_slot, to_slot, from_version, to_version, from_weight, to_weight, status, shift_steps, current_step, total_steps, started_at, completed_at, initiated_by, rollback_reason)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(shift.id, shift.fromSlot, shift.toSlot, shift.fromWeight, shift.toWeight, shift.status, shift.shiftSteps, shift.currentStep, shift.totalSteps, shift.startedAt, shift.completedAt, shift.initiatedBy, shift.rollbackReason);
+      .run(shift.id, shift.fromSlot, shift.toSlot, shift.fromVersion, shift.toVersion, shift.fromWeight, shift.toWeight, shift.status, shift.shiftSteps, shift.currentStep, shift.totalSteps, shift.startedAt, shift.completedAt, shift.initiatedBy, shift.rollbackReason);
 
     // Apply initial weight
     this.applyTrafficWeights(fromSlot, 100 - config.initialWeightPct, toSlot, config.initialWeightPct);
@@ -527,8 +536,8 @@ export class TrafficRoutingService {
       this.activateSlot(shift.fromSlot);
     }
 
-    const fromVersion = shift ? this.getSlotVersion(shift.toSlot) : "unknown";
-    const toVersion = shift ? this.getSlotVersion(shift.fromSlot) : "unknown";
+    const fromVersion = shift?.toVersion ?? "unknown";
+    const toVersion = shift?.fromVersion ?? "unknown";
 
     const rollback: RollbackRecord = {
       id: newId("rbk"),
@@ -763,6 +772,8 @@ export class TrafficRoutingService {
       id: String(row.id),
       fromSlot: String(row.from_slot) as DeploymentSlot,
       toSlot: String(row.to_slot) as DeploymentSlot,
+      fromVersion: String(row.from_version ?? this.getSlotVersion(String(row.from_slot) as DeploymentSlot)),
+      toVersion: String(row.to_version ?? this.getSlotVersion(String(row.to_slot) as DeploymentSlot)),
       fromWeight: Number(row.from_weight ?? 0),
       toWeight: Number(row.to_weight ?? 0),
       status: String(row.status ?? "pending") as TrafficShiftStatus,
@@ -788,5 +799,22 @@ export class TrafficRoutingService {
       completedAt: row.completed_at != null ? String(row.completed_at) : null,
       success: Boolean(row.success),
     };
+  }
+
+  private ensureTrafficShiftVersionColumns(): void {
+    const statements = [
+      "ALTER TABLE traffic_shifts ADD COLUMN from_version TEXT NULL",
+      "ALTER TABLE traffic_shifts ADD COLUMN to_version TEXT NULL",
+    ];
+    for (const statement of statements) {
+      try {
+        this.db.connection.exec(statement);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes("duplicate column name")) {
+          throw error;
+        }
+      }
+    }
   }
 }

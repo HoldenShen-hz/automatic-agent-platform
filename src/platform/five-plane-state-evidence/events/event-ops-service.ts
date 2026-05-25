@@ -16,6 +16,7 @@ import { DurableEventBus } from "./durable-event-bus.js";
 import { EVENT_SCHEMA_REGISTRY } from "./event-registry.js";
 import { AuthoritativeTaskStore } from "../truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-database.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 /**
  * Result of a drain operation for a specific consumer.
@@ -188,10 +189,27 @@ export class EventOpsService {
    */
   private registerDefaultConsumers(): void {
     for (const consumerId of DEFAULT_TIER1_CONSUMERS) {
-      this.bus.subscribe(consumerId, async () => {
-        // Phase 1a reads from the authoritative store directly; this consumer exists to provide durable ack/replay semantics.
-      });
+      this.bus.subscribe(consumerId, this.createDefaultConsumerHandler(consumerId));
     }
+  }
+
+  private createDefaultConsumerHandler(consumerId: string): (event: Parameters<DurableEventBus["subscribe"]>[1] extends (event: infer T) => unknown ? T : never) => Promise<void> {
+    return async (event) => {
+      // Phase 1a still reads from the authoritative store directly, but the
+      // default consumer now validates referenced aggregates before acking.
+      if (event.taskId != null && this.store.getTask(event.taskId) == null) {
+        throw new ValidationError(
+          "event_ops.consumer_missing_task",
+          `event_ops.consumer_missing_task: Consumer ${consumerId} could not resolve task ${event.taskId}.`,
+        );
+      }
+      if (event.executionId != null && this.store.getExecution(event.executionId) == null) {
+        throw new ValidationError(
+          "event_ops.consumer_missing_execution",
+          `event_ops.consumer_missing_execution: Consumer ${consumerId} could not resolve execution ${event.executionId}.`,
+        );
+      }
+    };
   }
 
   private async withTimeout<T>(promise: Promise<T>, timeoutCode: string): Promise<T> {

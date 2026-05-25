@@ -102,15 +102,15 @@ test("RecoveryController.handleFailure schedules tool timeout retry through slee
   assert.ok(typeof result.sleepLease?.retryAttempt === "number");
 });
 
-test("RecoveryController.handleFailure sends worker crashes through graph-scope sleep retry", () => {
+test("RecoveryController.handleFailure keeps initial worker crashes in recovery pause when no retry lease exists", () => {
   const { runtime, controller } = createFixture();
   const run = createRun(runtime);
 
   const result = controller.handleFailure(run, "worker_crash");
 
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "sleep");
-  assert.equal(result.sleepLease?.reason, "worker_crash_retry");
+  assert.equal(result.pauseReason, "recovery");
+  assert.equal(result.sleepLease, null);
   assert.ok(result.recoveryCheckpoint !== null);
 });
 

@@ -97,7 +97,8 @@ function createController() {
   const runtime = {
     recover: (run: HarnessRunRuntimeState) => ({
       ...run,
-      status: "running",
+      status: "paused",
+      pauseReason: "recovery",
       updatedAt: "2026-05-09T00:00:01.000Z",
     }),
     openHitlReview: (run: HarnessRunRuntimeState, reasonCode: string, _reasons: string[]) => ({
@@ -191,19 +192,15 @@ test("R13-13: llm_provider_unavailable escalates after max retries", () => {
   assert.equal(events[0]?.payload.action, "escalate_hitl");
 });
 
-test("R13-13: worker_crash now backs off instead of immediately resuming", () => {
+test("R13-13: worker_crash without prior retry stays in recovery pause instead of backoff sleep", () => {
   const { controller, events, persisted } = createController();
   const result = controller.handleFailure(createRun(), "worker_crash");
 
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "sleep");
-  assert.equal(result.sleepLease?.reason, "worker_crash_retry");
-  assert.equal(result.sleepLease?.retryAttempt, 1);
-  assertDelayWithinBounds(result.sleepLease!.resumeAt, 1);
+  assert.equal(result.pauseReason, "recovery");
+  assert.equal(result.sleepLease, null);
   assert.equal(persisted.length, 1);
-  assert.equal(events[0]?.eventType, "recovery:repair_applied");
-  assert.equal(events[0]?.payload.scope, "graph");
-  assert.equal(events[0]?.payload.action, "replan");
+  assert.equal(events.length, 0);
 });
 
 test("R13-13: worker_crash escalates after max retries", () => {
@@ -230,14 +227,34 @@ test("R13-13: worker_crash escalates after max retries", () => {
   assert.equal(events[0]?.payload.action, "escalate_hitl");
 });
 
-test("R13-16: platform_panic remains graph-scope retry with backoff", () => {
+test("R13-16: platform_panic only uses graph-scope backoff after a prior retry exists", () => {
   const { controller, events } = createController();
-  const result = controller.handleFailure(createRun(), "platform_panic");
+  const result = controller.handleFailure(createRun({
+    sleepLease: {
+      leaseId: "sleep:panic",
+      runId: "run-r13",
+      reason: "platform_panic_retry",
+      resumeAt: "2026-05-09T00:00:02.000Z",
+      createdAt: "2026-05-09T00:00:01.000Z",
+      retryAttempt: 1,
+    },
+  }), "platform_panic");
 
   assert.equal(result.sleepLease?.reason, "platform_panic_retry");
-  assert.equal(result.sleepLease?.retryAttempt, 1);
+  assert.equal(result.sleepLease?.retryAttempt, 2);
   assert.equal(events[0]?.payload.scope, "graph");
   assert.equal(events[0]?.payload.action, "replan");
+});
+
+test("R13-16: platform_panic without prior retry returns recovery pause", () => {
+  const { controller, events, persisted } = createController();
+  const result = controller.handleFailure(createRun(), "platform_panic");
+
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
+  assert.equal(result.sleepLease, null);
+  assert.equal(persisted.length, 1);
+  assert.equal(events.length, 0);
 });
 
 test("R13-16: determineRetryScope distinguishes node and graph failures", () => {

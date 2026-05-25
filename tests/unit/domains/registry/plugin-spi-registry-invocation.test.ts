@@ -227,6 +227,111 @@ test("PluginSpiRegistry throws when queue overflow exceeds limit", async () => {
   }
 });
 
+test("PluginSpiRegistry times out queued invocations that cannot acquire a slot before timeout", async () => {
+  const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
+  const releaseBlockedInvocation = createDeferred<void>();
+
+  registry.register({
+    pluginId: "plugin.queue_timeout",
+    domainId: "coding",
+    spiType: "retriever",
+    async retrieve() {
+      await releaseBlockedInvocation.promise;
+      return [];
+    },
+  }, {
+    pluginId: "plugin.queue_timeout",
+    name: "queue timeout plugin",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: [],
+    spiTypes: ["retriever"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "test",
+    settingsSchema: {},
+    sandbox: makeSandboxPolicy({
+      maxConcurrentInvocations: 1,
+      maxQueuedInvocations: 2,
+      timeoutMs: 20,
+    }),
+  });
+
+  await registry.ensureActive("plugin.queue_timeout");
+
+  const first = registry.invokeRetriever("plugin.queue_timeout", {
+    query: {
+      taskId: "task_blocked",
+      intent: "block",
+      context: {},
+      tokenBudget: 1000,
+    },
+  });
+
+  try {
+    await assert.rejects(
+      registry.invokeRetriever("plugin.queue_timeout", {
+        query: {
+          taskId: "task_wait_timeout",
+          intent: "queued",
+          context: {},
+          tokenBudget: 1000,
+        },
+      }),
+      /timed out waiting for an invocation slot/,
+    );
+  } finally {
+    releaseBlockedInvocation.resolve();
+    await first;
+  }
+});
+
+test("PluginSpiRegistry times out slow invocations during execution", async () => {
+  const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
+  const neverResolve = createDeferred<void>();
+
+  registry.register({
+    pluginId: "plugin.invocation_timeout",
+    domainId: "coding",
+    spiType: "retriever",
+    async retrieve() {
+      await neverResolve.promise;
+      return [];
+    },
+  }, {
+    pluginId: "plugin.invocation_timeout",
+    name: "invocation timeout plugin",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: [],
+    spiTypes: ["retriever"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "test",
+    settingsSchema: {},
+    sandbox: makeSandboxPolicy({
+      timeoutMs: 20,
+      allowedKnowledgeNamespaces: ["coding/repo"],
+    }),
+  });
+
+  await registry.ensureActive("plugin.invocation_timeout");
+  await assert.rejects(
+    registry.invokeRetriever("plugin.invocation_timeout", {
+      namespace: "coding/repo",
+      query: {
+        taskId: "task_timeout",
+        intent: "test-timeout",
+        context: {},
+        tokenBudget: 1000,
+      },
+    }),
+    /timed out/,
+  );
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Cooldown mechanism
 // ─────────────────────────────────────────────────────────────────────────────

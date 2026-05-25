@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
+import { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
 import { EventOpsService } from "../../../../../src/platform/five-plane-state-evidence/events/event-ops-service.js";
 import type { EventDrainResult } from "../../../../../src/platform/five-plane-state-evidence/events/event-ops-service.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
@@ -93,6 +94,48 @@ test("EventOpsService.subscribe accepts async handler", () => {
     });
     assert.ok(true);
   } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("EventOpsService default consumers validate referenced aggregates before acking", async () => {
+  const workspace = createTempWorkspace("aa-event-ops-");
+  const originalSubscribe = DurableEventBus.prototype.subscribe;
+  const capturedHandlers = new Map<string, Parameters<typeof originalSubscribe>[1]>();
+  try {
+    DurableEventBus.prototype.subscribe = function subscribe(
+      this: DurableEventBus,
+      consumerId: string,
+      handler: Parameters<typeof originalSubscribe>[1],
+      partitions?: Parameters<typeof originalSubscribe>[2],
+      groupId?: Parameters<typeof originalSubscribe>[3],
+    ): void {
+      capturedHandlers.set(consumerId, handler);
+      return originalSubscribe.call(this, consumerId, handler, partitions, groupId);
+    };
+
+    const service = createTestService(workspace);
+    const consumerId = service.listDefaultConsumers()[0];
+    assert.ok(consumerId != null);
+    const handler = capturedHandlers.get(consumerId!);
+    assert.ok(handler != null);
+
+    await assert.rejects(
+      handler!({
+        id: "evt_missing_task",
+        taskId: "task_missing",
+        sessionId: null,
+        executionId: null,
+        eventType: "task:status_changed",
+        eventTier: "tier_1",
+        payloadJson: JSON.stringify({ toStatus: "failed" }),
+        traceId: "trace_missing",
+        createdAt: "2026-05-25T00:00:00.000Z",
+      }),
+      /event_ops.consumer_missing_task/,
+    );
+  } finally {
+    DurableEventBus.prototype.subscribe = originalSubscribe;
     cleanupPath(workspace);
   }
 });

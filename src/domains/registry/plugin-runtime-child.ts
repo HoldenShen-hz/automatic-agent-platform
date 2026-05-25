@@ -151,6 +151,10 @@ function installStdioProtocolConsoleRedirection(): void {
   console.error = ((...args: unknown[]) => writeStructuredLine("error", ...args)) as typeof console.error;
 }
 
+function logProtocolError(message: string, error: unknown): void {
+  console.error("%s: %s", message, error instanceof Error ? error.message : String(error));
+}
+
 export function bootstrapPluginRuntimeChild(): void {
   if (bootstrapInstalled) {
     return;
@@ -179,7 +183,7 @@ export function bootstrapPluginRuntimeChild(): void {
       try {
         handleRuntimeMessage(JSON.parse(line) as PluginRuntimeChildMessage);
       } catch (error) {
-        process.stderr.write(`plugin-runtime-child invalid stdio payload: ${error instanceof Error ? error.message : String(error)}\n`);
+        logProtocolError("plugin-runtime-child invalid stdio payload", error);
       }
     }
   });
@@ -203,7 +207,7 @@ function handleRuntimeMessage(message: unknown): void {
   try {
     payload = parsePluginRuntimeChildMessage(message);
   } catch (error) {
-    process.stderr.write(`plugin-runtime-child protocol violation: ${error instanceof Error ? error.message : String(error)}\n`);
+    logProtocolError("plugin-runtime-child protocol violation", error);
     return;
   }
   if (payload?.type === "shutdown") {

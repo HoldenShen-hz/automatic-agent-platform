@@ -390,6 +390,90 @@ test("TaskWebSocketStatusRelay pollOnce catches and logs errors from listEventsB
   assert.equal(broadcasts.length, 0);
 });
 
+test("TaskWebSocketStatusRelay marks itself degraded after repeated poll failures and broadcasts failed events for known tasks", () => {
+  const broadcasts: Array<{ taskId: string; event: TaskWebSocketEvent }> = [];
+  let shouldFail = false;
+  const relay = new TaskWebSocketStatusRelay(
+    {
+      broadcastTaskEvent(taskId: string, event: TaskWebSocketEvent): void {
+        broadcasts.push({ taskId, event });
+      },
+    } as unknown as never,
+    {
+      event: {
+        listEventsByType(): EventRecord[] {
+          if (shouldFail) {
+            throw new Error("relay store unavailable");
+          }
+          return [
+            createEvent({
+              id: "evt-known-task",
+              taskId: "task-known",
+              payloadJson: JSON.stringify({
+                fromStatus: "pending",
+                toStatus: "in_progress",
+                occurredAt: "2026-04-16T00:00:00.000Z",
+              }),
+            }),
+          ];
+        },
+      },
+    } as unknown as never,
+    { backlogLimit: 10, degradedFailureThreshold: 3 },
+  );
+
+  relay.pollOnce();
+  shouldFail = true;
+  relay.pollOnce();
+  relay.pollOnce();
+  relay.pollOnce();
+
+  assert.equal(relay.isDegraded(), true);
+  assert.equal(relay.getConsecutivePollFailures(), 3);
+  assert.equal(broadcasts.length, 2);
+  assert.deepEqual(broadcasts[1], {
+    taskId: "task-known",
+    event: {
+      eventType: "failed",
+      taskId: "task-known",
+      error: "task_websocket_status_relay_unavailable: relay store unavailable",
+      timestamp: broadcasts[1]?.event.timestamp ?? "",
+    },
+  });
+  assert.match(broadcasts[1]!.event.timestamp, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("TaskWebSocketStatusRelay clears degraded state after a successful poll", () => {
+  let shouldFail = true;
+  const relay = new TaskWebSocketStatusRelay(
+    {
+      broadcastTaskEvent(): void {},
+    } as unknown as never,
+    {
+      event: {
+        listEventsByType(): EventRecord[] {
+          if (shouldFail) {
+            throw new Error("temporary outage");
+          }
+          return [];
+        },
+      },
+    } as unknown as never,
+    { backlogLimit: 10, degradedFailureThreshold: 2 },
+  );
+
+  relay.pollOnce();
+  relay.pollOnce();
+  assert.equal(relay.isDegraded(), true);
+  assert.equal(relay.getConsecutivePollFailures(), 2);
+
+  shouldFail = false;
+  relay.pollOnce();
+
+  assert.equal(relay.isDegraded(), false);
+  assert.equal(relay.getConsecutivePollFailures(), 0);
+});
+
 test("TaskWebSocketStatusRelay uses event.createdAt as fallback when payload has no occurredAt", () => {
   const broadcasts: Array<{ taskId: string; event: TaskWebSocketEvent }> = [];
   const relay = new TaskWebSocketStatusRelay(
