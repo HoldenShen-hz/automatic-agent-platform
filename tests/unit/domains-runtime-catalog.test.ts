@@ -8,6 +8,7 @@ import {
   registerDomainsRuntimeCatalog,
   type DomainsRuntimeCatalog,
 } from "../../src/domains-runtime-catalog.js";
+import { PLATFORM_ROOT_BASELINE_COUNTS } from "../helpers/platform-root-baselines.js";
 
 test("buildDomainsRuntimeCatalog returns catalog with all three readiness rings", async () => {
   const catalog = buildDomainsRuntimeCatalog();
@@ -34,9 +35,9 @@ test("buildDomainsRuntimeCatalog rings contain DomainBaseline objects", async ()
 test("buildDomainsRuntimeCatalog ring counts match expected baseline counts", async () => {
   const catalog = buildDomainsRuntimeCatalog();
 
-  assert.equal(catalog.ring1.length, 8);
-  assert.equal(catalog.ring2.length, 11);
-  assert.equal(catalog.ring3.length, 12);
+  assert.equal(catalog.ring1.length, PLATFORM_ROOT_BASELINE_COUNTS.domains.capabilityCounts.ring1);
+  assert.equal(catalog.ring2.length, PLATFORM_ROOT_BASELINE_COUNTS.domains.capabilityCounts.ring2);
+  assert.equal(catalog.ring3.length, PLATFORM_ROOT_BASELINE_COUNTS.domains.capabilityCounts.ring3);
 });
 
 test("registerDomainsRuntimeCatalog registers service in registry", async () => {

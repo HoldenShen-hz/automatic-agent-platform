@@ -263,6 +263,15 @@ describe("CheckpointGCService", () => {
       assert.ok(result.completedAt);
       assert.ok(new Date(result.startedAt).getTime() <= new Date(result.completedAt).getTime());
     });
+
+    it("should reject concurrent runs when a cross-process lock already exists", () => {
+      writeFileSync(join(testRootDir, ".checkpoint-gc.lock"), JSON.stringify({ acquiredAt: new Date().toISOString() }), "utf8");
+
+      assert.throws(
+        () => gcService.runGC([]),
+        /checkpoint_gc\.concurrent_run_not_allowed/,
+      );
+    });
   });
 
   describe("enforceVersionLimits", () => {

@@ -11,7 +11,7 @@
 
 ### OAPEFLIR 八阶段模型
 
-系统采用八阶段认知循环，但它不是独立执行引擎：
+系统采用八阶段认知循环。它是平台中的主动编排/治理控制环，但不是第二套独立执行引擎：
 
 ```
 Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
@@ -23,6 +23,7 @@ Observe → Assess → Plan → Execute → Feedback → Learn → Improve → R
 约束：
 
 - `HarnessRuntime` 是唯一执行入口。
+- `OapeflirLoopService` 可以主动驱动 Observe/Assess/Plan/Feedback/Learn/Improve/Release 的阶段推进，并把结果回写到执行约束、规划图和改进候选。
 - OAPEFLIR 只产出 `oapeflir.view.*` 与 `oapeflir.rationale.*` 投影，不拥有 run status、budget、lease、side effect commit 或错误码命名空间。
 
 ### 各阶段职责
@@ -41,7 +42,8 @@ Observe → Assess → Plan → Execute → Feedback → Learn → Improve → R
 ### 与 Phase 1A/1B 执行模型的映射
 
 - `HarnessRuntime` 承接真实的 `PlanGraphBundle -> NodeRun -> NodeAttemptReceipt` 执行主链。
-- OAPEFLIR 在 Harness 主链之上生成阶段性 view / rationale，并驱动 Feedback→Learn→Improve→Release 副链。
+- OAPEFLIR 在 Harness 主链之上生成阶段性 view / rationale，同时主动决定何时进入 Assess/Plan、是否要求 orchestration、如何把 release / guardrail 结论写回控制面。
+- 因此 OAPEFLIR 是 active orchestration loop，但它把真实命令执行委托给 HarnessRuntime，而不是自带第二套 executor。
 - 不再存在以 `OapeflirLoopService` 作为独立 runtime 入口的 canonical 叙述。
 
 ### Execute 层集成要求
@@ -62,7 +64,7 @@ Execute 阶段只能消费真实 runtime 已产出的 `NodeAttemptReceipt` / evi
 
 ## 后果
 
-- OAPEFLIR 不再是系统核心编排器；`HarnessRuntime` 仍然是唯一执行运行时。
+- OAPEFLIR 是系统的认知与治理编排环；`HarnessRuntime` 仍然是唯一执行运行时。
 - 所有新模块（Observe builders、Assess evaluators、Plan strategies 等）必须能在八阶段认知框架中找到自己的位置，但不得绕过 Harness 主链。
 - 本 ADR 是后续所有 OAPEFLIR 相关 GAP（V2-01 ~ V2-12）的架构基础。
 

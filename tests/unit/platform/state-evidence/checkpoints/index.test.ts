@@ -58,6 +58,8 @@ test("CheckpointEnvelopeMetadata type structure", () => {
     createdAt: "2026-04-26T10:00:00.000Z",
     algorithm: "gzip",
     payloadSchemaVersion: "v1",
+    domainId: "coding",
+    namespaceId: "coding/default",
   };
 
   assert.equal(metadata.originalSizeBytes, 1024);
@@ -89,10 +91,23 @@ test("CreateCheckpointEnvelopeOptions type", () => {
   const options: CreateCheckpointEnvelopeOptions = {
     maxSizeBytes: 1024 * 1024,
     payloadSchemaVersion: "custom.v1",
+    domainId: "coding",
+    namespaceId: "coding/default",
   };
 
   assert.equal(options.maxSizeBytes, 1024 * 1024);
   assert.equal(options.payloadSchemaVersion, "custom.v1");
+});
+
+test("createCheckpointEnvelope preserves optional domain and namespace metadata", async () => {
+  const envelope = await createCheckpointEnvelope(
+    { ok: true },
+    "test.v1",
+    { domainId: "coding", namespaceId: "coding/default" },
+  );
+
+  assert.equal(envelope.metadata.domainId, "coding");
+  assert.equal(envelope.metadata.namespaceId, "coding/default");
 });
 
 test("UnpackedCheckpointEnvelope type structure", () => {

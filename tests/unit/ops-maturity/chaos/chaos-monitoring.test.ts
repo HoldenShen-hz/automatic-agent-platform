@@ -454,6 +454,30 @@ test("ChaosExperimentScheduler: clearSteadyStateCache removes all metrics for ex
   assert.equal(cached2, null);
 });
 
+test("ChaosExperimentScheduler: clearSteadyStateCache also clears evaluated hypothesis dedupe keys", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "Clear Dedupe Test",
+    description: "Testing evaluated hypothesis reset",
+    target: { targetKind: "service", targetId: "svc-1", labels: {} },
+    fault: { faultType: "latency", intensity: 50, durationMs: 10000, parameters: {} },
+    steadyStateHypotheses: [
+      { name: "h1", metric: "latency", expectedRange: { max: 100 }, tolerance: 5 },
+      { name: "h2", metric: "errors", expectedRange: { max: 1 }, tolerance: 0 },
+    ],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 30000,
+  });
+
+  scheduler.startExperiment(experiment.experimentId);
+  scheduler.recordSteadyStateResult(experiment.experimentId, "h1", 10, true, "first evaluation");
+  scheduler.clearSteadyStateCache(experiment.experimentId);
+  scheduler.recordSteadyStateResult(experiment.experimentId, "h1", 12, true, "second evaluation");
+
+  const snapshot = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(snapshot?.results.filter((result) => result.steadyStateName === "h1").length, 2);
+});
+
 test("ChaosExperimentScheduler: steadyStateCache has richer type with timestamp", async () => {
   const scheduler = new ChaosExperimentScheduler();
   const source = await import("node:fs");

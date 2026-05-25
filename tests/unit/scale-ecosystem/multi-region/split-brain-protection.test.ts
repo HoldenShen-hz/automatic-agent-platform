@@ -87,11 +87,21 @@ test("SplitBrainProtectionService.detectSplitBrain detects heartbeat timeout", (
 test("SplitBrainProtectionService.detectSplitBrain detects fencing epoch conflict", () => {
   const service = new SplitBrainProtectionService();
   service.recordFencingEpoch("us-east", 1);
-  service.recordFencingEpoch("eu-west", 100); // Large epoch difference
+  service.recordFencingEpoch("eu-west", 1);
 
   const result = service.detectSplitBrain(30000);
 
   assert.ok(result.evidence.some((e) => e.type === "fencing_epoch_conflict"));
+});
+
+test("SplitBrainProtectionService.detectSplitBrain does not flag normal epoch advancement as split-brain", () => {
+  const service = new SplitBrainProtectionService();
+  service.recordFencingEpoch("us-east", 1);
+  service.recordFencingEpoch("eu-west", 2);
+
+  const result = service.detectSplitBrain(30000);
+
+  assert.equal(result.evidence.some((e) => e.type === "fencing_epoch_conflict"), false);
 });
 
 test("SplitBrainProtectionService.detectSplitBrain returns conflicting regions", () => {
@@ -287,7 +297,7 @@ test("R13-22: Split-brain protection detects split-brain condition", () => {
 
   // Simulate two regions both claiming to be leader
   service.recordFencingEpoch("us-east", 1);
-  service.recordFencingEpoch("eu-west", 2);
+  service.recordFencingEpoch("eu-west", 1);
 
   const result = service.detectSplitBrain(30000);
 

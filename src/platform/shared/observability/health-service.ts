@@ -35,6 +35,7 @@
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { summarizeWorkerLoadSkew } from "../../five-plane-execution/worker-pool/worker-load-balancing.js";
+import { DEFAULT_WORKER_HEARTBEAT_STALENESS_MS } from "../runtime/worker-heartbeat-policy.js";
 import {
   mapHealthDegradationModeToUnifiedRuntimeMode,
   type UnifiedRuntimeMode,
@@ -189,7 +190,7 @@ export class HealthService {
       tier1AckOverloadedThreshold: options.tier1AckOverloadedThreshold ?? 25,
       activeExecutionOverloadedThreshold: options.activeExecutionOverloadedThreshold ?? 10,
       queueStarvationThresholdSeconds: options.queueStarvationThresholdSeconds ?? 5 * 60,
-      staleWorkerThresholdMs: options.staleWorkerThresholdMs ?? 5 * 60_000,
+      staleWorkerThresholdMs: options.staleWorkerThresholdMs ?? DEFAULT_WORKER_HEARTBEAT_STALENESS_MS,
       nowMsSupplier: options.nowMsSupplier ?? Date.now,
       degradedScoreThreshold: options.degradedScoreThreshold ?? 2,
       weakSignalEscalationWindow: options.weakSignalEscalationWindow ?? 2,

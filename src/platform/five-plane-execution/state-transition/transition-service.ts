@@ -80,9 +80,7 @@ export class TaskTransitionService {
    * Ensures atomic update and event emission.
    */
   public transition(command: TaskStatusTransitionCommand): void {
-    this.db.transaction(() => {
-      this.apply(command);
-    });
+    this.apply(command);
   }
 
   /**
@@ -92,34 +90,31 @@ export class TaskTransitionService {
    * record in the repository, and emits a tier-1 event for reliable delivery.
    */
   public apply(command: TaskStatusTransitionCommand): void {
-    taskStateMachine.assertTransition(command.fromStatus, command.toStatus);
-    const traceContext = buildEventTraceContext(command, command.entityId);
-    // RT-01: CAS on status. If another transaction already moved the task
-    // out of fromStatus, the UPDATE matches zero rows and we must refuse to
-    // emit the state-change event. Previously a plain UPDATE + assertTransition
-    // gave the illusion of serialization, but two concurrent writers could
-    // both pass the in-memory check and overwrite each other.
-    const affected = this.repository.updateTaskStatusCas(
-      command.entityId,
-      command.fromStatus,
-      command.toStatus,
-      command.occurredAt,
-      null,
-      command.toStatus === "done" || command.toStatus === "failed" || command.toStatus === "cancelled"
-        ? command.occurredAt
-        : null,
-    );
-    if (affected === 0) {
-      throw new Error(
-        `task.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+    this.db.transaction(() => {
+      taskStateMachine.assertTransition(command.fromStatus, command.toStatus);
+      const traceContext = buildEventTraceContext(command, command.entityId);
+      const affected = this.repository.updateTaskStatusCas(
+        command.entityId,
+        command.fromStatus,
+        command.toStatus,
+        command.occurredAt,
+        null,
+        command.toStatus === "done" || command.toStatus === "failed" || command.toStatus === "cancelled"
+          ? command.occurredAt
+          : null,
       );
-    }
-    this.repository.createTier1StatusEvent({
-      taskId: command.entityId,
-      executionId: resolveExistingExecutionRef(this.db, command.executionId),
-      eventType: "task:status_changed",
-      traceId: command.traceId,
-      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      if (affected === 0) {
+        throw new Error(
+          `task.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+        );
+      }
+      this.repository.createTier1StatusEvent({
+        taskId: command.entityId,
+        executionId: resolveExistingExecutionRef(this.db, command.executionId),
+        eventType: "task:status_changed",
+        traceId: command.traceId,
+        payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      });
     });
   }
 }
@@ -194,7 +189,6 @@ export class WorkflowTransitionService {
       );
     }
     try {
-    try {
       this.repository.createTier1StatusEvent({
         taskId: command.entityId,
         executionId: null,
@@ -202,11 +196,6 @@ export class WorkflowTransitionService {
         traceId: command.traceId,
         payload: buildStatusTransitionEventPayload(command),
       });
-    } catch (error) {
-      if (!(error instanceof Error && error.message === "unused")) {
-        throw error;
-      }
-    }
     } catch (error) {
       if (!(error instanceof Error && error.message === "unused")) {
         throw error;
@@ -443,6 +432,7 @@ class TaskTerminalTransitionService {
     const workflowTerminal: WorkflowStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const sessionTerminal: SessionStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const executionTerminal: ExecutionStatus = input.terminalStatus === "done" ? "succeeded" : input.terminalStatus;
+    const executionRef = resolveExistingExecutionRef(this.db, input.executionId);
     const currentWorkflow = this.repository.getWorkflowState(input.taskId);
     const shouldTransitionWorkflow = currentWorkflow !== null;
     const executionAlreadyTerminal =
@@ -451,10 +441,11 @@ class TaskTerminalTransitionService {
       input.currentExecutionStatus === "cancelled" ||
       input.currentExecutionStatus === "superseded";
     const shouldTransitionExecution =
-      !executionAlreadyTerminal && input.currentExecutionStatus !== executionTerminal;
+      executionRef != null && !executionAlreadyTerminal && input.currentExecutionStatus !== executionTerminal;
 
     taskStateMachine.assertTransition(input.currentTaskStatus, input.terminalStatus);
     if (shouldTransitionWorkflow) {
+      // Guard the workflow FSM only when a workflow row is actually present.
       workflowStateMachine.assertTransition(input.currentWorkflowStatus, workflowTerminal);
     }
     sessionStateMachine.assertTransition(input.currentSessionStatus, sessionTerminal);
@@ -528,7 +519,7 @@ class TaskTerminalTransitionService {
     // R9-02 fix: Use CAS update for execution
     if (shouldTransitionExecution) {
       const executionAffected = this.repository.updateExecutionStatusCas(
-        input.executionId,
+        executionRef,
         input.currentExecutionStatus,
         executionTerminal,
         input.context.occurredAt,
@@ -545,7 +536,7 @@ class TaskTerminalTransitionService {
 
     this.repository.createTier1StatusEvent({
       taskId: input.taskId,
-      executionId: input.executionId,
+      executionId: executionRef,
       eventType: "task:status_changed",
       traceId: input.context.traceId,
       payload: injectTraceContext({

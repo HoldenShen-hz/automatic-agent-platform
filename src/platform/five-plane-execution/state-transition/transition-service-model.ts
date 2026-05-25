@@ -105,7 +105,7 @@ export interface BlockedForApprovalTransitionResult {
 export type TaskTerminalTransitionInput = {
   taskId: string;
   sessionId: string;
-  executionId: string;
+  executionId: string | null;
   currentTaskStatus: TaskStatus;
   currentWorkflowStatus: WorkflowStatus;
   currentSessionStatus: SessionStatus;

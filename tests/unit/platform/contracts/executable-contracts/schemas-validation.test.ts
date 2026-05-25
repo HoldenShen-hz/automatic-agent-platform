@@ -884,6 +884,8 @@ test("HarnessRunSchema accepts valid harness run", () => {
     tenantId: "tenant_456",
     orgId: "org_456",
     traceId: "trace_456",
+    goal: "stabilize gateway retries",
+    mode: "operator_assisted",
     riskLevel: "medium",
     riskProfile: createValidRiskPreview(),
     ownership: { ownerId: "owner_1", ownerType: "principal" },
@@ -909,6 +911,41 @@ test("HarnessRunSchema accepts valid harness run", () => {
   };
   const result = HarnessRunSchema.safeParse(valid);
   assert.equal(result.success, true, `HarnessRun should be valid: ${JSON.stringify(result.error?.issues)}`);
+});
+
+test("HarnessRunSchema preserves optional goal and mode fields", () => {
+  const valid = {
+    harnessRunId: "hrun_goal_mode",
+    tenantId: "tenant_456",
+    orgId: "org_456",
+    traceId: "trace_456",
+    goal: "close review drift",
+    mode: "solo",
+    riskLevel: "medium",
+    riskProfile: createValidRiskPreview(),
+    ownership: { ownerId: "owner_1", ownerType: "principal" },
+    auditRefs: [],
+    auditTrail: { auditRefs: [], evidenceRefs: [] },
+    confirmedTaskSpecId: "ctspec_789",
+    requestEnvelopeId: "req_env_abc",
+    requestHash: "hash_def",
+    status: "created",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "vlock_xyz",
+    budgetLedgerId: "bledger_uvw",
+    budgetEnvelope: {
+      budgetLedgerId: "bledger_uvw",
+      currency: "USD",
+    },
+    currentSeq: 0,
+    domainId: "coding",
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
+    fencingToken: "fence_hrun_goal_mode_0",
+  };
+  const result = HarnessRunSchema.parse(valid);
+  assert.equal(result.goal, "close review drift");
+  assert.equal(result.mode, "solo");
 });
 
 test("HarnessRunSchema accepts all valid statuses", () => {

@@ -155,9 +155,10 @@ function canonicalizeForHash(value: unknown): unknown {
   return value;
 }
 
-function createIdempotencyKey(action: string, repository: string, params: Record<string, unknown>): string | null {
+function createIdempotencyKey(action: string, repository: string, params: Record<string, unknown>): string | undefined {
   if (action === "get_file") {
-    return null;
+    // Read-only file fetches are naturally idempotent and do not need an explicit key.
+    return undefined;
   }
   return createHash("sha256")
     .update(JSON.stringify({
@@ -283,7 +284,7 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
         timeoutMs: defaultTimeoutMs,
         rateLimitPerMinute: defaultRateLimitPerMinute,
         retryPolicy: { maxRetries: 3, backoffMs: 250 },
-        ...(idempotencyKey == null ? {} : { idempotencyKey }),
+        ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
         payload: buildPayload(action, params),
       };
     },

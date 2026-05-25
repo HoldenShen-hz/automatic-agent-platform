@@ -203,6 +203,30 @@ test("startCanaryShift applies initial traffic weights", () => {
   assert.equal(green.trafficWeight, 5);
 });
 
+test("startCanaryShift only updates the latest slot record for each slot", () => {
+  const db = createTestDb();
+  const service = new TrafficRoutingService(db);
+
+  const oldBlue = service.registerSlot("blue", "v1.0.0", 1);
+  db.connection.prepare(`UPDATE deployment_slots SET status = 'active', traffic_weight = 100 WHERE id = ?`).run(oldBlue.id);
+  const newBlue = service.registerSlot("blue", "v1.1.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
+  service.updateHealth(green.id, 0.99);
+
+  service.startCanaryShift("blue", "green");
+
+  const rows = db.connection.prepare(
+    `SELECT id, status, traffic_weight FROM deployment_slots WHERE slot = 'blue' ORDER BY created_at ASC`,
+  ).all() as Array<{ id: string; status: string; traffic_weight: number }>;
+  assert.equal(rows.length, 2);
+  const trafficWeights = rows.map((row) => row.traffic_weight).sort((left, right) => left - right);
+  assert.deepEqual(trafficWeights, [0, 95]);
+  assert.equal(rows.filter((row) => row.status === "active").length, 1);
+  assert.equal(rows.filter((row) => row.status === "standby").length, 1);
+  assert.ok(rows.some((row) => row.id === oldBlue.id));
+  assert.ok(rows.some((row) => row.id === newBlue.id));
+});
+
 test("startCanaryShift respects custom canary config", () => {
   const db = createTestDb();
   const service = new TrafficRoutingService(db);
@@ -296,6 +320,30 @@ test("advanceShift blocks progression when canary health is unavailable", () => 
   const result = service.advanceShift(shift.id);
 
   assert.equal(result, null);
+});
+
+test("advanceShift blocks completion when canary health degrades before the final step", () => {
+  const db = createTestDb();
+  const service = new TrafficRoutingService(db);
+
+  service.registerSlot("blue", "v1.0.0", 1);
+  const greenSlot = service.registerSlot("green", "v2.0.0", 1);
+  service.updateHealth(greenSlot.id, 0.99);
+
+  const shift = service.startCanaryShift("blue", "green");
+
+  for (let i = 0; i < shift.totalSteps - 1; i += 1) {
+    const result = service.advanceShift(shift.id);
+    assert.ok(result !== null);
+  }
+
+  service.updateHealth(greenSlot.id, 0.2);
+  const blocked = service.advanceShift(shift.id);
+  assert.equal(blocked, null);
+
+  const current = service.getShift(shift.id);
+  assert.ok(current !== null);
+  assert.equal(current.status, "in_progress");
 });
 
 test("getShift retrieves a shift by ID", () => {

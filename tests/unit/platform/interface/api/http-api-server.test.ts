@@ -1614,6 +1614,49 @@ test("inject responses include API version headers", async () => {
   }
 });
 
+test("inject rejects incompatible SDK version headers with compatibility response headers", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+      headers: {
+        "x-sdk-version": "0.0.1",
+        "x-contract-version": "2026-04-01",
+      },
+    });
+
+    assert.equal(response.statusCode, 426);
+    assert.equal(response.headers["x-sdk-compatibility"], "upgrade_required");
+    assert.equal(response.headers["x-platform-version"], "0.1.0");
+    assert.equal(response.headers["x-contract-version"], "2026-04-01");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("inject accepts compatible SDK version headers and surfaces compatibility warnings", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+      headers: {
+        "x-sdk-version": "0.1.0",
+        "x-contract-version": "0.0.1",
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers["x-sdk-compatibility"], "compatibility_warning");
+    assert.match(response.headers["warning"] ?? "", /compatibility_warning:contract=0.0.1;expected=2026-04-01/);
+  } finally {
+    await server.stop();
+  }
+});
+
 test("network responses compress large JSON payloads with gzip and preserve headers", async () => {
   const { server } = createTestServer();
 

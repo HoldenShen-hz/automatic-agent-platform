@@ -512,22 +512,8 @@ export function buildRiskPreview(
     sideEffects.push("可能移除已有数据或配置");
   }
 
-  // R9-41: Perform actual dry-run execution for high/critical risk items to get accurate assessment
-  let dryRunResult: { blocked: boolean; actualRiskLevel: "low" | "medium" | "high" | "critical"; detectedSideEffects: readonly string[]; policyCheckResults: readonly string[] } | null = null;
-  if (dryRunExecutor != null && dryRunContext != null && (critical || high)) {
-    try {
-      dryRunResult = {
-        blocked: false,
-        actualRiskLevel: critical ? "critical" : high ? "high" : "medium",
-        detectedSideEffects: [],
-        policyCheckResults: [],
-      };
-      // Note: In production, this would be awaited. For sync context, we capture the result.
-      // The actual async call happens in buildTask which awaits it.
-    } catch {
-      // Dry-run failed - stick with keyword-based assessment
-    }
-  }
+  void dryRunExecutor;
+  void dryRunContext;
 
   return {
     overallRisk: critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low",

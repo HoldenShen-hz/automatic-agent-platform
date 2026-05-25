@@ -61,6 +61,33 @@ unregistered → loading → registered → initialized → active ↔ suspended
 - **资源限制**：单个 Plugin 执行超时 30s，内存上限 512MB。
 - **配置注入防护**：`domain-config.json` 必须经过 `PluginConfigValidator` 校验。
 
+### 4.1 版本协商
+
+- `manifest.version` 只表示插件自身语义版本。
+- 运行时兼容性必须同时声明 SPI surface、宿主平台下界/上界、以及 pack/marketplace 所需的 compatibility metadata。
+- `PluginSPIRegistry` 不允许仅凭 `version` 字符串做隐式兼容推断；缺少 compatibility metadata 时必须 fail-closed。
+
+### 4.2 Sandbox 分层
+
+- `allowFilesystemWrite`、`allowNetworkEgress`、`allowedKnowledgeNamespaces`、`runtimeIsolation` 共同定义实际 sandbox tier。
+- `runtimeIsolation` 的 canonical 分层为：
+  - `serialized_in_process`
+  - `isolated_process`
+  - `sandboxed_process`
+- Manifest 中的宽权限声明不能绕过 host 侧更严格的 runtime policy；最终生效权限取交集。
+
+### 4.3 Taint Tracking
+
+- 插件输出必须携带来源 pluginId / label lineage，进入统一 taint tracker。
+- taint label 属于运行时契约的一部分，而不是可选诊断字段。
+- 被撤销或降权的插件，其已有 taint lineage 必须仍可追溯，不允许在 replay/export 时丢失。
+
+### 4.4 容器/子进程启动格式
+
+- 不可信插件的 launcher 输入必须是结构化 schema，而不是拼接命令字符串。
+- host 负责校验：pluginId、sandboxRoot、argv、env allowlist、资源上限、stdio/IPC 通道。
+- 容器或子进程启动参数的合法性属于 SPI framework 契约的一部分，必须在启动前完成验证。
+
 ### 5. Plugin 加载与注册
 
 ```typescript

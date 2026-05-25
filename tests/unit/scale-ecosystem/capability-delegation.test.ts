@@ -62,6 +62,7 @@ test("capability-delegation: registerCapability adds capability with generated i
   });
 
   assert.ok(capability.id != null && capability.id.length > 0);
+  assert.match(capability.id, /^capability_/);
   assert.equal(capability.name, "New Capability");
 });
 
@@ -79,6 +80,7 @@ test("capability-delegation: registerCapability records audit entry", () => {
 
   const auditEntries = delegation.getAuditLog({ capabilityId: capability.id });
   assert.equal(auditEntries.length, 1);
+  assert.match(auditEntries[0]?.id ?? "", /^delegation_audit_/);
   assert.equal(auditEntries[0]?.action, "capability.registered");
 });
 
@@ -174,6 +176,7 @@ test("capability-delegation: createGrant creates active grant", async () => {
   });
 
   assert.ok(grant.id != null && grant.id.length > 0);
+  assert.match(grant.id, /^delegation_/);
   assert.equal(grant.status, "active");
   assert.equal(grant.capabilityId, capability.id);
 });

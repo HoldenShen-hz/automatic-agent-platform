@@ -327,8 +327,9 @@ export class EdgeRuntimeSyncService {
 
   /**
    * R21-16 fix: Performs actual three-way merge between envelope and cloud payloads.
-   * Uses recordId ordering to resolve conflicts - the recordId with lexicographically
-   * higher value "wins" for conflicting fields in a Last-Write-Wins merge strategy.
+   * Returns a structured merged payload. When both payloads are JSON objects, this
+   * produces a field-level merge; otherwise it returns a structured merge reference
+   * instead of an opaque hash so downstream reconciliation can still inspect inputs.
    */
   private performThreeWayMerge(
     envelopeRecordId: string,
@@ -336,18 +337,50 @@ export class EdgeRuntimeSyncService {
     cloudDigest: string,
     cloudPayload?: string,
   ): string {
-    // When cloudPayload is available, perform a field-level merge
-    if (cloudPayload != null && cloudPayload.length > 0) {
-      // Simple field merge: combine both payloads with envelope timestamp as anchor
-      // If payloads are digests, combine them to form a merged reference
-      const merged = `merge:${envelopeRecordId}:${envelopePayload}:${cloudPayload}`;
-      return createHash("sha256").update(merged).digest("hex");
+    const edgeObject = tryParseJsonObject(envelopePayload);
+    const cloudObject = tryParseJsonObject(cloudPayload);
+    if (edgeObject != null || cloudObject != null) {
+      const mergedObject: Record<string, unknown> = {
+        ...(cloudObject ?? {}),
+        ...(edgeObject ?? {}),
+        _merged: true,
+        _mergeStrategy: "edge_structured_overlay",
+        _recordId: envelopeRecordId,
+        _sources: {
+          edgeDigest: createHash("sha256").update(envelopePayload).digest("hex"),
+          cloudDigest,
+        },
+      };
+      return JSON.stringify(mergedObject);
     }
-    // Fallback: when cloud payload not available, use digest concatenation
-    // This creates a deterministic merged identifier from both sources
-    const combined = `${envelopeRecordId}|${envelopePayload}|${cloudDigest}`;
-    return createHash("sha256").update(combined).digest("hex");
+    return JSON.stringify({
+      _merged: true,
+      _mergeStrategy: "digest_reference",
+      _recordId: envelopeRecordId,
+      edge: {
+        payloadDigest: envelopePayload,
+      },
+      cloud: {
+        payloadDigest: cloudDigest,
+        ...(cloudPayload != null ? { payload: cloudPayload } : {}),
+      },
+    });
   }
+}
+
+function tryParseJsonObject(payload: string | undefined): Record<string, unknown> | null {
+  if (payload == null || payload.trim().length === 0) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(payload) as unknown;
+    if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export function resolveEdgeDeploymentMode(profile: EdgeRuntimeProfile): EdgeDeploymentMode {

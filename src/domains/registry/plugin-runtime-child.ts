@@ -1,6 +1,7 @@
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import { existsSync, mkdirSync, realpathSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { format } from "node:util";
 
 import { createBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
@@ -11,14 +12,13 @@ import { parsePluginRuntimeChildMessage } from "./plugin-runtime-protocol.js";
 
 const require = createRequire(import.meta.url);
 const logger = new StructuredLogger({ retentionLimit: 100, service: "plugin-runtime-child" });
+const runtimeChildEntryPath = fileURLToPath(import.meta.url);
 
 let currentPluginId: string | null = null;
 let currentPlugin: RegisteredPlugin | null = null;
 let currentRequest: PluginRuntimeRequest | null = null;
 let stdinBuffer = "";
-
-installRuntimeGuards();
-installStdioProtocolConsoleRedirection();
+let bootstrapInstalled = false;
 
 function getPlugin(pluginId: string): RegisteredPlugin {
   if (currentPluginId === pluginId && currentPlugin) {
@@ -121,31 +121,6 @@ function installRuntimeGuards(): void {
   syncBuiltinESMExports();
 }
 
-process.on("message", (message: unknown) => {
-  handleRuntimeMessage(message);
-});
-
-process.stdin.setEncoding("utf8");
-process.stdin.on("data", (chunk: string) => {
-  stdinBuffer += chunk;
-  while (true) {
-    const newlineIndex = stdinBuffer.indexOf("\n");
-    if (newlineIndex === -1) {
-      break;
-    }
-    const line = stdinBuffer.slice(0, newlineIndex).trim();
-    stdinBuffer = stdinBuffer.slice(newlineIndex + 1);
-    if (line.length === 0) {
-      continue;
-    }
-    try {
-      handleRuntimeMessage(JSON.parse(line) as PluginRuntimeChildMessage);
-    } catch (error) {
-      process.stderr.write(`plugin-runtime-child invalid stdio payload: ${error instanceof Error ? error.message : String(error)}\n`);
-    }
-  }
-});
-
 function installStdioProtocolConsoleRedirection(): void {
   if (process.send) {
     return;
@@ -174,6 +149,45 @@ function installStdioProtocolConsoleRedirection(): void {
   console.debug = ((...args: unknown[]) => writeStructuredLine("debug", ...args)) as typeof console.debug;
   console.warn = ((...args: unknown[]) => writeStructuredLine("warn", ...args)) as typeof console.warn;
   console.error = ((...args: unknown[]) => writeStructuredLine("error", ...args)) as typeof console.error;
+}
+
+export function bootstrapPluginRuntimeChild(): void {
+  if (bootstrapInstalled) {
+    return;
+  }
+  bootstrapInstalled = true;
+  installRuntimeGuards();
+  installStdioProtocolConsoleRedirection();
+
+  process.on("message", (message: unknown) => {
+    handleRuntimeMessage(message);
+  });
+
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (chunk: string) => {
+    stdinBuffer += chunk;
+    while (true) {
+      const newlineIndex = stdinBuffer.indexOf("\n");
+      if (newlineIndex === -1) {
+        break;
+      }
+      const line = stdinBuffer.slice(0, newlineIndex).trim();
+      stdinBuffer = stdinBuffer.slice(newlineIndex + 1);
+      if (line.length === 0) {
+        continue;
+      }
+      try {
+        handleRuntimeMessage(JSON.parse(line) as PluginRuntimeChildMessage);
+      } catch (error) {
+        process.stderr.write(`plugin-runtime-child invalid stdio payload: ${error instanceof Error ? error.message : String(error)}\n`);
+      }
+    }
+  });
+
+  sendRuntimeMessage({
+    type: "ready",
+    pid: process.pid,
+  });
 }
 
 function sendRuntimeMessage(message: unknown): void {
@@ -231,10 +245,9 @@ function handleRuntimeMessage(message: unknown): void {
     });
 }
 
-sendRuntimeMessage({
-  type: "ready",
-  pid: process.pid,
-});
+if (process.argv[1] != null && resolve(process.argv[1]) === runtimeChildEntryPath) {
+  bootstrapPluginRuntimeChild();
+}
 
 function resolveValidatedSandboxRoot(rawSandboxRoot: string): string {
   const workspaceRoot = resolve(process.env.AA_PLUGIN_WORKSPACE_ROOT ?? process.cwd());

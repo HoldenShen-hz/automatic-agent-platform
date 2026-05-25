@@ -6,6 +6,18 @@ import {
   resetMultiStepToolRegistryForTests,
 } from "../../../src/platform/five-plane-execution/dispatcher/index.js";
 
+function parseToolResult(result: string): Record<string, unknown> {
+  return JSON.parse(result) as Record<string, unknown>;
+}
+
+function assertErrorResult(result: string, expectedErrorCode: string): Record<string, unknown> {
+  const parsed = parseToolResult(result);
+  assert.equal(parsed.success, false);
+  assert.equal(parsed.errorCode, expectedErrorCode);
+  assert.equal(typeof parsed.errorCode, "string");
+  return parsed;
+}
+
 test.afterEach(() => {
   resetMultiStepToolRegistryForTests();
 });
@@ -46,30 +58,22 @@ test("executeToolCall question returns skipped", async () => {
 
 test("executeToolCall web_search without query returns error", async () => {
   const result = await executeMultiStepToolCallForTests("web_search", JSON.stringify({}));
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_QUERY");
+  assertErrorResult(result, "MISSING_QUERY");
 });
 
 test("executeToolCall web_fetch without url returns error", async () => {
   const result = await executeMultiStepToolCallForTests("web_fetch", JSON.stringify({}));
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_URL");
+  assertErrorResult(result, "MISSING_URL");
 });
 
 test("executeToolCall git without args returns error", async () => {
   const result = await executeMultiStepToolCallForTests("git", JSON.stringify({}));
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_GIT_ARGS");
+  assertErrorResult(result, "MISSING_GIT_ARGS");
 });
 
 test("executeToolCall repo-map without query returns error", async () => {
   const result = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({}));
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_QUERY");
+  assertErrorResult(result, "MISSING_QUERY");
 });
 
 test("executeToolCall repo-map with empty query returns error", async () => {
@@ -77,9 +81,7 @@ test("executeToolCall repo-map with empty query returns error", async () => {
     "repo-map",
     JSON.stringify({ query: "   " }),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_QUERY");
+  assertErrorResult(result, "MISSING_QUERY");
 });
 
 test("executeToolCall wait-agent without agentId returns error", async () => {
@@ -87,9 +89,7 @@ test("executeToolCall wait-agent without agentId returns error", async () => {
     "wait-agent",
     JSON.stringify({}),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_AGENT_ID");
+  assertErrorResult(result, "MISSING_AGENT_ID");
 });
 
 test("executeToolCall wait-agent with unknown agent returns error", async () => {
@@ -97,9 +97,7 @@ test("executeToolCall wait-agent with unknown agent returns error", async () => 
     "wait-agent",
     JSON.stringify({ agentId: "nonexistent-agent" }),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "AGENT_NOT_FOUND");
+  assertErrorResult(result, "AGENT_NOT_FOUND");
 });
 
 test("executeToolCall send-message without agentId returns error", async () => {
@@ -107,9 +105,7 @@ test("executeToolCall send-message without agentId returns error", async () => {
     "send-message",
     JSON.stringify({ message: "hello" }),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_ARGS");
+  assertErrorResult(result, "MISSING_ARGS");
 });
 
 test("executeToolCall send-message without message returns error", async () => {
@@ -117,9 +113,7 @@ test("executeToolCall send-message without message returns error", async () => {
     "send-message",
     JSON.stringify({ agentId: "agent-1" }),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_ARGS");
+  assertErrorResult(result, "MISSING_ARGS");
 });
 
 test("executeToolCall batch-tool without toolCalls returns error", async () => {
@@ -127,9 +121,7 @@ test("executeToolCall batch-tool without toolCalls returns error", async () => {
     "batch-tool",
     JSON.stringify({}),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_TOOL_CALLS");
+  assertErrorResult(result, "MISSING_TOOL_CALLS");
 });
 
 test("executeToolCall batch-tool with empty toolCalls array returns error", async () => {
@@ -137,9 +129,7 @@ test("executeToolCall batch-tool with empty toolCalls array returns error", asyn
     "batch-tool",
     JSON.stringify({ toolCalls: [] }),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "MISSING_TOOL_CALLS");
+  assertErrorResult(result, "MISSING_TOOL_CALLS");
 });
 
 test("executeToolCall batch-tool serial execution", async () => {
@@ -180,9 +170,7 @@ test("executeToolCall unknown tool returns error", async () => {
     "nonexistent-tool",
     JSON.stringify({}),
   );
-  const parsed = JSON.parse(result);
-  assert.equal(parsed.success, false);
-  assert.equal(parsed.errorCode, "UNKNOWN_TOOL");
+  assertErrorResult(result, "UNKNOWN_TOOL");
 });
 
 test("executeToolCall web_search with query formats result correctly", async () => {

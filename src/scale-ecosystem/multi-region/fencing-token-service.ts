@@ -10,6 +10,7 @@
  * - validateFencingToken(entityId, token): Validates token before allowing writes
  */
 
+import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -290,7 +291,7 @@ export class FencingTokenService {
       epochCounter: this.epochCounter,
       entityLeadership: Object.fromEntries(this.entityLeadership.entries()),
     };
-    const tempPath = `${this.storagePath}.${process.pid}.${Date.now()}.tmp`;
+    const tempPath = `${this.storagePath}.${Date.now()}.${randomUUID()}.tmp`;
     let renamed = false;
     try {
       writeFileSync(tempPath, JSON.stringify(snapshot, null, 2), "utf8");

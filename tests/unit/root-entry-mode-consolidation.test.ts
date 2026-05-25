@@ -9,12 +9,10 @@ import type { PlatformStartupTargetKind } from "../../src/index.js";
  * is the single source of truth.
  */
 test("PlatformStartupTargetKind is the single source of truth (issue 2002 fix)", () => {
-  // Verify the type is correctly exported and has the expected shape
-  type Expected = "summary" | "demo" | "api" | "console" | "worker";
+  const startupModes = ["summary", "demo", "api", "console", "worker"] as const satisfies readonly PlatformStartupTargetKind[];
+  const runtimeCoverage = Object.fromEntries(startupModes.map((mode) => [mode, true])) as Record<PlatformStartupTargetKind, true>;
 
-  // Type-level assertion: PlatformStartupTargetKind should match Expected
-  const _typeCheck: Expected extends PlatformStartupTargetKind ? true : false = true;
-  void _typeCheck;
+  assert.deepEqual(Object.keys(runtimeCoverage), ["summary", "demo", "api", "console", "worker"]);
 });
 
 test("PlatformStartupTargetKind union includes all valid entry modes", () => {

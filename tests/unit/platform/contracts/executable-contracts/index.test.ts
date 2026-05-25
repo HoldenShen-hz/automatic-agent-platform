@@ -193,7 +193,19 @@ test("intake factories enforce confirmation before request envelope", () => {
   assert.equal(validatedConfirmed.confirmationReceipt?.receiptId, "receipt-1");
   assert.equal(validatedEnvelope.requestId, envelope.requestId);
   assert.equal(validatedEnvelope.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);
-  assert.throws(() => validateExecutableContract("RequestEnvelope", { requestId: "" }), ValidationError);
+  assert.throws(
+    () => {
+      try {
+        validateExecutableContract("RequestEnvelope", { requestId: "" });
+      } catch (error) {
+        assert.ok(error instanceof ValidationError);
+        const issues = (error.internalDetails as { issues?: Array<{ path?: readonly string[] }> } | undefined)?.issues ?? [];
+        assert.ok(issues.some((issue) => issue.path?.[0] === "requestId"));
+        throw error;
+      }
+    },
+    ValidationError,
+  );
 
   assert.equal(envelope.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);
   assert.equal(envelope.constraintPackRef, "constraint-pack-1");

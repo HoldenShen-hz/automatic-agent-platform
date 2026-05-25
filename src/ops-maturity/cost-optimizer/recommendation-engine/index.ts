@@ -33,9 +33,11 @@ export function buildCostOptimizationRecommendation(
   const downgradePath = currentProfile != null
     && recommendedProfile != null
     && currentCostUsd >= 100
-    && recommendedProfile.pricing.inputPer1kUsd + recommendedProfile.pricing.outputPer1kUsd
-      < currentProfile.pricing.inputPer1kUsd + currentProfile.pricing.outputPer1kUsd;
-  const estimatedSavingsUsd = Number((currentCostUsd * (downgradePath ? 0.22 : 0.15)).toFixed(2));
+    && totalTokenCostPer1k(recommendedProfile) < totalTokenCostPer1k(currentProfile);
+  const estimatedSavingsUsd = Number((
+    currentCostUsd
+    * resolveSavingsRatio(currentProfile, recommendedProfile, downgradePath)
+  ).toFixed(2));
   return {
     recommendationId: `rec_${subjectId}`,
     subjectId,
@@ -47,6 +49,25 @@ export function buildCostOptimizationRecommendation(
       ? { recommendedModelRef: `${recommendedProfile.provider}/${recommendedProfile.modelId}` as string }
       : {}),
   };
+}
+
+function resolveSavingsRatio(
+  currentProfile: ModelProfileMetadata | null,
+  recommendedProfile: ModelProfileMetadata | null,
+  downgradePath: boolean,
+): number {
+  if (currentProfile == null || recommendedProfile == null) {
+    return downgradePath ? 0.22 : 0.15;
+  }
+  const currentCost = totalTokenCostPer1k(currentProfile);
+  if (currentCost <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, (currentCost - totalTokenCostPer1k(recommendedProfile)) / currentCost));
+}
+
+function totalTokenCostPer1k(profile: ModelProfileMetadata): number {
+  return profile.pricing.inputPer1kUsd + profile.pricing.outputPer1kUsd;
 }
 
 export function prioritizeCostOptimizationRecommendations(
@@ -62,18 +83,12 @@ function findLowerCostPeerProfile(
   return Object.values(registry.profiles)
     .filter((profile) => profile.provider === currentProfile.provider)
     .filter((profile) => profile.modelId !== currentProfile.modelId)
-    .sort((left, right) =>
-      (left.pricing.inputPer1kUsd + left.pricing.outputPer1kUsd)
-      - (right.pricing.inputPer1kUsd + right.pricing.outputPer1kUsd),
-    )[0] ?? null;
+    .sort((left, right) => totalTokenCostPer1k(left) - totalTokenCostPer1k(right))[0] ?? null;
 }
 
 function findLowestCostProfile(registry: ModelMetadataRegistry): ModelProfileMetadata | null {
   return Object.values(registry.profiles)
-    .sort((left, right) =>
-      (left.pricing.inputPer1kUsd + left.pricing.outputPer1kUsd)
-      - (right.pricing.inputPer1kUsd + right.pricing.outputPer1kUsd),
-    )[0] ?? null;
+    .sort((left, right) => totalTokenCostPer1k(left) - totalTokenCostPer1k(right))[0] ?? null;
 }
 
 function resolveCurrentProfile(

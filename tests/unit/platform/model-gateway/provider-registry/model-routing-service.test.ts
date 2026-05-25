@@ -132,6 +132,24 @@ test("model routing respects explicit pin and fails closed for unavailable profi
   );
 });
 
+test("model routing cost cap applies to blended input and output pricing", () => {
+  const registry = buildRegistry();
+  registry.profiles.fast.pricing.inputPer1kUsd = 0.1;
+  registry.profiles.fast.pricing.outputPer1kUsd = 10;
+  registry.profiles.balanced.pricing.inputPer1kUsd = 1.5;
+  registry.profiles.balanced.pricing.outputPer1kUsd = 1.5;
+
+  const service = new ModelRoutingService({ registry });
+  const result = service.route({
+    routeClass: "classification",
+    riskLevel: "low",
+    maxInputPer1kUsd: 2,
+  });
+
+  assert.equal(result.profileName, "balanced");
+  assert.equal(result.trace.routeReason, "cost_cap_fallback");
+});
+
 test("model routing enforces data residency, pii safety, training opt-out, and judge independence filters", () => {
   const registry = buildRegistry();
   registry.providers.anthropic.region = "us-east";

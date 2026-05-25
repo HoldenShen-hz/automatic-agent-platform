@@ -53,4 +53,7 @@ test("OrgGovernanceSaga compensates committed and prepared nodes when commit fai
     "compensate:org-2",
     "compensate:org-1",
   ]);
+  const failedEntry = result.executionLog.find((entry) => entry.stepId === "commit-2");
+  assert.equal(failedEntry?.outcome, "failed");
+  assert.equal(failedEntry?.errorMessage, "commit.failed");
 });

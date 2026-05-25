@@ -220,10 +220,12 @@ function aggregateEstimatedDuration(tasks: readonly PlannedTask[]): string {
 }
 
 export class GoalDecompositionService implements GoalDecompositionPort {
+  private static readonly sharedDecomposedGoalIds = new Set<string>();
+  private static readonly sharedDelegationDepth = new Map<string, number>();
   /** R5-18: Anti-multiplication guard - tracks decomposed goal IDs to prevent duplicate work */
-  private readonly decomposedGoalIds = new Set<string>();
+  private readonly decomposedGoalIds = GoalDecompositionService.sharedDecomposedGoalIds;
   /** R5-18: Tracks delegation depth per goal chain */
-  private readonly delegationDepth = new Map<string, number>();
+  private readonly delegationDepth = GoalDecompositionService.sharedDelegationDepth;
 
   public constructor(private readonly options: GoalDecompositionServiceOptions = {}) {}
 

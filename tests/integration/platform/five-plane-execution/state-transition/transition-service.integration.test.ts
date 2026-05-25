@@ -365,6 +365,90 @@ test("state-transition: TransitionService handles failed terminal state", () => 
   }
 });
 
+test("state-transition: TransitionService closes task without execution record", () => {
+  const ctx = createIntegrationContext("aa-ts-no-exec-");
+  try {
+    const repository = createRuntimeLifecycleRepository(ctx.store);
+    const transitions = new TransitionService(ctx.db, ctx.store, repository);
+
+    const taskId = "ts-no-exec-001";
+    const sessionId = "ts-no-exec-sess-001";
+    const now = nowIso();
+
+    ctx.db.transaction(() => {
+      ctx.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        tenantId: null,
+        title: "No execution record terminal transition",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0.01,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+      ctx.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "single_agent_minimal",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: JSON.stringify({}),
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+      ctx.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    transitions.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId: null,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "ok" }),
+      outputsJson: JSON.stringify({ result: "ok" }),
+      context: {
+        reasonCode: "task.completed_without_execution",
+        traceId: "trace-no-exec",
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    assert.equal(ctx.store.getTask(taskId)?.status, "done");
+    assert.equal(ctx.store.getWorkflowState(taskId)?.status, "completed");
+    assert.equal(ctx.store.getSession(sessionId)?.status, "completed");
+    const statusEvent = ctx.store.listEventsForTask(taskId).find((event) => event.eventType === "task:status_changed");
+    assert.equal(statusEvent?.executionId ?? null, null);
+  } finally {
+    ctx.cleanup();
+  }
+});
+
 test("state-transition: TransitionService workflow pause and resume cycle", () => {
   const ctx = createIntegrationContext("aa-ts-workflow-");
   try {

@@ -206,6 +206,14 @@ export class RetryableApiClient {
     return this.post<T>(`/harness-runs/${encodeURIComponent(runId)}/abort`, reason == null ? {} : { reason });
   }
 
+  async createExecutionTicket<T>(body: unknown): Promise<ApiResponse<T>> {
+    return this.post<T>("/execution-dispatch/tickets", body);
+  }
+
+  async dispatchExecution<T>(body: unknown): Promise<ApiResponse<T>> {
+    return this.post<T>("/execution-dispatch/dispatch-next", body);
+  }
+
   async listPacks<T>(pagination?: PaginationSpec): Promise<PaginatedResponse<T>> {
     return this.getPaginated<T>("/packs", pagination);
   }
@@ -387,7 +395,9 @@ export class RetryableApiClient {
    */
   private wrapRequestBody<TPayload>(payload: TPayload, idempotencyKey?: string): ContractEnvelope<TPayload> {
     const metadata: Record<string, string> = {};
-    const principalSubject = this.config.principal?.subject?.trim() || this.config.principal?.principalId?.trim();
+    const principalSubject = this.config.principal?.subject?.trim()
+      || this.config.principal?.principalId?.trim()
+      || this.config.principal?.userId?.trim();
     const principal = this.config.principal == null
       ? undefined
       : {
@@ -396,10 +406,20 @@ export class RetryableApiClient {
           ...(this.config.principal.roles?.length ? { roles: [...this.config.principal.roles] } : {}),
         };
     if (this.config.principal != null) {
-      const p = this.config.principal as { subject?: string; principalId?: string; tenantId?: string; roles?: readonly string[] };
+      const p = this.config.principal as {
+        subject?: string;
+        principalId?: string;
+        userId?: string;
+        tenantId?: string;
+        roles?: readonly string[];
+        permissions?: readonly string[];
+        displayName?: string;
+      };
       if (principalSubject) metadata.principalSubject = principalSubject;
       if (p.tenantId) metadata.principalTenantId = p.tenantId;
       if (p.roles?.length) metadata.principalRoles = p.roles.join(",");
+      if (p.permissions?.length) metadata.principalPermissions = p.permissions.join(",");
+      if (p.displayName?.trim()) metadata.principalDisplayName = p.displayName.trim();
     }
 
     const envelope = createExecutableContractEnvelope({
@@ -848,7 +868,7 @@ export function createApiClient(config: ApiClientConfig): RetryableApiClient {
   if (!config.apiVersion?.trim()) {
     throw new ValidationError("client_sdk.missing_api_version", "API client requires apiVersion.");
   }
-  if (!(config.principal?.subject?.trim() || config.principal?.principalId?.trim())) {
+  if (!(config.principal?.subject?.trim() || config.principal?.principalId?.trim() || config.principal?.userId?.trim())) {
     throw new ValidationError("client_sdk.missing_principal", "API client requires principal.");
   }
   return new RetryableApiClient(config);

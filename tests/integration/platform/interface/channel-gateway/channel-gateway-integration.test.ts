@@ -548,6 +548,11 @@ test("ChannelGatewayDeliveryService getDeadLetterCount returns channel counts", 
       errorMessage: "Service unavailable",
       retryable: true,
     });
+    h.deliveryService.recordDeliveryFailure(message.messageId, {
+      responseStatus: 503,
+      errorMessage: "Retries exhausted",
+      retryable: true,
+    });
 
     const counts = h.deliveryService.getDeadLetterCount();
     assert.ok((counts.webhook ?? 0) >= 1);
@@ -586,6 +591,10 @@ test("ChannelGatewayDeliveryService getDeadLetters with channel filter", () => {
       responseStatus: 500,
       retryable: true,
     });
+    h.deliveryService.recordDeliveryFailure(telegramMsg.messageId, {
+      responseStatus: 500,
+      retryable: true,
+    });
 
     // Create and dead-letter a webhook message
     const webhookMsg = h.deliveryService.createDeliveryMessage(
@@ -594,6 +603,10 @@ test("ChannelGatewayDeliveryService getDeadLetters with channel filter", () => {
       { text: "Webhook dead letter" },
       1,
     );
+    h.deliveryService.recordDeliveryFailure(webhookMsg.messageId, {
+      responseStatus: 500,
+      retryable: true,
+    });
     h.deliveryService.recordDeliveryFailure(webhookMsg.messageId, {
       responseStatus: 500,
       retryable: true,
@@ -896,7 +909,7 @@ test("ChannelGatewayService processes retry queue with failed messages", async (
       aliases: [],
     });
 
-    // Create a message with 2 retries allowed (allows 1 retry before dead-letter)
+    // Create a message with 2 retries allowed.
     const message = h.deliveryService.createDeliveryMessage(
       "webhook",
       target.targetId,
@@ -904,7 +917,7 @@ test("ChannelGatewayService processes retry queue with failed messages", async (
       2,
     );
 
-    // Record first failure - should schedule retry since attemptNumber (1) < maxRetries (2)
+    // Record first failure - should schedule retry because retry budget remains.
     const failure = h.deliveryService.recordDeliveryFailure(message.messageId, {
       responseStatus: 503,
       errorMessage: "Service unavailable",

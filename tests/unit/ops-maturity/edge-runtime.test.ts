@@ -273,17 +273,29 @@ test("edge: sync merges mismatched payload digest for low-risk payloads", () => 
     syncPolicy: { allowRestrictedDataUpload: true, requireOrdering: false },
     riskLevel: "low",
   };
-  const envelope = service.buildSyncEnvelope(profile, buildOfflineExecutionRecord("node-conflict", "task-conflict", "2026-04-29T00:00:00Z"), "edge-digest");
+  const envelope = service.buildSyncEnvelope(
+    profile,
+    buildOfflineExecutionRecord("node-conflict", "task-conflict", "2026-04-29T00:00:00Z"),
+    JSON.stringify({ edgeField: "local", shared: "edge" }),
+  );
   const cloudDigests: Record<string, string> = {
     [`node-conflict:task-conflict:2026-04-29T00:00:00Z`]: "cloud-different-digest",
   };
+  const cloudPayloads: Record<string, string> = {
+    [`node-conflict:task-conflict:2026-04-29T00:00:00Z`]: JSON.stringify({ cloudField: "remote", shared: "cloud" }),
+  };
 
-  const receipt = service.sync(profile, [envelope], cloudDigests);
+  const receipt = service.sync(profile, [envelope], cloudDigests, cloudPayloads);
 
   assert.strictEqual(receipt.acceptedEnvelopeIds.length, 1);
   assert.strictEqual(receipt.decisions[0]?.resolution, "merge");
   assert.ok(receipt.decisions[0]?.incidentId != null);
   assert.ok(receipt.decisions[0]?.mergedPayload != null);
+  const mergedPayload = JSON.parse(receipt.decisions[0]!.mergedPayload!);
+  assert.equal(mergedPayload.edgeField, "local");
+  assert.equal(mergedPayload.cloudField, "remote");
+  assert.equal(mergedPayload.shared, "edge");
+  assert.equal(mergedPayload._merged, true);
 });
 
 test("edge: sync respects ordering policy", () => {

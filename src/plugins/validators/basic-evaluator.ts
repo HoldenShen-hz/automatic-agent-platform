@@ -429,12 +429,6 @@ function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPl
         },
       };
     },
-    async evaluate(input: ValidatorInput) {
-      return evaluateWithLegacyScoring(input.machineOutput.payload ?? {}, input.contract ?? {});
-    },
-    async produceHarnessDecision(input: ValidatorInput) {
-      return evaluateWithLegacyScoring(input.machineOutput.payload ?? {}, input.contract ?? {});
-    },
   };
 
   return plugin as DomainValidatorPlugin;

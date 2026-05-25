@@ -48,6 +48,7 @@ import { AdminRuntimeDirectiveService } from "./admin-runtime-directive-service.
 import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
 import { readRequestId } from "./http-server/utils.js";
 import { createDeduplicationMiddleware } from "./middleware/request-deduplication.js";
+import { SdkVersionHandshakeService } from "./middleware/sdk-version-handshake.js";
 import { globalVersionRoutingMiddleware } from "./middleware/version-routing.js";
 import {
   createIdempotencyKeyMiddleware,
@@ -101,6 +102,7 @@ import type {
   StartServerOptions,
   StartedServerAddress,
 } from "./http-api-server-types.js";
+import { DEFAULT_WORKER_HEARTBEAT_STALENESS_MS } from "../../shared/runtime/worker-heartbeat-policy.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 const SERVER_HEADERS_TIMEOUT_MS = 60_000;
@@ -109,6 +111,10 @@ const SERVER_REQUEST_TIMEOUT_MS = 30_000;
 const SERVER_MAX_HEADERS_COUNT = 2_000;
 const SERVER_MAX_REQUESTS_PER_SOCKET = 1_000;
 const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
+const SDK_HANDSHAKE_PLATFORM_VERSION = process.env["AA_BUILD_VERSION"] ?? "0.1.0";
+const SDK_HANDSHAKE_CONTRACT_VERSION = process.env["AA_CONTRACT_VERSION"] ?? "2026-04-01";
+const SDK_HANDSHAKE_MINIMUM_SDK_VERSION = process.env["AA_MIN_CLIENT_VERSION"] ?? "0.1.0";
+const SDK_HANDSHAKE_RECOMMENDED_SDK_VERSION = process.env["AA_RECOMMENDED_CLIENT_VERSION"] ?? SDK_HANDSHAKE_MINIMUM_SDK_VERSION;
 
 export type {
   HttpApiServerOptions,
@@ -133,6 +139,7 @@ export class HttpApiServer {
   private readonly adminConfigService: AdminConfigService;
   private readonly adminRuntimeDirectiveService: AdminRuntimeDirectiveService;
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
+  private readonly sdkVersionHandshake: SdkVersionHandshakeService;
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
   private readonly requestDeduplication = createDeduplicationMiddleware({ allowInMemoryInProduction: true });
@@ -157,6 +164,12 @@ export class HttpApiServer {
     this.adminConfigService = options.adminConfigService ?? new AdminConfigService();
     this.adminRuntimeDirectiveService = options.adminRuntimeDirectiveService ?? new AdminRuntimeDirectiveService();
     this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
+    this.sdkVersionHandshake = new SdkVersionHandshakeService({
+      platformVersion: SDK_HANDSHAKE_PLATFORM_VERSION,
+      contractVersion: SDK_HANDSHAKE_CONTRACT_VERSION,
+      minimumSdkVersion: SDK_HANDSHAKE_MINIMUM_SDK_VERSION,
+      recommendedSdkVersion: SDK_HANDSHAKE_RECOMMENDED_SDK_VERSION,
+    });
     this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
     this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
     const envOrigins = process.env["AA_API_ALLOWED_ORIGINS"] != null
@@ -311,11 +324,21 @@ export class HttpApiServer {
       headers,
       body: options.body ?? null,
     });
+    const sdkHandshakeDecision = this.evaluateSdkVersionHandshake(headers);
     const versionDecision = globalVersionRoutingMiddleware.selectVersion(
       globalVersionRoutingMiddleware.parseAcceptVersion(headers["accept-version"] ?? null),
     );
     let payload: ApiResponsePayload;
-    if (!versionDecision.acceptable) {
+    if (sdkHandshakeDecision != null && !sdkHandshakeDecision.accepted) {
+      payload = this.buildJsonErrorResponse(requestId, sdkHandshakeDecision.statusCode, {
+        code: sdkHandshakeDecision.reasonCode,
+        message: "SDK version compatibility check failed.",
+        details: {
+          warnings: sdkHandshakeDecision.warnings,
+        },
+      });
+      this.applySdkHandshakeHeaders(payload, sdkHandshakeDecision);
+    } else if (!versionDecision.acceptable) {
       payload = this.buildJsonErrorResponse(requestId, versionDecision.statusCode, {
         code: versionDecision.reasonCode,
         message: "Requested API version is not supported.",
@@ -356,8 +379,11 @@ export class HttpApiServer {
       });
     }
     payload.headers["x-api-version"] ??= versionDecision.version;
+    if (sdkHandshakeDecision != null) {
+      this.applySdkHandshakeHeaders(payload, sdkHandshakeDecision);
+    }
     if (versionDecision.warnings.length > 0) {
-      payload.headers["warning"] = versionDecision.warnings.join(", ");
+      payload.headers["warning"] = this.mergeWarningHeader(payload.headers["warning"], versionDecision.warnings);
     }
     const response = this.decoratePayload(
       this.attachResponseTracing(payload, requestId, {
@@ -403,10 +429,21 @@ export class HttpApiServer {
         this.sendPayload(response, finalizedPayload, headers["accept-encoding"]);
         return;
       }
+      const sdkHandshakeDecision = this.evaluateSdkVersionHandshake(headers);
       const versionDecision = globalVersionRoutingMiddleware.selectVersion(
         globalVersionRoutingMiddleware.parseAcceptVersion(headers["accept-version"] ?? null),
       );
-      if (!versionDecision.acceptable) {
+      if (sdkHandshakeDecision != null && !sdkHandshakeDecision.accepted) {
+        payload = this.buildJsonErrorResponse(requestId, sdkHandshakeDecision.statusCode, {
+          code: sdkHandshakeDecision.reasonCode,
+          message: "SDK version compatibility check failed.",
+          details: {
+            warnings: sdkHandshakeDecision.warnings,
+          },
+        });
+        this.applySdkHandshakeHeaders(payload, sdkHandshakeDecision);
+      }
+      else if (!versionDecision.acceptable) {
         payload = this.buildJsonErrorResponse(requestId, versionDecision.statusCode, {
           code: versionDecision.reasonCode,
           message: "Requested API version is not supported.",
@@ -456,8 +493,11 @@ export class HttpApiServer {
         payload = await this.routeRequest(requestId, request, headers);
       }
       payload.headers["x-api-version"] ??= versionDecision.version;
+      if (sdkHandshakeDecision != null) {
+        this.applySdkHandshakeHeaders(payload, sdkHandshakeDecision);
+      }
       if (versionDecision.warnings.length > 0) {
-        payload.headers["warning"] = versionDecision.warnings.join(", ");
+        payload.headers["warning"] = this.mergeWarningHeader(payload.headers["warning"], versionDecision.warnings);
       }
     } catch (error) {
       payload = this.handleError(error, requestId, {
@@ -517,6 +557,38 @@ export class HttpApiServer {
     } catch {
       return "/";
     }
+  }
+
+  private evaluateSdkVersionHandshake(
+    headers: Record<string, string | undefined>,
+  ): ReturnType<SdkVersionHandshakeService["evaluate"]> | null {
+    const hasSdkHeaders = headers["x-sdk-version"] != null
+      || headers["x-contract-version"] != null
+      || headers["x-platform-min-version"] != null;
+    if (!hasSdkHeaders) {
+      return null;
+    }
+    return this.sdkVersionHandshake.evaluate({ headers });
+  }
+
+  private applySdkHandshakeHeaders(
+    payload: ApiResponsePayload,
+    decision: ReturnType<SdkVersionHandshakeService["evaluate"]>,
+  ): void {
+    for (const [header, value] of Object.entries(decision.responseHeaders)) {
+      payload.headers[header.toLowerCase()] = value;
+    }
+    if (decision.warnings.length > 0) {
+      payload.headers["warning"] = this.mergeWarningHeader(payload.headers["warning"], decision.warnings);
+    }
+  }
+
+  private mergeWarningHeader(existing: string | undefined, warnings: readonly string[]): string {
+    const values = [
+      ...(existing != null && existing.length > 0 ? [existing] : []),
+      ...warnings,
+    ];
+    return values.join(", ");
   }
 
   private normalizeRateLimitPath(pathname: string): string {
@@ -988,7 +1060,7 @@ export class HttpApiServer {
       return;
     }
     const now = new Date().toISOString();
-    const ttlMs = Math.max(1, Math.trunc(this.options.workerHeartbeatTtlMs ?? 5 * 60 * 1000));
+    const ttlMs = Math.max(1, Math.trunc(this.options.workerHeartbeatTtlMs ?? DEFAULT_WORKER_HEARTBEAT_STALENESS_MS));
     const registry = new WorkerRegistryService(this.options.taskStore);
     for (const worker of registry.listStaleWorkers(now, ttlMs)) {
       const existing = this.options.taskStore.worker.getWorkerSnapshot(worker.workerId);

@@ -98,6 +98,24 @@ test("buildRiskPreview handles Chinese critical keywords", () => {
   assert.equal(result.overallRisk, "critical");
 });
 
+test("buildRiskPreview remains keyword-based in synchronous mode even when dry-run dependencies are provided", () => {
+  const result = buildRiskPreview(
+    "deploy to production",
+    "task_create",
+    {
+      executeDryRun: async () => ({
+        blocked: false,
+        actualRiskLevel: "low",
+        detectedSideEffects: [],
+        policyCheckResults: [],
+      }),
+    },
+    { divisionId: "eng", workflowId: "wf1", userId: "u1", locale: "en-US" },
+  );
+
+  assert.equal(result.overallRisk, "high");
+});
+
 test("buildRiskPreviewWithDryRun executes dry run for high risk", async () => {
   let executed = false;
   const mockExecutor: DryRunExecutorPort = {

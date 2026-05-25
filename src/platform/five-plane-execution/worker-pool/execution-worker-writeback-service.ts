@@ -32,6 +32,7 @@ import { resolveRemoteAuthorityBlockReason } from "./remote-session-guard.js";
 import { TransitionService } from "../state-transition/transition-service.js";
 import { WorkerRegistryService } from "./worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { StorageError } from "../../contracts/errors.js";
 import {
   buildAgentExecutionRecord,
   parseJsonArray,
@@ -577,20 +578,69 @@ export class ExecutionWorkerWritebackService {
         );
       });
     } catch (error) {
-      const reasonCode =
-        error instanceof Error && error.message.includes("invalid_transition")
-          ? "invalid_terminal_transition"
-          : "authoritative_store_unavailable";
+      if (error instanceof Error && error.message.includes("invalid_transition")) {
+        logger.log({
+          level: "warn",
+          message: "Worker writeback rejected by terminal transition validation",
+          data: {
+            executionId: execution.id,
+            workerId: input.workerId,
+            leaseId: input.leaseId,
+            terminalStatus: input.terminalStatus,
+            error: error.message,
+          },
+        });
+        this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+          workerId: input.workerId,
+          leaseId: input.leaseId,
+          fencingToken: input.fencingToken,
+          terminalStatus: input.terminalStatus,
+          reasonCode: "invalid_terminal_transition",
+        });
+        return {
+          accepted: false,
+          reasonCode: "invalid_terminal_transition",
+          executionId: execution.id,
+          leaseId: input.leaseId,
+          taskId: task.id,
+          terminalStatus: input.terminalStatus,
+        };
+      }
+      if (!(error instanceof StorageError)) {
+        logger.log({
+          level: "error",
+          message: "Worker writeback failed with unexpected error",
+          data: {
+            executionId: execution.id,
+            workerId: input.workerId,
+            leaseId: input.leaseId,
+            terminalStatus: input.terminalStatus,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+        throw error;
+      }
+      logger.log({
+        level: "warn",
+        message: "Worker writeback failed because authoritative store is unavailable",
+        data: {
+          executionId: execution.id,
+          workerId: input.workerId,
+          leaseId: input.leaseId,
+          terminalStatus: input.terminalStatus,
+          error: error.message,
+        },
+      });
       this.recordRejectedEvent(task.id, execution.id, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
         terminalStatus: input.terminalStatus,
-        reasonCode,
+        reasonCode: "authoritative_store_unavailable",
       });
       return {
         accepted: false,
-        reasonCode,
+        reasonCode: "authoritative_store_unavailable",
         executionId: execution.id,
         leaseId: input.leaseId,
         taskId: task.id,

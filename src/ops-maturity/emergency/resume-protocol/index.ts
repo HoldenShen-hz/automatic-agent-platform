@@ -17,6 +17,10 @@ export interface ResumePlan {
   readonly createdAt: string;
 }
 
+function isStrictlyTrue(value: unknown): value is true {
+  return value === true;
+}
+
 export function canResumeFromPanic(plan: ResumePlan): boolean {
   const scope = plan.scope ?? "";
   if (!scope.trim()) {
@@ -46,8 +50,8 @@ export function canResumeFromPanic(plan: ResumePlan): boolean {
   return approvalCount >= 2
     && approvers.length >= 2
     && (platformAdminCount >= 2 || breakGlassSatisfied)
-    && plan.checkpointsVerified
-    && (plan.forensicSnapshotReviewed ?? false)
-    && (plan.rollbackPlanReady ?? false)
-    && (plan.validationRunPassed ?? false);
+    && isStrictlyTrue(plan.checkpointsVerified)
+    && isStrictlyTrue(plan.forensicSnapshotReviewed)
+    && isStrictlyTrue(plan.rollbackPlanReady)
+    && isStrictlyTrue(plan.validationRunPassed);
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError, WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
 import { createBudgetLedger, type PlatformFactEvent } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { BudgetAllocator } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
@@ -114,6 +114,39 @@ test("BudgetAllocator can release a reservation when execution never starts", ()
   assert.equal(released.reservation.aggregate.status, "released");
   assert.equal(released.ledger.reservedAmount, 0);
   assert.equal(released.ledger.releasedAmount, 25);
+});
+
+test("BudgetAllocator rejects tier limit currency mismatches before reserving budget", () => {
+  const allocator = new BudgetAllocator();
+  const ledger = createBudgetLedger({
+    tenantId: "tenant-1",
+    harnessRunId: "run-1",
+    currency: "USD",
+    hardCap: 100,
+    version: 0,
+  });
+
+  assert.throws(
+    () =>
+      allocator.reserve({
+        ledger,
+        amount: 10,
+        resourceKind: "tool",
+        expiresAt: "2026-04-27T01:00:00.000Z",
+        expectedVersion: 0,
+        context: {
+          tenantId: "tenant-1",
+          traceId: "trace-1",
+          emittedBy: "budget-allocator",
+          principal: "budget-allocator",
+          tierLimit: 100,
+          tierLimitCurrency: "EUR",
+        },
+      }),
+    (error: unknown) =>
+      error instanceof ValidationError &&
+      error.code === "budget_context.tier_limit_currency_mismatch",
+  );
 });
 
 test("BudgetAllocator.settle emits fact events for both reservation and ledger via RSM", () => {

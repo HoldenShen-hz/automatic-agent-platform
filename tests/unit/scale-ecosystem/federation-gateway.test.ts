@@ -140,6 +140,7 @@ test("federation-gateway: establishTrust creates trust relationship", async () =
   });
 
   assert.ok(trust.id != null && trust.id.length > 0);
+  assert.match(trust.id, /^federation_trust_/);
   assert.equal(trust.sourceOrgId, "org-1");
   assert.equal(trust.targetOrgId, "org-2");
   assert.equal(trust.level, TrustLevel.READ);
@@ -289,9 +290,11 @@ test("federation-gateway: approveDelegation creates capability grant", async () 
   const requestId = (requestResult as { error?: string }).error?.split(":")[1];
 
   assert.ok(requestId, "requestId should be extracted");
+  assert.match(requestId!, /^federation_request_/);
   const approveResult = await gateway.approveDelegation(requestId!, "approver");
   assert.equal(approveResult.success, true);
   assert.ok(approveResult.grant != null);
+  assert.match(approveResult.grant?.id ?? "", /^federation_grant_/);
 });
 
 test("federation-gateway: revokeCapabilityGrant updates grant status", async () => {

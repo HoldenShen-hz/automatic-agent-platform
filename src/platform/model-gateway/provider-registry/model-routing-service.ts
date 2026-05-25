@@ -66,6 +66,10 @@ interface EligibleProfile {
   providerStatus: "healthy" | "degraded" | "failed" | "unknown";
 }
 
+function getBlendedTokenCostPer1k(profile: ModelProfileMetadata): number {
+  return profile.pricing.inputPer1kUsd * 0.3 + profile.pricing.outputPer1kUsd * 0.7;
+}
+
 // Normalizes route class with default fallback to "default"
 function normalizeRouteClass(value: ModelRouteRequest["routeClass"]): ModelRouteClass {
   return value ?? "default";
@@ -340,13 +344,15 @@ function isFallbackLeaseReason(
 
 /**
  * Compares two profiles for selection priority.
- * Primary: lower input cost per 1k USD (cheaper)
+ * Primary: lower blended token cost per 1k USD (input/output weighted)
  * Secondary: higher max output tokens (more capable)
  * Tertiary: alphabetical by name
  */
 function compareProfiles(a: EligibleProfile, b: EligibleProfile): number {
-  if (a.profile.pricing.inputPer1kUsd !== b.profile.pricing.inputPer1kUsd) {
-    return a.profile.pricing.inputPer1kUsd - b.profile.pricing.inputPer1kUsd;
+  const blendedCostA = getBlendedTokenCostPer1k(a.profile);
+  const blendedCostB = getBlendedTokenCostPer1k(b.profile);
+  if (blendedCostA !== blendedCostB) {
+    return blendedCostA - blendedCostB;
   }
   if (a.profile.maxOutputTokens !== b.profile.maxOutputTokens) {
     return b.profile.maxOutputTokens - a.profile.maxOutputTokens;
@@ -654,7 +660,7 @@ export class ModelRoutingService {
       if (found == null) {
         return null;
       }
-      if (maxInputPer1kUsd != null && found.profile.pricing.inputPer1kUsd > maxInputPer1kUsd) {
+      if (maxInputPer1kUsd != null && getBlendedTokenCostPer1k(found.profile) > maxInputPer1kUsd) {
         filteredOut.push(`${profileName}:cost_cap_exceeded`);
         return null;
       }
@@ -707,7 +713,7 @@ export class ModelRoutingService {
           .sort(compareProfiles);
         const costFiltered = maxInputPer1kUsd == null
           ? withinTier
-          : withinTier.filter((candidate) => candidate.profile.pricing.inputPer1kUsd <= maxInputPer1kUsd);
+          : withinTier.filter((candidate) => getBlendedTokenCostPer1k(candidate.profile) <= maxInputPer1kUsd);
         const source = costFiltered;
         if (maxInputPer1kUsd != null && withinTier.length > 0 && costFiltered.length === 0) {
           costCapFallbackTriggered = true;

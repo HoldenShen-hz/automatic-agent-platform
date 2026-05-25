@@ -54,6 +54,35 @@ test("api client wraps requests in ContractEnvelope and preserves idempotency me
   }
 });
 
+test("api client derives principal subject from userId when subject aliases are absent", async () => {
+  const client = createClient({
+    principal: {
+      userId: "ui-user-123",
+      tenantId: "tenant_abc",
+      roles: ["operator"],
+    },
+  });
+  const originalFetch = globalThis.fetch;
+
+  let seenEnvelope: unknown = null;
+  globalThis.fetch = async (_url, init) => {
+    seenEnvelope = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await client.post("/test", { hello: "world" });
+    const capturedEnvelope = requireEnvelope<{ hello: string }>(seenEnvelope);
+    assert.equal(capturedEnvelope.principal?.subject, "ui-user-123");
+    assert.equal(capturedEnvelope.metadata.principalSubject, "ui-user-123");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("api client initialize performs version handshake when enabled", async () => {
   const client = createClient({ performVersionHandshakeOnInit: true, sdkVersion: "1.2.0" });
   const originalFetch = globalThis.fetch;

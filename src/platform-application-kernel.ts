@@ -138,6 +138,7 @@ export function registerPlatformApplicationKernel(registry: ServiceRegistry = Se
 
 export function getPlatformApplicationKernel(registry?: ServiceRegistry): PlatformApplicationKernel {
   if (registry == null) {
+    // Process-local lazy singleton. Cross-process callers must go through an explicit registry.
     defaultPlatformApplicationKernel ??= new PlatformApplicationKernel();
     return defaultPlatformApplicationKernel;
   }

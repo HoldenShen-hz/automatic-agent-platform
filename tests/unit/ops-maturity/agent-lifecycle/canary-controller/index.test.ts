@@ -146,3 +146,10 @@ test("calculateTrafficSplit returns correct percentages", () => {
   assert.equal(result.canaryPercent, 20);
   assert.equal(result.stablePercent, 80);
 });
+
+test("calculateTrafficSplit rejects invalid canary stages", () => {
+  assert.throws(
+    () => calculateTrafficSplit(10 as 5),
+    /invalid_canary_stage:10/,
+  );
+});

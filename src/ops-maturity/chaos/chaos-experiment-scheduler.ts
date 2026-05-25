@@ -840,6 +840,11 @@ export class ChaosExperimentScheduler {
     for (const key of keysToDelete) {
       this.steadyStateCache.delete(key);
     }
+    for (const key of [...this.evaluatedHypotheses]) {
+      if (key.startsWith(`${experimentId}:`)) {
+        this.evaluatedHypotheses.delete(key);
+      }
+    }
     this.persistSnapshot();
   }
 

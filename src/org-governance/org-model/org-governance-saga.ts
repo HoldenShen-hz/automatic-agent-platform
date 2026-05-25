@@ -1,3 +1,5 @@
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
 export type OrgGovernancePhase = "identity" | "approval" | "budget" | "domain" | "agent";
 
 export interface OrgGovernanceSagaStep {
@@ -35,6 +37,7 @@ export interface OrgGovernanceSagaResult {
     phase: OrgGovernancePhase;
     targetOrgNodeId: string;
     outcome: "prepared" | "committed" | "compensated" | "audited" | "skipped" | "failed";
+    errorMessage?: string;
   }[];
 }
 
@@ -52,6 +55,7 @@ export interface OrgGovernanceSagaReceipt {
     phase: OrgGovernancePhase;
     targetOrgNodeId: string;
     outcome: "prepared" | "committed" | "compensated" | "audited" | "skipped" | "failed";
+    errorMessage?: string;
   }[];
   /** Commit sequence version - monotonically increasing per-org, enforced ordering */
   readonly commitSequenceVersion: number;
@@ -95,6 +99,7 @@ export class OrgGovernanceSaga {
   private readonly orgNodes: ReadonlyArray<OrgNodeWithCapabilities> | undefined;
   private readonly traverseForCapabilities: boolean;
   private readonly maxTraversalDepth: number;
+  private readonly logger = new StructuredLogger({ retentionLimit: 100 });
 
   public constructor(
     private readonly handlers: OrgGovernanceSagaHandlers = {},
@@ -287,14 +292,22 @@ export class OrgGovernanceSaga {
           targetOrgNodeId: step.targetOrgNodeId,
           outcome: "prepared",
         });
-      } catch {
+      } catch (error) {
         failedStepId = step.stepId;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error("org_governance_saga.prepare_failed", {
+          sagaId,
+          stepId: step.stepId,
+          targetOrgNodeId: step.targetOrgNodeId,
+          error: errorMessage,
+        });
         executionLog.push({
           stepId: step.stepId,
           action: step.action,
           phase: this.resolvePhase(step),
           targetOrgNodeId: step.targetOrgNodeId,
           outcome: "failed",
+          errorMessage,
         });
         break;
       }
@@ -324,14 +337,22 @@ export class OrgGovernanceSaga {
             targetOrgNodeId: step.targetOrgNodeId,
             outcome: "committed",
           });
-        } catch {
+        } catch (error) {
           failedStepId = step.stepId;
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.error("org_governance_saga.commit_failed", {
+            sagaId,
+            stepId: step.stepId,
+            targetOrgNodeId: step.targetOrgNodeId,
+            error: errorMessage,
+          });
           executionLog.push({
             stepId: step.stepId,
             action: step.action,
             phase: this.resolvePhase(step),
             targetOrgNodeId: step.targetOrgNodeId,
             outcome: "failed",
+            errorMessage,
           });
           break;
         }
@@ -362,13 +383,21 @@ export class OrgGovernanceSaga {
             targetOrgNodeId: compensationStep.targetOrgNodeId,
             outcome: "compensated",
           });
-        } catch {
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.error("org_governance_saga.compensation_failed", {
+            sagaId,
+            stepId: compensationStep.stepId,
+            targetOrgNodeId: compensationStep.targetOrgNodeId,
+            error: errorMessage,
+          });
           executionLog.push({
             stepId: compensationStep.stepId,
             action: compensationStep.action,
             phase: this.resolvePhase(compensationStep),
             targetOrgNodeId: compensationStep.targetOrgNodeId,
             outcome: "failed",
+            errorMessage,
           });
           compensationFailures.push(compensationStep.stepId);
         }

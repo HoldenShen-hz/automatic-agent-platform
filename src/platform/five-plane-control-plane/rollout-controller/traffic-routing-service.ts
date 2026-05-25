@@ -468,7 +468,7 @@ export class TrafficRoutingService {
 
     if (!row) return null;
 
-    const health = this.evaluateSlotHealth(String(row.to_slot) as DeploymentSlot, DEFAULT_CANARY_CONFIG);
+    const health = this.checkCanaryHealth(shiftId, DEFAULT_CANARY_CONFIG);
     if (!health.healthy) {
       return null;
     }
@@ -623,11 +623,29 @@ export class TrafficRoutingService {
   private applyTrafficWeights(slotA: DeploymentSlot, weightA: number, slotB: DeploymentSlot, weightB: number): void {
     const now = nowIso();
     this.db.connection
-      .prepare(`UPDATE deployment_slots SET traffic_weight = ?, status = CASE WHEN ? > 0 THEN 'active' ELSE status END, updated_at = ? WHERE slot = ? AND status IN ('active', 'standby')`)
+      .prepare(`UPDATE deployment_slots
+        SET traffic_weight = ?, status = CASE WHEN ? > 0 THEN 'active' ELSE 'standby' END, updated_at = ?
+        WHERE id = (
+          SELECT id FROM deployment_slots
+          WHERE slot = ? AND status IN ('active', 'standby')
+          ORDER BY created_at DESC, rowid DESC
+          LIMIT 1
+        )`)
       .run(weightA, weightA, now, slotA);
+    this.demoteHistoricalActiveRecords(slotA, now);
     this.db.connection
-      .prepare(`UPDATE deployment_slots SET traffic_weight = ?, status = CASE WHEN ? > 0 THEN 'active' ELSE status END, updated_at = ? WHERE slot = ? AND status IN ('active', 'standby')`)
+      .prepare(`UPDATE deployment_slots
+        SET traffic_weight = ?, status = CASE WHEN ? > 0 THEN 'active' ELSE 'standby' END, updated_at = ?
+        WHERE id = (
+          SELECT id FROM deployment_slots
+          WHERE slot = ? AND status IN ('active', 'standby')
+          ORDER BY created_at DESC, rowid DESC
+          LIMIT 1
+        )`)
       .run(weightB, weightB, now, slotB);
+    this.demoteHistoricalActiveRecords(slotB, now);
+    this.assertNoDuplicateActiveRecords(slotA);
+    this.assertNoDuplicateActiveRecords(slotB);
   }
 
   /**
@@ -636,7 +654,14 @@ export class TrafficRoutingService {
   private retireSlot(slot: DeploymentSlot): void {
     const now = nowIso();
     this.db.connection
-      .prepare(`UPDATE deployment_slots SET status = 'draining', traffic_weight = 0, updated_at = ? WHERE slot = ? AND status IN ('active', 'standby')`)
+      .prepare(`UPDATE deployment_slots
+        SET status = 'draining', traffic_weight = 0, updated_at = ?
+        WHERE id = (
+          SELECT id FROM deployment_slots
+          WHERE slot = ? AND status IN ('active', 'standby')
+          ORDER BY created_at DESC, rowid DESC
+          LIMIT 1
+        )`)
       .run(now, slot);
   }
 
@@ -646,8 +671,45 @@ export class TrafficRoutingService {
   private activateSlot(slot: DeploymentSlot): void {
     const now = nowIso();
     this.db.connection
-      .prepare(`UPDATE deployment_slots SET status = 'active', updated_at = ? WHERE slot = ? AND status IN ('active', 'standby', 'draining')`)
+      .prepare(`UPDATE deployment_slots
+        SET status = 'active', updated_at = ?
+        WHERE id = (
+          SELECT id FROM deployment_slots
+          WHERE slot = ? AND status IN ('active', 'standby')
+          ORDER BY created_at DESC, rowid DESC
+          LIMIT 1
+        )`)
       .run(now, slot);
+    this.demoteHistoricalActiveRecords(slot, now);
+    this.assertNoDuplicateActiveRecords(slot);
+  }
+
+  private demoteHistoricalActiveRecords(slot: DeploymentSlot, updatedAt: string): void {
+    this.db.connection
+      .prepare(`UPDATE deployment_slots
+        SET status = 'standby', traffic_weight = 0, updated_at = ?
+        WHERE slot = ?
+          AND status = 'active'
+          AND id != (
+            SELECT id FROM deployment_slots
+            WHERE slot = ? AND status IN ('active', 'standby', 'draining')
+            ORDER BY created_at DESC, rowid DESC
+            LIMIT 1
+          )`)
+      .run(updatedAt, slot, slot);
+  }
+
+  private assertNoDuplicateActiveRecords(slot: DeploymentSlot): void {
+    const row = this.db.connection
+      .prepare(`SELECT COUNT(*) as active_count FROM deployment_slots WHERE slot = ? AND status = 'active'`)
+      .get(slot) as RawRow | undefined;
+    const activeCount = Number(row?.active_count ?? 0);
+    if (activeCount > 1) {
+      throw new ValidationError(
+        "traffic_routing.duplicate_active_slot_records",
+        `traffic_routing.duplicate_active_slot_records:${slot}`,
+      );
+    }
   }
 
   /**

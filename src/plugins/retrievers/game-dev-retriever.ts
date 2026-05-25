@@ -13,6 +13,19 @@ export interface GameDevRetrieverPluginOptions {
   readonly healthCheck?: () => boolean | Promise<boolean>;
 }
 
+const GAMEDEV_PROJECT_BASE_SCORE = 0.7;
+const GAMEDEV_PROJECT_QUERY_BONUS_CAP = 0.18;
+const GAMEDEV_PROJECT_QUERY_DIVISOR = 240;
+const GAMEDEV_BUILD_BASE_SCORE = 0.62;
+const GAMEDEV_BUILD_CONTEXT_BONUS_CAP = 0.2;
+const GAMEDEV_BUILD_CONTEXT_MULTIPLIER = 0.06;
+const GAMEDEV_DESIGN_BASE_SCORE = 0.58;
+const GAMEDEV_DESIGN_INTENT_BONUS_CAP = 0.18;
+const GAMEDEV_DESIGN_INTENT_DIVISOR = 200;
+const GAMEDEV_ASSET_BASE_SCORE = 0.54;
+const GAMEDEV_ASSET_TOKEN_BONUS_CAP = 0.18;
+const GAMEDEV_ASSET_TOKEN_DIVISOR = 4000;
+
 /**
  * Build a search query from the intent and context.
  * Game Dev queries prioritize Unity projects, build outputs, and design docs.
@@ -59,7 +72,10 @@ export function createGameDevRetrieverPluginWithOptions(
         {
           knowledgeRef: `knowledge:gamedev/projects?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Unity project search: "${searchQuery}" — fetched from gamedev/projects namespace`,
-          score: Math.min(0.97, 0.7 + Math.min(searchQuery.length / 240, 0.18)),
+          score: Math.min(
+            0.97,
+            GAMEDEV_PROJECT_BASE_SCORE + Math.min(searchQuery.length / GAMEDEV_PROJECT_QUERY_DIVISOR, GAMEDEV_PROJECT_QUERY_BONUS_CAP),
+          ),
           namespace: "gamedev/projects",
           chunkId: `project:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/projects/search`,
@@ -68,7 +84,11 @@ export function createGameDevRetrieverPluginWithOptions(
         {
           knowledgeRef: `knowledge:gamedev/builds?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Build output for: "${searchQuery}" — fetched from gamedev/builds namespace`,
-          score: Math.min(0.94, 0.62 + Math.min(Object.keys(query.context).length * 0.06, 0.2)),
+          score: Math.min(
+            0.94,
+            GAMEDEV_BUILD_BASE_SCORE
+              + Math.min(Object.keys(query.context).length * GAMEDEV_BUILD_CONTEXT_MULTIPLIER, GAMEDEV_BUILD_CONTEXT_BONUS_CAP),
+          ),
           namespace: "gamedev/builds",
           chunkId: `build:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/builds/search`,
@@ -77,7 +97,10 @@ export function createGameDevRetrieverPluginWithOptions(
         {
           knowledgeRef: `knowledge:gamedev/design_docs?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Game design doc for: "${searchQuery}" — fetched from gamedev/design_docs namespace`,
-          score: Math.min(0.9, 0.58 + Math.min(query.intent.length / 200, 0.18)),
+          score: Math.min(
+            0.9,
+            GAMEDEV_DESIGN_BASE_SCORE + Math.min(query.intent.length / GAMEDEV_DESIGN_INTENT_DIVISOR, GAMEDEV_DESIGN_INTENT_BONUS_CAP),
+          ),
           namespace: "gamedev/design_docs",
           chunkId: `design:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/design_docs/search`,
@@ -86,7 +109,10 @@ export function createGameDevRetrieverPluginWithOptions(
         {
           knowledgeRef: `knowledge:gamedev/assets?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Asset reference for: "${searchQuery}" — fetched from gamedev/assets namespace`,
-          score: Math.min(0.86, 0.54 + Math.min(query.tokenBudget / 4000, 0.18)),
+          score: Math.min(
+            0.86,
+            GAMEDEV_ASSET_BASE_SCORE + Math.min(query.tokenBudget / GAMEDEV_ASSET_TOKEN_DIVISOR, GAMEDEV_ASSET_TOKEN_BONUS_CAP),
+          ),
           namespace: "gamedev/assets",
           chunkId: `asset:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/assets/search`,

@@ -616,6 +616,8 @@ export function bootstrapVerticalDomainBaselines(domainRegistry: DomainRegistryS
     if (stagedRegistry.get(baseline.domainId) == null) {
       stagedRegistry.register(baseline.definition);
     }
+    // Register domain-owned knowledge namespaces before activation so any
+    // immediately-created checkpoint/evidence can inherit the namespace context.
     for (const namespace of baseline.knowledgeSchema.namespaceIds) {
       stagedRegistry.registerKnowledgeNamespace(namespace, baseline.domainId);
     }

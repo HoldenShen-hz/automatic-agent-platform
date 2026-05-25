@@ -5,7 +5,7 @@
  * Ensures test fixtures do not contain actual secrets or PII.
  */
 
-import { randomUUID } from "node:crypto";
+import { newId } from "../platform/contracts/types/ids.js";
 
 const SECRET_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /(api[_-]?key|apikey|api[_-]?secret|access[_-]?token|auth[_-]?token|bearer[_-]?token|refresh[_-]?token|client[_-]?secret)/i, name: "api_key" },
@@ -173,7 +173,7 @@ export class FixtureRedactor {
 }
 
 export function generateTestId(prefix = "test"): string {
-  return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+  return newId(prefix);
 }
 
 function normalizeAlwaysRedactFields(fields: ReadonlySet<string>): Set<string> {

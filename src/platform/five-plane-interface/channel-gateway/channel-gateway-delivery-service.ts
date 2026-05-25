@@ -533,7 +533,7 @@ export class ChannelGatewayDeliveryService {
     const errorMessage = options.errorMessage ?? undefined;
     const providerMessageId = options.providerMessageId ?? null;
 
-    if (options.retryable && attemptNumber < record.maxRetries) {
+    if (options.retryable && attemptNumber <= record.maxRetries) {
       return {
         attempt: this.recordAttempt(
           messageId,
@@ -815,7 +815,7 @@ export class ChannelGatewayDeliveryService {
    * Retrieves messages that are ready for retry.
    *
    * GW-03: Enables retry processor to find messages needing retry.
-   * A message is ready if: status is retrying, attempts < maxRetries,
+   * A message is ready if: status is retrying, attempts <= maxRetries,
    * and (nextRetryAt is null OR nextRetryAt <= now).
    *
    * @param limit - Maximum messages to return
@@ -839,7 +839,7 @@ export class ChannelGatewayDeliveryService {
             WHERE latest.message_id = m.message_id
           )
          WHERE m.status = 'retrying'
-           AND m.attempts < m.max_retries
+           AND m.attempts <= m.max_retries
            AND (a.next_retry_at IS NULL OR a.next_retry_at <= ?)
          ORDER BY m.created_at ASC
          LIMIT ?`,

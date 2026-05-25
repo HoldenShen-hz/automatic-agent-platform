@@ -60,7 +60,7 @@ import {
   type LlmModelCallResult,
 } from "./model-call-provider.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { reserveBudgetLedger } from "../budget-ledger-reservation.js";
+import { ensureBudgetLedger, reserveBudgetLedger } from "../budget-ledger-reservation.js";
 import {
   DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
   DEFAULT_SINGLE_TASK_MAX_RETRIES,
@@ -329,6 +329,14 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     const budgetLimit = execution.budgetUsdLimit ?? 1;
     if (harnessRun.budgetLedgerId) {
       db.transaction(() => {
+        ensureBudgetLedger({
+          connection: db.connection,
+          budgetLedgerId: harnessRun.budgetLedgerId,
+          tenantId: input.tenantId ?? "tenant:local",
+          harnessRunId,
+          currency: "USD",
+          hardCap: budgetLimit,
+        });
         reserveBudgetLedger({
           connection: db.connection,
           budgetLedgerId: harnessRun.budgetLedgerId,

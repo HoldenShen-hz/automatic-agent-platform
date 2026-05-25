@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 
 import {
+  CheckpointSchemaVersionMismatchError,
   createWorkflowStepCheckpoint,
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
@@ -151,6 +155,68 @@ test("readWorkflowStepCheckpoint returns null for non-snapshot artifacts", () =>
 
   const result = readWorkflowStepCheckpoint(record);
   assert.equal(result, null);
+});
+
+test("readWorkflowStepCheckpoint throws explicit schema mismatch for unknown checkpoint version", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-checkpoint-schema-"));
+  try {
+    const checkpointPath = join(workspace, "checkpoint.json");
+    writeFileSync(checkpointPath, JSON.stringify({
+      schemaVersion: "workflow_step_checkpoint.v9",
+      taskId: "task_1",
+      executionId: null,
+      workflowId: "wf_1",
+      divisionId: "div_1",
+      stepId: "step_1",
+      roleId: "role_1",
+      outputKey: "output_1",
+      status: "succeeded",
+      producedAt: "2024-01-01T00:00:00.000Z",
+      output: {},
+      decisionContext: {
+        source: "test",
+        request: "test",
+        routeReason: null,
+        priorStepSummaries: [],
+        dependsOnStepIds: [],
+      },
+      resumeContext: {
+        completedStepIds: [],
+        nextStepId: null,
+        outputKeys: [],
+      },
+      fileDiffSummary: {
+        summary: null,
+        createdPaths: [],
+        updatedPaths: [],
+        deletedPaths: [],
+      },
+      upstreamArtifactRefs: [],
+    }), "utf8");
+
+    assert.throws(
+      () => readWorkflowStepCheckpoint({
+        artifactId: "artifact_schema_mismatch",
+        taskId: "task_1",
+        executionId: null,
+        stepId: "step_1",
+        kind: "workflow_step_snapshot",
+        storagePath: checkpointPath,
+        fileName: "checkpoint.json",
+        mimeType: "application/json",
+        sizeBytes: 0,
+        checksum: null,
+        lineageJson: null,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+      (error: unknown) =>
+        error instanceof CheckpointSchemaVersionMismatchError
+        && error.actualSchemaVersion === "workflow_step_checkpoint.v9"
+        && error.artifactId === "artifact_schema_mismatch",
+    );
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test("summarizeWorkflowStepCheckpoint extracts correct fields", () => {

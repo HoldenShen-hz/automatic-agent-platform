@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { buildDomainsRuntimeCatalog } from "../../src/domains-runtime-catalog.js";
+import { buildDomainsStartupPlan } from "../../src/domains-startup-plan.js";
+import { buildInteractionGovernanceRuntimeCatalog } from "../../src/interaction-governance-runtime-catalog.js";
+import { buildInteractionGovernanceStartupPlan } from "../../src/interaction-governance-startup-plan.js";
+import { buildAiOperationsRuntimeCatalog } from "../../src/platform/ai-operations-runtime-catalog.js";
+import { buildAiOperationsStartupPlan } from "../../src/platform/ai-operations-startup-plan.js";
+import { buildFivePlaneRuntimeCatalog } from "../../src/platform/five-plane-runtime-bootstrap.js";
+import { buildFivePlaneStartupPlan } from "../../src/platform/five-plane-startup-plan.js";
 import { buildPlatformArchitectureBootstrapSummary } from "../../src/platform-architecture-bootstrap.js";
+import { buildScaleOpsRuntimeCatalog } from "../../src/scale-ops-runtime-catalog.js";
+import { buildScaleOpsStartupPlan } from "../../src/scale-ops-startup-plan.js";
 import type {
   PlatformRootSummary,
   PlatformRootSummaryBuilderDeps,
@@ -93,30 +103,18 @@ test("PlatformRootSummary structure validation", () => {
 });
 
 test("PlatformRootSummaryBuilderDeps structure validation", () => {
-  // This type defines the dependencies needed to build a summary
-  // Create minimal mock functions to satisfy the function types
   const mockDeps: PlatformRootSummaryBuilderDeps = {
-    buildArchitectureSummary: () => buildPlatformArchitectureBootstrapSummary(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildDomainsStartupPlan: () => ({ steps: [], totalCapabilityCount: 0, startupOrder: [] }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildDomainsRuntimeCatalog: () => ({ ring1: [], ring2: [], ring3: [] }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildFivePlaneStartupPlan: () => ({ steps: [], totalCapabilityCount: 0, startupOrder: [] }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildFivePlaneRuntimeCatalog: () => ({ planes: [], totalCount: 0 }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildAiOperationsStartupPlan: () => ({ startupOrder: [], totalCapabilityCount: 0, capabilityCounts: { modelGateway: 0, promptEngine: 0, compliance: 0, harness: 0 } }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildAiOperationsRuntimeCatalog: () => ({ operations: [], totalCount: 0 }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildInteractionGovernanceStartupPlan: () => ({ startupOrder: [], totalCapabilityCount: 0, capabilityCounts: { interaction: 0, governance: 0 } }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildInteractionGovernanceRuntimeCatalog: () => ({ governance: [], totalCount: 0 }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildScaleOpsStartupPlan: () => ({ startupOrder: [], totalCapabilityCount: 0, capabilityCounts: { scaleEcosystem: 0, opsMaturity: 0 } }) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildScaleOpsRuntimeCatalog: () => ({ scaleEcosystem: [], opsMaturity: [] }) as any,
+    buildArchitectureSummary: buildPlatformArchitectureBootstrapSummary,
+    buildDomainsStartupPlan,
+    buildDomainsRuntimeCatalog,
+    buildFivePlaneStartupPlan,
+    buildFivePlaneRuntimeCatalog,
+    buildAiOperationsStartupPlan,
+    buildAiOperationsRuntimeCatalog,
+    buildInteractionGovernanceStartupPlan,
+    buildInteractionGovernanceRuntimeCatalog,
+    buildScaleOpsStartupPlan,
+    buildScaleOpsRuntimeCatalog,
   };
 
   assert.equal(typeof mockDeps.buildArchitectureSummary, "function");

@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { PromptVersionManager } from "../../../../../src/platform/prompt-engine/registry/prompt-version-manager.js";
-import type { PromptBundle } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
+import {
+  normalizePromptBundleVersion,
+  validatePromptBundleRegistrationInput,
+  type PromptBundle,
+} from "../../../../../src/platform/contracts/prompt-bundle/index.js";
 
 // =============================================================================
 // PromptVersionManager Parsing Tests
@@ -422,6 +426,26 @@ test("PromptVersionManager.listBundleVersions marks deprecated bundles", () => {
   assert.equal(versions[0]!.deprecated, true);
 });
 
+test("validatePromptBundleRegistrationInput rejects compatibilityMatrix objects with non-array fields", () => {
+  assert.throws(
+    () =>
+      validatePromptBundleRegistrationInput({
+        ...createMockBundle("invalid-matrix", "v1.0"),
+        compatibilityMatrix: {
+          toolSchemaVersions: "not-an-array",
+          evaluatorSchemaVersions: [],
+          domainDescriptorVersions: [],
+          modelRoutingProfiles: [],
+        } as unknown as PromptBundle["compatibilityMatrix"],
+      }),
+    (error: unknown) =>
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && error.code === "prompt_bundle.invalid_compatibility_matrix",
+  );
+});
+
 // =============================================================================
 // PromptVersionManager Configuration Tests
 // =============================================================================
@@ -487,15 +511,10 @@ function createMockBundle(
   weight = 100,
   deprecated = false,
 ): PromptBundle {
-  const normalizedVersion = displayVersion
-    .replace(/^v/i, "")
-    .split(".")
-    .reduce((accumulator, segment, index) => accumulator + Number(segment) * (index === 0 ? 100 : index === 1 ? 10 : 1), 0);
-
   return {
     bundleId: `bundle-${name}-${displayVersion}`,
     name,
-    version: normalizedVersion,
+    version: normalizePromptBundleVersion(displayVersion),
     displayVersion,
     domain: "test",
     taskType: "simple",

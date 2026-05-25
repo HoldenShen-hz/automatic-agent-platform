@@ -54,7 +54,7 @@ export function createCodingRetrieverPlugin(options: CodingRetrieverPluginOption
       const symbolResults: RetrieverKnowledgeResult[] = search.symbols.slice(0, 8).map((symbol) => ({
         knowledgeRef: `knowledge:repo:${relative(rootPath, symbol.filePath)}#L${symbol.line}` as string,
         snippet: `${symbol.kind} ${symbol.name} defined at ${relative(rootPath, symbol.filePath)}:${symbol.line}`,
-        score: Number((search.relevanceScores.get(`${symbol.name}@${symbol.filePath}`) ?? 0.8).toFixed(4)),
+        score: search.relevanceScores.get(`${symbol.name}@${symbol.filePath}`) ?? 0.8,
         namespace: "repo/coding",
         chunkId: `symbol:${symbol.name}@${relative(rootPath, symbol.filePath)}`,
         documentId: relative(rootPath, symbol.filePath),
@@ -64,7 +64,7 @@ export function createCodingRetrieverPlugin(options: CodingRetrieverPluginOption
       const fileResults: RetrieverKnowledgeResult[] = search.files.slice(0, 8).map((file) => ({
         knowledgeRef: `knowledge:repo:${file.relativePath}` as string,
         snippet: `File ${file.relativePath} imports ${file.imports.length} modules and is referenced by ${file.referencedBy.length} files.`,
-        score: Number((search.relevanceScores.get(file.filePath) ?? 0.5).toFixed(4)),
+        score: search.relevanceScores.get(file.filePath) ?? 0.5,
         namespace: "repo/coding",
         chunkId: `file:${file.relativePath}`,
         documentId: file.relativePath,

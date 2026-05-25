@@ -10,6 +10,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
+import { assertInMemoryStoreAllowed } from "./in-memory-store-guard.js";
 
 // ============================================================================
 // Session Token Configuration
@@ -94,9 +95,11 @@ const revokedAccessTokenIndex = new Map<string, string>(); // revoked accessToke
 const rotatedRefreshTokenIndex = new Map<string, string>(); // old refreshTokenSecretHash -> sessionId
 
 function assertInMemorySessionStoreAllowed(): void {
-  if (process.env.NODE_ENV === "production" && process.env.AA_ALLOW_IN_MEMORY_SESSION_STORE !== "1") {
-    throw new ValidationError("iam.session_store_distributed_required", "In-memory session store is not allowed in production without explicit opt-in.");
-  }
+  assertInMemoryStoreAllowed(
+    "AA_ALLOW_IN_MEMORY_SESSION_STORE",
+    "iam.session_store_distributed_required",
+    "session store",
+  );
 }
 
 function touchSession(sessionId: string, entry: SessionEntry): void {

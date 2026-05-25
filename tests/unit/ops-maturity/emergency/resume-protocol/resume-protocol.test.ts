@@ -62,6 +62,17 @@ test("canResumeFromPanic returns false when validationRunPassed is undefined", (
   assert.equal(canResumeFromPanic(plan), false);
 });
 
+test("canResumeFromPanic rejects non-boolean truthy recovery flags", () => {
+  const plan = {
+    ...createValidPlan(),
+    forensicSnapshotReviewed: "yes",
+    rollbackPlanReady: 1,
+    validationRunPassed: "passed",
+  } as unknown as ResumePlan;
+
+  assert.equal(canResumeFromPanic(plan), false);
+});
+
 test("canResumeFromPanic returns false with empty approver array", () => {
   assert.equal(canResumeFromPanic(createValidPlan({ approvedBy: [] })), false);
 });

@@ -10,9 +10,16 @@ import {
   type DomainsReadinessSnapshot,
 } from "../../src/domains-runtime-orchestrator.js";
 
+test.beforeEach(async () => {
+  await ServiceRegistry.getInstance().reset();
+});
+
+test.afterEach(async () => {
+  await ServiceRegistry.getInstance().reset();
+});
+
 test("DomainsRuntimeOrchestrator constructor accepts optional registry", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
 
@@ -21,7 +28,6 @@ test("DomainsRuntimeOrchestrator constructor accepts optional registry", async (
 
 test("DomainsRuntimeOrchestrator.prepare registers bootstrap, catalog, and startup plan", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const plan = orchestrator.prepare();
@@ -33,7 +39,6 @@ test("DomainsRuntimeOrchestrator.prepare registers bootstrap, catalog, and start
 
 test("DomainsRuntimeOrchestrator.prepare returns plan with correct step structure", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const plan = orchestrator.prepare();
@@ -47,7 +52,6 @@ test("DomainsRuntimeOrchestrator.prepare returns plan with correct step structur
 
 test("DomainsRuntimeOrchestrator.startup returns DomainsRuntimeStartupResult", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
@@ -60,7 +64,6 @@ test("DomainsRuntimeOrchestrator.startup returns DomainsRuntimeStartupResult", a
 
 test("DomainsRuntimeOrchestrator.startup startupOrder matches ring sequence", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
@@ -71,7 +74,6 @@ test("DomainsRuntimeOrchestrator.startup startupOrder matches ring sequence", as
 
 test("DomainsRuntimeOrchestrator.startup steps contain execution details", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
@@ -88,7 +90,6 @@ test("DomainsRuntimeOrchestrator.startup steps contain execution details", async
 
 test("DomainsRuntimeOrchestrator.startup first step has no dependencies", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
@@ -99,18 +100,17 @@ test("DomainsRuntimeOrchestrator.startup first step has no dependencies", async 
 
 test("DomainsRuntimeOrchestrator.startup later steps depend on earlier rings", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  const ring2 = result.steps.find((s) => s.stepId === "ring2")!;
+  const ring2 = result.steps.find((s) => s.stepId === "ring2");
+  assert.ok(ring2 !== undefined, "ring2 step should exist");
   assert.deepEqual(ring2.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
 });
 
 test("DomainsRuntimeOrchestrator.startup result ready flag is true after full startup", async () => {
   const registry = ServiceRegistry.getInstance();
-  await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();

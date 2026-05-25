@@ -122,12 +122,14 @@ test("specific capabilities have expected properties", () => {
 });
 
 test("criticalSubmodules arrays are non-empty for all capabilities", () => {
+  assert.ok(PLATFORM_MAINLINE_CAPABILITIES.length > 0, "capability catalog should not be empty");
   for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
     assert.ok(capability.criticalSubmodules.length > 0, `${capability.capabilityId} should have criticalSubmodules`);
   }
 });
 
 test("architectureSections arrays are non-empty for all capabilities", () => {
+  assert.ok(PLATFORM_MAINLINE_CAPABILITIES.length > 0, "capability catalog should not be empty");
   for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
     assert.ok(capability.architectureSections.length > 0, `${capability.capabilityId} should have architectureSections`);
   }

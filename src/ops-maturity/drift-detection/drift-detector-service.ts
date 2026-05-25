@@ -174,8 +174,7 @@ export class DriftDetectorService implements IDriftDetector {
     }
 
     // Analyze behavioral feature differences
-    const featureDiff = this.computeFeatureDifference(current.normalizedFeatures, baseline.normalizedFeatures);
-    const driftScore = Math.min(1.0, featureDiff / 10.0); // Normalize to 0-1
+    const driftScore = this.computeFeatureDifference(current.normalizedFeatures, baseline.normalizedFeatures);
 
     // Determine severity based on drift score
     const severity: DriftSignal["severity"] =
@@ -364,14 +363,17 @@ export class DriftDetectorService implements IDriftDetector {
   private computeFeatureDifference(features1: string[], features2: string[]): number {
     const set1 = new Set(features1);
     const set2 = new Set(features2);
+    const union = new Set([...set1, ...set2]);
+    if (union.size === 0) {
+      return 0;
+    }
     let differences = 0;
-    for (const f of set1) {
-      if (!set2.has(f)) differences++;
+    for (const feature of union) {
+      if (!(set1.has(feature) && set2.has(feature))) {
+        differences++;
+      }
     }
-    for (const f of set2) {
-      if (!set1.has(f)) differences++;
-    }
-    return differences;
+    return differences / union.size;
   }
 
   private getAnalyzedWindows(results: readonly import("./changepoint-detector/index.js").ChangepointDetectionResult[]): readonly import("./changepoint-detector/index.js").DriftWindowType[] {

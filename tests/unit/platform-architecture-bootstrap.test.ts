@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  assertStartupOrderEnforced,
   buildPlatformArchitectureBootstrapSummary,
   getPlatformArchitectureServices,
   listPlatformAppsByKind,
@@ -92,7 +92,13 @@ test("getPlatformArchitectureServices does not re-register services on the same 
   }
 });
 
-test("registerPlatformArchitectureServices enforces startup ordering before registration", () => {
-  const source = readFileSync("src/platform-architecture-bootstrap.ts", "utf8");
-  assert.match(source, /assertStartupOrderEnforced\(\);/);
+test("assertStartupOrderEnforced rejects duplicate startup target kinds", () => {
+  assert.throws(
+    () =>
+      assertStartupOrderEnforced([
+        { targetKind: "api", label: "API", entryModule: "src/apps/api.ts", description: "api" },
+        { targetKind: "api", label: "API 2", entryModule: "src/apps/api-2.ts", description: "duplicate" },
+      ]),
+    /Duplicate startup target kind: api/,
+  );
 });

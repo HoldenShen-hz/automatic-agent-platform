@@ -64,6 +64,7 @@ function buildDependencyServiceIds(
 
 export class DomainsRuntimeOrchestrator {
   private startupPlan: DomainsStartupPlan | undefined;
+  private registered = false;
 
   public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
 
@@ -78,18 +79,6 @@ export class DomainsRuntimeOrchestrator {
   public startup(): DomainsRuntimeStartupResult {
     const startupPlan = this.prepare();
     this.startupPlan = startupPlan;
-
-    // Register and initialize the orchestrator service
-    this.registry.register<DomainsRuntimeOrchestrator>(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID, {
-      init: () => this,
-      dependsOn: [
-        DOMAINS_BOOTSTRAP_SERVICE_ID,
-        ...Object.values(DOMAIN_RING_BOOTSTRAP_SERVICE_IDS),
-        DOMAINS_RUNTIME_CATALOG_SERVICE_ID,
-        DOMAINS_STARTUP_PLAN_SERVICE_ID,
-      ],
-    });
-    this.registry.get(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID);
     const steps = startupPlan.steps.map((step) => {
       const initializedDependencyServiceIds = buildDependencyServiceIds(step, startupPlan).filter((serviceId) =>
         this.registry.isInitialized(serviceId),
@@ -104,7 +93,7 @@ export class DomainsRuntimeOrchestrator {
       };
     });
 
-    return {
+    const result: DomainsRuntimeStartupResult = {
       ready: steps.every((step) => step.initialized),
       startupOrder: startupPlan.startupOrder,
       initializedServiceIds: startupPlan.steps
@@ -112,13 +101,17 @@ export class DomainsRuntimeOrchestrator {
         .filter((serviceId) => this.registry.isInitialized(serviceId)),
       steps,
     };
+    this.registerOrchestrator();
+    this.registry.get(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID);
+
+    return result;
   }
 
   public snapshotReadiness(): DomainsReadinessSnapshot {
     const startupPlan = this.startupPlan
       ?? (this.registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID)
         ? this.registry.get<DomainsStartupPlan>(DOMAINS_STARTUP_PLAN_SERVICE_ID)
-        : buildDomainsStartupPlan());
+        : this.prepare());
     return {
       runtimeCatalogInitialized: this.registry.isInitialized(DOMAINS_RUNTIME_CATALOG_SERVICE_ID),
       startupPlanInitialized: this.registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID),
@@ -129,6 +122,22 @@ export class DomainsRuntimeOrchestrator {
         initialized: this.registry.isInitialized(step.bootstrapServiceId),
       })),
     };
+  }
+
+  private registerOrchestrator(): void {
+    if (this.registered) {
+      return;
+    }
+    this.registry.register<DomainsRuntimeOrchestrator>(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID, {
+      init: () => this,
+      dependsOn: [
+        DOMAINS_BOOTSTRAP_SERVICE_ID,
+        ...Object.values(DOMAIN_RING_BOOTSTRAP_SERVICE_IDS),
+        DOMAINS_RUNTIME_CATALOG_SERVICE_ID,
+        DOMAINS_STARTUP_PLAN_SERVICE_ID,
+      ],
+    });
+    this.registered = true;
   }
 }
 

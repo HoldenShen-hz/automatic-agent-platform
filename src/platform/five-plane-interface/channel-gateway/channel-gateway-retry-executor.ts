@@ -8,7 +8,7 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
  * Configuration options for the retry executor.
  */
 export interface ChannelGatewayRetryExecutorOptions {
-  /** How often to poll for retryable messages (milliseconds). Default: 15000 */
+  /** How often to poll for retryable messages (milliseconds). Default: 2000 */
   pollIntervalMs?: number;
   /** Maximum random jitter added to each poll interval. Default: 10% of pollIntervalMs */
   pollJitterMs?: number;
@@ -65,7 +65,7 @@ export class ChannelGatewayRetryExecutor {
     private readonly gatewayService: ChannelGatewayService,
     options: ChannelGatewayRetryExecutorOptions = {},
   ) {
-    this.pollIntervalMs = options.pollIntervalMs ?? 15_000;
+    this.pollIntervalMs = options.pollIntervalMs ?? 2_000;
     this.pollJitterMs = options.pollJitterMs ?? Math.floor(this.pollIntervalMs * 0.1);
     this.batchSize = options.batchSize ?? 25;
     if (options.autoStart) {

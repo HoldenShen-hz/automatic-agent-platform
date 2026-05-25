@@ -403,6 +403,45 @@ test("BillingService recordUsage increments existing quota counter", async () =>
   assert.equal(result.quotaCounter?.usedQuantity, 30);
 });
 
+test("BillingService recordUsage creates buffered budget ledgers for auto-created reservations", async () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
+  service.createAccount({ accountId: "acct_budget", ownerId: "owner_budget", planId: "plan_basic" });
+
+  const capturedHardCaps: number[] = [];
+  (service as unknown as {
+    budgetAllocator: {
+      reserve: (input: { ledger: { hardCap: number; currency: string } }) => { ledger: { version: number }; reservation: { budgetReservationId: string } };
+      settle: (input: unknown) => Promise<{ ledger: { version: number } }>;
+    };
+  }).budgetAllocator = {
+    reserve: (input) => {
+      capturedHardCaps.push(input.ledger.hardCap);
+      return {
+        ledger: { ...input.ledger, version: 1 },
+        reservation: { budgetReservationId: "reservation_budget" },
+      };
+    },
+    settle: async () => ({ ledger: { version: 2 } }),
+  };
+
+  await service.recordUsage({
+    accountId: "acct_budget",
+    metricType: "task_execution",
+    quantity: 10,
+    source: "api",
+    budgetControl: {
+      tenantId: "tenant_budget",
+      harnessRunId: "run_budget",
+      traceId: "trace_budget",
+      emittedBy: "billing-test",
+    },
+  });
+
+  assert.deepEqual(capturedHardCaps, [0.15]);
+});
+
 test("BillingService recordUsage compensates persisted charge when budget settlement fails", async () => {
   const store = createMockStore();
   const db = createMockDb();

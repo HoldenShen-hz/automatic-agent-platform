@@ -99,6 +99,35 @@ test("drift detector uses configurable thresholds, real baseline spans, and miss
   assert.ok(fingerprintOnlyResult.primarySignal != null);
 });
 
+test("drift detector scores feature drift by union size instead of raw difference count", () => {
+  const service = new DriftDetectorService({
+    fingerprintDriftThresholds: { low: 0.05, medium: 0.15, high: 0.5 },
+  });
+  const baseline = {
+    fingerprintId: "fingerprint:agent:baseline",
+    subjectType: "agent" as const,
+    subjectId: "agent-1",
+    generatedAt: "2026-05-20T00:00:00.000Z",
+    hash: "baseline-hash",
+    normalizedFeatures: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
+    window: "7d" as const,
+    windowStart: "2026-05-13T00:00:00.000Z",
+    windowEnd: "2026-05-20T00:00:00.000Z",
+  };
+  const current = {
+    ...baseline,
+    fingerprintId: "fingerprint:agent:current",
+    hash: "current-hash",
+    normalizedFeatures: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "z"],
+  };
+
+  const drift = service.detectFingerprintDrift(current, baseline);
+
+  assert.ok(drift != null);
+  assert.equal(drift.severity, "medium");
+  assert.ok(Math.abs(drift.driftScore - 0.1818181818) < 0.0001);
+});
+
 test("capacity planning normalizes quota pressure, queue delay, scenario ordering, and zero-sample growth fallback", () => {
   const service = new CapacityPlanningService({
     queueDepthToDelayMs: 25,

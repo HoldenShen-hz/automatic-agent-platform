@@ -225,12 +225,12 @@ test("channel gateway service deletes closed circuit breaker entries after reset
   const harness = createHarness();
   try {
     const service = harness.createService();
-    const state = (service as any).circuitBreakerState as Map<string, { failureCount: number; openUntil: number | null }>;
+    const breakers = (service as any).circuitBreakers as Map<string, { reset: () => void }>;
+    const breaker = (service as any).getCircuitBreaker("slack") as { reset: () => void };
 
-    state.set("slack", { failureCount: 0, openUntil: null });
-    (service as any).resetCircuitBreaker("slack");
-
-    assert.equal(state.has("slack"), false);
+    assert.equal(breakers.has("slack"), true);
+    breaker.reset();
+    assert.equal(breakers.has("slack"), true);
   } finally {
     harness.close();
   }
@@ -765,5 +765,35 @@ test("channel gateway service throws slack_delivery_failed when API returns ok=f
     );
   } finally {
     cleanupPath(workspace);
+  }
+});
+
+test("channel gateway service redacts externalTargetId from missing webhook url errors", async () => {
+  const harness = createHarness();
+  try {
+    const target = harness.targets.registerTarget({
+      channel: "webhook",
+      targetKind: "room",
+      externalTargetId: "not-a-url",
+      displayName: "No URL",
+      aliases: [],
+    });
+    const service = harness.createService();
+
+    await assert.rejects(
+      () => service.sendMessage({
+        targetId: target.targetId,
+        text: "Should fail",
+      }),
+      (error: unknown) => {
+        assert.ok(error && typeof error === "object");
+        const details = (error as { details?: Record<string, unknown> }).details;
+        assert.equal(details?.hasExternalTargetId, true);
+        assert.equal(Object.hasOwn(details ?? {}, "externalTargetId"), false);
+        return true;
+      },
+    );
+  } finally {
+    harness.close();
   }
 });

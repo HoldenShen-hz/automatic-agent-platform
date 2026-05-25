@@ -329,12 +329,10 @@ test("PluginSpiRegistry can register validator and invoke it", async () => {
 
   const plugin = registry.resolve("plugin.core.basic-evaluator");
   assert.ok(plugin !== null);
+  assert.equal(plugin.spiType, "validator");
+  const validatorPlugin: DomainValidatorPlugin = plugin;
 
-  // Access the plugin's validate method through any since we know it's a validator
-  const validateFn = (plugin as any).validate;
-  assert.ok(typeof validateFn === "function");
-
-  const result = await validateFn({
+  const result = await validatorPlugin.validate({
     stepId: "test_step",
     machineOutput: {
       stepId: "test_step",

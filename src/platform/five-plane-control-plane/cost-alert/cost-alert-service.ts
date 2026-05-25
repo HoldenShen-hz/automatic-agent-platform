@@ -16,6 +16,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { StorageError } from "../../contracts/errors.js";
 import { LocalTypedEventEmitter } from "../../shared/events/local-typed-event-emitter.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type {
   BudgetPolicy,
   CostAccumulator,
@@ -35,6 +36,7 @@ import type {
 
 const DEFAULT_WARNING_THRESHOLD = 0.8; // 80% of limit triggers warning
 const DEFAULT_CRITICAL_THRESHOLD = 0.95; // 95% of limit triggers critical alert
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 // ---------------------------------------------------------------------------
 // Cost Alert Service
@@ -574,8 +576,14 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         traceId: null,
         createdAt: event.triggeredAt,
       });
-    } catch {
-      // Don't fail if event persistence fails
+    } catch (error) {
+      logger.warn("cost_alert.event_persistence_failed", {
+        taskId: event.taskId ?? null,
+        executionId: event.executionId ?? null,
+        scope: event.scope,
+        scopeId: event.scopeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -636,8 +644,13 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         lineageJson: null,
         createdAt: record.timestamp,
       });
-    } catch {
-      // Don't fail if step recording fails
+    } catch (error) {
+      logger.warn("cost_alert.step_usage_record_failed", {
+        taskId: input.taskId ?? null,
+        executionId: input.executionId ?? null,
+        stepId: input.stepId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

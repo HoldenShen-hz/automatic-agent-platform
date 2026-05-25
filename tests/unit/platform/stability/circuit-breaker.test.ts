@@ -39,6 +39,17 @@ test("CircuitBreaker executes with signal", async () => {
   assert.equal(result, "with-signal");
 });
 
+test("CircuitBreaker aborts when caller signal is already aborted", async () => {
+  const breaker = new CircuitBreaker({ timeout: 500 });
+  const controller = new AbortController();
+  controller.abort(new Error("caller_cancelled"));
+
+  await assert.rejects(
+    () => breaker.execute(async () => "should-not-run", controller.signal),
+    (error: unknown) => error instanceof Error && error.message === "caller_cancelled",
+  );
+});
+
 test("CircuitBreaker records failures and transitions to OPEN", async () => {
   const breaker = new CircuitBreaker({ failureThreshold: 2 });
 
@@ -132,6 +143,32 @@ test("CircuitBreaker HALF_OPEN to OPEN on failure", async () => {
   assert.equal(breaker.getState(), CircuitState.OPEN);
 });
 
+test("CircuitBreaker HALF_OPEN failure exposes retryAfterMs to caller", async () => {
+  const breaker = new CircuitBreaker({
+    name: "probe-breaker",
+    failureThreshold: 1,
+    resetTimeout: 50,
+  });
+
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("initial fail"); }),
+    Error,
+  );
+
+  await new Promise((resolve) => setTimeout(resolve, 60));
+
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("probe failed"); }),
+    (error: unknown) => {
+      assert.ok(error instanceof CircuitBreakerOpenError);
+      assert.equal(error.circuitName, "probe-breaker");
+      assert.match(error.message, /probe failed/);
+      assert.ok((error.retryAfterMs ?? 0) > 0);
+      return true;
+    },
+  );
+});
+
 test("CircuitBreaker timeout throws CircuitBreakerTimeoutError", async () => {
   const breaker = new CircuitBreaker({ timeout: 50 });
 
@@ -141,6 +178,35 @@ test("CircuitBreaker timeout throws CircuitBreakerTimeoutError", async () => {
       return "too slow";
     }),
     CircuitBreakerTimeoutError,
+  );
+});
+
+test("CircuitBreaker HALF_OPEN timeout exposes retryAfterMs to caller", async () => {
+  const breaker = new CircuitBreaker({
+    name: "timeout-breaker",
+    failureThreshold: 1,
+    timeout: 30,
+    resetTimeout: 50,
+  });
+
+  await assert.rejects(
+    async () => breaker.execute(async () => { throw new Error("initial fail"); }),
+    Error,
+  );
+
+  await new Promise((resolve) => setTimeout(resolve, 60));
+
+  await assert.rejects(
+    async () => breaker.execute(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return "too slow";
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof CircuitBreakerTimeoutError);
+      assert.equal(error.circuitName, "timeout-breaker");
+      assert.ok((error.retryAfterMs ?? 0) > 0);
+      return true;
+    },
   );
 });
 
@@ -211,13 +277,17 @@ test("CircuitBreaker with custom options", () => {
 });
 
 test("CircuitBreakerOpenError has correct name", () => {
-  const error = new CircuitBreakerOpenError("Circuit is open");
+  const error = new CircuitBreakerOpenError("Circuit is open", "test-circuit");
   assert.equal(error.name, "CircuitBreakerOpenError");
+  assert.equal(error.circuitName, "test-circuit");
+  assert.equal(error.retryAfterMs, null);
 });
 
 test("CircuitBreakerTimeoutError has correct name", () => {
-  const error = new CircuitBreakerTimeoutError("Operation timed out");
+  const error = new CircuitBreakerTimeoutError("Operation timed out", "test-circuit");
   assert.equal(error.name, "CircuitBreakerTimeoutError");
+  assert.equal(error.circuitName, "test-circuit");
+  assert.equal(error.retryAfterMs, null);
 });
 
 test("CircuitBreakerResetError has correct name", () => {

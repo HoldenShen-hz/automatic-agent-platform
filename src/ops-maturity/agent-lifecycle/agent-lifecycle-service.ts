@@ -59,10 +59,23 @@ export interface LifecycleTransitionResult {
   readonly reason?: string;
 }
 
+export interface CanarySlotState {
+  readonly slotId?: string;
+  readonly active: boolean;
+  readonly trafficWeight: number;
+  readonly healthScore?: number | null;
+}
+
+export interface AgentLifecycleServiceOptions {
+  readonly resolveCanarySlotState?: (agentId: string) => CanarySlotState | null;
+}
+
 export class AgentLifecycleService {
   private readonly agents = new Map<string, ManagedAgentDefinition>();
   private readonly versions = new Map<string, ManagedAgentVersion[]>();
   private readonly canaryProgress = new Map<string, CanaryProgress>();
+
+  public constructor(private readonly options: AgentLifecycleServiceOptions = {}) {}
 
   public registerAgent(definition: ManagedAgentDefinition): ManagedAgentDefinition {
     this.agents.set(definition.agentId, definition);
@@ -125,6 +138,7 @@ export class AgentLifecycleService {
     if (agent.lifecycleState !== "canary") {
       throw new Error(`agent_lifecycle.invalid_state:${agentId}:${agent.lifecycleState}`);
     }
+    this.assertCanarySlotConsistency(agentId, progress);
 
     // Check if should promote to active
     if (shouldPromoteCanary(progress)) {
@@ -295,6 +309,21 @@ export class AgentLifecycleService {
 
   public getCanaryProgress(agentId: string): CanaryProgress | null {
     return this.canaryProgress.get(agentId) ?? null;
+  }
+
+  private assertCanarySlotConsistency(agentId: string, progress: CanaryProgress): void {
+    const slotState = this.options.resolveCanarySlotState?.(agentId) ?? null;
+    if (slotState == null) {
+      return;
+    }
+    if (!slotState.active || slotState.trafficWeight <= 0) {
+      throw new Error(`agent_lifecycle.canary_slot_inactive:${agentId}`);
+    }
+    if (slotState.trafficWeight + 0.001 < progress.rolloutPercent) {
+      throw new Error(
+        `agent_lifecycle.canary_slot_weight_mismatch:${agentId}:${slotState.trafficWeight}<${progress.rolloutPercent}`,
+      );
+    }
   }
 
   private requireAgent(agentId: string): ManagedAgentDefinition {

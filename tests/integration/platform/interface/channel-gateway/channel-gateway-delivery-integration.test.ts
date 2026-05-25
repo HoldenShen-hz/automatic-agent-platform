@@ -183,14 +183,22 @@ test("ChannelGatewayDeliveryService handles retryable failure with retry", () =>
 
     assert.equal(failure2?.outcome, "retry_scheduled");
 
-    // Third failure - should dead letter (exhausted retries)
+    // Third failure still consumes the last allowed retry
     const failure3 = h.deliveryService.recordDeliveryFailure(message.messageId, {
       responseStatus: 503,
       errorMessage: "Still unavailable after retries",
       retryable: true,
     });
 
-    assert.equal(failure3?.outcome, "dead_lettered");
+    assert.equal(failure3?.outcome, "retry_scheduled");
+
+    const failure4 = h.deliveryService.recordDeliveryFailure(message.messageId, {
+      responseStatus: 503,
+      errorMessage: "Retries exhausted",
+      retryable: true,
+    });
+
+    assert.equal(failure4?.outcome, "dead_lettered");
 
     // Verify dead letter
     const deadLetters = h.deliveryService.getDeadLetters();

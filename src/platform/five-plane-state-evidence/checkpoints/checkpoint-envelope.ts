@@ -56,6 +56,10 @@ export interface CheckpointEnvelopeMetadata {
   algorithm: CompressionAlgorithm;
   /** Original schema version of the payload */
   payloadSchemaVersion: string;
+  /** Optional domain ownership for domain-scoped checkpoints */
+  domainId?: string;
+  /** Optional knowledge namespace for domain-governed checkpoint retention */
+  namespaceId?: string;
 }
 
 /**
@@ -96,6 +100,10 @@ export interface CreateCheckpointEnvelopeOptions {
   maxSizeBytes?: number;
   /** Custom payload schema version (defaults to envelope version) */
   payloadSchemaVersion?: string;
+  /** Optional domain ownership for domain-scoped checkpoints */
+  domainId?: string;
+  /** Optional knowledge namespace for domain-governed checkpoint retention */
+  namespaceId?: string;
 }
 
 /**
@@ -159,6 +167,8 @@ export async function createCheckpointEnvelope<T = unknown>(
       createdAt: new Date().toISOString(),
       algorithm: "gzip",
       payloadSchemaVersion,
+      ...(options.domainId != null && options.domainId.trim().length > 0 ? { domainId: options.domainId.trim() } : {}),
+      ...(options.namespaceId != null && options.namespaceId.trim().length > 0 ? { namespaceId: options.namespaceId.trim() } : {}),
     },
   };
 }
@@ -236,12 +246,26 @@ export async function unpackCheckpointEnvelope<T = unknown>(
       `Failed to parse checkpoint JSON: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+  const payloadSchemaVersion = extractPayloadSchemaVersion(data);
+  if (payloadSchemaVersion != null && payloadSchemaVersion !== envelope.schema) {
+    throw new CheckpointEnvelopeInvalidError("Payload schemaVersion does not match envelope schema");
+  }
 
   return {
     data,
     metadata: envelope.metadata,
     wasCompressed: envelope.metadata.algorithm === "gzip",
   };
+}
+
+function extractPayloadSchemaVersion(value: unknown): string | null {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const schemaVersion = (value as Record<string, unknown>).schemaVersion;
+  return typeof schemaVersion === "string" && schemaVersion.trim().length > 0
+    ? schemaVersion
+    : null;
 }
 
 /**

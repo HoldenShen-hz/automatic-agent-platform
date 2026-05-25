@@ -58,6 +58,7 @@ test("trust-relationship: createTrustRelationship creates active trust", async (
   });
 
   assert.ok(trust.id != null && trust.id.length > 0);
+  assert.match(trust.id, /^trust_relationship_/);
   assert.equal(trust.sourceOrgId, "org-1");
   assert.equal(trust.targetOrgId, "org-2");
   assert.equal(trust.level, TrustLevel.READ);
@@ -116,6 +117,7 @@ test("trust-relationship: createTrustRelationship records trust event", async ()
 
   const events = manager.getTrustEvents(trust.id);
   assert.equal(events.length, 1);
+  assert.match(events[0]?.id ?? "", /^trust_event_/);
   assert.equal(events[0]?.type, "trust.established");
 });
 

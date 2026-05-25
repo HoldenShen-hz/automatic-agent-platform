@@ -10,6 +10,11 @@ import { GatewayTargetDirectoryService } from "./gateway-target-directory-servic
 import type { ChannelGatewayDeliveryService } from "./channel-gateway-delivery-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import {
+  CircuitBreaker,
+  CircuitBreakerOpenError,
+  CircuitBreakerTimeoutError,
+} from "../../stability/circuit-breaker.js";
+import {
   SLACK_API_URL,
   TELEGRAM_API_URL,
 } from "../../five-plane-control-plane/config-center/provider-defaults.js";
@@ -78,7 +83,7 @@ export class ChannelGatewayService {
   private readonly requestTimeoutMs: number;
   private readonly circuitBreakerFailureThreshold: number;
   private readonly circuitBreakerResetMs: number;
-  private readonly circuitBreakerState = new Map<string, { failureCount: number; openUntil: number | null }>();
+  private readonly circuitBreakers = new Map<string, CircuitBreaker>();
   private readonly httpAgent: HttpAgent;
   private readonly httpsAgent: HttpsAgent;
   // R12-12: Pluggable adapter registry
@@ -287,13 +292,37 @@ export class ChannelGatewayService {
 
       // Record success in delivery tracking
       if (deliveryService != null) {
-        this.recordSuccessfulDelivery(channel, trackedMessageId, deliveryReceipt, deliveryService, tenantId);
+        const tracking = this.recordSuccessfulDelivery(channel, trackedMessageId, deliveryReceipt, deliveryService, tenantId);
+        if (!tracking.rateLimitRecorded || !tracking.deliveryRecorded) {
+          this.logger.log({
+            level: "warn",
+            message: "Gateway delivery completed with tracking gaps",
+            data: {
+              channel,
+              targetId: resolution.entry.targetId,
+              messageId: trackedMessageId,
+              rateLimitRecorded: tracking.rateLimitRecorded,
+              deliveryRecorded: tracking.deliveryRecorded,
+            } as Record<string, unknown>,
+          });
+        }
       }
       return deliveryReceipt;
     } catch (error) {
       // Record failure in delivery tracking before rethrowing
       if (deliveryService != null && trackedMessageId != null) {
-        this.recordFailedDelivery(trackedMessageId, channel, resolution.entry.targetId, deliveryService, error);
+        const tracking = this.recordFailedDelivery(trackedMessageId, channel, resolution.entry.targetId, deliveryService, error);
+        if (!tracking.trackingRecorded) {
+          this.logger.log({
+            level: "warn",
+            message: "Gateway delivery failed with tracking gaps",
+            data: {
+              channel,
+              targetId: resolution.entry.targetId,
+              messageId: trackedMessageId,
+            } as Record<string, unknown>,
+          });
+        }
       }
       throw error;
     }
@@ -373,25 +402,49 @@ export class ChannelGatewayService {
           }
         }
         const receipt = await this.deliverResolvedTarget(deliveryInput);
-        this.recordSuccessfulDelivery(
+        const tracking = this.recordSuccessfulDelivery(
           queuedMessage.channel,
           queuedMessage.messageId,
           receipt,
           deliveryService,
           trackedPayload.tenantId ?? null,
         );
+        if (!tracking.rateLimitRecorded || !tracking.deliveryRecorded) {
+          this.logger.log({
+            level: "warn",
+            message: "Gateway retry delivery completed with tracking gaps",
+            data: {
+              channel: queuedMessage.channel,
+              targetId: trackedPayload.targetId,
+              messageId: queuedMessage.messageId,
+              rateLimitRecorded: tracking.rateLimitRecorded,
+              deliveryRecorded: tracking.deliveryRecorded,
+            } as Record<string, unknown>,
+          });
+        }
         summary.delivered += 1;
       } catch (error) {
-        const outcome = this.recordFailedDelivery(
+        const tracking = this.recordFailedDelivery(
           queuedMessage.messageId,
           queuedMessage.channel,
           trackedPayload.targetId,
           deliveryService,
           error,
         );
-        if (outcome === "retry_scheduled") {
+        if (!tracking.trackingRecorded) {
+          this.logger.log({
+            level: "warn",
+            message: "Gateway retry delivery failed with tracking gaps",
+            data: {
+              channel: queuedMessage.channel,
+              targetId: trackedPayload.targetId,
+              messageId: queuedMessage.messageId,
+            } as Record<string, unknown>,
+          });
+        }
+        if (tracking.outcome === "retry_scheduled") {
           summary.retryScheduled += 1;
-        } else if (outcome === "dead_lettered") {
+        } else if (tracking.outcome === "dead_lettered") {
           summary.deadLettered += 1;
         }
       }
@@ -441,11 +494,16 @@ export class ChannelGatewayService {
     receipt: GatewayDeliveryReceipt,
     deliveryService: ChannelGatewayDeliveryService,
     tenantId: string | null = null,
-  ): void {
+  ): {
+    readonly rateLimitRecorded: boolean;
+    readonly deliveryRecorded: boolean;
+  } {
+    let rateLimitRecorded = true;
     // Record rate limit hit to maintain accurate counters
     try {
       deliveryService.recordRateLimitHit(channel, tenantId);
     } catch (error) {
+      rateLimitRecorded = false;
       this.logger.log({
         level: "warn",
         message: "Gateway rate limit accounting failed",
@@ -457,12 +515,17 @@ export class ChannelGatewayService {
       });
     }
     if (messageId == null) {
-      return;
+      return {
+        rateLimitRecorded,
+        deliveryRecorded: true,
+      };
     }
     // Record successful delivery with provider response
+    let deliveryRecorded = true;
     try {
       deliveryService.recordDeliverySuccess(messageId, receipt.responseStatus, receipt.providerMessageId);
     } catch (error) {
+      deliveryRecorded = false;
       this.logger.log({
         level: "warn",
         message: "Gateway delivery tracking failed",
@@ -473,6 +536,10 @@ export class ChannelGatewayService {
         } as Record<string, unknown>,
       });
     }
+    return {
+      rateLimitRecorded,
+      deliveryRecorded,
+    };
   }
 
   /**
@@ -492,7 +559,10 @@ export class ChannelGatewayService {
     targetId: string,
     deliveryService: ChannelGatewayDeliveryService,
     error: unknown,
-  ): "retry_scheduled" | "dead_lettered" | null {
+  ): {
+    readonly outcome: "retry_scheduled" | "dead_lettered" | null;
+    readonly trackingRecorded: boolean;
+  } {
     const normalized = normalizeGatewayDeliveryFailure(error, deliveryService);
     try {
       const resolution = deliveryService.recordDeliveryFailure(messageId, normalized);
@@ -509,7 +579,10 @@ export class ChannelGatewayService {
           } as Record<string, unknown>,
         });
       }
-      return resolution?.outcome ?? null;
+      return {
+        outcome: resolution?.outcome ?? null,
+        trackingRecorded: true,
+      };
     } catch (trackingError) {
       this.logger.log({
         level: "warn",
@@ -521,7 +594,10 @@ export class ChannelGatewayService {
           error: trackingError instanceof Error ? trackingError.message : String(trackingError),
         } as Record<string, unknown>,
       });
-      return null;
+      return {
+        outcome: null,
+        trackingRecorded: false,
+      };
     }
   }
 
@@ -569,42 +645,37 @@ export class ChannelGatewayService {
   }
 
   private async executeProtectedDelivery<T>(channel: string, operation: () => Promise<T>): Promise<T> {
-    this.assertCircuitClosed(channel);
+    const breaker = this.getCircuitBreaker(channel);
     try {
-      const result = await operation();
-      this.resetCircuitBreaker(channel);
-      return result;
+      return await breaker.execute(async () => operation());
     } catch (error) {
-      this.recordCircuitBreakerFailure(channel, error);
+      if (error instanceof CircuitBreakerOpenError) {
+        throw new GatewayDeliveryError(`gateway.${channel}_circuit_open`, 503, true);
+      }
+      if (error instanceof CircuitBreakerTimeoutError) {
+        throw new GatewayDeliveryError(`gateway.${channel}_timeout`, HTTP_STATUS_GATEWAY_TIMEOUT, true);
+      }
+      if (error instanceof GatewayDeliveryError && !error.retryable) {
+        breaker.reset();
+      }
       throw error;
     }
   }
 
-  private assertCircuitClosed(channel: string): void {
-    const state = this.circuitBreakerState.get(channel);
-    if (state?.openUntil != null && state.openUntil > Date.now()) {
-      throw new GatewayDeliveryError(`gateway.${channel}_circuit_open`, 503, true);
+  private getCircuitBreaker(channel: string): CircuitBreaker {
+    const existing = this.circuitBreakers.get(channel);
+    if (existing != null) {
+      return existing;
     }
-    if (state?.openUntil != null && state.openUntil <= Date.now()) {
-      this.circuitBreakerState.delete(channel);
-    }
-  }
-
-  private resetCircuitBreaker(channel: string): void {
-    this.circuitBreakerState.delete(channel);
-  }
-
-  private recordCircuitBreakerFailure(channel: string, error: unknown): void {
-    const retryable = error instanceof GatewayDeliveryError ? error.retryable : true;
-    if (!retryable) {
-      return;
-    }
-    const previous = this.circuitBreakerState.get(channel) ?? { failureCount: 0, openUntil: null };
-    const failureCount = previous.failureCount + 1;
-    this.circuitBreakerState.set(channel, {
-      failureCount,
-      openUntil: failureCount >= this.circuitBreakerFailureThreshold ? Date.now() + this.circuitBreakerResetMs : null,
+    const breaker = new CircuitBreaker({
+      name: `gateway.${channel}`,
+      failureThreshold: this.circuitBreakerFailureThreshold,
+      successThreshold: 1,
+      timeout: this.requestTimeoutMs,
+      resetTimeout: this.circuitBreakerResetMs,
     });
+    this.circuitBreakers.set(channel, breaker);
+    return breaker;
   }
 
   private async fetchWithTimeout(input: string, init: RequestInit, timeoutCode: string): Promise<Response> {
@@ -799,7 +870,7 @@ export class ChannelGatewayService {
     if (requestUrl == null) {
       throw new ValidationError("gateway.webhook_url_required", "gateway.webhook_url_required", {
         retryable: false,
-        details: { targetId, externalTargetId },
+        details: { targetId, hasExternalTargetId: externalTargetId != null },
       });
     }
 

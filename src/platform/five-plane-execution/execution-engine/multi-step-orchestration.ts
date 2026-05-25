@@ -35,7 +35,7 @@ import { assertWorkflowValid } from "../../five-plane-orchestration/oapeflir/wor
 import { StreamBridge } from "../../five-plane-interface/channel-gateway/stream-bridge.js";
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
 import { executeStepLoop } from "./multi-step-supervisor.js";
-import { reserveBudgetLedger } from "../budget-ledger-reservation.js";
+import { ensureBudgetLedger, reserveBudgetLedger } from "../budget-ledger-reservation.js";
 import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
@@ -421,7 +421,16 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       });
 
       if (harnessRun.budgetLedgerId) {
+        const budgetHardCap = Math.max(plannedWorkflow.executionSteps.length, 1);
         db.transaction(() => {
+          ensureBudgetLedger({
+            connection: db.connection,
+            budgetLedgerId: harnessRun.budgetLedgerId,
+            tenantId: input.tenantId ?? "tenant:local",
+            harnessRunId,
+            currency: "USD",
+            hardCap: budgetHardCap,
+          });
           reserveBudgetLedger({
             connection: db.connection,
             budgetLedgerId: harnessRun.budgetLedgerId,
@@ -519,7 +528,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       );
       const workflowFailed = failedStepIds.size > 0 || allStepsFailedOrSkipped;
       const lastExecution = store.execution.listExecutionsByTask(taskId).at(-1);
-      const lastExecutionId = lastExecution?.id ?? newId("exec");
+      const lastExecutionId = lastExecution?.id ?? null;
+      const currentExecutionStatus = lastExecution?.status ?? (workflowFailed ? "failed" : "succeeded");
 
       if (workflowFailed) {
         transitions.transitionTaskTerminalState({
@@ -529,7 +539,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           currentTaskStatus: "in_progress",
           currentWorkflowStatus: "running",
           currentSessionStatus: "streaming",
-          currentExecutionStatus: lastExecution?.status ?? "failed",
+          currentExecutionStatus,
           terminalStatus: "failed",
           taskOutputJson: JSON.stringify({
             error: workflowLastErrorCode ?? "workflow.step_failed",
@@ -547,7 +557,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           currentTaskStatus: "in_progress",
           currentWorkflowStatus: "running",
           currentSessionStatus: "streaming",
-          currentExecutionStatus: "succeeded",
+          currentExecutionStatus,
           terminalStatus: "done",
           taskOutputJson: JSON.stringify(finalOutput),
           outputsJson: JSON.stringify(outputs),

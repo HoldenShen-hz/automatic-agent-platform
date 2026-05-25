@@ -182,16 +182,23 @@ test("EdgeRuntimeSyncService sync rejects restricted data when not allowed", asy
 test("EdgeRuntimeSyncService sync applies central wins policy on digest mismatch", async () => {
   const service = new EdgeRuntimeSyncService();
   const profile = makeTestProfile();
+  const edgePayload = JSON.stringify({ localField: "edge", shared: "edge" });
+  const cloudPayload = JSON.stringify({ remoteField: "cloud", shared: "cloud" });
 
   const envelope = service.buildSyncEnvelope(
     profile,
     { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), syncRequired: true, status: "queued" },
-    "abc123",
+    edgePayload,
     1,
     "internal"
   );
 
-  const receipt = service.sync(profile, [envelope], { [envelope.recordId]: "different-digest" });
+  const receipt = service.sync(
+    profile,
+    [envelope],
+    { [envelope.recordId]: "different-digest" },
+    { [envelope.recordId]: cloudPayload },
+  );
 
   assert.ok(receipt.acceptedEnvelopeIds.includes(envelope.envelopeId));
   const decision = receipt.decisions.find((d) => d.envelopeId === envelope.envelopeId);
@@ -199,6 +206,11 @@ test("EdgeRuntimeSyncService sync applies central wins policy on digest mismatch
   assert.equal(decision?.resolution, "merge");
   assert.ok(decision?.incidentId != null);
   assert.ok(decision?.mergedPayload != null);
+  const mergedPayload = JSON.parse(decision!.mergedPayload!);
+  assert.equal(mergedPayload.localField, "edge");
+  assert.equal(mergedPayload.remoteField, "cloud");
+  assert.equal(mergedPayload.shared, "edge");
+  assert.equal(mergedPayload._merged, true);
 });
 
 test("EdgeRuntimeSyncService sync respects ordering when requireOrdering is true", async () => {

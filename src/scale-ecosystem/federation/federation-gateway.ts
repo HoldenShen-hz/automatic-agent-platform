@@ -3,9 +3,9 @@
  * Cross-org trust and capability delegation
  */
 
-import { randomUUID } from "crypto";
 import { TrustLevel } from "./trust-level.js";
 import { AppError, ValidationError } from "../../platform/contracts/errors.js";
+import { newId } from "../../platform/contracts/types/ids.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export { TrustLevel } from "./trust-level.js";
@@ -391,7 +391,7 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
     }
 
     const trustRelationship: TrustRelationship = {
-      id: randomUUID(),
+      id: newId("federation_trust"),
       sourceOrgId: request.sourceOrgId,
       targetOrgId: request.targetOrgId,
       level: request.level,
@@ -478,7 +478,7 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
 
     const delegationRequest: DelegationRequest = {
       ...request,
-      id: randomUUID(),
+      id: newId("federation_request"),
       requestedAt: new Date(),
     };
 
@@ -522,7 +522,7 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
     }
 
     const grant: CapabilityGrant = {
-      id: randomUUID(),
+      id: newId("federation_grant"),
       orgId: request.sourceOrgId,
       targetOrgId: request.targetOrgId,
       capability: capability,

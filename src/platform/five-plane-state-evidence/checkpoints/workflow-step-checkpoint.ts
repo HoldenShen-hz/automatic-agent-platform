@@ -35,6 +35,25 @@ const LEGACY_WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSIONS = new Set([
   WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
 ]);
 
+export class CheckpointSchemaVersionMismatchError extends Error {
+  public readonly actualSchemaVersion: string | null;
+  public readonly artifactId: string | null;
+  public readonly storagePath: string | null;
+
+  public constructor(input: {
+    actualSchemaVersion?: string | null;
+    artifactId?: string | null;
+    storagePath?: string | null;
+    message?: string;
+  } = {}) {
+    super(input.message ?? "workflow_step_checkpoint.schema_version_mismatch");
+    this.name = "CheckpointSchemaVersionMismatchError";
+    this.actualSchemaVersion = input.actualSchemaVersion ?? null;
+    this.artifactId = input.artifactId ?? null;
+    this.storagePath = input.storagePath ?? null;
+  }
+}
+
 /**
  * Context about how the step decision was made.
  *
@@ -371,6 +390,23 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
     const parsed = JSON.parse(fileContent) as unknown;
     return normalizeWorkflowStepCheckpoint(parsed) ?? null;
   } catch (err) {
+    if (err instanceof CheckpointSchemaVersionMismatchError) {
+      logger.log({
+        level: "warn",
+        message: "Workflow step checkpoint schema version mismatch",
+        data: {
+          artifactId: record.artifactId,
+          storagePath: record.storagePath,
+          actualSchemaVersion: err.actualSchemaVersion,
+        },
+      });
+      throw new CheckpointSchemaVersionMismatchError({
+        actualSchemaVersion: err.actualSchemaVersion,
+        artifactId: record.artifactId,
+        storagePath: record.storagePath,
+        message: `workflow_step_checkpoint.schema_version_mismatch:${record.artifactId}`,
+      });
+    }
     logger.log({
       level: "warn",
       message: "Failed to read workflow step checkpoint",
@@ -558,6 +594,17 @@ function normalizeWorkflowStepCheckpoint(value: unknown): WorkflowStepCheckpoint
     return null;
   }
   const candidate = value as Record<string, unknown>;
+  const candidateSchemaVersion = typeof candidate.schemaVersion === "string"
+    ? candidate.schemaVersion
+    : null;
+  if (
+    candidateSchemaVersion != null
+    && !LEGACY_WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSIONS.has(candidateSchemaVersion)
+  ) {
+    throw new CheckpointSchemaVersionMismatchError({
+      actualSchemaVersion: candidateSchemaVersion,
+    });
+  }
   if (
     candidate.schemaVersion !== WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION
     || typeof candidate.taskId !== "string"

@@ -209,3 +209,47 @@ test("AgentLifecycleService.getCanaryTrafficSplit returns null when no progress"
   const result = service.getCanaryTrafficSplit("agent-1");
   assert.equal(result, null);
 });
+
+test("AgentLifecycleService.advanceCanary rejects inactive canary slot state", () => {
+  const service = new AgentLifecycleService({
+    resolveCanarySlotState: () => ({
+      active: false,
+      trafficWeight: 0,
+    }),
+  });
+  const agent = makeAgent({ agentId: "agent-canary-1", lifecycleState: "canary" });
+  service.registerAgent(agent);
+
+  assert.throws(
+    () => service.advanceCanary("agent-canary-1", {
+      rolloutPercent: 20,
+      successRate: 0.995,
+      latencyP50Ms: 1200,
+      errorRate: 0.001,
+      currentStage: 20,
+    }),
+    /agent_lifecycle\.canary_slot_inactive/,
+  );
+});
+
+test("AgentLifecycleService.advanceCanary rejects canary slot weight drift", () => {
+  const service = new AgentLifecycleService({
+    resolveCanarySlotState: () => ({
+      active: true,
+      trafficWeight: 5,
+    }),
+  });
+  const agent = makeAgent({ agentId: "agent-canary-2", lifecycleState: "canary" });
+  service.registerAgent(agent);
+
+  assert.throws(
+    () => service.advanceCanary("agent-canary-2", {
+      rolloutPercent: 20,
+      successRate: 0.995,
+      latencyP50Ms: 1200,
+      errorRate: 0.001,
+      currentStage: 20,
+    }),
+    /agent_lifecycle\.canary_slot_weight_mismatch/,
+  );
+});

@@ -3,6 +3,9 @@ import { DatabaseSync } from "node:sqlite";
 import type { GovernanceDelegation, NormalizedGovernanceDelegation } from "../delegation-registry/index.js";
 import { normalizeGovernanceDelegation } from "../delegation-registry/index.js";
 import type { GovernanceConsoleAuditEntry } from "../governance-console-service.js";
+import { StructuredLogger } from "../../../platform/shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export interface DelegationStore {
   save(delegation: GovernanceDelegation): void;
@@ -250,7 +253,11 @@ function safeJsonObjectParse(value: unknown, errorCode: string): Record<string, 
 function safeJsonParse(value: unknown, errorCode: string): unknown {
   try {
     return JSON.parse(String(value));
-  } catch {
+  } catch (error) {
+    logger.warn("delegated governance store json parse failed", {
+      errorCode,
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw new Error(errorCode);
   }
 }

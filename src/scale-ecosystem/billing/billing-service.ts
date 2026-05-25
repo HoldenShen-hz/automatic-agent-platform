@@ -110,6 +110,8 @@ export type {
   SettleBillingPaymentSessionInput,
 } from "./types.js";
 
+const AUTO_CREATED_BUDGET_LEDGER_HARD_CAP_BUFFER = 1.5;
+
 /**
  * Billing Service
  *
@@ -276,7 +278,7 @@ export class BillingService {
         tenantId: input.budgetControl.tenantId,
         harnessRunId: input.budgetControl.harnessRunId,
         currency: "USD",
-        hardCap: estimatedChargeUsd,
+        hardCap: roundCurrency(Math.max(estimatedChargeUsd, estimatedChargeUsd * AUTO_CREATED_BUDGET_LEDGER_HARD_CAP_BUFFER)),
       });
       reservedBudget = this.budgetAllocator.reserve({
         ledger,
@@ -291,6 +293,7 @@ export class BillingService {
           traceId: input.budgetControl.traceId,
           emittedBy: input.budgetControl.emittedBy,
           principal: input.budgetControl.emittedBy,
+          tierLimitCurrency: ledger.currency,
         },
       });
     }

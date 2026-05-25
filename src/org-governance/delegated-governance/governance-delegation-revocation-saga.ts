@@ -1,3 +1,7 @@
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
+
 export interface GovernanceDelegationRevocationRequest {
   readonly delegationId: string;
   readonly requestedAtMs: number;
@@ -113,8 +117,13 @@ export class GovernanceDelegationRevocationSaga {
           executionLog.push({ stage: "commit", subjectId: delegationId, outcome: "completed" });
         }
       }
-    } catch {
+    } catch (error) {
       failedStage = currentStage;
+      logger.warn("governance delegation revocation saga stage failed", {
+        delegationId: request.delegationId,
+        stage: currentStage,
+        error: error instanceof Error ? error.message : String(error),
+      });
       executionLog.push({
         stage: failedStage,
         subjectId: revokedDerivedDelegationIds.at(-1) ?? frozenResourceIds.at(-1) ?? request.delegationId,

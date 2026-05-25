@@ -1582,6 +1582,55 @@ test("executable-contracts: assertGraphPatchSafety throws for safe_append with a
   assert.throws(() => assertGraphPatchSafety(patch), ValidationError);
 });
 
+test("executable-contracts: assertGraphPatchSafety allows safe_append when affectedExecutedNodes are unrelated to appended targets", () => {
+  const patch: GraphPatch = {
+    graphPatchId: "gpatch-1",
+    harnessRunId: "hrun-1",
+    baseGraphVersion: 1,
+    newGraphVersion: 2,
+    operations: [
+      {
+        operationId: "op-1",
+        operationType: "add_node",
+        targetRef: "new-node-1",
+        payload: {},
+      },
+    ],
+    affectedExecutedNodes: [],
+    affectedSideEffects: [],
+    compatibilityClass: "safe_append",
+    policyProofRef: artifact,
+    auditRef: artifact,
+  };
+
+  assert.doesNotThrow(() => assertGraphPatchSafety(patch));
+});
+
+test("executable-contracts: assertGraphPatchSafety allows compensated side effects outside safe_append mode", () => {
+  const patch: GraphPatch = {
+    graphPatchId: "gpatch-1",
+    harnessRunId: "hrun-1",
+    baseGraphVersion: 1,
+    newGraphVersion: 2,
+    operations: [
+      {
+        operationId: "op-1",
+        operationType: "replace_node",
+        targetRef: "existing-node-1",
+        payload: {},
+      },
+    ],
+    affectedExecutedNodes: ["existing-node-1"],
+    affectedSideEffects: ["side-effect-1"],
+    compatibilityClass: "requires_checkpoint_revalidation",
+    compensationPlanRef: artifact,
+    policyProofRef: artifact,
+    auditRef: artifact,
+  };
+
+  assert.doesNotThrow(() => assertGraphPatchSafety(patch));
+});
+
 test("executable-contracts: assertGraphPatchSafety throws for mark_skipped on executed node", () => {
   const patch: GraphPatch = {
     graphPatchId: "gpatch-1",

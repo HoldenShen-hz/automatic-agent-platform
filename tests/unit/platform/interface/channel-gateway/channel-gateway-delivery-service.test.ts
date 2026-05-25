@@ -263,7 +263,7 @@ test("delivery receipt tracks multiple attempts", () => {
   }
 });
 
-test("recordDeliveryFailure schedules retries once per message and dead-letters when exhausted", () => {
+test("recordDeliveryFailure allows the configured number of retries before dead-lettering", () => {
   const h = createService({
     initialBackoffMs: 0,
     maxBackoffMs: 0,
@@ -276,16 +276,20 @@ test("recordDeliveryFailure schedules retries once per message and dead-letters 
       errorMessage: "temporary outage",
       retryable: true,
     });
-    const retryable = h.service.getRetryableMessages();
     const secondFailure = h.service.recordDeliveryFailure(created.messageId, {
       responseStatus: 503,
       errorMessage: "still failing",
       retryable: true,
     });
+    const thirdFailure = h.service.recordDeliveryFailure(created.messageId, {
+      responseStatus: 503,
+      errorMessage: "retries exhausted",
+      retryable: true,
+    });
 
     assert.equal(firstFailure?.outcome, "retry_scheduled");
-    assert.equal(retryable.length, 1);
-    assert.equal(secondFailure?.outcome, "dead_lettered");
+    assert.equal(secondFailure?.outcome, "retry_scheduled");
+    assert.equal(thirdFailure?.outcome, "dead_lettered");
     assert.equal(h.service.getRetryableMessages().length, 0);
     assert.equal(h.service.getDeadLetters().length, 1);
   } finally {

@@ -24,6 +24,7 @@ import {
 } from "../worker-pool/worker-load-balancing.js";
 import { WorkerRegistryService, type RegisteredWorkerView } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { DEFAULT_WORKER_HEARTBEAT_STALENESS_MS } from "../../shared/runtime/worker-heartbeat-policy.js";
 import { StorageError } from "../../contracts/errors.js";
 import type { FailureCategory } from "../../five-plane-state-evidence/events/dlq-service.js";
 import {
@@ -274,25 +275,6 @@ export class ExecutionDispatchService {
             taskId: ticket.taskId,
             executionId: ticket.executionId,
             eventType: "dispatch:backpressure_rejected",
-            eventTier: "tier_2",
-            payloadJson: JSON.stringify({
-              ticketId: ticket.id,
-              executionId: ticket.executionId,
-              taskId: ticket.taskId,
-              queueName: ticket.queueName,
-              priority: ticket.priority,
-              riskClass: ticket.riskClass,
-              reasonCode: blockedByBackpressure,
-              backpressureSnapshot: backpressure,
-            }),
-            traceId: execution?.traceId ?? null,
-            createdAt: occurredAt,
-          });
-          this.store.event.insertEvent({
-            id: newId("evt"),
-            taskId: ticket.taskId,
-            executionId: ticket.executionId,
-            eventType: "dispatch.backpressure_rejected",
             eventTier: "tier_2",
             payloadJson: JSON.stringify({
               ticketId: ticket.id,
@@ -577,13 +559,12 @@ export class ExecutionDispatchService {
     return candidates.map((worker) => {
         const capabilitySet = new Set(worker.capabilities);
         // R6-10: Check heartbeat staleness - reject workers with stale heartbeats (>30s per §14)
-        const heartbeatStalenessThresholdMs = 30_000; // 30 seconds per §14 gap detection
         const lastHeartbeatMs = Date.parse(worker.lastHeartbeatAt);
         const occurredAtMs = Date.parse(occurredAt);
         const lastHeartbeatAgeMs = Number.isFinite(lastHeartbeatMs) && Number.isFinite(occurredAtMs)
           ? occurredAtMs - lastHeartbeatMs
           : Number.POSITIVE_INFINITY;
-        if (lastHeartbeatAgeMs > heartbeatStalenessThresholdMs) {
+        if (lastHeartbeatAgeMs > DEFAULT_WORKER_HEARTBEAT_STALENESS_MS) {
           return this.toWorkerEvaluation(worker, false, "worker_heartbeat_missing", []);
         }
 
@@ -953,7 +934,32 @@ export class ExecutionDispatchService {
     occurredAt: string,
     evaluations: DispatchWorkerEvaluation[],
   ): DispatchDecisionTrace {
-    this.store.worker.invalidateExecutionTicket?.({
+    const currentTicket = this.store.worker.getExecutionTicket(ticket.id) ?? ticket;
+    if (currentTicket.status !== "pending") {
+      return this.recordDecisionEvent(ticket, occurredAt, {
+        dispatchTarget: resolveDispatchTarget(ticket.dispatchTarget),
+        remoteAvailability: null,
+        requiredIsolationLevel: resolveRequiredIsolationLevel(ticket.requiredIsolationLevel),
+        requiredRepoVersion: resolveRequiredRepoVersion(ticket.requiredRepoVersion),
+        preferredWorkerId: null,
+        requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+        outcome: "blocked",
+        reasonCode: "dispatch.poison_pill_ticket_state_changed",
+        selectedWorkerId: null,
+        leaseId: null,
+        fallbackApplied: false,
+        evaluations,
+      });
+    }
+    const invalidator = this.store.worker.invalidateExecutionTicket;
+    if (typeof invalidator !== "function") {
+      throw new StorageError(
+        "dispatch.ticket_invalidation_unsupported",
+        "Dispatch store must support poison pill invalidation.",
+        { details: { ticketId: ticket.id } },
+      );
+    }
+    invalidator.call(this.store.worker, {
       ticketId: ticket.id,
       status: "cancelled",
       invalidatedAt: occurredAt,

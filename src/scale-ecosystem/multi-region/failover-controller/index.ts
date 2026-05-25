@@ -120,7 +120,7 @@ export interface RejectRegionJoinResult {
  */
 export class EpochManager {
   private readonly epochsByPartition = new Map<string, number>();
-  private readonly demotedLeaders = new Map<string, string>();
+  private readonly demotedLeaders = new Map<string, { replacementLeaderRegionId: string; demotedAtEpoch: number }>();
 
   /**
    * Get the current fencing epoch for a partition
@@ -139,7 +139,10 @@ export class EpochManager {
     const newEpoch = currentEpoch + 1;
     this.epochsByPartition.set(key, newEpoch);
     if (oldLeaderRegionId != null) {
-      this.demotedLeaders.set(`${key}:${oldLeaderRegionId}`, newLeaderRegionId);
+      this.demotedLeaders.set(`${key}:${oldLeaderRegionId}`, {
+        replacementLeaderRegionId: newLeaderRegionId,
+        demotedAtEpoch: newEpoch,
+      });
     }
     return newEpoch;
   }
@@ -152,8 +155,11 @@ export class EpochManager {
     const key = partitionKey ?? "global";
     const currentEpoch = this.epochsByPartition.get(key) ?? 0;
     if (offeredEpoch < currentEpoch) {
-      const wasDemoted = this.demotedLeaders.has(`${key}:${regionId}`);
-      return wasDemoted;
+      const demotion = this.demotedLeaders.get(`${key}:${regionId}`);
+      return demotion?.demotedAtEpoch === currentEpoch;
+    }
+    if (offeredEpoch >= currentEpoch) {
+      this.clearDemotedRecord(key, regionId);
     }
     return false;
   }
@@ -163,7 +169,7 @@ export class EpochManager {
    */
   public getReplacementLeader(partitionKey: string, demotedRegionId: string): string | null {
     const key = partitionKey ?? "global";
-    return this.demotedLeaders.get(`${key}:${demotedRegionId}`) ?? null;
+    return this.demotedLeaders.get(`${key}:${demotedRegionId}`)?.replacementLeaderRegionId ?? null;
   }
 
   /**
@@ -226,6 +232,13 @@ export class RegionFailoverController {
     // Demoted leader must offer the current (incremented) epoch to rejoin
     const stale = input.offeredFencingEpoch < currentEpoch;
     const mustRejoinAsFollower = stale || input.offeredFencingEpoch === currentEpoch;
+    if (!stale && input.offeredFencingEpoch >= currentEpoch) {
+      this.epochManager.clearDemotedRecord(input.partitionKey, input.regionId);
+      this.stateByPartition.set(input.partitionKey ?? "global", {
+        ...state,
+        demotedLeaderRegionId: state.demotedLeaderRegionId === input.regionId ? null : state.demotedLeaderRegionId,
+      });
+    }
     return {
       accepted: !stale,
       reason: stale

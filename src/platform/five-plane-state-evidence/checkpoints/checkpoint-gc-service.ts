@@ -100,6 +100,7 @@ export const DEFAULT_CHECKPOINT_RETENTION_POLICY: CheckpointRetentionPolicy = {
 export class CheckpointGCService {
   private readonly rootDir: string;
   private readonly retentionPolicy: CheckpointRetentionPolicy;
+  private readonly gcLockPath: string;
   private gcInProgress = false;
 
   public constructor(
@@ -108,6 +109,7 @@ export class CheckpointGCService {
   ) {
     this.rootDir = rootDir;
     this.retentionPolicy = { ...DEFAULT_CHECKPOINT_RETENTION_POLICY, ...retentionPolicy };
+    this.gcLockPath = join(rootDir, ".checkpoint-gc.lock");
   }
 
   /**
@@ -162,6 +164,7 @@ export class CheckpointGCService {
     if (this.gcInProgress) {
       throw new Error("checkpoint_gc.concurrent_run_not_allowed");
     }
+    const lockAcquired = this.acquireRunLock();
     this.gcInProgress = true;
     const startedAt = nowIso();
     const errors: string[] = [];
@@ -206,6 +209,9 @@ export class CheckpointGCService {
       };
     } finally {
       this.gcInProgress = false;
+      if (lockAcquired) {
+        this.releaseRunLock();
+      }
     }
   }
 
@@ -506,5 +512,24 @@ export class CheckpointGCService {
       return birthtime;
     }
     return stats.mtimeMs;
+  }
+
+  private acquireRunLock(): boolean {
+    try {
+      writeFileSync(this.gcLockPath, JSON.stringify({ acquiredAt: nowIso() }), {
+        encoding: "utf8",
+        flag: "wx",
+      });
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+        throw new Error("checkpoint_gc.concurrent_run_not_allowed");
+      }
+      throw error;
+    }
+  }
+
+  private releaseRunLock(): void {
+    rmSync(this.gcLockPath, { force: true });
   }
 }

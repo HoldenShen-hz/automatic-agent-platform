@@ -760,7 +760,7 @@ export class ExecutionLeaseService {
   private expireActiveLeaseIfNeeded(executionId: string, occurredAt: string, reasonCode: string): void {
     const activeLease = this.store.worker.getActiveExecutionLease(executionId);
     // Only expire if exists AND has passed its expiration time
-    if (!activeLease || Date.parse(activeLease.expiresAt) >= Date.parse(occurredAt)) {
+    if (!activeLease || Date.parse(activeLease.expiresAt) > Date.parse(occurredAt)) {
       return;
     }
 
@@ -884,6 +884,16 @@ export class ExecutionLeaseService {
     const workerStore = this.store.worker as typeof this.store.worker & {
       getLatestFencingToken?: (executionId: string) => number;
     };
-    return workerStore.getLatestFencingToken?.(executionId) ?? 0;
+    if (typeof workerStore.getLatestFencingToken !== "function") {
+      throw new StorageError(
+        "lease.latest_fencing_token_unsupported",
+        "Execution lease service requires worker store fencing token support.",
+        {
+          details: { executionId },
+          executionId,
+        },
+      );
+    }
+    return workerStore.getLatestFencingToken(executionId);
   }
 }

@@ -352,6 +352,10 @@ function normalizeVersion(version: number | string): number {
   return parsed;
 }
 
+export function normalizePromptBundleVersion(version: number | string): number {
+  return normalizeVersion(version);
+}
+
 function assertPositiveIntegerVersion(value: number | string, code: string): void {
   // Normalize string version to number before validation
   const normalized = normalizeVersion(value);

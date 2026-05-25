@@ -68,6 +68,17 @@ test("basic planner returns null for critical assessments", async () => {
   assert.equal(suggestion, null);
 });
 
+test("basic planner returns null when assessment is missing at runtime", async () => {
+  const plugin = createPlugin();
+  const suggestion = await plugin.suggestWorkflow({
+    taskId: "task-missing-assessment",
+    intent: "malformed input",
+    assessment: null,
+  } as unknown as Parameters<typeof plugin.suggestWorkflow>[0]);
+
+  assert.equal(suggestion, null);
+});
+
 test("basic planner emits direct execution workflow for trivial tasks", async () => {
   const plugin = createPlugin();
   const suggestion = await plugin.suggestWorkflow({

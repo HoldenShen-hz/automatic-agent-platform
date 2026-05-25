@@ -304,6 +304,30 @@ test("RegionFailoverController.rejectRegionJoin accepts current epoch from demot
   assert.equal(result.accepted, true);
 });
 
+test("RegionFailoverController.rejectRegionJoin clears stale demotion record after leader rejoins with current epoch", () => {
+  const controller = new RegionFailoverController();
+  controller.resolve(createTestFailoverInput({
+    primaryHealthy: false,
+    preferredRegionId: "eu-west-1",
+    currentLeaderRegionId: "us-west-2",
+  }));
+
+  const currentEpoch = controller.getState()?.fencingEpoch ?? 1;
+  const accepted = controller.rejectRegionJoin({
+    regionId: "us-west-2",
+    offeredFencingEpoch: currentEpoch,
+    partitionKey: "global",
+  });
+  assert.equal(accepted.accepted, true);
+
+  const secondAttempt = controller.rejectRegionJoin({
+    regionId: "us-west-2",
+    offeredFencingEpoch: currentEpoch - 1,
+    partitionKey: "global",
+  });
+  assert.equal(secondAttempt.accepted, true);
+});
+
 test("RegionFailoverController.resolve uses explicit promoteEpoch when provided", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({

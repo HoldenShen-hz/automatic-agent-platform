@@ -50,6 +50,15 @@ test("buildCostOptimizationRecommendation calculates higher savings for high cos
   assert.equal(result.action, "right_size");
 });
 
+test("buildCostOptimizationRecommendation derives savings from actual model price delta", () => {
+  const result = buildCostOptimizationRecommendation("subj", 200, {
+    modelRef: "balanced",
+  });
+  assert.ok(result != null);
+  assert.equal(result.action, "downgrade_model");
+  assert.equal(result.estimatedSavingsUsd, 133.33);
+});
+
 test("prioritizeCostOptimizationRecommendations sorts by estimatedSavingsUsd descending", () => {
   const recommendations = [
     { recommendationId: "rec_a", subjectId: "sub_a", estimatedSavingsUsd: 5, riskLevel: "low" as const, action: "increase_cache_hit" as const },

@@ -8,6 +8,7 @@
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
+import { assertInMemoryStoreAllowed } from "./in-memory-store-guard.js";
 
 // ============================================================================
 // Service Auth Configuration
@@ -93,9 +94,11 @@ const tokenIndex = new Map<string, string>(); // tokenId -> serviceId
 const certIndex = new Map<string, string>(); // certId -> serviceId
 
 function assertInMemoryServiceIdentityStoreAllowed(): void {
-  if (process.env.NODE_ENV === "production" && process.env.AA_ALLOW_IN_MEMORY_SERVICE_IDENTITY_STORE !== "1") {
-    throw new ValidationError("iam.service_identity_store_distributed_required", "In-memory service identity store is not allowed in production without explicit opt-in.");
-  }
+  assertInMemoryStoreAllowed(
+    "AA_ALLOW_IN_MEMORY_SERVICE_IDENTITY_STORE",
+    "iam.service_identity_store_distributed_required",
+    "service identity store",
+  );
 }
 
 // ============================================================================

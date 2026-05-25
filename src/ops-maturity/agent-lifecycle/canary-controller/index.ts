@@ -99,11 +99,12 @@ export interface TrafficSplitConfig {
 
 /**
  * Calculates traffic split for given canary stage.
- * Handles invalid stage values by defaulting to 100% canary.
  */
 export function calculateTrafficSplit(canaryStage: CanaryStage): TrafficSplitConfig {
-  // canaryStage should be a number (5, 20, 50, 100) but test may pass invalid values
-  const stage = typeof canaryStage === "number" && CANARY_STAGES.includes(canaryStage) ? canaryStage : 100;
+  if (typeof canaryStage !== "number" || !CANARY_STAGES.includes(canaryStage)) {
+    throw new Error(`invalid_canary_stage:${String(canaryStage)}`);
+  }
+  const stage = canaryStage;
   return {
     canaryPercent: stage,
     stablePercent: 100 - stage,

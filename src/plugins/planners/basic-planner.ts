@@ -19,6 +19,9 @@ export function createBasicPlannerPlugin(): DomainPlannerPlugin {
       return undefined;
     },
     async suggestWorkflow(task) {
+      if (task.assessment == null) {
+        return null;
+      }
       if (task.assessment.complexity === "critical") {
         return null;
       }

@@ -3,7 +3,7 @@
  * Capability granting and revocation for federation
  */
 
-import { randomUUID } from "crypto";
+import { newId } from "../../platform/contracts/types/ids.js";
 
 // Types
 export interface Capability {
@@ -160,12 +160,12 @@ export class CapabilityDelegation {
   registerCapability(capability: Omit<Capability, "id">): Capability {
     const fullCapability: Capability = {
       ...capability,
-      id: randomUUID(),
+      id: newId("capability"),
     };
     this.capabilities.set(fullCapability.id, fullCapability);
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       action: "capability.registered",
       orgId: "system",
       capabilityId: fullCapability.id,
@@ -196,7 +196,7 @@ export class CapabilityDelegation {
     capability.deprecated = true;
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       action: "capability.deprecated",
       orgId: "system",
       capabilityId: id,
@@ -241,7 +241,7 @@ export class CapabilityDelegation {
     );
 
     const grant: CapabilityGrant = {
-      id: randomUUID(),
+      id: newId("delegation"),
       capabilityId: params.capabilityId,
       capabilityName: capability.name,
       delegatingOrgId: params.delegatingOrgId,
@@ -260,7 +260,7 @@ export class CapabilityDelegation {
     this.indexGrant(grant);
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       grantId: grant.id,
       action: "grant.approved",
       orgId: params.delegatingOrgId,
@@ -312,7 +312,7 @@ export class CapabilityDelegation {
     grant.status = "suspended";
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       grantId: id,
       action: "grant.suspended",
       orgId: grant.delegatingOrgId,
@@ -334,7 +334,7 @@ export class CapabilityDelegation {
     grant.status = "revoked";
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       grantId: id,
       action: "grant.revoked",
       orgId: grant.delegatingOrgId,
@@ -356,7 +356,7 @@ export class CapabilityDelegation {
     grant.expiresAt = newExpiry;
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       grantId: id,
       action: "grant.renewed",
       orgId: grant.delegatingOrgId,
@@ -384,7 +384,7 @@ export class CapabilityDelegation {
   }): DelegationRequest {
     const request: DelegationRequest = {
       ...params,
-      id: randomUUID(),
+      id: newId("delegation_request"),
       requestedAt: new Date(),
       requestedConstraints: params.requestedConstraints ?? [],
       status: "pending",
@@ -393,7 +393,7 @@ export class CapabilityDelegation {
     this.requests.set(request.id, request);
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       requestId: request.id,
       action: "grant.requested",
       orgId: params.delegatingOrgId,
@@ -464,7 +464,7 @@ export class CapabilityDelegation {
     request.status = "rejected";
 
     this.recordAudit({
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       requestId: requestId,
       action: "grant.rejected",
       orgId: request.delegatingOrgId,
@@ -540,7 +540,7 @@ export class CapabilityDelegation {
       success: boolean;
       errorMessage?: string;
     } = {
-      id: randomUUID(),
+      id: newId("delegation_audit"),
       action,
       orgId: params.orgId,
       capabilityId: params.capabilityId,

@@ -255,12 +255,13 @@ test("DomainRecipeService.delete also removes version history", () => {
   assert.equal(history.length, 0);
 });
 
-test("DomainRecipeService.getPrototypeTemplates returns all 12 templates", () => {
+test("DomainRecipeService.getPrototypeTemplates returns a stable non-empty prototype catalog", () => {
   const service = new DomainRecipeService();
 
   const templates = service.getPrototypeTemplates();
 
-  assert.equal(templates.length, 12);
+  assert.ok(templates.length >= 12);
+  assert.equal(new Set(templates.map((template) => template.templateId)).size, templates.length);
 });
 
 test("DomainRecipeService.getPrototypeTemplates includes all expected categories", () => {

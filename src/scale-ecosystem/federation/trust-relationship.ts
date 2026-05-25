@@ -3,7 +3,7 @@
  * Trust model between organizations
  */
 
-import { randomUUID } from "crypto";
+import { newId } from "../../platform/contracts/types/ids.js";
 import { TrustLevel } from "./trust-level.js";
 
 export { TrustLevel } from "./trust-level.js";
@@ -112,7 +112,7 @@ export class TrustRelationshipManager {
     policyId?: string;
     expiresAt?: Date;
   }): Promise<TrustRelationship> {
-    const id = randomUUID();
+    const id = newId("trust_relationship");
     const policy = params.policyId
       ? this.policies.get(params.policyId)
       : this.getDefaultPolicy(params.level);
@@ -138,7 +138,7 @@ export class TrustRelationshipManager {
     this.relationships.set(id, relationship);
     this.indexOrg(relationship);
     this.recordEvent({
-      id: randomUUID(),
+      id: newId("trust_event"),
       trustId: id,
       type: "trust.established",
       timestamp: new Date(),
@@ -183,6 +183,7 @@ export class TrustRelationshipManager {
     }
 
     const previousScore = trust.metrics.trustScore;
+    const previousLevel = trust.level;
     trust.level = newLevel;
     trust.lastVerifiedAt = new Date();
 
@@ -193,14 +194,14 @@ export class TrustRelationshipManager {
     }
 
     this.recordEvent({
-      id: randomUUID(),
+      id: newId("trust_event"),
       trustId,
-      type: newLevel > trust.level ? "trust.elevated" : "trust.degraded",
+      type: newLevel > previousLevel ? "trust.elevated" : "trust.degraded",
       timestamp: new Date(),
       ...(previousScore !== undefined && { previousScore }),
       ...(trust.metrics.trustScore !== undefined && { newScore: trust.metrics.trustScore }),
       ...(actor !== undefined && { actor }),
-      reason: `Trust level changed from ${trust.level} to ${newLevel}`,
+      reason: `Trust level changed from ${previousLevel} to ${newLevel}`,
     });
   }
 
@@ -219,7 +220,7 @@ export class TrustRelationshipManager {
       actor?: string;
       reason: string;
     } = {
-      id: randomUUID(),
+      id: newId("trust_event"),
       trustId,
       type: "trust.suspended",
       timestamp: new Date(),
@@ -248,7 +249,7 @@ export class TrustRelationshipManager {
       actor?: string;
       reason: string;
     } = {
-      id: randomUUID(),
+      id: newId("trust_event"),
       trustId,
       type: "trust.revoked",
       timestamp: new Date(),
@@ -277,7 +278,7 @@ export class TrustRelationshipManager {
       actor?: string;
       reason: string;
     } = {
-      id: randomUUID(),
+      id: newId("trust_event"),
       trustId,
       type: "trust.renewed",
       timestamp: new Date(),

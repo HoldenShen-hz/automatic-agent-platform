@@ -39,6 +39,8 @@ export interface CheckpointManifest {
   workflowId?: string;
   /** Total size of all checkpoints in bytes */
   totalSizeBytes?: number;
+  /** Total compressed size of all checkpoints in bytes */
+  totalCompressedSizeBytes?: number;
   /** Combined checksum of all checkpoint contents */
   combinedChecksum?: string;
   /** Metadata about the checkpoint set */
@@ -133,6 +135,11 @@ export function validateCheckpointManifest(
       errors.push("total_size_bytes_must_be_nonnegative_number: totalSizeBytes must be >= 0");
     }
   }
+  if (candidate.totalCompressedSizeBytes !== undefined && candidate.totalCompressedSizeBytes !== null) {
+    if (typeof candidate.totalCompressedSizeBytes !== "number" || candidate.totalCompressedSizeBytes < 0) {
+      errors.push("total_compressed_size_bytes_must_be_nonnegative_number: totalCompressedSizeBytes must be >= 0");
+    }
+  }
 
   // combinedChecksum validation (SHA-256 hex = 64 chars)
   if (candidate.combinedChecksum !== undefined && candidate.combinedChecksum !== null) {
@@ -218,6 +225,10 @@ export function createCheckpointManifest(input: {
     (sum, ref) => sum + ((ref.metadata?.sizeBytes as number) ?? 0),
     0
   );
+  const totalCompressedSizeBytes = input.checkpoints.reduce(
+    (sum, ref) => sum + ((ref.metadata?.compressedSizeBytes as number) ?? 0),
+    0,
+  );
 
   const combinedChecksum = computeCombinedChecksum(input.checkpoints);
 
@@ -229,6 +240,7 @@ export function createCheckpointManifest(input: {
     ...(input.executionId !== undefined && { executionId: input.executionId }),
     ...(input.workflowId !== undefined && { workflowId: input.workflowId }),
     totalSizeBytes,
+    totalCompressedSizeBytes,
     combinedChecksum,
     ...(input.metadata !== undefined && { metadata: input.metadata }),
   };

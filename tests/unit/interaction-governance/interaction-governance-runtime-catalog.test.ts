@@ -85,11 +85,16 @@ test("buildInteractionGovernanceRuntimeCatalog governance contains expected capa
   assert.ok(capabilityIds.includes("delegated-governance"), "should include delegated-governance");
 });
 
-test("buildInteractionGovernanceRuntimeCatalog governance array is frozen (but not interaction)", async () => {
+test("buildInteractionGovernanceRuntimeCatalog governance array rejects mutation", async () => {
   const catalog = buildInteractionGovernanceRuntimeCatalog();
 
-  assert.ok(Object.isFrozen(catalog.governance), "catalog.governance should be frozen");
-  // Note: catalog itself is NOT frozen, interaction is NOT frozen
+  assert.throws(
+    () => {
+      (catalog.governance as { push: (value: unknown) => number }).push({ capabilityId: "unexpected" });
+    },
+    /object is not extensible|Cannot add property|read only/i,
+  );
+  assert.equal(catalog.governance.some((item) => item.capabilityId === "unexpected"), false);
 });
 
 test("buildInteractionGovernanceRuntimeCatalog interaction baselines have valid architecture sections", async () => {

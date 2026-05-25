@@ -153,8 +153,8 @@ export class SplitBrainProtectionService {
       for (let j = i + 1; j < epochs.length; j++) {
         const [regionA, epochA] = epochs[i]!;
         const [regionB, epochB] = epochs[j]!;
-        // If epochs differ significantly, could indicate split-brain
-        if (Math.abs(epochA - epochB) >= 1) {
+        // Equal epochs across different active regions indicate concurrent leadership.
+        if (epochA === epochB) {
           evidence.push({
             type: "fencing_epoch_conflict",
             regionId: regionA,

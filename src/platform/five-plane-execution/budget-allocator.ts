@@ -216,7 +216,7 @@ export class BudgetAllocator {
     readonly context?: BudgetAllocatorContext;
   }): BudgetReservationResult {
     const context = input.context ?? createDefaultContext(input.ledger.tenantId);
-    const tierLimit = context.tierLimit ?? input.ledger.hardCap;
+    const tierLimit = resolveTierLimit(input.ledger, context);
     const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
     if (activeCommittedAmount + input.amount > tierLimit) {
       throw new ValidationError(
@@ -263,7 +263,7 @@ export class BudgetAllocator {
     if (input.additionalAmount <= 0) {
       throw new Error("streaming_increment.invalid_amount: Additional amount must be positive");
     }
-    const tierLimit = input.context.tierLimit ?? input.ledger.hardCap;
+    const tierLimit = resolveTierLimit(input.ledger, input.context);
     const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
     if (activeCommittedAmount + input.additionalAmount > tierLimit) {
       throw new ValidationError(
@@ -849,7 +849,18 @@ function createDefaultContext(tenantId: string): BudgetAllocatorContext {
     traceId: newId("trace"),
     emittedBy: "budget-allocator",
     principal: "budget-allocator",
+    tierLimitCurrency: "USD",
   };
+}
+
+function resolveTierLimit(ledger: BudgetLedger, context: BudgetAllocatorContext): number {
+  if (context.tierLimitCurrency != null && context.tierLimitCurrency.trim() !== "" && context.tierLimitCurrency !== ledger.currency) {
+    throw new ValidationError(
+      "budget_context.tier_limit_currency_mismatch",
+      `budget_context.tier_limit_currency_mismatch: tier limit currency ${context.tierLimitCurrency} does not match ledger currency ${ledger.currency}.`,
+    );
+  }
+  return context.tierLimit ?? ledger.hardCap;
 }
 
 function settleLedger(ledger: BudgetLedger, reservation: BudgetReservation, actualAmount: number): BudgetLedger {

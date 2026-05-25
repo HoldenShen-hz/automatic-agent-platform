@@ -433,6 +433,32 @@ test("PersistentRolloutManager.rollback persists state after action", async () =
   db.close();
 });
 
+test("PersistentRolloutManager.rollback marks rollback_failed when handler throws", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const manager = new PersistentRolloutManager(repo);
+  manager.setRollbackHandlerFactory(() => async () => {
+    throw new Error("rollback handler exploded");
+  });
+
+  const proposal = createProposal("prop_rollback_fail");
+  await manager.start(proposal, "canary", 5);
+
+  await assert.rejects(
+    () => manager.rollback("prop_rollback_fail", "Testing rollback failure"),
+    /rollback handler exploded/,
+  );
+
+  const record = await manager.getRollout("prop_rollback_fail");
+  assert.equal(record?.status, "rollback_failed");
+  assert.ok(record?.failureReason?.includes("Testing rollback failure"));
+  assert.ok(record?.failureReason?.includes("rollback handler exploded"));
+
+  db.close();
+});
+
 test("PersistentRolloutManager.complete persists", async () => {
   const { db, path } = createTestDb();
   applyRolloutSchema(db);

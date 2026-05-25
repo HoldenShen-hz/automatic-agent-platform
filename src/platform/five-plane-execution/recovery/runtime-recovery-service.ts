@@ -690,7 +690,11 @@ function normalizeRecoveryAttempt(attempt: number): number {
   if (!Number.isFinite(attempt)) {
     return 1;
   }
-  return Math.max(1, Math.trunc(attempt));
+  if (attempt <= 0) {
+    logger.warn("runtime recovery record had invalid attempt count", { attempt });
+    return 1;
+  }
+  return Math.trunc(attempt);
 }
 
 function inferLegacySuggestedAction(

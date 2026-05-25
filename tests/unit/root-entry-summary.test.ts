@@ -2,17 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildPlatformRootSummary } from "../../src/index.js";
+import { PLATFORM_ROOT_BASELINE_COUNTS } from "../helpers/platform-root-baselines.js";
 
 test("platform root summary includes architecture and five-plane startup views", () => {
   const summary = buildPlatformRootSummary();
   assert.equal(summary.architecture.startupEntryModule, "src/index.ts");
   assert.deepEqual(summary.domains.startupOrder, ["ring1", "ring2", "ring3"]);
-  assert.equal(summary.domains.totalCapabilityCount, 31);
-  assert.deepEqual(summary.domains.capabilityCounts, {
-    ring1: 8,
-    ring2: 11,
-    ring3: 12,
-  });
+  assert.equal(summary.domains.totalCapabilityCount, PLATFORM_ROOT_BASELINE_COUNTS.domains.totalCapabilityCount);
+  assert.deepEqual(summary.domains.capabilityCounts, PLATFORM_ROOT_BASELINE_COUNTS.domains.capabilityCounts);
   assert.deepEqual(summary.planes.startupOrder, [
     "interface",
     "x1-fabric",

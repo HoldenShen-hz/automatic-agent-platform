@@ -15,7 +15,7 @@ import type { RolloutRepository } from './rollout-repository.js';
 
 export type RolloutStage = 'shadow' | 'canary' | 'partial' | 'stable';
 
-export type RolloutStatus = 'running' | 'succeeded' | 'failed' | 'rolled_back' | 'rollback_pending';
+export type RolloutStatus = 'running' | 'succeeded' | 'failed' | 'rolled_back' | 'rollback_pending' | 'rollback_failed';
 
 export interface RolloutRecord {
   proposalId: string;
@@ -256,11 +256,17 @@ export class PersistentRolloutManager implements RolloutManager {
     const record = this.rollouts.get(proposalId);
     if (!record) return;
 
-    // Perform actual rollback action via handler
     const handler = this.rollbackHandlerFactory();
-    await handler(proposalId, reason);
+    try {
+      await handler(proposalId, reason);
+    } catch (error) {
+      record.status = 'rollback_failed';
+      record.failureReason = `rollback_failed:${reason}:${error instanceof Error ? error.message : String(error)}`;
+      record.completedAt = new Date().toISOString();
+      this.repository.update(record);
+      throw error;
+    }
 
-    // Update state after successful rollback action
     record.status = 'rolled_back';
     record.failureReason = reason;
     record.completedAt = new Date().toISOString();

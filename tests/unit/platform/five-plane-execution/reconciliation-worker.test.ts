@@ -184,6 +184,14 @@ test("isReconciliationExpired: at exact boundary", () => {
   assert.equal(expired, true);
 });
 
+test("isReconciliationExpired: invalid timestamp returns true", () => {
+  const worker = new ReconciliationWorker({ defaultReconciliationWindowMs: 30_000 });
+
+  const expired = worker.isReconciliationExpired("invalid-date");
+
+  assert.equal(expired, true);
+});
+
 // ---------------------------------------------------------------------------
 // Tests: getTargetStatus
 // ---------------------------------------------------------------------------

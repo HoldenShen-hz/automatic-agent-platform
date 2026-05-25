@@ -8,7 +8,15 @@ export interface ApiClientConfig {
   platformVersion?: string;
   sdkVersion?: string;
   contractVersion?: string;
-  principal?: { subject?: string; principalId?: string; tenantId?: string; roles?: readonly string[] };
+  principal?: {
+    subject?: string;
+    principalId?: string;
+    userId?: string;
+    tenantId?: string;
+    roles?: readonly string[];
+    permissions?: readonly string[];
+    displayName?: string;
+  };
   idempotencyKey?: string;
   performVersionHandshakeOnInit?: boolean;
 }

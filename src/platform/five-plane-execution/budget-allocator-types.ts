@@ -13,6 +13,7 @@ export interface BudgetAllocatorContext {
   readonly fencingToken?: string;
   readonly tier?: BudgetTier;
   readonly tierLimit?: number;
+  readonly tierLimitCurrency?: string;
   readonly watermarkAlert?: {
     readonly warningThreshold: number;
     readonly criticalThreshold: number;

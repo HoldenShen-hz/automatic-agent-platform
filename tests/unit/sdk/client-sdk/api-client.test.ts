@@ -40,6 +40,60 @@ test("RetryableApiClient constructor uses default retry config when not provided
   assert.ok(client instanceof RetryableApiClient);
 });
 
+test("RetryableApiClient createExecutionTicket targets the dispatch ticket endpoint", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedUrl = "";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    capturedUrl = url.toString();
+    return new Response(JSON.stringify({ outcome: "created" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.createExecutionTicket<{ outcome: string }>({ executionId: "exec-1" });
+    assert.equal(result.data.outcome, "created");
+    assert.equal(capturedUrl, "https://api.example.com/api/v1/execution-dispatch/tickets");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient dispatchExecution targets the dispatch-next endpoint", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedUrl = "";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    capturedUrl = url.toString();
+    return new Response(JSON.stringify({ outcome: "dispatched" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.dispatchExecution<{ outcome: string }>({ queueName: "default" });
+    assert.equal(result.data.outcome, "dispatched");
+    assert.equal(capturedUrl, "https://api.example.com/api/v1/execution-dispatch/dispatch-next");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("RetryableApiClient PATCH method sends body and returns ApiResponse", async () => {
   const config: ApiClientConfig = {
     baseUrl: "https://api.example.com",

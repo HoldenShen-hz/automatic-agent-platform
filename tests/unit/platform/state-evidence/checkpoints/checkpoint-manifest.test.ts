@@ -545,13 +545,13 @@ describe("CheckpointManifest", () => {
           checkpointId: "cp-001",
           storageUri: "file:///cp-001.json",
           checksum: createHash("sha256").update("content1").digest("hex"),
-          metadata: { sizeBytes: 100 },
+          metadata: { sizeBytes: 100, compressedSizeBytes: 40 },
         },
         {
           checkpointId: "cp-002",
           storageUri: "file:///cp-002.json",
           checksum: createHash("sha256").update("content2").digest("hex"),
-          metadata: { sizeBytes: 200 },
+          metadata: { sizeBytes: 200, compressedSizeBytes: 70 },
         },
       ];
 
@@ -569,6 +569,7 @@ describe("CheckpointManifest", () => {
       assert.strictEqual(manifest.executionId, "exec-001");
       assert.strictEqual(manifest.workflowId, "workflow-001");
       assert.strictEqual(manifest.totalSizeBytes, 300);
+      assert.strictEqual(manifest.totalCompressedSizeBytes, 110);
       assert.ok(manifest.combinedChecksum);
       assert.ok(manifest.createdAt);
       assert.deepStrictEqual(manifest.metadata, { createdBy: "test" });
@@ -600,7 +601,7 @@ describe("CheckpointManifest", () => {
           checkpointId: "cp-001",
           storageUri: "file:///cp-001.json",
           checksum: createHash("sha256").update("content1").digest("hex"),
-          metadata: { sizeBytes: 500 },
+          metadata: { sizeBytes: 500, compressedSizeBytes: 250 },
         },
       ];
 
@@ -610,6 +611,7 @@ describe("CheckpointManifest", () => {
       });
 
       assert.strictEqual(manifest.totalSizeBytes, 500);
+      assert.strictEqual(manifest.totalCompressedSizeBytes, 250);
     });
 
     it("should handle checkpoints without size metadata", () => {
@@ -627,6 +629,7 @@ describe("CheckpointManifest", () => {
       });
 
       assert.strictEqual(manifest.totalSizeBytes, 0);
+      assert.strictEqual(manifest.totalCompressedSizeBytes, 0);
     });
   });
 

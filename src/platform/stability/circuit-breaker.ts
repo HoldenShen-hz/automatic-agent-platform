@@ -13,6 +13,7 @@ export enum CircuitState {
 }
 
 export interface CircuitBreakerOptions {
+  name?: string;
   failureThreshold?: number;      // Failures before opening circuit (default: 5)
   successThreshold?: number;      // Successes in half-open before closing (default: 2)
   timeout?: number;              // ms before considering it a failure (default: 30000)
@@ -47,9 +48,11 @@ export class CircuitBreaker {
   private readonly successThreshold: number;
   private readonly timeout: number;
   private readonly resetTimeout: number;
+  private readonly name: string;
   private readonly onStateChange: ((previousState: CircuitState, newState: CircuitState) => void) | undefined;
 
   constructor(options: CircuitBreakerOptions = {}) {
+    this.name = options.name?.trim() || "circuit_breaker";
     this.failureThreshold = options.failureThreshold ?? 5;
     this.successThreshold = options.successThreshold ?? 2;
     this.timeout = options.timeout ?? 30000;
@@ -57,10 +60,14 @@ export class CircuitBreaker {
     this.onStateChange = options.onStateChange;
   }
 
-  async execute<T>(fn: (signal?: AbortSignal) => Promise<T>): Promise<T> {
+  async execute<T>(fn: (signal?: AbortSignal) => Promise<T>, signal?: AbortSignal): Promise<T> {
     if (this.state === CircuitState.OPEN) {
       if (Date.now() < this.nextAttempt) {
-        throw new CircuitBreakerOpenError(`Circuit is OPEN. Next attempt at ${new Date(this.nextAttempt).toISOString()}`);
+        throw new CircuitBreakerOpenError(
+          `Circuit is OPEN. Next attempt at ${new Date(this.nextAttempt).toISOString()}`,
+          this.name,
+          Math.max(this.nextAttempt - Date.now(), 0),
+        );
       }
       this.transitionTo(CircuitState.HALF_OPEN, { resetSuccesses: true });
     }
@@ -68,12 +75,22 @@ export class CircuitBreaker {
     const enteredHalfOpen = this.enterHalfOpenProbe();
 
     try {
-      const result = await this.executeWithTimeout(fn);
+      const result = await this.executeWithTimeout(fn, signal);
       this.onSuccess();
       return result;
     } catch (error) {
       if (!(error instanceof CircuitBreakerResetError)) {
         this.onFailure();
+      }
+      if (enteredHalfOpen && this.state === CircuitState.OPEN) {
+        const retryAfterMs = Math.max(this.nextAttempt - Date.now(), 0);
+        if (error instanceof CircuitBreakerTimeoutError) {
+          throw new CircuitBreakerTimeoutError(error.message, this.name, retryAfterMs, error);
+        }
+        const message = error instanceof Error
+          ? `Circuit probe failed: ${error.message}`
+          : `Circuit probe failed: ${String(error)}`;
+        throw new CircuitBreakerOpenError(message, this.name, retryAfterMs, error);
       }
       throw error;
     } finally {
@@ -88,17 +105,32 @@ export class CircuitBreaker {
       return false;
     }
     if (this.halfOpenInFlight >= 1) {
-      throw new CircuitBreakerOpenError("Circuit is HALF_OPEN with a probe already in flight");
+      throw new CircuitBreakerOpenError(
+        "Circuit is HALF_OPEN with a probe already in flight",
+        this.name,
+      );
     }
     this.halfOpenInFlight += 1;
     return true;
   }
 
-  private async executeWithTimeout<T>(fn: (signal?: AbortSignal) => Promise<T>): Promise<T> {
+  private async executeWithTimeout<T>(fn: (signal?: AbortSignal) => Promise<T>, parentSignal?: AbortSignal): Promise<T> {
     return new Promise((resolve, reject) => {
       const controller = new AbortController();
+      const failWithAbortReason = (reason: unknown) => {
+        const abortReason = reason instanceof Error ? reason : new Error(String(reason));
+        controller.abort(abortReason);
+        reject(abortReason);
+      };
+      if (parentSignal?.aborted) {
+        failWithAbortReason(parentSignal.reason ?? "circuit_breaker.parent_aborted");
+        return;
+      }
       const timer = setTimeout(() => {
-        const timeoutError = new CircuitBreakerTimeoutError(`Operation timed out after ${this.timeout}ms`);
+        const timeoutError = new CircuitBreakerTimeoutError(
+          `Operation timed out after ${this.timeout}ms`,
+          this.name,
+        );
         controller.abort(timeoutError);
         reject(timeoutError);
       }, this.timeout);
@@ -108,8 +140,13 @@ export class CircuitBreaker {
       const complete = (fnResult: () => void) => {
         clearTimeout(timer);
         this.activeExecutions.delete(execution);
+        parentSignal?.removeEventListener("abort", onAbort);
         fnResult();
       };
+      const onAbort = () => {
+        complete(() => failWithAbortReason(parentSignal?.reason ?? "circuit_breaker.parent_aborted"));
+      };
+      parentSignal?.addEventListener("abort", onAbort, { once: true });
 
       fn(controller.signal)
         .then((result) => {
@@ -151,7 +188,7 @@ export class CircuitBreaker {
    */
   private emitStateChange(oldState: CircuitState, newState: CircuitState): void {
     const payload = {
-      circuitName: "circuit_breaker",
+      circuitName: this.name,
       oldState,
       newState,
       nextAttemptAt: newState === CircuitState.OPEN ? this.nextAttempt : null,
@@ -222,16 +259,40 @@ export class CircuitBreaker {
 }
 
 export class CircuitBreakerOpenError extends Error {
-  constructor(message: string) {
+  public readonly circuitName: string;
+  public readonly retryAfterMs: number | null;
+  public override readonly cause: unknown;
+
+  constructor(
+    message: string,
+    circuitName: string,
+    retryAfterMs: number | null = null,
+    cause?: unknown,
+  ) {
     super(message);
     this.name = "CircuitBreakerOpenError";
+    this.circuitName = circuitName;
+    this.retryAfterMs = retryAfterMs;
+    this.cause = cause;
   }
 }
 
 export class CircuitBreakerTimeoutError extends Error {
-  constructor(message: string) {
+  public readonly circuitName: string;
+  public readonly retryAfterMs: number | null;
+  public override readonly cause: unknown;
+
+  constructor(
+    message: string,
+    circuitName: string,
+    retryAfterMs: number | null = null,
+    cause?: unknown,
+  ) {
     super(message);
     this.name = "CircuitBreakerTimeoutError";
+    this.circuitName = circuitName;
+    this.retryAfterMs = retryAfterMs;
+    this.cause = cause;
   }
 }
 

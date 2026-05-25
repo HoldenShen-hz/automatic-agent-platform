@@ -145,7 +145,7 @@ test("dispatchNext records scheduler snapshot and DLQ for backpressure-blocked t
   assert.equal(result.trace?.workerPoolSnapshotRef, "worker_pool://dispatch/default/snapshot/2026-05-01T00:00:00.000Z");
   assert.equal(enqueued.length, 1);
   assert.equal(enqueued[0]?.errorCode, "backpressure.starvation_protection");
-  assert.ok(events.includes("dispatch.backpressure_rejected"));
+  assert.ok(events.includes("dispatch:backpressure_rejected"));
   assert.ok(events.includes("dispatch.dlq_enqueue"));
 });
 

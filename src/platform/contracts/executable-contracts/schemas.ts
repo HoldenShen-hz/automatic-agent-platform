@@ -238,6 +238,8 @@ export const HarnessRunSchema = z.object({
   tenantId: z.string().min(1),
   orgId: z.string().min(1),
   traceId: z.string().min(1),
+  goal: z.string().min(1).optional(),
+  mode: z.string().min(1).optional(),
   riskLevel: RiskClassSchema,
   riskProfile: RiskPreviewSchema,
   ownership: z.object({

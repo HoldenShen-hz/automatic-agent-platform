@@ -43,8 +43,11 @@ test("createCheckpointEnvelope and unpackCheckpointEnvelope preserve payload dat
 });
 
 test("createCheckpointEnvelope rejects oversized payloads before persistence", async () => {
+  const incompressiblePayload = {
+    hugeField: Array.from({ length: 2048 }, (_, index) => `${index.toString(16)}-${Math.sin(index).toString(36)}`).join("|"),
+  };
   await assert.rejects(
-    createCheckpointEnvelope({ hugeField: "x".repeat(DEFAULT_MAX_CHECKPOINT_SIZE_BYTES + 1) }, "test.v1"),
+    createCheckpointEnvelope(incompressiblePayload, "test.v1", { maxSizeBytes: 256 }),
     CheckpointSizeExceededError,
   );
 });
@@ -90,6 +93,18 @@ test("unpackCheckpointEnvelope rejects checksum tampering", async () => {
 
   await assert.rejects(
     unpackCheckpointEnvelope(tampered),
+    CheckpointEnvelopeInvalidError,
+  );
+});
+
+test("unpackCheckpointEnvelope rejects payload schemaVersion drift", async () => {
+  const envelope = await createCheckpointEnvelope(
+    { data: "ok", schemaVersion: "payload.v2" },
+    "payload.v1",
+  );
+
+  await assert.rejects(
+    unpackCheckpointEnvelope(envelope),
     CheckpointEnvelopeInvalidError,
   );
 });
