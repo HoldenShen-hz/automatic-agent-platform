@@ -39,14 +39,36 @@ export interface EscalationResult {
   readonly escalatedAt: string;
 }
 
-function resolveLevel(riskScore: number): LegacyAutonomyLevel {
-  if (riskScore >= 80) {
+const TASK_TYPE_RISK_ADJUSTMENTS: Record<string, number> = {
+  approval_action: 25,
+  deploy: 20,
+  deployment: 20,
+  database_migration: 20,
+  credential_rotation: 15,
+  financial_transfer: 25,
+  payment: 25,
+  production_change: 15,
+};
+
+function normalizeTaskType(taskType: string): string {
+  return taskType.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function resolveEffectiveRiskScore(riskScore: number, taskType: string): number {
+  const normalizedTaskType = normalizeTaskType(taskType);
+  const riskAdjustment = TASK_TYPE_RISK_ADJUSTMENTS[normalizedTaskType] ?? 0;
+  return Math.min(100, Math.max(0, riskScore + riskAdjustment));
+}
+
+function resolveLevel(riskScore: number, taskType: string): LegacyAutonomyLevel {
+  const effectiveRiskScore = resolveEffectiveRiskScore(riskScore, taskType);
+  if (effectiveRiskScore >= 80) {
     return "manual";
   }
-  if (riskScore >= 60) {
+  if (effectiveRiskScore >= 60) {
     return "supervised";
   }
-  if (riskScore >= 40) {
+  if (effectiveRiskScore >= 40) {
     return "semi_auto";
   }
   return "auto";
@@ -54,12 +76,13 @@ function resolveLevel(riskScore: number): LegacyAutonomyLevel {
 
 export class AutonomyService {
   public determineLevel(request: AutonomyLevelRequest): LegacyAutonomyDecision {
-    const level = resolveLevel(request.riskScore);
+    const effectiveRiskScore = resolveEffectiveRiskScore(request.riskScore, request.taskType);
+    const level = resolveLevel(request.riskScore, request.taskType);
     return {
       decisionId: `autonomy_${request.taskId}`,
       taskId: request.taskId,
       level,
-      reason: `risk_score=${request.riskScore}; task_type=${request.taskType}`,
+      reason: `risk_score=${request.riskScore}; effective_risk_score=${effectiveRiskScore}; task_type=${request.taskType}`,
       timestamp: nowIso(),
       actor: request.userId,
     };

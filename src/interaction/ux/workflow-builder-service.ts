@@ -715,6 +715,14 @@ export class WorkflowBuilderService {
       request.session.sessionId,
       validationMessages,
     );
+    const builderValidationMessages = [
+      ...builder.validation.messages,
+      ...validationMessages.filter((message) => !builder.validation.messages.includes(message)),
+    ];
+    builder.validation = {
+      valid: builderValidationMessages.length === 0,
+      messages: builderValidationMessages,
+    };
     const worstPathAnalysis = analyzeWorstPath(
       normalizedGraph.planGraphBundle.graph.nodes,
       normalizedGraph.planGraphBundle.graph.edges,

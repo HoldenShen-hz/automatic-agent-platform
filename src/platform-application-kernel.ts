@@ -129,6 +129,15 @@ export class PlatformApplicationKernel {
 
 let defaultPlatformApplicationKernel: PlatformApplicationKernel | null = null;
 
+function getOrCreateDefaultPlatformApplicationKernel(): PlatformApplicationKernel {
+  if (defaultPlatformApplicationKernel == null) {
+    // This singleton is process-local inside a single JS event loop.
+    // Multi-process or worker-isolated runtimes must use an explicit ServiceRegistry.
+    defaultPlatformApplicationKernel = new PlatformApplicationKernel();
+  }
+  return defaultPlatformApplicationKernel;
+}
+
 export function registerPlatformApplicationKernel(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformApplicationKernel {
   registry.register<PlatformApplicationKernel>("architecture.application-kernel", {
     init: () => new PlatformApplicationKernel(),
@@ -138,9 +147,7 @@ export function registerPlatformApplicationKernel(registry: ServiceRegistry = Se
 
 export function getPlatformApplicationKernel(registry?: ServiceRegistry): PlatformApplicationKernel {
   if (registry == null) {
-    // Process-local lazy singleton. Cross-process callers must go through an explicit registry.
-    defaultPlatformApplicationKernel ??= new PlatformApplicationKernel();
-    return defaultPlatformApplicationKernel;
+    return getOrCreateDefaultPlatformApplicationKernel();
   }
   if (!registry.isInitialized("architecture.application-kernel")) {
     return registerPlatformApplicationKernel(registry);

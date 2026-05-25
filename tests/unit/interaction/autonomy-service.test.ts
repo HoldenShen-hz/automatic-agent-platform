@@ -39,6 +39,28 @@ test("AutonomyService.determineLevel returns 'supervised' for riskScore >= 60 an
   assert.ok(result.reason.includes("risk_score=65"));
 });
 
+test("AutonomyService.determineLevel raises high-risk task types even when base risk is moderate", () => {
+  const service = new AutonomyService();
+
+  const deployResult = service.determineLevel({
+    taskId: "task-deploy-risk",
+    taskType: "deploy",
+    riskScore: 45,
+    userId: "user-2",
+  });
+  assert.equal(deployResult.level, "supervised");
+  assert.ok(deployResult.reason.includes("effective_risk_score=65"));
+
+  const approvalResult = service.determineLevel({
+    taskId: "task-approval-risk",
+    taskType: "approval_action",
+    riskScore: 58,
+    userId: "user-3",
+  });
+  assert.equal(approvalResult.level, "manual");
+  assert.ok(approvalResult.reason.includes("effective_risk_score=83"));
+});
+
 test("AutonomyService.determineLevel returns 'semi_auto' for riskScore >= 40 and < 60", () => {
   const service = new AutonomyService();
 

@@ -60,6 +60,16 @@ test("DashboardProjectionService flush forces immediate emission", () => {
   assert.ok(!service.hasPendingDeltas());
 });
 
+test("DashboardProjectionService holds debounced deltas until flush or timer completion", () => {
+  const service = new DashboardProjectionService({ emitDebounceMs: 1000 });
+
+  service.processEvent("task.created" as any, { taskId: "task-debounced-1" });
+
+  assert.equal(service.consumePendingDeltas().length, 0);
+  assert.equal(service.getPendingDeltas().length, 1);
+  assert.equal(service.flush().length, 1);
+});
+
 test("DashboardProjectionService processes task.created event", () => {
   const service = new DashboardProjectionService();
 
@@ -387,4 +397,5 @@ test("DashboardProjectionService default config has expected values", () => {
 
   const delta = service.processEvent("task.created" as any, { taskId: "task-1" });
   assert.ok(delta);
+  assert.equal(service.consumePendingDeltas().length, 1);
 });

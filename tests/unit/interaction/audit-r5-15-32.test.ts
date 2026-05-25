@@ -313,9 +313,10 @@ test("R5-26: TrustDecayWorker demotes after 180 days inactive", async () => {
   };
 
   // R5-26: After 180+ days inactive, should demote to suggestion
-  const decayed = new TrustDecayWorker().run(profile, { inactiveDays: 200, decayRate: 0.05 });
+  const decayed = new TrustDecayWorker().run(profile, { inactiveDays: 200 });
   const cap = decayed.capabilityScores[0];
   assert.equal(cap.currentAutonomy, "suggestion");
+  assert.ok(cap.trustScore >= 0);
 });
 
 /**

@@ -176,6 +176,37 @@ test("ConversationHistoryService records timestamp on turn", async () => {
   assert.ok(turnTime >= before && turnTime <= after);
 });
 
+test("ConversationHistoryService revokes persisted memory when session becomes restricted", async () => {
+  const rememberedIds: string[] = [];
+  const revokedIds: string[] = [];
+  const memoryService = {
+    remember: async () => {
+      const id = `mem_${rememberedIds.length + 1}`;
+      rememberedIds.push(id);
+      return { id } as never;
+    },
+    recall: async () => rememberedIds.map((id) => ({ id }) as never),
+    revoke: async (memoryId: string) => {
+      revokedIds.push(memoryId);
+      return { id: memoryId } as never;
+    },
+  };
+  const service = new ConversationHistoryService(memoryService as never);
+
+  let session = service.startSession("tenant_1", "user_1");
+  session = await service.addTurn(session, {
+    role: "user",
+    message: "先正常记录一条消息用于持久化",
+  });
+  session = await service.completeSession(session, { isRestricted: true });
+
+  assert.equal(session.isRestricted, true);
+  assert.equal(session.restrictionVersion, 1);
+  assert.ok(typeof session.restrictedAt === "string");
+  assert.equal(session.memoryRecordId, undefined);
+  assert.deepEqual(revokedIds, ["mem_1"]);
+});
+
 test("ConversationTurnRecord structure is correct", () => {
   const turn: ConversationTurnRecord = {
     turnId: "turn_123",

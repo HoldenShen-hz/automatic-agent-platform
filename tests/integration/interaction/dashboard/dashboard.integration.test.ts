@@ -257,7 +257,7 @@ test("integration: DashboardAggregationService merges deltas from projection ser
   });
 
   // Consume the pending deltas so they get merged
-  const deltas = projectionService.consumePendingDeltas();
+  const deltas = projectionService.flush();
   assert.ok(deltas.length > 0);
 
   const dashboard = service.buildOperatorDashboard();
@@ -297,7 +297,7 @@ test("integration: DashboardProjectionService consumes pending deltas", () => {
 
   assert.ok(service.hasPendingDeltas());
 
-  const consumed = service.consumePendingDeltas();
+  const consumed = service.flush();
 
   assert.equal(consumed.length, 1);
   assert.ok(!service.hasPendingDeltas());
@@ -631,7 +631,7 @@ test("integration: aggregation service with projection service produces merged d
   });
 
   // Consume projection deltas
-  const deltas = projectionService.consumePendingDeltas();
+  const deltas = projectionService.flush();
   assert.ok(deltas.length > 0);
 
   // Build dashboard from current task source after projection delta boundary.

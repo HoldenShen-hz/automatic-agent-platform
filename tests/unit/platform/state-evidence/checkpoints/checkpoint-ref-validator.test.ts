@@ -28,6 +28,7 @@ describe("CheckpointRefValidator", () => {
         checkpointId: "checkpoint-123",
         storageUri: "file:///var/checkpoints/checkpoint-123.json",
         checksum: "a".repeat(64),
+        schemaVersion: "workflow_step_checkpoint.v1",
         metadata: { sizeBytes: 1024 },
         createdAt: "2026-01-15T10:30:00.000Z",
       };
@@ -39,6 +40,28 @@ describe("CheckpointRefValidator", () => {
 
       assert.strictEqual(result.valid, true);
       assert.strictEqual(result.errors.length, 0);
+    });
+
+    it("should reject non-string schemaVersion", () => {
+      const result = validateCheckpointRef({
+        checkpointId: "checkpoint-123",
+        storageUri: "file:///path/to/checkpoint.json",
+        schemaVersion: 1,
+      });
+
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.errors.some((e) => e.includes("schema_version_must_be_string")));
+    });
+
+    it("should reject empty schemaVersion when provided", () => {
+      const result = validateCheckpointRef({
+        checkpointId: "checkpoint-123",
+        storageUri: "file:///path/to/checkpoint.json",
+        schemaVersion: "   ",
+      });
+
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.errors.some((e) => e.includes("schema_version_required")));
     });
 
     it("should reject null checkpoint reference", () => {

@@ -220,6 +220,18 @@ test("PlatformApplicationKernel buildStartupPlan throws for unknown target kind"
   );
 });
 
+test("getPlatformApplicationKernel reuses the same process-local singleton across concurrent reads", async () => {
+  const kernels = await Promise.all(
+    Array.from({ length: 8 }, async () => getPlatformApplicationKernel()),
+  );
+
+  const first = kernels[0];
+  assert.ok(first != null);
+  for (const kernel of kernels) {
+    assert.equal(kernel, first);
+  }
+});
+
 test("PlatformApplicationKernel buildSnapshot returns valid snapshot", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();

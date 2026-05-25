@@ -12,6 +12,12 @@ import type { MemoryRecord, MemorySourceTrustLevel } from "../../platform/contra
 import type { MemoryService } from "../../platform/five-plane-state-evidence/memory/index.js";
 import type { DetectedIntent } from "../nl-gateway/index.js";
 
+interface ConversationMemoryServicePort {
+  remember(input: Parameters<MemoryService["remember"]>[0]): MemoryRecord | Promise<MemoryRecord>;
+  recall(input: Parameters<MemoryService["recall"]>[0]): readonly MemoryRecord[] | Promise<readonly MemoryRecord[]>;
+  revoke?(memoryId: string, reason: string, revokedAt?: string): MemoryRecord | null | Promise<MemoryRecord | null>;
+}
+
 /**
  * Conversation turn record
  */
@@ -40,6 +46,12 @@ export interface ConversationSessionRecord {
   readonly status: "active" | "completed" | "abandoned";
   /** R5-31: Indicates if session contains restricted/regulated data */
   readonly isRestricted?: boolean;
+  /** Monotonic counter for restricted state transitions */
+  readonly restrictionVersion?: number;
+  /** Timestamp when the session first became restricted */
+  readonly restrictedAt?: string;
+  /** Memory record currently backing this session, if persisted */
+  readonly memoryRecordId?: string;
 }
 
 /**
@@ -86,11 +98,11 @@ function isConversationSessionRecord(value: unknown): value is ConversationSessi
  * Supports session management, turn tracking, and history retrieval.
  */
 export class ConversationHistoryService {
-  private readonly memoryService: MemoryService | null;
+  private readonly memoryService: ConversationMemoryServicePort | null;
   private readonly defaultScope = "conversation";
   private readonly defaultRetentionDays = 90;
 
-  public constructor(memoryService?: MemoryService) {
+  public constructor(memoryService?: ConversationMemoryServicePort) {
     this.memoryService = memoryService ?? null;
   }
 
@@ -120,8 +132,10 @@ export class ConversationHistoryService {
       createdAt: now,
       updatedAt: now,
       status: "active",
+      restrictionVersion: options.isRestricted ? 1 : 0,
       // R5-31: New sessions inherit isRestricted flag if provided
       ...(options.isRestricted !== undefined ? { isRestricted: options.isRestricted } : {}),
+      ...(options.isRestricted ? { restrictedAt: now } : {}),
     };
   }
 
@@ -142,20 +156,14 @@ export class ConversationHistoryService {
       timestamp,
     };
 
-    const updatedSession: ConversationSessionRecord = {
+    const updatedSession = this.applyRestriction({
       ...session,
       turns: [...session.turns, turnRecord],
       updatedAt: timestamp,
       ...(turn.intent ? { lastIntent: turn.intent } : {}),
-    };
+    }, options, timestamp);
 
-    // Persist to memory store if available and not restricted
-    // R5-31: Restricted/regulated dialog data must not be written to long-term memory
-    if (this.memoryService && !session.isRestricted) {
-      await this.persistSession(updatedSession, options);
-    }
-
-    return updatedSession;
+    return this.persistOrCleanupSession(updatedSession, session, options);
   }
 
   /**
@@ -165,18 +173,13 @@ export class ConversationHistoryService {
     session: ConversationSessionRecord,
     options: ConversationHistoryOptions = {},
   ): Promise<ConversationSessionRecord> {
-    const completedSession: ConversationSessionRecord = {
+    const completedSession = this.applyRestriction({
       ...session,
       status: "completed",
       updatedAt: nowIso(),
-    };
+    }, options);
 
-    // R5-31: Restricted/regulated dialog data must not be written to long-term memory
-    if (this.memoryService && !session.isRestricted) {
-      await this.persistSession(completedSession, options);
-    }
-
-    return completedSession;
+    return this.persistOrCleanupSession(completedSession, session, options);
   }
 
   /**
@@ -186,18 +189,13 @@ export class ConversationHistoryService {
     session: ConversationSessionRecord,
     options: ConversationHistoryOptions = {},
   ): Promise<ConversationSessionRecord> {
-    const abandonedSession: ConversationSessionRecord = {
+    const abandonedSession = this.applyRestriction({
       ...session,
       status: "abandoned",
       updatedAt: nowIso(),
-    };
+    }, options);
 
-    // R5-31: Restricted/regulated dialog data must not be written to long-term memory
-    if (this.memoryService && !session.isRestricted) {
-      await this.persistSession(abandonedSession, options);
-    }
-
-    return abandonedSession;
+    return this.persistOrCleanupSession(abandonedSession, session, options);
   }
 
   /**
@@ -206,16 +204,16 @@ export class ConversationHistoryService {
   private async persistSession(
     session: ConversationSessionRecord,
     options: ConversationHistoryOptions,
-  ): Promise<void> {
+  ): Promise<ConversationSessionRecord> {
     if (!this.memoryService) {
-      return;
+      return session;
     }
 
     const scope = options.scope ?? this.defaultScope;
     const retentionDays = options.retentionDays ?? this.defaultRetentionDays;
     const expiresAt = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString();
 
-    await this.memoryService.remember({
+    const memoryRecord = await this.memoryService.remember({
       sessionId: session.sessionId,
       scope,
       memoryLayer: options.memoryLayer ?? "layer_3",
@@ -226,6 +224,10 @@ export class ConversationHistoryService {
       kind: "episode",
       expiresAt,
     });
+
+    return typeof memoryRecord.id === "string" && memoryRecord.id.length > 0
+      ? { ...session, memoryRecordId: memoryRecord.id }
+      : session;
   }
 
   /**
@@ -356,5 +358,75 @@ export class ConversationHistoryService {
     } catch {
       return null;
     }
+  }
+
+  private applyRestriction(
+    session: ConversationSessionRecord,
+    options: ConversationHistoryOptions,
+    effectiveAt: string = session.updatedAt,
+  ): ConversationSessionRecord {
+    if (options.isRestricted !== true) {
+      return session;
+    }
+    if (session.isRestricted) {
+      return session.restrictedAt == null
+        ? { ...session, restrictedAt: effectiveAt, restrictionVersion: Math.max(1, session.restrictionVersion ?? 1) }
+        : session;
+    }
+    return {
+      ...session,
+      isRestricted: true,
+      restrictedAt: effectiveAt,
+      restrictionVersion: (session.restrictionVersion ?? 0) + 1,
+    };
+  }
+
+  private async persistOrCleanupSession(
+    session: ConversationSessionRecord,
+    previousSession: ConversationSessionRecord,
+    options: ConversationHistoryOptions,
+  ): Promise<ConversationSessionRecord> {
+    if (!this.memoryService) {
+      return session;
+    }
+    if (session.isRestricted) {
+      return this.cleanupRestrictedSessionMemory(previousSession, session);
+    }
+    return this.persistSession(session, options);
+  }
+
+  private async cleanupRestrictedSessionMemory(
+    previousSession: ConversationSessionRecord,
+    restrictedSession: ConversationSessionRecord,
+  ): Promise<ConversationSessionRecord> {
+    if (this.memoryService?.revoke != null) {
+      const knownIds = new Set<string>();
+      if (previousSession.memoryRecordId != null) {
+        knownIds.add(previousSession.memoryRecordId);
+      }
+      if (restrictedSession.memoryRecordId != null) {
+        knownIds.add(restrictedSession.memoryRecordId);
+      }
+      const persistedRecords = await this.memoryService.recall({
+        sessionId: restrictedSession.sessionId,
+        scopes: [this.defaultScope],
+      });
+      for (const record of persistedRecords) {
+        if (record.id != null && record.id.length > 0) {
+          knownIds.add(record.id);
+        }
+      }
+      for (const memoryRecordId of knownIds) {
+        await this.memoryService.revoke(
+          memoryRecordId,
+          "conversation.session_restricted",
+          restrictedSession.restrictedAt ?? restrictedSession.updatedAt,
+        );
+      }
+    }
+    return {
+      ...restrictedSession,
+      memoryRecordId: undefined,
+    };
   }
 }

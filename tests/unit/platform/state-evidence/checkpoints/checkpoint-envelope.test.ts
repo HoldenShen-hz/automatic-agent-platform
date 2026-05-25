@@ -120,6 +120,7 @@ describe("CheckpointEnvelope", () => {
       const unpacked = await unpackCheckpointEnvelope<TestCheckpointData>(envelope);
 
       assert.deepStrictEqual(unpacked.data, originalCheckpoint);
+      assert.strictEqual(unpacked.schemaVersion, "test.v1");
       assert.strictEqual(unpacked.wasCompressed, true);
       assert.strictEqual(unpacked.metadata.algorithm, "gzip");
     });
@@ -141,6 +142,7 @@ describe("CheckpointEnvelope", () => {
       const envelope = await createCheckpointEnvelope(checkpoint, "test.v1");
       const unpacked = await unpackCheckpointEnvelope(envelope);
 
+      assert.strictEqual(unpacked.schemaVersion, "test.v1");
       assert.strictEqual(unpacked.metadata.originalSizeBytes, envelope.metadata.originalSizeBytes);
       assert.strictEqual(unpacked.metadata.compressedSizeBytes, envelope.metadata.compressedSizeBytes);
       assert.strictEqual(unpacked.metadata.checksum, envelope.metadata.checksum);

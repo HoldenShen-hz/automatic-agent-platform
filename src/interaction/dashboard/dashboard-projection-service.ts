@@ -40,7 +40,7 @@ export interface DashboardProjectionConfig {
 
 const DEFAULT_CONFIG: DashboardProjectionConfig = {
   projectionNames: ["task_summary", "incident_summary", "workflow_summary"],
-  emitDebounceMs: 100,
+  emitDebounceMs: 0,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,7 +49,8 @@ const DEFAULT_CONFIG: DashboardProjectionConfig = {
 
 export class DashboardProjectionService {
   private readonly config: DashboardProjectionConfig;
-  private readonly pendingDeltas: DashboardDelta[] = [];
+  private readonly stagedDeltas: DashboardDelta[] = [];
+  private readonly readyDeltas: DashboardDelta[] = [];
   private lastEmittedAt: string | null = null;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -81,7 +82,7 @@ export class DashboardProjectionService {
       affectedMetrics: this.deriveAffectedMetrics(changes),
     };
 
-    this.pendingDeltas.push(delta);
+    this.stagedDeltas.push(delta);
     this.scheduleEmit();
 
     return delta;
@@ -120,7 +121,7 @@ export class DashboardProjectionService {
       affectedMetrics: this.deriveAffectedMetrics([change]),
     };
 
-    this.pendingDeltas.push(delta);
+    this.stagedDeltas.push(delta);
     this.scheduleEmit();
 
     return delta;
@@ -158,7 +159,7 @@ export class DashboardProjectionService {
    * @returns Array of pending deltas
    */
   public getPendingDeltas(): readonly DashboardDelta[] {
-    return [...this.pendingDeltas];
+    return [...this.readyDeltas, ...this.stagedDeltas];
   }
 
   /**
@@ -167,8 +168,8 @@ export class DashboardProjectionService {
    * @returns Array of consumed deltas
    */
   public consumePendingDeltas(): readonly DashboardDelta[] {
-    const consumed = [...this.pendingDeltas];
-    this.pendingDeltas.length = 0;
+    const consumed = [...this.readyDeltas];
+    this.readyDeltas.length = 0;
     this.lastEmittedAt = nowIso();
     return consumed;
   }
@@ -177,7 +178,7 @@ export class DashboardProjectionService {
    * Checks if there are pending deltas ready to emit.
    */
   public hasPendingDeltas(): boolean {
-    return this.pendingDeltas.length > 0;
+    return this.readyDeltas.length > 0 || this.stagedDeltas.length > 0;
   }
 
   /**
@@ -190,6 +191,7 @@ export class DashboardProjectionService {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
+    this.promoteStagedDeltas();
     return this.consumePendingDeltas();
   }
 
@@ -307,7 +309,8 @@ export class DashboardProjectionService {
    * Clears all pending deltas without emitting.
    */
   public clearPendingDeltas(): void {
-    this.pendingDeltas.length = 0;
+    this.readyDeltas.length = 0;
+    this.stagedDeltas.length = 0;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
@@ -442,13 +445,24 @@ export class DashboardProjectionService {
   }
 
   private scheduleEmit(): void {
+    if (this.config.emitDebounceMs <= 0) {
+      this.promoteStagedDeltas();
+      return;
+    }
     if (this.debounceTimer !== null) return;
 
     this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null;
-      // In real implementation, this would emit to WebSocket clients
-      // For now, deltas are consumed via consumePendingDeltas()
+      this.promoteStagedDeltas();
     }, this.config.emitDebounceMs);
+  }
+
+  private promoteStagedDeltas(): void {
+    if (this.stagedDeltas.length === 0) {
+      return;
+    }
+    this.readyDeltas.push(...this.stagedDeltas);
+    this.stagedDeltas.length = 0;
   }
 }
 

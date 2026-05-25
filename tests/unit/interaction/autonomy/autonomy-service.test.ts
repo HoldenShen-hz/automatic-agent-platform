@@ -75,6 +75,7 @@ test("AutonomyService.determineLevel returns auto for riskScore < 40", () => {
   assert.equal(decision.level, "auto");
   assert.equal(decision.taskId, "task_004");
   assert.ok(decision.reason.includes("risk_score=25"));
+  assert.ok(decision.reason.includes("effective_risk_score=25"));
 });
 
 test("AutonomyService.determineLevel returns auto for riskScore exactly 39", () => {
@@ -182,6 +183,32 @@ test("AutonomyService.determineLevel includes taskType in reason", () => {
   const decision = service.determineLevel(request);
 
   assert.ok(decision.reason.includes("task_type=database_migration"));
+});
+
+test("AutonomyService.determineLevel elevates deploy tasks into supervised range", () => {
+  const service = new AutonomyService();
+  const decision = service.determineLevel({
+    taskId: "task_deploy_escalated",
+    taskType: "deploy",
+    riskScore: 45,
+    userId: "user_deploy",
+  });
+
+  assert.equal(decision.level, "supervised");
+  assert.ok(decision.reason.includes("effective_risk_score=65"));
+});
+
+test("AutonomyService.determineLevel elevates approval actions into manual range", () => {
+  const service = new AutonomyService();
+  const decision = service.determineLevel({
+    taskId: "task_approval_manual",
+    taskType: "approval_action",
+    riskScore: 58,
+    userId: "user_approval",
+  });
+
+  assert.equal(decision.level, "manual");
+  assert.ok(decision.reason.includes("effective_risk_score=83"));
 });
 
 test("AutonomyService.escalate returns escalation result with auto as previous level", () => {

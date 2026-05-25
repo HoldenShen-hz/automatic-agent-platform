@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
 import type { PluginSandboxPolicy, PluginLifecycleContext } from "../../../../src/domains/registry/plugin-spi.js";
+import type { LogTransport } from "../../../../src/platform/shared/observability/log-transport.js";
+import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
 
 function createDeferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -28,6 +30,15 @@ function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): Plugin
     maxResponseSizeBytes: 5 * 1024 * 1024,
     rateLimitPerMinute: 60,
     ...overrides,
+  };
+}
+
+function createLogCaptureTransport(bucket: string[]): LogTransport {
+  return {
+    name: `capture-${Math.random().toString(36).slice(2)}`,
+    write(entry) {
+      bucket.push(entry.message);
+    },
   };
 }
 
@@ -330,6 +341,57 @@ test("PluginSpiRegistry times out slow invocations during execution", async () =
     }),
     /timed out/,
   );
+});
+
+test("PluginSpiRegistry writes structured catch logs for sandbox and invocation failures", async () => {
+  const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
+  const messages: string[] = [];
+  const transport = createLogCaptureTransport(messages);
+  StructuredLogger.addTransport(transport);
+
+  registry.register({
+    pluginId: "plugin.logged_failure",
+    domainId: "coding",
+    spiType: "retriever",
+    async retrieve() {
+      throw new Error("logged failure");
+    },
+  }, {
+    pluginId: "plugin.logged_failure",
+    name: "logged failure plugin",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: [],
+    spiTypes: ["retriever"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "test",
+    settingsSchema: {},
+    sandbox: makeSandboxPolicy({
+      allowedKnowledgeNamespaces: ["coding/repo"],
+    }),
+  });
+
+  try {
+    await registry.ensureActive("plugin.logged_failure");
+    await assert.rejects(
+      registry.invokeRetriever("plugin.logged_failure", {
+        namespace: "coding/repo",
+        query: {
+          taskId: "task_logged_failure",
+          intent: "log-test",
+          context: {},
+          tokenBudget: 1000,
+        },
+      }),
+      /failed during retrieve|logged failure/,
+    );
+    assert.ok(messages.includes("plugin_spi.sandbox_runner_failed"));
+    assert.ok(messages.includes("plugin_spi.invocation_catch"));
+  } finally {
+    StructuredLogger.removeTransport(transport.name);
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

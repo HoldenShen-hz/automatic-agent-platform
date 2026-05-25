@@ -37,6 +37,7 @@ export interface CheckpointRef {
   readonly checkpointId: string;
   readonly storageUri: string;
   readonly checksum?: string;
+  readonly schemaVersion?: string;
   readonly metadata?: Record<string, unknown>;
   readonly createdAt?: string;
 }
@@ -88,6 +89,14 @@ export function validateCheckpointRef(
     }
   } else if (options.requireChecksum) {
     warnings.push("checksum_missing: checkpoint checksum is recommended for integrity verification");
+  }
+
+  if (candidate.schemaVersion !== undefined && candidate.schemaVersion !== null) {
+    if (typeof candidate.schemaVersion !== "string") {
+      errors.push("schema_version_must_be_string: schemaVersion must be a string");
+    } else if (candidate.schemaVersion.trim().length === 0) {
+      errors.push("schema_version_required: schemaVersion must be a non-empty string when provided");
+    }
   }
 
   // metadata validation

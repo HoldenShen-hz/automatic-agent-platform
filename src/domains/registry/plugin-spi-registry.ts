@@ -622,6 +622,13 @@ export class PluginSpiRegistry {
       try {
         return await Promise.race([promise, timeoutPromise]);
       } catch (error) {
+        logger.error("plugin_spi.sandbox_runner_failed", {
+          pluginId: record.manifest.pluginId,
+          phase,
+          domainId: context.domainId,
+          bindingId: context.bindingId,
+          error: error instanceof Error ? error.stack ?? error.message : String(error),
+        });
         if (error instanceof ValidationError) {
           throw error;
         }
@@ -690,6 +697,13 @@ export class PluginSpiRegistry {
       if (this.isProcessIsolatedRuntime(record)) {
         await this.disposeRuntimeHost(record);
       }
+      logger.error("plugin_spi.activation_catch", {
+        pluginId: record.manifest.pluginId,
+        phase: "activation",
+        domainId: context.domainId,
+        bindingId: context.bindingId,
+        error: error instanceof Error ? error.stack ?? error.message : String(error),
+      });
       this.recordFailure(record, error, "activation", context);
       throw error;
     }
@@ -848,6 +862,13 @@ export class PluginSpiRegistry {
       });
       return result;
     } catch (error) {
+      logger.error("plugin_spi.invocation_catch", {
+        pluginId: record.manifest.pluginId,
+        phase,
+        domainId: context.domainId,
+        bindingId: context.bindingId,
+        error: error instanceof Error ? error.stack ?? error.message : String(error),
+      });
       this.recordFailure(record, error, phase, context);
       this.publishInvocationEvent("plugin:invocation_completed", record, context, phase, invocationId, {
         status: "failed",

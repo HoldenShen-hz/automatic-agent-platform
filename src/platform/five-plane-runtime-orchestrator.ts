@@ -10,9 +10,12 @@ import {
   FIVE_PLANE_STARTUP_PLAN_SERVICE_ID,
   registerFivePlaneStartupPlan,
   type FivePlaneStartupPlan,
-  type FivePlaneStartupStep,
   type FivePlaneStartupStepId,
 } from "./five-plane-startup-plan.js";
+import {
+  executeStartupPlan,
+  snapshotStartupReadiness,
+} from "./shared/lifecycle/runtime-orchestrator-support.js";
 
 export const FIVE_PLANE_RUNTIME_ORCHESTRATOR_SERVICE_ID = "plane.runtime.orchestrator";
 
@@ -43,19 +46,6 @@ export interface FivePlaneRuntimeReadinessSnapshot {
   }[];
 }
 
-function buildDependencyServiceIds(
-  step: FivePlaneStartupStep,
-  plan: FivePlaneStartupPlan,
-): readonly string[] {
-  return step.dependsOnStepIds.map((dependencyStepId) => {
-    const dependencyStep = plan.steps.find((candidate) => candidate.stepId === dependencyStepId);
-    if (dependencyStep == null) {
-      throw new Error(`five_plane_startup_plan.missing_dependency:${dependencyStepId}`);
-    }
-    return dependencyStep.bootstrapServiceId;
-  });
-}
-
 export class FivePlaneRuntimeOrchestrator {
   public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
 
@@ -67,28 +57,10 @@ export class FivePlaneRuntimeOrchestrator {
 
   public startup(): FivePlaneRuntimeStartupResult {
     const { startupPlan, runtimeCatalog } = this.prepare();
-
-    const steps = startupPlan.steps.map((step) => {
-      const initializedDependencyServiceIds = buildDependencyServiceIds(step, startupPlan).filter((serviceId) =>
-        this.registry.isInitialized(serviceId),
-      );
-      this.registry.get(step.bootstrapServiceId);
-      return {
-        stepId: step.stepId,
-        bootstrapServiceId: step.bootstrapServiceId,
-        capabilityCount: step.capabilityCount,
-        initialized: this.registry.isInitialized(step.bootstrapServiceId),
-        initializedDependencyServiceIds,
-      };
-    });
+    const runtime = executeStartupPlan(this.registry, startupPlan, "five_plane_startup_plan.missing_dependency");
 
     return {
-      ready: steps.every((step) => step.initialized),
-      startupOrder: startupPlan.startupOrder,
-      initializedServiceIds: startupPlan.steps
-        .map((step) => step.bootstrapServiceId)
-        .filter((serviceId) => this.registry.isInitialized(serviceId)),
-      steps,
+      ...runtime,
       runtimeCatalog,
     };
   }
@@ -99,11 +71,7 @@ export class FivePlaneRuntimeOrchestrator {
       runtimeCatalogInitialized: this.registry.isInitialized(FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID),
       startupPlanInitialized: this.registry.isInitialized(FIVE_PLANE_STARTUP_PLAN_SERVICE_ID),
       orchestratorInitialized: this.registry.isInitialized(FIVE_PLANE_RUNTIME_ORCHESTRATOR_SERVICE_ID),
-      planeReadiness: startupPlan.steps.map((step) => ({
-        stepId: step.stepId,
-        bootstrapServiceId: step.bootstrapServiceId,
-        initialized: this.registry.isInitialized(step.bootstrapServiceId),
-      })),
+      planeReadiness: snapshotStartupReadiness(this.registry, startupPlan),
     };
   }
 }

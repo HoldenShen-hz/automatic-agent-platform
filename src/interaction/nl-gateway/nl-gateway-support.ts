@@ -484,8 +484,8 @@ export function deriveConversationState(
 export function buildRiskPreview(
   message: string,
   intentType: DetectedIntent["intentType"],
-  dryRunExecutor?: DryRunExecutorPort | null,
-  dryRunContext?: { divisionId: string; workflowId: string; userId: string; locale: string } | null,
+  _dryRunExecutor?: DryRunExecutorPort | null,
+  _dryRunContext?: { divisionId: string; workflowId: string; userId: string; locale: string } | null,
 ): RiskPreview {
   const normalized = message.toLowerCase();
   const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
@@ -511,9 +511,6 @@ export function buildRiskPreview(
   if (/(delete|drop|remove|删除|清空)/i.test(message)) {
     sideEffects.push("可能移除已有数据或配置");
   }
-
-  void dryRunExecutor;
-  void dryRunContext;
 
   return {
     overallRisk: critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low",

@@ -101,6 +101,15 @@ test("consumePendingDeltas clears and returns deltas", () => {
   assert.equal(service.getPendingDeltas().length, 0);
 });
 
+test("consumePendingDeltas waits for debounced batches until flushed", () => {
+  const service = new DashboardProjectionService({ emitDebounceMs: 500 });
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
+
+  assert.equal(service.consumePendingDeltas().length, 0);
+  assert.equal(service.getPendingDeltas().length, 1);
+  assert.equal(service.flush().length, 1);
+});
+
 test("hasPendingDeltas returns true when pending", () => {
   const service = new DashboardProjectionService();
   assert.equal(service.hasPendingDeltas(), false);
@@ -166,7 +175,7 @@ test("DashboardDelta contains timestamp and changes", () => {
   const service = new DashboardProjectionService();
   service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
 
-  const delta = service.consumePendingDeltas()[0]!;
+  const delta = service.flush()[0]!;
 
   assert.ok(delta.deltaId.startsWith("delta_"));
   assert.ok(delta.timestamp.length > 0);

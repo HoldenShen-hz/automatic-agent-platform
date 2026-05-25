@@ -8,7 +8,6 @@ import {
   buildScaleOpsStartupPlan,
   registerScaleOpsStartupPlan,
   type ScaleOpsStartupPlan,
-  type ScaleOpsStartupStep,
   type ScaleOpsStartupStepId,
 } from "./scale-ops-startup-plan.js";
 import {
@@ -19,6 +18,10 @@ import {
   OPS_MATURITY_BOOTSTRAP_SERVICE_ID,
   registerOpsMaturityBootstrap,
 } from "./ops-maturity/ops-maturity-bootstrap.js";
+import {
+  executeStartupPlan,
+  snapshotStartupReadiness,
+} from "./platform/shared/lifecycle/runtime-orchestrator-support.js";
 
 export const SCALE_OPS_RUNTIME_ORCHESTRATOR_SERVICE_ID = "w4.runtime.orchestrator";
 
@@ -48,19 +51,6 @@ export interface ScaleOpsReadinessSnapshot {
   }[];
 }
 
-function buildDependencyServiceIds(
-  step: ScaleOpsStartupStep,
-  plan: ScaleOpsStartupPlan,
-): readonly string[] {
-  return step.dependsOnStepIds.map((dependencyStepId) => {
-    const dependencyStep = plan.steps.find((candidate) => candidate.stepId === dependencyStepId);
-    if (dependencyStep == null) {
-      throw new Error(`w4_startup_plan.missing_dependency:${dependencyStepId}`);
-    }
-    return dependencyStep.bootstrapServiceId;
-  });
-}
-
 export class ScaleOpsRuntimeOrchestrator {
   public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
 
@@ -73,27 +63,10 @@ export class ScaleOpsRuntimeOrchestrator {
 
   public startup(): ScaleOpsRuntimeStartupResult {
     const startupPlan = this.prepare();
-    const steps = startupPlan.steps.map((step) => {
-      const initializedDependencyServiceIds = buildDependencyServiceIds(step, startupPlan).filter((serviceId) =>
-        this.registry.isInitialized(serviceId),
-      );
-      this.registry.get(step.bootstrapServiceId);
-      return {
-        stepId: step.stepId,
-        bootstrapServiceId: step.bootstrapServiceId,
-        capabilityCount: step.capabilityCount,
-        initialized: this.registry.isInitialized(step.bootstrapServiceId),
-        initializedDependencyServiceIds,
-      };
-    });
+    const runtime = executeStartupPlan(this.registry, startupPlan, "w4_startup_plan.missing_dependency");
 
     return {
-      ready: steps.every((step) => step.initialized),
-      startupOrder: startupPlan.startupOrder,
-      initializedServiceIds: startupPlan.steps
-        .map((step) => step.bootstrapServiceId)
-        .filter((serviceId) => this.registry.isInitialized(serviceId)),
-      steps,
+      ...runtime,
     };
   }
 
@@ -103,11 +76,7 @@ export class ScaleOpsRuntimeOrchestrator {
       runtimeCatalogInitialized: this.registry.isInitialized(SCALE_OPS_RUNTIME_CATALOG_SERVICE_ID),
       startupPlanInitialized: this.registry.isInitialized(SCALE_OPS_STARTUP_PLAN_SERVICE_ID),
       orchestratorInitialized: this.registry.isInitialized(SCALE_OPS_RUNTIME_ORCHESTRATOR_SERVICE_ID),
-      capabilityReadiness: startupPlan.steps.map((step) => ({
-        stepId: step.stepId,
-        bootstrapServiceId: step.bootstrapServiceId,
-        initialized: this.registry.isInitialized(step.bootstrapServiceId),
-      })),
+      capabilityReadiness: snapshotStartupReadiness(this.registry, startupPlan),
     };
   }
 }

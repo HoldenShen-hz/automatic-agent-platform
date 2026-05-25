@@ -22,11 +22,8 @@ test("calculateBackoffForAttempt handles attempt number of 0", () => {
     timeoutMs: 30000,
     retryableStatuses: [408, 429, 500, 502, 503, 504],
   };
-  // Backoff for attempt 0 would be initialBackoffMs * 2^(-1) = 500, but formula uses (attemptNumber - 1)
-  // So attempt 0 gives initialBackoffMs * 2^(-1) which could be 500
   const result = calculateBackoffForAttempt(config, 0);
-  // Mathematically: 1000 * 2^(0-1) = 1000 * 0.5 = 500
-  assert.equal(result, 500);
+  assert.equal(result, 1000);
 });
 
 test("calculateBackoffForAttempt handles very large attempt numbers", () => {

@@ -11,6 +11,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import {
+  AUTONOMY_DEMOTION_TRUST_SCORE,
+  DEFAULT_TRUST_DECAY_RATE,
+  NO_EXECUTION_DEMOTION_THRESHOLD_DAYS,
   calculateTrustScore,
   mapTrustLevel,
   mapTrustLevelToAutonomyLevel,
@@ -324,10 +327,8 @@ test("TrustScorer: applyTrustDecay returns original score for zero inactive days
 test("TrustScorer: applyTrustDecay applies exponential decay", () => {
   const ctx = createIntegrationContext("aa-decay-normal-");
   try {
-    const result = applyTrustDecay(1000, 30);
-    // Decay rate 0.05, 30 days: 1000 * (0.95)^30 = ~215
-    assert.ok(result < 300, "30 days of decay should significantly reduce score");
-    assert.ok(result > 0, "Score should not be negative");
+    const result = applyTrustDecay(100, NO_EXECUTION_DEMOTION_THRESHOLD_DAYS);
+    assert.equal(result, AUTONOMY_DEMOTION_TRUST_SCORE);
   } finally {
     ctx.cleanup();
   }
@@ -349,6 +350,16 @@ test("TrustScorer: applyTrustDecay never returns negative", () => {
   try {
     const result = applyTrustDecay(100, 365);
     assert.ok(result >= 0, "Decay should never produce negative score");
+  } finally {
+    ctx.cleanup();
+  }
+});
+
+test("TrustScorer: default decay rate is calibrated to the demotion threshold", () => {
+  const ctx = createIntegrationContext("aa-decay-calibrated-");
+  try {
+    assert.ok(DEFAULT_TRUST_DECAY_RATE > 0 && DEFAULT_TRUST_DECAY_RATE < 0.05);
+    assert.equal(applyTrustDecay(100, NO_EXECUTION_DEMOTION_THRESHOLD_DAYS), AUTONOMY_DEMOTION_TRUST_SCORE);
   } finally {
     ctx.cleanup();
   }

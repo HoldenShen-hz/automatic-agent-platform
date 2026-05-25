@@ -203,7 +203,7 @@ test("integration: DashboardProjectionService consumes pending deltas", () => {
 
   assert.ok(service.hasPendingDeltas());
 
-  const consumed = service.consumePendingDeltas();
+  const consumed = service.flush();
 
   assert.equal(consumed.length, 1);
   assert.ok(!service.hasPendingDeltas());

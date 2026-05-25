@@ -253,6 +253,46 @@ test("WorkflowBuilderService.build provides validation message when step not all
   assert.ok(result.builder.validation.messages[0]!.includes("step_1"));
 });
 
+test("WorkflowBuilderService.build propagates graph validation findings into builder validation", () => {
+  const service = new WorkflowBuilderService();
+  const session: WizardSession = {
+    sessionId: "session_1",
+    currentStepId: "step_1",
+    steps: [
+      { stepId: "step_1", title: "Step 1", completed: true },
+    ],
+  };
+  const template: InteractionTemplate = {
+    templateId: "tpl_1",
+    title: "Test",
+    steps: ["   "],
+  };
+  const wizard: DomainOnboardingWizard = {
+    steps: [],
+    recommendedDomains: [],
+    defaultMode: {
+      mode: "solo",
+      autoDetected: true,
+      features: {
+        multiTenancy: false,
+        approvalEngine: "self_approve",
+        securityReview: "auto_only",
+        onboarding: "wizard_3min",
+        dashboardLevels: ["L1"],
+        governance: "self",
+      },
+      upgradePath: "",
+    },
+  };
+
+  const result = service.build({ session, template, onboardingWizard: wizard, components: [] });
+
+  assert.equal(result.nextStepAllowed, true);
+  assert.equal(result.builder.validation.valid, false);
+  assert.ok(result.builder.validation.messages.includes("workflow_builder.empty_node_label"));
+  assert.ok(result.saveReview.validationMessages.includes("workflow_builder.empty_node_label"));
+});
+
 test("WorkflowBuilderService.build builds live preview with estimated duration and cost", () => {
   const service = new WorkflowBuilderService();
   const session: WizardSession = {

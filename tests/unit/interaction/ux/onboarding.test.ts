@@ -373,6 +373,30 @@ test("UserPortalService domain recommendations consider history and user mode", 
   assert.ok(plan.recommendationReasons.some((reason) => reason.includes("history_affinity") || reason.includes("executive_budget_focus")));
 });
 
+test("UserPortalService resolveMode remains organization-shape based while recommendations use userMode bonuses", () => {
+  const service = new UserPortalService();
+  const baseContext: UserPortalContext = {
+    memberCount: 5,
+    departmentCount: 1,
+    requiresSso: false,
+  };
+
+  const modeWithoutUserMode = service.resolveMode(baseContext);
+  const modeWithUserMode = service.resolveMode({
+    ...baseContext,
+    userMode: "executive",
+  });
+  const plan = service.buildOnboardingPlan("预算审批与发票处理", {
+    ...baseContext,
+    userMode: "executive",
+  });
+
+  assert.equal(modeWithoutUserMode.mode, "team");
+  assert.equal(modeWithUserMode.mode, "team");
+  assert.equal(plan.recommendedDomains[0], "finance");
+  assert.ok(plan.recommendationReasons.some((reason) => reason.includes("mode_bonus:executive")));
+});
+
 test("UserPortalService enterprise wizard exposes governed progressive disclosure", () => {
   const service = new UserPortalService();
 

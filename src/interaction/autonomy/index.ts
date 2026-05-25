@@ -7,11 +7,17 @@ import { resolveDomainRiskSpec, type DomainRiskSpec } from "../../domains/domain
 import { autonomyAuditService, AutonomyAuditService } from "./autonomy-audit-service.js";
 export { AutonomyGovernanceService } from "./autonomy-governance-service.js";
 export {
+  AUTONOMY_DEMOTION_TRUST_SCORE,
   applyTrustDecay,
+  DEFAULT_TRUST_DECAY_RATE,
   mapTrustLevelToAutonomyLevel,
+  NO_EXECUTION_DEMOTION_THRESHOLD_DAYS,
   type ArchitectureAutonomyLevel,
 } from "./trust-scorer/index.js";
-import { applyTrustDecay } from "./trust-scorer/index.js";
+import {
+  applyTrustDecay,
+  NO_EXECUTION_DEMOTION_THRESHOLD_DAYS as TRUST_DECAY_DEMOTION_THRESHOLD_DAYS,
+} from "./trust-scorer/index.js";
 
 export { autonomyAuditService, AutonomyAuditService };
 
@@ -102,7 +108,7 @@ export interface AutonomyChangeImpactReport {
 
 export class TrustDecayWorker {
   /** R5-26: After 180 days of no execution, agent should be demoted to suggestion */
-  private static readonly NO_EXECUTION_DEMOTION_THRESHOLD_DAYS = 180;
+  private static readonly NO_EXECUTION_DEMOTION_THRESHOLD_DAYS = TRUST_DECAY_DEMOTION_THRESHOLD_DAYS;
 
   public run(
     profile: AgentTrustProfile,

@@ -8,7 +8,6 @@ import {
   buildAiOperationsStartupPlan,
   registerAiOperationsStartupPlan,
   type AiOperationsStartupPlan,
-  type AiOperationsStartupStep,
   type AiOperationsStartupStepId,
 } from "./ai-operations-startup-plan.js";
 import {
@@ -27,6 +26,10 @@ import {
   PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
   registerPromptEngineBootstrap,
 } from "./prompt-engine/prompt-engine-bootstrap.js";
+import {
+  executeStartupPlan,
+  snapshotStartupReadiness,
+} from "./shared/lifecycle/runtime-orchestrator-support.js";
 
 export const AI_OPERATIONS_RUNTIME_ORCHESTRATOR_SERVICE_ID = "aiops.runtime.orchestrator";
 
@@ -56,19 +59,6 @@ export interface AiOperationsReadinessSnapshot {
   }[];
 }
 
-function buildDependencyServiceIds(
-  step: AiOperationsStartupStep,
-  plan: AiOperationsStartupPlan,
-): readonly string[] {
-  return step.dependsOnStepIds.map((dependencyStepId) => {
-    const dependencyStep = plan.steps.find((candidate) => candidate.stepId === dependencyStepId);
-    if (dependencyStep == null) {
-      throw new Error(`aiops_startup_plan.missing_dependency:${dependencyStepId}`);
-    }
-    return dependencyStep.bootstrapServiceId;
-  });
-}
-
 export class AiOperationsRuntimeOrchestrator {
   public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
 
@@ -83,27 +73,10 @@ export class AiOperationsRuntimeOrchestrator {
 
   public startup(): AiOperationsRuntimeStartupResult {
     const startupPlan = this.prepare();
-    const steps = startupPlan.steps.map((step) => {
-      const initializedDependencyServiceIds = buildDependencyServiceIds(step, startupPlan).filter((serviceId) =>
-        this.registry.isInitialized(serviceId),
-      );
-      this.registry.get(step.bootstrapServiceId);
-      return {
-        stepId: step.stepId,
-        bootstrapServiceId: step.bootstrapServiceId,
-        capabilityCount: step.capabilityCount,
-        initialized: this.registry.isInitialized(step.bootstrapServiceId),
-        initializedDependencyServiceIds,
-      };
-    });
+    const runtime = executeStartupPlan(this.registry, startupPlan, "aiops_startup_plan.missing_dependency");
 
     return {
-      ready: steps.every((step) => step.initialized),
-      startupOrder: startupPlan.startupOrder,
-      initializedServiceIds: startupPlan.steps
-        .map((step) => step.bootstrapServiceId)
-        .filter((serviceId) => this.registry.isInitialized(serviceId)),
-      steps,
+      ...runtime,
     };
   }
 
@@ -113,11 +86,7 @@ export class AiOperationsRuntimeOrchestrator {
       runtimeCatalogInitialized: this.registry.isInitialized(AI_OPERATIONS_RUNTIME_CATALOG_SERVICE_ID),
       startupPlanInitialized: this.registry.isInitialized(AI_OPERATIONS_STARTUP_PLAN_SERVICE_ID),
       orchestratorInitialized: this.registry.isInitialized(AI_OPERATIONS_RUNTIME_ORCHESTRATOR_SERVICE_ID),
-      capabilityReadiness: startupPlan.steps.map((step) => ({
-        stepId: step.stepId,
-        bootstrapServiceId: step.bootstrapServiceId,
-        initialized: this.registry.isInitialized(step.bootstrapServiceId),
-      })),
+      capabilityReadiness: snapshotStartupReadiness(this.registry, startupPlan),
     };
   }
 }

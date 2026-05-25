@@ -112,6 +112,8 @@ export interface CreateCheckpointEnvelopeOptions {
 export interface UnpackedCheckpointEnvelope<T = unknown> {
   /** The original checkpoint data */
   data: T;
+  /** The schema version used to encode the payload */
+  schemaVersion: string;
   /** The envelope metadata */
   metadata: CheckpointEnvelopeMetadata;
   /** Whether the data was compressed */
@@ -253,6 +255,7 @@ export async function unpackCheckpointEnvelope<T = unknown>(
 
   return {
     data,
+    schemaVersion: envelope.schema,
     metadata: envelope.metadata,
     wasCompressed: envelope.metadata.algorithm === "gzip",
   };
