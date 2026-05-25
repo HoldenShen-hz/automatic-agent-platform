@@ -95,7 +95,10 @@ export class WorkflowDebuggerService {
       .map((frame) => {
         const planGraphId = this.getFramePlanGraphId(frame);
         const nodeRunId = this.getFrameNodeRunId(frame);
-        const matched = (this.breakpoints.get(planGraphId) ?? []).find((item) => item.nodeRunSelector === nodeRunId)!;
+        const matched = (this.breakpoints.get(planGraphId) ?? []).find((item) => item.nodeRunSelector === nodeRunId);
+        if (matched == null) {
+          return null;
+        }
         return {
           breakpointId: matched.breakpointId,
           workflowId: planGraphId,
@@ -105,7 +108,8 @@ export class WorkflowDebuggerService {
           action: matched.action,
           timestamp: frame.timestamp,
         };
-      });
+      })
+      .filter((item): item is BreakpointHit => item != null);
   }
 
   public buildComparisonReport(
