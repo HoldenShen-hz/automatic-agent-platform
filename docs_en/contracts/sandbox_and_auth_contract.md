@@ -1,7 +1,7 @@
 # Sandbox And Auth Contract
 
 > **OAPEFLIR Related**: This contract defines the security boundary of the OAPEFLIR Execute Hub, corresponding to ADR-016.
-> **Update Date**: 2026-04-17
+> **Updated**: 2026-04-17
 
 ## 1. Scope
 

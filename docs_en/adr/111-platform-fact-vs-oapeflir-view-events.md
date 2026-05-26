@@ -10,24 +10,24 @@ Accepted
 
 ## Background
 
-OAPEFLIR in v4.3 is a controlled cognition and governance framework, not a second execution runtime. In historical events, `oapeflir.*` simultaneously expressed stage semantics, execution facts, and diagnostic views, which makes it impossible for truth projector to determine which events can change authoritative state.
+OAPEFLIR in v4.3 is a controlled cognitive and governance framework, not a second execution runtime. In historical events, `oapeflir.*` simultaneously expressed stage semantics, runtime facts, and diagnostic views, which makes truth projector unable to determine which events can change authoritative state.
 
 ## Decision
 
 1. `platform.*` events are the only truth fact event namespace.
 2. `oapeflir.view.*` and `oapeflir.rationale.*` only express StageRationale, TraceProjection, Audit View, and explanation views.
 3. Truth projector, recovery scanner, budget projector, and side-effect projector can only consume `platform.*`.
-4. OAPEFLIR view projector can consume `platform.*` and derive `oapeflir.view.*`, but cannot reversely drive `HarnessRun`, `NodeRun`, `Budget`, or `SideEffect` truth.
-5. Legacy event adapters receiving historical `oapeflir.*` events must label `derivedFromEventId`, `projectionOnly=true`, and compatibility source, and cannot disguise as platform fact.
+4. OAPEFLIR view projector can consume `platform.*` and derive `oapeflir.view.*`, but cannot reverse-drive `HarnessRun`, `NodeRun`, `Budget`, or `SideEffect` truth.
+5. Legacy event adapter if receiving historical `oapeflir.*` events, must mark `derivedFromEventId`, `projectionOnly=true`, and compatibility source, cannot masquerade as platform fact.
 
 ## Event Hierarchy
 
-| Level | namespace | Purpose | Can Drive Truth |
+| Layer | namespace | Purpose | Can Drive Truth |
 | --- | --- | --- | --- |
-| Platform fact | `platform.*` | State progression, budget, approval, side-effect, audit fact | Yes |
-| OAPEFLIR view | `oapeflir.view.*` | Stage view, explanation timeline, diagnostic projection | No |
+| Platform fact | `platform.*` | State progression, budget, approval, side effect, audit fact | Yes |
+| OAPEFLIR view | `oapeflir.view.*` | Stage view, explainability timeline, diagnostic projection | No |
 | OAPEFLIR rationale | `oapeflir.rationale.*` | Cognitive rationale, evaluation explanation, learning release notes | No |
-| Legacy event | Historical `task.*` / `workflow.*` / `oapeflir.*` | Compatible reading or migration input | No, unless explicitly adapter-converted to platform fact |
+| Legacy event | Historical `task.*` / `workflow.*` / `oapeflir.*` | Compatible read or migration input | No, unless converted to platform fact via explicit adapter |
 
 ## Consequences
 

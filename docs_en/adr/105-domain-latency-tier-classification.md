@@ -5,9 +5,9 @@
 ## OAPEFLIR Association
 
 - **Observe**: Collect domain latency / SLA requirements
-- **Assess**: Classify as ultra-low latency, real-time, near-real-time, batch processing
+- **Assess**: Classify as ultra-low latency, realtime, near-realtime, batch
 - **Plan**: Allocate resources and scheduling strategy
-- **Execute**: Run by latency tier
+- **Execute**: Run according to latency tier
 - **Feedback**: Monitor breach and congestion
 - **Learn**: Optimize resource pool allocation
 - **Improve**: Adjust domain-level SLA
@@ -20,14 +20,14 @@
 
 ## Background
 
-Different domains have very different latency requirements, and unified scheduling strategy will lead to resource waste or SLA failure.
+Different domains have very different latency requirements; unified scheduling strategy leads to resource waste or SLA failure.
 
 ## Decision
 
 - Each domain must declare latency tier
-- Platform allocates queue priority, resource pool, and recovery order based on this
-- `deterministic_hot_path_only` domains must not interpret latency tier as allowing entry into free LLM loop; LLM participation must maintain controlled boundaries
-- This ADR only defines domain-level latency tier, and does not serve as authorization source for "automatic open LLM loop" outside v4.3 non-target boundaries
+- Platform allocates queue priority, resource pool, and recovery order accordingly
+- `deterministic_hot_path_only` domains must not interpret latency tier as permitting unrestricted LLM loop; LLM participation must maintain controlled boundary
+- This ADR only defines domain-level latency tier, does not serve as authorization source for "automatic open LLM loop" outside v4.3 non-target boundaries
 
 ## Consequences
 

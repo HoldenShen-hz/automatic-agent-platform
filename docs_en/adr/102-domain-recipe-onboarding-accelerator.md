@@ -5,10 +5,10 @@
 ## OAPEFLIR Association
 
 - **Observe**: Collect domain patterns and onboarding requirements
-- **Assess**: Choose most suitable recipe archetype
+- **Assess**: Select most suitable recipe archetype
 - **Plan**: Initialize domain workflow and prompt with recipe
-- **Execute**: Quickly generate baseline implementation
-- **Feedback**: Collect recipe adaptation effectiveness
+- **Execute**: Rapidly generate baseline implementation
+- **Feedback**: Collect recipe adaptation effects
 - **Learn**: Iterate archetype template
 - **Improve**: Shorten new domain onboarding cycle
 - **Release**: Recipe becomes onboarding baseline
@@ -20,7 +20,7 @@
 
 ## Background
 
-Blank slate onboarding causes new domains to reinvent workflows, prompts, and governance structures.
+Blank slate onboarding causes new domains to repeatedly invent workflows, prompts, and governance structures.
 
 ## Decision
 
@@ -29,4 +29,4 @@ Blank slate onboarding causes new domains to reinvent workflows, prompts, and go
 
 ## Consequences
 
-- 24-domain baseline can quickly land according to unified model
+- 24 domain baseline can quickly land according to unified model

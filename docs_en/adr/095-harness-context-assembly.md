@@ -20,12 +20,12 @@
 
 ## Background
 
-If context does not have a unified assembler, Harness will repeatedly concatenate in different call paths, cannot be audited, and cannot be compressed or replayed.
+If context does not have a unified assembler, Harness will repeatedly splice across different call paths, cannot be audited, and cannot compress or replay.
 
 ## Decision
 
 - `ContextAssembler` serves as Harness's authoritative context assembly entry
-- Each context assembly must carry `NodeRun`-level scope / audit ref to avoid task-level big包裹 distortion
+- Each context assembly must carry `NodeRun`-level scope / audit ref to avoid task-level large包裹 distortion
 - Must support task / domain / shared source set
 - Each loop generates `ContextSnapshot`
 

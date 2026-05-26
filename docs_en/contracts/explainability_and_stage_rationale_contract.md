@@ -29,9 +29,9 @@ This contract defines the explanation pipeline for `§59`, `StageRationale` data
 
 `ExplanationDepth` is fixed to:
 
-- `brief`
-- `standard`
-- `audit`
+- `L1_summary`
+- `L2_reasoning`
+- `L3_forensic`
 
 Rules:
 

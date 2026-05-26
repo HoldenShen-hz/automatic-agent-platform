@@ -20,10 +20,10 @@ The following fields are default requirements for core business tables:
 
 Field semantics:
 
-- `created_*` records the first time the record was persisted and the responsible entity.
+- `created_*` records the first database write time and responsible subject.
 - `updated_*` records the most recent state or content change.
-- `archived_*` is used for business archival and is not equivalent to deletion.
-- `is_deleted` + `deleted_*` represents soft delete; in SQLite, boolean values uniformly use `INTEGER 0/1`.
+- `archived_*` is for business archiving, not equivalent to deletion.
+- `is_deleted` + `deleted_*` indicates soft delete; in SQLite, boolean values uniformly use `INTEGER 0/1`.
 
 ## Core Tables That Must Have Complete Fields
 
@@ -49,11 +49,11 @@ Field semantics:
 - `harness_decisions`
 - `human_responsibility_records`
 
-These tables are all subject to correction, archival, replay, reconciliation, or manual accountability, so they must have responsible entity and soft delete traces.
+These tables all belong to business state that can be corrected, archived, replayed, reconciled, or manually traced, so they must have responsible subject and soft delete traces.
 
-## System Tables Allowed to Be Exempt
+## System Tables Allowed for Exemption
 
-The following tables remain as append-only or system-type structures and are not forced to complete soft delete fields:
+The following tables are retained as append-only or system-type structures, and are not forced to have soft delete fields added:
 
 - `mission_event_sequences`
 - `runtime_event_log`
@@ -62,11 +62,11 @@ The following tables remain as append-only or system-type structures and are not
 
 Exemption rules:
 
-- Append-only event stream tables rely on immutable semantics, and deletion would destroy event sequence or outbox delivery evidence.
-- Pure system counting/reference tables are maintained by runtime mechanisms, with emphasis on immutability and primary key idempotency, not business archival.
+- Append-only event stream tables rely on immutability semantics; deletion would break event sequence or outbox delivery evidence.
+- Pure system count/reference tables are maintained by runtime mechanisms; the focus is on immutability and primary key idempotency, not business archiving.
 
-## Persistence Constraints
+## Database Write Constraints
 
-- When adding new runtime business tables, default to including them in "core tables that must have complete fields".
-- If exemption is needed, the append-only or system-type reason must be explained in the design review, and this specification and corresponding audit scripts must be synchronized.
-- When implementing soft delete read semantics in runtime queries, explicitly filter `is_deleted = 0` and cannot rely on caller conventions.
+- When adding new runtime business tables, the default is to first include them in "core tables that must have complete fields".
+- If exemption is needed, the append-only or system-type reason must be explained in design review, and this specification and corresponding audit script must be synchronized.
+- When implementing soft delete read semantics in runtime queries, `is_deleted = 0` must be explicitly filtered, not relying on caller conventions.

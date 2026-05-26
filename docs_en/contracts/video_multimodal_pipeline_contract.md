@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the standardized pipeline model for video multimodal input, supplementing the video subset specifications of `multimodal_gateway_contract.md`.
+This contract defines the standardized pipeline model for video multimodal input, supplementing the video subset specification of `multimodal_gateway_contract.md`.
 
 Related documents:
 
@@ -18,13 +18,13 @@ Related documents:
 
 ## 3. `VideoMultimodalInput` Minimum Fields
 
-Inherits from `MultimodalInputPart`, specializing video modality:
+Inherits from `MultimodalInputPart`, specialized for video modality:
 
 - `part_id`
 - `type` = `"video"`
 - `content_ref` — Video URI
-- `mime_type` — Required, e.g. `video/mp4`
-- `video_metadata?` — Metadata override injected in advance
+- `mime_type` — Required, e.g., `video/mp4`
+- `video_metadata?` — Pre-injected metadata override
 - `safety_labels?`
 - `provenance?`
 - `data_classification?`
@@ -54,13 +54,13 @@ Inherits from `MultimodalInputPart`, specializing video modality:
 
 ## 7. Rules
 
-- Video input must go through structured pipeline standardization.
+- Video input must be standardized through a structured pipeline.
 - Pipeline output order: metadata -> transcript -> scenes -> key_frames -> quality_assessment.
 - If transcript segment is unavailable, it must be exposed as a `conditional` safety finding, not silently ignored.
 - `quality_assessment.readiness` values: `"ready" | "conditional" | "blocked"`.
 - When `metadata.duration_ms <= 0` or resolution is invalid, `readiness` must be `"blocked"`.
-- `key_frames` interval defaults to 10 seconds, minimum 1 second.
-- Scene timeline defaults to 15-second segmentation, maximum 12 scenes.
+- `key_frames` default interval is 10 seconds, minimum 1 second.
+- Scene timeline default segmentation is 15 seconds, maximum 12 scenes.
 
 ## 8. Relationship with MultimodalGateway
 
@@ -69,6 +69,6 @@ Inherits from `MultimodalInputPart`, specializing video modality:
 
 ## 9. Test Requirements
 
-- unit: `VideoProcessor` coverage of metadata extraction, scene detection, keyframe extraction, quality assessment
+- unit: `VideoProcessor` covers metadata extraction, scene detection, keyframe extraction, quality assessment
 - integration: video request -> gateway -> `VideoPipelineOutput`, verify transcript / scenes / keyframes / summary correctness
 - contract: `VideoMultimodalInput` field completeness, `VideoTimeline` scene count boundary

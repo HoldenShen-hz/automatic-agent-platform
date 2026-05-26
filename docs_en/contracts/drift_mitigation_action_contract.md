@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines drift mitigation actions and execution rules for `§63`.
+This contract defines the drift mitigation measures and execution specification for `§63`.
 
 ## 2. Canonical Objects
 
@@ -15,7 +15,7 @@ This contract defines drift mitigation actions and execution rules for `§63`.
 - `action_id`
 - `alert_id` — associated DriftAlert
 - `action_type` — observe_only | throttle | downgrade | rollback | freeze
-- `target_subject_id` — target subject
+- `target_subject_id` — target of the action
 - `target_subject_type` — agent | workflow | task
 - `parameters` — action parameters
 - `status` — proposed | approved | executing | completed | failed
@@ -33,13 +33,13 @@ This contract defines drift mitigation actions and execution rules for `§63`.
 
 ## 5. Rules
 
-- MitigationAction must be associated with a DriftAlert.
-- action_type must comply with MitigationPolicy.
-- Execution status must track: proposed -> approved -> executing -> completed/failed.
-- rollback operations must preserve rollback points.
+- MitigationAction must be associated with DriftAlert
+- action_type must comply with MitigationPolicy
+- Execution status must be tracked: proposed -> approved -> executing -> completed/failed
+- rollback operations must preserve rollback points
 
 ## 6. Test Requirements
 
-- unit: execution of each mitigation action type
-- integration: drift detection -> mitigation -> effect validation
-- contract: action state-machine integrity validation
+- unit: all types of mitigation action execution
+- integration: drift detection -> mitigation -> effect verification
+- contract: action state machine completeness validation

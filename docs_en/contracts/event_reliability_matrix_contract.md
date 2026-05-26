@@ -1,57 +1,57 @@
 # Event Reliability Matrix Contract
 
-> **OAPEFLIR Association**: This contract defines event reliability requirements for OAPEFLIR dual chain topology, corresponding to ADR-016.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Related**: This contract defines event reliability requirements for OAPEFLIR dual-chain topology, corresponding to ADR-016.
+> **Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines event tiering, reliability requirements, persistence strategies, ack strategies, and operations boundaries.
+This contract defines event classification, reliability requirements, persistence strategy, ack strategy and ops boundaries.
 
-It complements `event_bus_contract.md` by drilling down Tier 1/2/3 from principles to a matrix.
-Finer event registry, consumer relationships, and operations thresholds are covered in `event_registry_and_ops_threshold_contract.md`.
+It supplements `event_bus_contract.md`, diving from Tier 1 / 2 / 3 principles into matrix.
+Finer event registry, consumer relationships and ops thresholds are governed by diving document `event_registry_and_ops_threshold_contract.md`.
 
-## 2. Tiering Matrix
+## 2. Classification Matrix
 
-| Tier | Guarantee Level | Persistence | Ack | Replay | Applicable Scenarios |
+| Tier | Guarantee Level | Persistence | ack | Replay | Applicable Scenario |
 | --- | --- | --- | --- | --- | --- |
-| `tier1` | Must-deliver / Recoverable | Must write to DB first | Must acknowledge per consumer | Must support | Tasks, approvals, status, recovery chain |
-| `tier2` | Best-effort delivery | Optional persistence | Optional | Recommended | Important progress, tool stages, observability events |
-| `tier3` | May be lost | May skip persistence | Not required | Not required | Streaming chunks, heartbeats, transient progress |
+| `tier1` | Must deliver / recoverable | Must write DB first | Must ack per consumer | Must support | Task, approval, status, recovery chain |
+| `tier2` | Best effort delivery | Optional persistence | Optional | Recommended | Important progress, tool stage, observation event |
+| `tier3` | Can be lost | May not persist | Not required | Not required | Streaming chunk, heartbeat, transient progress |
 
 ## 3. Ring 1 Baseline Events
 
 | Event Type | Tier | Reason |
 | --- | --- | --- |
-| `platform.task.created` | `tier1` | Primary chain fact event |
-| `platform.task.status_changed` | `tier1` | User primary status |
+| `platform.task.created` | `tier1` | Main chain fact event |
+| `platform.task.status_changed` | `tier1` | User main status |
 | `platform.harness.started` | `tier1` | Harness lifecycle start |
-| `platform.node.completed` | `tier1` | Next node advancement depends on this |
+| `platform.node.completed` | `tier1` | Next node advancement depends |
 | `platform.harness.failed` | `tier1` | Recovery and failure attribution |
-| `approval.requested` | `tier1` | HITL primary chain |
-| `approval.resolved` | `tier1` | Prerequisite for recovery execution |
-| `improve.candidate_accepted` | `tier1` | Candidate acceptance changes subsequent strategy and rollout trajectory |
-| `release.rollout_started` | `tier1` | Release chain start, requires audit and recovery |
-| `release.rollout_completed` | `tier1` | Release chain end state, requires stable record |
+| `approval.requested` | `tier1` | HITL main chain |
+| `approval.resolved` | `tier1` | Recovery execution prerequisite |
+| `improve.candidate_accepted` | `tier1` | Candidate acceptance will change subsequent strategy and rollout trajectory |
+| `release.rollout_started` | `tier1` | Release chain start, needs audit and recovery |
+| `release.rollout_completed` | `tier1` | Release chain end state, needs stable trace |
 | `release.rollback_triggered` | `tier1` | Rollback rewrites release trajectory, must be recoverable |
-| `gateway.message_received` | `tier2` | Channel input is important but does not directly drive recovery |
-| `feedback.signal_received` | `tier2` | Affects learn/improve, but evidence compensation allowed for recovery |
-| `loop.iteration_completed` | `tier2` | Critical for closed-loop observation, but not standalone authoritative business status |
-| `stream.chunk_emitted` | `tier3` | Display-class transient traffic |
+| `gateway.message_received` | `tier2` | Channel input important but not directly driving recovery |
+| `feedback.signal_received` | `tier2` | Affects learn / improve, but can compensate recovery through evidence |
+| `loop.iteration_completed` | `tier2` | Closed-loop observation key event, but not alone as authoritative business status |
+| `stream.chunk_emitted` | `tier3` | Display-type transient流量 |
 
 ## 4. Write Rules
 
-- Tier 1: Write to `events` first, then register `event_consumer_acks`, then attempt dispatch.
-- Tier 2: May emit first then backfill persistence.
-- Tier 3: Defaults to memory or display layer channels; per-event persistence not required.
+- Tier 1: First write `events`, then register `event_consumer_acks`, then try to distribute.
+- Tier 2: Can first emit then supplement persistence.
+- Tier 3: Default to memory or display layer channel, does not require per-item persistence.
 
-## 5. Operations Rules
+## 5. Ops Rules
 
 | Item | Tier 1 | Tier 2 | Tier 3 |
 | --- | --- | --- | --- |
-| Loss alert | Required | Optional | Not required |
-| Ack backlog alert | Required | Optional | Not required |
-| Replay tools | Required | Optional | Not required |
-| Consumer idempotency requirement | Required | Recommended | Recommended |
+| Loss alert | Must | Optional | Not required |
+| Ack backlog alert | Must | Optional | Not required |
+| Replay tool | Must | Optional | Not required |
+| Consumer idempotent requirement | Must | Recommended | Recommended |
 
 ## 6. Related Documents
 
@@ -62,4 +62,4 @@ Finer event registry, consumer relationships, and operations thresholds are cove
 
 ## 7. Closure Conclusion
 
-The core of event tiering is not "labeling events", but defining the acceptable loss cost and recovery cost for each event type.
+The core of event classification is not "labeling events", but clarifying acceptable loss cost and recovery cost for each type of event.

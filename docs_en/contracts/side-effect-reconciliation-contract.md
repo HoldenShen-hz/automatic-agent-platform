@@ -1,4 +1,4 @@
-# Side Effect Reconciliation Contract
+# v4.3 Side Effect Reconciliation Contract
 
 > v4.3 canonical contract. Covers `SideEffectRecord` / `ReconciliationRecord` / `CompensationRecord`.
 
@@ -26,18 +26,18 @@ Minimum fields:
 | `createdAt` | `timestamp` | Creation time |
 | `updatedAt` | `timestamp` | Update time |
 
-`SideEffectStatus` (16 states, R20-52 aligned):
+`SideEffectStatus` (16 states, v4.3 canonical):
 
 - `proposed`
 - `approved`
 - `reserved`
 - `committing`
 - `committed`
-- `confirming` (equivalent to `awaiting_confirmation`)
+- `confirming`
 - `confirmed`
 - `ambiguous`
-- `reconciling`
 - `manual_review_required`
+- `reconciling`
 - `compensation_required`
 - `compensating`
 - `compensated`
@@ -103,7 +103,7 @@ Before side effect commit, must re-validate:
 
 - Ambiguous external results must not be marked `confirmed`.
 - Revoked / expired side effects must not commit.
-- Before commit, if approval, budget, lease, fencing any失效 must reject.
+- Before commit, if approval, budget, lease, fencing any fails, must reject.
 - Compensation must not overwrite original `SideEffectRecord`.
 
 

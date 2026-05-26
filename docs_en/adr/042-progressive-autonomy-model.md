@@ -5,33 +5,33 @@
 
 ## Context
 
-Agents at different maturity levels need different autonomy permissions. Newly onboarded agents should progressively earn trust.
+Agents at different maturity levels require different autonomy permissions. Newly onboarded agents should progressively earn trust.
 
 ## Decision
 
 ### Autonomy Levels
 
 | Level | Name | Permissions |
-|------|------|-------------|
+|-------|------|-------------|
 | L1 | suggestion | Only generates suggestions, does not auto-execute |
-| L2 | supervised | Allows controlled execution but requires human confirmation or strong oversight |
+| L2 | supervised | Allows controlled execution with human confirmation or strict oversight |
 | L3 | semi_auto | Allows low-risk auto-execution, high-risk still requires escalation |
 | L4 | full_auto | Allows auto-execution within explicit boundaries |
 
-The interaction autonomy enum must preserve `suggestion` and `frozen` at both ends: `suggestion` means only giving suggestions without auto-execution; `frozen` means interaction progress is frozen due to risk, panic, or governance policy. This enum only describes interaction autonomy and is not equivalent to `UnifiedRuntimeMode`.
+The interaction autonomy enum must retain `suggestion` and `frozen` at both ends: `suggestion` means only providing suggestions without auto-execution; `frozen` means interaction progression is frozen due to risk, panic, or governance policy. This enum only describes interaction autonomy, and is not equivalent to `UnifiedRuntimeMode`.
 
 Rules:
 
 - `full_auto` does not mean unlimited automation.
 - High-risk domains default to not entering `full_auto` unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance with human accountability boundaries.
-- If a domain is marked as `advisory_only`, `human_accountable`, or `deterministic_hot_path_only`, the maximum autonomy level must be below `full_auto`.
+- If a domain is marked as `advisory_only`, `human_accountable`, or `deterministic_hot_path_only`, the autonomy level ceiling must be below `full_auto`.
 
 ### Promotion Rules
 
 - Based on execution success rate
 - Based on risk assessment results
 - Based on human feedback
-- Progressive promotion, avoiding leapfrogging
+- Progressive promotion, avoiding leaps
 
 ### Demotion Rules
 
@@ -42,15 +42,15 @@ Rules:
 ### Permission Boundaries
 
 - Each level has clear permission scope
-- High-risk operations require higher levels
-- Critical decisions retain human approval
+- High-risk operations require higher level
+- Key decisions retain human approval
 
 ## Consequences
 
 Pros:
 
 - Progressive authorization reduces risk
-- Incentivizes agents to continuously improve
+- Incentivizes continuous agent improvement
 - Clear permission boundaries facilitate management
 
 Cons:
@@ -63,11 +63,11 @@ Cons:
 - [ADR-041 Proactive Agent Framework](./041-proactive-agent-framework.md)
 - [ADR-083 Proactive Agent and Progressive Autonomy](./083-proactive-agent-and-progressive-autonomy.md)
 
-## Source Section
+## Source Sections
 
 - `§42` Progressive Autonomy Model
 
 ## v4.3 ADR Remediation
 
-- A-34: This ADR originally wrote level 4 `full_auto` as "full automation". The root cause is that the Progressive Autonomy ADR mistakenly wrote the autonomy levels as an unlimited authorization ladder, without binding to high-risk domain risk override rules. Fix: The body now explicitly states that high-risk domains cannot enter `full_auto` by default unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance.
-- R3-54: This ADR defines 6 levels of autonomy (0-5), which do not directly correspond to the 4 levels required by §42.1. The root cause is that the autonomy model evolved from 4 levels to 6 levels. Fix: The body explicitly states that the 6-level system (0 supervised, 1 assisted, 2 partial_auto, 3 high_auto, 4 full_auto, 5 autonomous) is canonical, and §42.1's 4 levels refer to different dimensions (e.g., risk levels), and there is no contradiction between the two.
+- A-34: This ADR originally wrote level 4 `full_auto` as "complete automation", root cause being the progressive autonomy ADR mistakenly wrote the autonomy levels as an unlimited authorization ladder without binding to high-risk domain risk override rules. Fix: The main text now explicitly states that high-risk domains default to not `full_auto` unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance.
+- R3-54: This ADR previously retained both a 6-level autonomy experimental naming and the §42.1 4-level external delivery model, causing contract vs. product expression conflicts. Fix: The main text now unifies to `suggestion / supervised / semi_auto / full_auto` four-level interaction autonomy; finer-grained runtime constraints continue to be carried by `RuntimeModeEnvelope`.

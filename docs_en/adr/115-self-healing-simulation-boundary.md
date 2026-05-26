@@ -4,19 +4,20 @@
 Accepted
 
 ## Background
-The current self-healing service provides a deterministic simulation baseline testable within the repository, not an external real infrastructure orchestrator.
+Current self-healing service provides a deterministic simulation baseline testable in warehouse, not an external real infrastructure orchestrator.
 
 ## Decision
-- Self-healing execution results may adopt a deterministic outcome model, but must:
-  - Have explainable behavior
+- Self-healing execution results may use deterministic outcome model, but must:
+  - Be explainable
   - Be constrained by policy
-  - Be linked with component health status, retry budget, and cooldown period
-- When a component has exceeded maximum failure count, automatically enter fail-closed / cooldown, rather than continuously blind retry.
-- Documentation must clearly state this is a simulation baseline layer; real executor may be replaced later.
+  - Link with component health status, retry budget, cooldown period
+- When component has exceeded maximum failure count, automatically enter fail-closed / cooldown, instead of continuously blind retry.
+- Documentation must clearly state this is a simulation baseline layer, real executor can be replaced later.
 
 ## Result
 - Self-healing logic is no longer a "black box success rate".
-- Both operations and testing can base expected behavior on unified rules.
+- Both ops and tests can judge expected behavior based on unified rules.
 
 ## Related Implementation
 - `src/ops-maturity/platform-ops-agent/self-healing-service.ts`
+

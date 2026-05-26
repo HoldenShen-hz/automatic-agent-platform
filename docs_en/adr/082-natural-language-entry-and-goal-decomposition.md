@@ -4,13 +4,13 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
 
-- **Observe**: Natural language input collection, multi-language parsing, entity extraction
-- **Assess**: Ambiguity detection, risk estimation, confirmation demand judgment
+- **Observe**: Natural language input collection, multilingual parsing, entity extraction
+- **Assess**: Ambiguity detection, risk estimation, confirmation requirement judgment
 - **Plan**: Goal decomposition, task DAG, cross-domain dependency graph generation
 - **Execute**: Map decomposition results to controlled requests and execution plans
-- **Feedback**: User feedback, multi-round correction, plan revision
+- **Feedback**: User feedback, multi-turn correction, plan revision
 - **Learn**: Template hit rate and decomposition quality optimization
 - **Improve**: Prompt / template / planner strategy improvement
 - **Release**: NL pipeline and GoalDecomposer rollout
@@ -27,11 +27,11 @@ v2.7 `§39-§40` requires the platform to provide natural language entry and goa
 - `src/interaction/nl-gateway`
 - `src/interaction/goal-decomposer`
 
-But lacks clear decisions on how the two connect with existing Runtime / OAPEFLIR / API contracts.
+But lacks explicit decision explaining how they connect with existing Runtime / OAPEFLIR / API contracts.
 
-## Decisions
+## Decision
 
-### 1. Natural language entry and execution entry are separated
+### 1. Natural Language Entry and Execution Entry Are Separated
 
 `NlGateway` is responsible for:
 
@@ -41,20 +41,20 @@ But lacks clear decisions on how the two connect with existing Runtime / OAPEFLI
 - clarification decision
 - generating `RequestEnvelope`
 
-It does not directly execute workflows.
+It does not directly execute workflow.
 
-### 2. `GoalDecomposer` is responsible for cross-domain goal decomposition, does not directly hold execution authority
+### 2. `GoalDecomposer` Is Responsible for Cross-Domain Goal Decomposition, Does Not Directly Hold Execution Rights
 
 `GoalDecomposer` is responsible for:
 
 - Generating `GoalDecomposition`
 - Building `TaskDependency`
-- Providing cost, duration, risk estimates
+- Providing cost, duration, and risk estimates
 - Indicating `requiresHumanReview`
 
 Actual execution is still taken over by orchestration / execution plane.
 
-### 3. Natural language results must map to structured contracts
+### 3. Natural Language Results Must Map to Structured Contracts
 
 Natural language entry output must converge to:
 
@@ -65,16 +65,16 @@ Natural language entry output must converge to:
 
 Execution plane cannot directly consume loose prompt text.
 
-### 4. Ambiguity prioritizes entering clarification instead of speculative execution
+### 4. Ambiguity Prioritizes Clarification Over Guessed Execution
 
 When confidence is below threshold, risk is high, or key entities are missing, the system must:
 
 - Block automatic execution
 - Enter clarification
-- Record clarification questions and status
+- Record clarification questions and state
 
 ## Consequences
 
 - `src/interaction/nl-gateway` and `src/interaction/goal-decomposer` will become controlled bridges from Interface Plane to Orchestration Plane
-- Contract boundary between natural language and execution plane clarified
-- Subsequent implementation prioritizes schema, state machine, and multi-round dialogue testing
+- Contract boundary between natural language and execution plane is clarified
+- Subsequent implementation prioritizes schema, state machine, and multi-turn dialogue tests

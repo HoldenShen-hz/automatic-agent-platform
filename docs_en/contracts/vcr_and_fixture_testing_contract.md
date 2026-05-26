@@ -7,7 +7,7 @@
 This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
+- **Assess**: Pre-execution evaluation and risk assessment
 - **Plan**: Task decomposition and DAG construction
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines record / replay and fixture rules for providers, LLMs, streaming outputs, and external APIs in testing.
+This contract defines record/replay and fixture rules for providers, LLMs, streaming outputs, and external APIs in testing.
 
 Related documents:
 
@@ -28,7 +28,7 @@ Related documents:
 - `gateway_streaming_contract.md`
 - `cost_and_budget_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
 The VCR / fixture testing system must at least achieve:
 
@@ -40,8 +40,8 @@ The VCR / fixture testing system must at least achieve:
 
 ### 3.1 `fixture_only`
 
-- Only uses static fixtures
-- Default CI main mode
+- Uses only static fixtures
+- Default CI primary mode
 
 ### 3.2 `vcr_replay`
 
@@ -50,7 +50,7 @@ The VCR / fixture testing system must at least achieve:
 
 ### 3.3 `vcr_record`
 
-- Allows real provider calls during local development
+- Allows real calls to providers during local development
 - Records request/response as fixture
 
 ## 4. `RecordedInteraction`
@@ -69,17 +69,17 @@ The VCR / fixture testing system must at least achieve:
 
 ## 5. Request Fingerprint Rules
 
-Request fingerprint must contain at least:
+Request fingerprint must at least include:
 
-- Provider
-- Model
+- provider
+- model
 - System / user prompt normalized text
 - Tool list signature
 - Key parameters (temperature, reasoning level, etc.)
 
 Rules:
 
-- Must not directly include volatile fields without semantic value in fingerprint.
+- Fields that are volatile but have no semantic value must not be directly included in the fingerprint.
 - Credential sanitization must be completed before fingerprint generation.
 
 ## 6. Fixture Directory Rules
@@ -98,32 +98,32 @@ Rules:
 ## 7. Streaming Response Rules
 
 - Streaming responses can be recorded as chunk lists
-- Replay must maintain order, end signal, and finish reason consistency
-- Does not require token-by-token exact match, but must satisfy upper-layer protocol assertions
+- During replay, order, end signal, and finish reason must be maintained
+- Exact token-by-token consistency is not required, but must satisfy upper-layer protocol assertions
 
 ## 8. Security and Sanitization
 
-- API key, cookie, token, and Authorization header must be removed before recording
+- API keys, cookies, tokens, and Authorization headers must be removed before recording
 - Raw sensitive requests must not directly enter repository fixtures
-- If safe sanitization is not possible, recording should be prohibited and manual mock required
+- If safe sanitization is not possible, recording must be prohibited and manual mock required
 
 ## 9. Failure Semantics
 
-- When `vcr_replay` mode lacks matching fixture, test must fail
-- When fixture schema is illegal, test must fail
-- When replay result is incompatible with current protocol, should prompt to re-record or upgrade fixture version
+- In `vcr_replay` mode, when matching fixture is missing, the test must fail
+- When fixture schema is invalid, the test must fail
+- When replay result is incompatible with current protocol, should prompt re-recording or upgrading fixture version
 
 ## 10. Layering with Real Tests
 
 Recommended layering:
 
-- Unit / integration: default `fixture_only`
-- E2E: prioritize `vcr_replay`
-- Nightly / manual eval: can allow real providers
+- unit / integration: default `fixture_only`
+- e2e: prefer `vcr_replay`
+- nightly / manual eval: may allow real providers
 
 ## 11. Cost and Governance
 
-- Cost of recording real providers must be traceable
+- Cost of recording real providers must be trackable
 - `vcr_record` should not be enabled by default in CI
 - Re-recording must have clear trigger conditions, such as model upgrade, protocol change, or core prompt change
 
@@ -133,7 +133,7 @@ Phase 1a does:
 
 - `fixture_only`
 - Non-streaming provider replay
-- Fail when fixture is missing
+- Missing fixture causes failure
 
 Phase 1b does:
 
@@ -141,12 +141,12 @@ Phase 1b does:
 - Streaming chunk replay
 - More complete request fingerprint and recording governance
 
-Currently does not do:
+Currently not doing:
 
 - Large-scale fixture auto-update service
 - Cross-provider difference normalization auto-fix
-- Enterprise dataset evaluation platform
+- Enterprise-level dataset evaluation platform
 
 ## 13. Closure Conclusion
 
-The core of VCR / fixture is not "storing one call", but transforming external unstable dependencies into a controllable, replayable, and auditable test input.
+The core of VCR / fixture is not "storing one call", but converting external unstable dependencies into a controllable, replayable, auditable test input set.

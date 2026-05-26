@@ -6,8 +6,8 @@
 
 - **Observe**: Read input, plan, tool, memory, output five-layer signals
 - **Assess**: Form guardrail findings and escalation suggestions
-- **Plan**: Set blocking points for each round of execution
-- **Execute**: Implement interception or transfer to human during execution
+- **Plan**: Set blocking points for each execution round
+- **Execute**: Implement interception or human transfer during run
 - **Feedback**: Output findings, codes, evidence
 - **Learn**: Summarize high-frequency violation patterns
 - **Improve**: Iterate guardrail policy
@@ -24,8 +24,8 @@ Guardrails cannot be just a single output filter; Harness needs full-chain risk 
 
 ## Decision
 
-- Guardrails are fixed as five layers: input / planning / tool / memory / output
-- Each layer has independent configuration, independent interception, independent audit
+- Guardrails fixed as five layers: input / planning / tool / memory / output
+- Each layer independently configured, independently intercepted, independently audited
 - Evaluation results must enter timeline and feedback
 
 ## Consequences

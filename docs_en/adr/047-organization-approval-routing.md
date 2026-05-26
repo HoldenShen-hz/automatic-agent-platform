@@ -5,7 +5,7 @@
 
 ## Context
 
-Approval requests need to be dynamically routed to the correct approver based on organization structure, rather than hardcoded approval chains.
+Approval requests need to be dynamically routed to the correct approver based on organizational structure, rather than hardcoded approval chains.
 
 ## Decision
 
@@ -28,25 +28,25 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 | Type | Description |
 |------|-------------|
 | single | Single approver |
-| multi_party | Multi-party co-signing |
+| multi_party | Multi-party countersignature |
 | delegated | Delegated approval |
 | sequential_chain | Sequential approval chain |
 
-### ApprovalTimeout Strategy
+### ApprovalTimeout Strategies
 
 | Strategy | Description |
 |----------|-------------|
 | warn | Warning before timeout |
 | escalate | Escalate after timeout |
-| break_glass | Trigger break-glass process, requiring dual approval to continue |
+| break_glass | Trigger break-glass process, requires dual approval to continue |
 
-Note: The `auto_action` strategy has been removed. After timeout, must go through break-glass + dual approval process. Automated preset actions are prohibited.
+Note: The `auto_action` strategy has been removed. After timeout, must go through break-glass + dual approval process; automatic execution of preset actions is prohibited.
 
-### Routing Rules Engine
+### Routing Rule Engine
 
-- Dynamic routing based on organization hierarchy, roles, risk levels
-- Support for approval delegation
-- Support for approval expedited processing
+- Dynamic routing based on organizational hierarchy, roles, risk level
+- Supports approval delegation
+- Supports approval expedited handling
 
 ## Consequences
 
@@ -54,11 +54,11 @@ Pros:
 
 - Dynamic routing adapts to organizational changes
 - Multi-type approval flows support complex scenarios
-- Automated timeout handling
+- Timeout handling automation
 
 Cons:
 
-- Rules engine complexity
+- Rule engine complexity
 - Routing performance impact
 
 ## Cross References
@@ -66,6 +66,6 @@ Cons:
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [Approval / HITL Contract](../contracts/approval_and_hitl_contract.md)
 
-## Source Section
+## Source Sections
 
 - `§47` Organization Approval Routing

@@ -14,19 +14,19 @@ Accepted
 
 ## Decision
 
-Platform surface capabilities are uniformly governed by the following boundaries:
+Platform surface capabilities are governed by the following boundaries:
 
-- External requests must first enter Interface Plane such as API / Gateway / Webhook / Scheduler, and cannot directly enter the execution layer.
-- Inter-plane communication must prioritize contract-based envelopes, typed events, outbox / DLQ mechanisms, and cannot allow implicit shared state.
-- Extension capabilities must enter the platform through Plugin SPI, Tool / Skill / Plugin contracts, Business Pack lifecycle.
-- SDK / DX only provides controlled access capabilities, and does not provide shortcuts that bypass policy, approval, sandbox, budget.
-- Business Pack must declare domain, capability, risk, tool bundle, API compatibility, and is subject to the same extension governance constraints.
+- External requests must first enter Interface Plane such as API / Gateway / Webhook / Scheduler, cannot directly enter execution layer.
+- Inter-plane communication must prioritize contracted envelope, typed event, outbox / DLQ mechanisms,不允许隐式共享状态.
+- Extension capabilities must enter platform through Plugin SPI, Tool / Skill / Plugin contracts, Business Pack lifecycle.
+- SDK / DX only provides controlled access capabilities, does not provide shortcuts bypassing policy, approval, sandbox, budget.
+- Business Pack must declare domain, capability, risk, tool bundle, API compatibility, and is subject to same extension governance constraints.
 
 ## Trade-offs
 
-- Do not create separate ADRs for each API or SDK action to avoid fragmented architecture decisions.
-- Do not write extension runtime implementation details into ADRs; fields, states, and failure semantics go into contracts.
-- Do not allow "internal SDK privileged paths"; all extensions must go through unified authorization, audit, and release boundaries.
+- Do not create separate ADR for each API or SDK action to avoid architecture decision fragmentation.
+- Do not write extension runtime implementation details into ADR; fields, state, failure semantics go into contracts.
+- Do not allow "internal SDK privileged path"; all extensions must go through unified authorization, audit, and release boundaries.
 
 ## Impact
 
@@ -51,18 +51,18 @@ Corresponding implementation boundaries:
 - `src/plugins/*`
 - `src/scale-ecosystem/marketplace/*`
 
-## Testing Requirements
+## Test Requirements
 
-- contract tests: API / event / gateway envelope must not bypass contracts.
-- integration tests: event bus, plugin lifecycle, marketplace install / publish flows must be able to run cross-boundary.
-- denial tests: Extensions without authentication, authorization, verification, or declared capability must not enter production execution chain.
+- contract tests: API / event / gateway envelope cannot bypass contract.
+- integration tests: event bus, plugin lifecycle, marketplace install / publish flow must be able to run across boundaries.
+- denial tests: extensions without authentication, authorization, verification, declared capability cannot enter production execution chain.
 
 ## Alternatives
 
-1. **Create separate ADRs for each API/SDK action**: Avoids architecture decision fragmentation, but leads to ADR quantity inflation and difficult to maintain consistency.
-2. **Write extension runtime implementation details into ADRs**: More comprehensive information, but ADRs become bloated, and implementation changes require updating ADRs.
-3. **Allow "internal SDK privileged paths"**: Lowers development threshold, but breaks platform boundaries and increases security risk.
-4. **Adopt this decision**: Unifies governance of platform surface, balancing extensibility and security.
+1. **Create separate ADR for each API/SDK action**: Avoids architecture decision fragmentation, but leads to ADR quantity inflation, difficult to maintain consistency.
+2. **Write extension runtime implementation details into ADR**: More comprehensive information, but ADR becomes bloated, and implementation changes require ADR updates.
+3. **Allow "internal SDK privileged path"**: Lowers development threshold, but breaks platform boundaries, increases security risk.
+4. **Adopt this decision**: Unified governance of platform surface, balancing extensibility and security.
 
 ## Cross References
 

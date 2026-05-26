@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Summarize 24-domain workflow patterns
+- **Observe**: Summarize 24 domain workflow patterns
 - **Assess**: Merge into archetypes
 - **Plan**: Generate baseline recipe for archetype
 - **Execute**: Drive domain baseline creation
@@ -20,14 +20,14 @@
 
 ## Background
 
-The original recipe prototypes were too few to cover 24 vertical business domains.
+The original recipe prototype was too few to cover 24 vertical business domains.
 
 ## Decision
 
-`DomainRecipe` expands to twelve archetypes, covering CRUD, Analytics, Creative, Realtime, Trading, Compliance, Research, Adversarial, Moderation, Logistics, Conversational, IncidentOps.
+`DomainRecipe` expanded to twelve archetypes, covering CRUD, Analytics, Creative, Realtime, Trading, Compliance, Research, Adversarial, Moderation, Logistics, Conversational, IncidentOps.
 
-Each archetype must eventually be written back to `DomainDescriptor.recipe`, and cannot be disconnected from `DomainDescriptor` as a second set of domain onboarding metadata.
+Each archetype must eventually be written back to `DomainDescriptor.recipe`, cannot become a second set of domain onboarding metadata detached from `DomainDescriptor`.
 
 ## Consequences
 
-- 24-domain baseline has a unified and extensible recipe model
+- 24 domain baseline has unified and extensible recipe model

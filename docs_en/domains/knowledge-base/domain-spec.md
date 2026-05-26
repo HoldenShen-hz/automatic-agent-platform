@@ -12,8 +12,8 @@
 
 - Source system document-level permissions must be mirrored.
 - Real-time access checks must be executed at query time.
-- Generated answers must retain citations and evidence references.
+- Generated answers must retain citations and evidence refs.
 
-## Acceptance Entry Criteria
+## Acceptance Criteria
 
 - Prior to GA, evidence of permission mirroring, cross-department isolation, citation accuracy, and access audits must be provided.

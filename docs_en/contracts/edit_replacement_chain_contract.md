@@ -8,7 +8,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
+- **Plan**: Task decomposition and DAG building
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
 - **Learn**: Pattern detection and knowledge extraction
@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the multi-level matching chain when edit / patch / replace tools locate old content and apply replacements.
+This contract defines the multi-level matching chain when `edit / patch / replace` tools locate old content and apply replacements.
 
 Related documents:
 
@@ -28,29 +28,29 @@ Related documents:
 - `tool_output_sanitization_contract.md`
 - `idempotency_and_recovery_matrix_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
 Multi-level matching chain must simultaneously solve two types of problems:
 
-- LLM-generated `old_string` has slight whitespace, indentation, newline deviations from real file.
-- To improve success rate, cannot directly magnify fuzzy replacement into silent mischange risk.
+- LLM-generated `old_string` has slight whitespace, indentation, newline deviations from the actual file.
+- To improve success rate, we cannot directly amplify fuzzy replacement into silent mis-change risk.
 
 ## 3. Core Principles
 
 - Matching chain must try in fixed order, stopping at first success.
-- The more fuzzy the match level, the stricter the security constraints must be.
-- Any non-exact replacement must leave warning and audit record.
-- When cannot uniquely locate, must fail, not "guess a similar place."
+- The more fuzzy the matching level, the stricter the security constraints must be.
+- Any non-exact replacement must leave warning and audit records.
+- When unable to locate uniquely, must fail rather than "guess a similar place".
 
-## 4. EditReplacementAttempt
+## 4. `EditReplacementAttempt`
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `attempt_level` | `exact \| whitespace_normalized \| indentation_normalized \| fuzzy \| context_anchored` | Match level |
+| `attempt_level` | `exact \| whitespace_normalized \| indentation_normalized \| fuzzy \| context_anchored` | Matching level |
 | `matched` | `boolean` | Whether successfully located |
 | `candidate_count` | `number` | Candidate count |
 | `similarity_score` | `number?` | Fuzzy match score |
-| `warning_codes` | `string[]` | Risk hints |
+| `warning_codes` | `string[]` | Risk warnings |
 | `applied_range` | `string?` | Change location |
 
 ## 5. Multi-Level Matching Chain
@@ -72,15 +72,15 @@ flowchart TD
 
 ### 5.1 Level 1 `exact`
 
-- Exact string matching
-- No normalization
+- Exact string match
+- No normalization applied
 - If uniquely matched, apply directly
 
 ### 5.2 Level 2 `whitespace_normalized`
 
 - Normalize consecutive whitespace
 - Remove trailing whitespace differences
-- Do not change semantic character order
+- Does not change semantic character order
 
 ### 5.3 Level 3 `indentation_normalized`
 
@@ -93,34 +93,34 @@ flowchart TD
 - Only attempted after levels 1-3 all fail
 - Requires `similarity_score >= 0.85`
 - Must have only one unique candidate
-- Must record warning on success: `fuzzy_edit_applied`
+- On success, must record warning: `fuzzy_edit_applied`
 
 ### 5.5 Level 5 `context_anchored`
 
-- First narrow candidate area using before/after anchors, then do fuzzy matching
-- Only effective in unique anchor window
-- Must record stronger warning on success: `anchored_fuzzy_edit_applied`
+- First narrow candidate region using before/after anchors, then do fuzzy match
+- Only effective within unique anchor window
+- On success, must record stronger warning: `anchored_fuzzy_edit_applied`
 
-## 6. Currently Explicitly Not Doing
+## 6. Current Explicit Non-Scope
 
 Phase 1a / 1b does not do:
 
 - AST-aware replacement
-- Tree-sitter level structured node locating
-- Cross-file semantic rewriting
+- tree-sitter level structured node location
+- Cross-file semantic rewrite
 
-If these capabilities are to be introduced, should enter Phase 2 and separately add ADR or contract.
+If these capabilities are to be introduced, should enter Phase 2 with separate ADR or contract.
 
 ## 7. Security Constraints
 
-- If multiple candidates appear for the same request, must fail and return conflict information.
-- Any fuzzy success result should return warning for upper layer message or log to prompt human review.
-- Multi-level matching chain is not allowed on binary / non-text files.
+- If multiple candidates appear in the same request, must fail and return conflict information.
+- Any fuzzy success result should return warning for upper layer message or log prompt for human review.
+- Multi-level matching chain must not be enabled on binary / non-text files.
 - Must hold `write` lock before applying replacement.
 
 ## 8. Error Semantics
 
-Suggested stable error codes:
+Recommended stable error codes:
 
 - `tool.edit_target_not_found`
 - `tool.edit_multiple_candidates`
@@ -129,16 +129,16 @@ Suggested stable error codes:
 
 Rules:
 
-- Target not found and "found multiple targets" must report errors separately.
-- Similarity below threshold should explicitly fail, not silently downgrade and apply.
+- Target not found and "multiple targets found" must be reported as separate errors.
+- Similarity not meeting threshold should explicitly fail, must not silently downgrade and apply.
 
 ## 9. Idempotency and Recovery
 
 - If file content after replacement already equals expected result, can be treated as idempotent success.
-- Before recovery retry, should re-read target file first, not directly reuse old candidate range.
+- Before retry recovery, should re-read target file rather than directly reuse old candidate range.
 - Retry at fuzzy / anchored level must not continue using old scores after file has changed.
 
-## 10. Phase Boundary
+## 10. Phase Boundaries
 
 Phase 1a does:
 
@@ -153,4 +153,4 @@ Phase 1b does:
 
 ## 11. Closure Conclusion
 
-Improving edit success rate cannot rely on "being bolder," but on a matching chain that tightens order, shows risks explicitly, and fails explainably.
+Improving edit success rate cannot rely on "being bolder with changes", but on a matching chain that tightens order, explicitly shows risk, and fails with explainable reasons.

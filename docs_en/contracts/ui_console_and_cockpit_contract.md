@@ -7,7 +7,7 @@
 This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
+- **Assess**: Pre-execution evaluation and risk assessment
 - **Plan**: Task decomposition and DAG construction
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
@@ -19,14 +19,14 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the minimum UI boundaries for Automatic Agent's Web Console, Task Cockpit, Workflow Cockpit, Approval Center, Stability Panel, and Admin Takeover Console.
+This contract defines the minimum interface boundaries for Automatic Agent's Web Console, Task Cockpit, Workflow Cockpit, Approval Center, Stability Panel, and Admin Takeover Console.
 
 It answers the questions:
 
 - What object does the UI primarily serve
-- What does the homepage display first
-- What capabilities must task, approval, stability, and takeover pages at least have
-- How is page data truth source layered to avoid each page independently patching together fact sources
+- What is displayed first on the homepage
+- What capabilities must task, approval, stability, and takeover pages at minimum have
+- How page data truth source is layered to avoid each page independently assembling facts
 
 Related documents:
 
@@ -48,11 +48,11 @@ The frontend is not a collection of chat windows, but:
 
 Minimum principles:
 
-1. Humans should primarily enter the system through `task / approval / inspect / takeover`, and should not directly give arbitrary instructions to agents.
+1. Humans should enter the system primarily through `task / approval / inspect / takeover`, not directly issuing free-form commands to any agent.
 2. The homepage must first answer "is the system healthy, what is it currently doing, where is it stuck".
-3. Key pages must be able to drill down to evidence, timeline, and inspect, not just show summary.
+3. Key pages must be able to drill down to evidence, timeline, and inspect, not just show summaries.
 4. High-risk actions must display risk level, policy source, approval chain, and takeover entry.
-5. UI display state must not reverse-define authoritative facts for tasks, workflows, or executions.
+5. UI-displayed state must not inversely define the authoritative facts of HarnessRun, PlanGraph, or NodeRun.
 
 ## 3. Console Information Architecture
 
@@ -84,26 +84,26 @@ Recommended minimum information architecture:
 
 Rules:
 
-- Current stage does not require immediately fully populating all pages.
-- But navigation grouping should from the beginning be organized by capability domain, not page-wall flat layout.
+- The current phase does not require laying out all pages at once.
+- But navigation grouping should be organized by capability domain from the start, not as a flat page wall.
 
 ## 4. Homepage Prioritization Rules
 
-Console homepage should be organized by the following priorities:
+The Console homepage should be organized by the following priority:
 
-1. Top displays:
+1. Top bar displays:
    - `system status`
    - `current focus`
    - `active alerts`
 2. First screen displays:
-   - Currently active tasks / workflows
+   - Currently active task / workflow
    - Whether runtime / queue / approval is healthy
    - Where current backlog is dispatched
 3. Second screen displays:
    - Blocked reason
    - Stale / recovery / retry summary
    - Recent high-risk decisions / approvals
-4. Raw logs, long traces, and raw event tails can only be drill-down views, and must not occupy homepage main visual.
+4. Raw logs, long traces, and raw event tails can only be used as drill-down views, not occupying the homepage main visual area.
 
 ## 5. Core Pages
 
@@ -111,12 +111,12 @@ Console homepage should be organized by the following priorities:
 
 Minimum fields:
 
-- `task_id`
-- `task_status`
-- `current_step`
-- `current_execution`
+- `task_projection_ref`
+- `harness_run_id`
+- `harness_run_status`
+- `active_node_run_id`
 - `blocked_reason?`
-- `latest_tool_call?`
+- `latest_attempt_receipt_ref?`
 - `latest_decision?`
 - `artifact_refs`
 
@@ -126,16 +126,17 @@ Minimum actions:
 - View timeline
 - View artifacts
 - Cancel task
-- Enter human takeover
+- Enter manual takeover
 
-### 5.2 `WorkflowCockpit`
+### 5.2 `RunCockpit`
 
 Minimum fields:
 
-- `workflow_id`
-- `workflow_status`
-- `steps`
-- `current_step_index`
+- `plan_graph_id`
+- `harness_run_id`
+- `harness_run_status`
+- `node_runs`
+- `active_node_run_id?`
 - `dependency_state`
 - `approval_nodes`
 - `evidence_refs`
@@ -152,7 +153,7 @@ Minimum actions:
 Minimum fields:
 
 - `approval_id`
-- `task_id`
+- `harness_run_id`
 - `risk_level`
 - `reason_summary`
 - `options`
@@ -220,11 +221,11 @@ Applicable to:
 
 Minimum content:
 
-- Overall health
-- Queue depth
-- Active executions
-- Approval backlog
-- Alert summary
+- overall health
+- queue depth
+- active executions
+- approval backlog
+- alert summary
 
 ### 6.2 `shared_query`
 
@@ -237,7 +238,7 @@ Applicable to:
 
 Rules:
 
-- Cross-domain aggregation pages should prioritize reusing shared queries, rather than each page independently pulling a dispersed API.
+- Cross-domain aggregated pages should prioritize reusing shared queries rather than each page independently calling scattered APIs.
 
 ### 6.3 `page_local_api`
 
@@ -252,48 +253,48 @@ Applicable to:
 Rules:
 
 - Domain-specific drill-down can have independent APIs.
-- But pages must not privately patch together authoritative state, should prioritize using inspect / resource APIs.
+- But pages must not privately assemble authoritative state; they should prioritize using inspect / resource APIs.
 
 ## 7. Task-Flow Cockpit Drill-Down
 
 Task / Workflow cockpit must support at least 5 levels of drill-down:
 
-| Level | Display Content |
+| Level | Displayed Content |
 | --- | --- |
-| `L1` | Task list + status |
-| `L2` | Task details + workflow state |
-| `L3` | Step outputs + tool calls |
-| `L4` | Approval / decision / evidence chain |
-| `L5` | Trace / replay / recovery timeline |
+| `L1` | task list + status |
+| `L2` | task details + workflow state |
+| `L3` | step outputs + tool calls |
+| `L4` | approval / decision / evidence chain |
+| `L5` | trace / replay / recovery timeline |
 
 Rules:
 
-- `completed` must not only display summary, must be able to enter evidence.
-- `blocked` must not only display "waiting", must display blocked reason and source.
-- `failed` must not only display error text, must be able to enter error code, last step, and recovery history.
+- `completed` must not only show summary; must be able to enter evidence.
+- `blocked` must not only show "waiting"; must show blocked reason and source.
+- `failed` must not only show error text; must be able to enter error code, last step, and recovery history.
 
-## 8. UI and Gateway / Streaming Relationship
+## 8. Relationship Between UI and Gateway / Streaming
 
 - Web UI streaming display should comply with `gateway_streaming_contract.md`.
-- If display layer needs to do chunk commit, catch-up, or backlog drain, should adapt by queue pressure and message age, rather than hardcoding special logic by upstream source.
+- If the display layer needs to do chunk commit, catch-up, or backlog drain, it should be adaptive based on queue pressure and message age, not hardcoded special logic based on upstream source.
 - Display layer catch-up must not disrupt message order, nor destroy readability through single-frame brute-force flush.
-- Non-streaming console views can read aggregated state, but must not replace stream facts.
+- Non-streaming console views can read aggregated state but must not replace stream facts.
 - UI-side state naming must remain consistent with `debug_inspect_health_backpressure_contract.md` and `api_surface_contract.md`.
 
-## 9. Currently Explicitly Not Done
+## 9. Explicitly Not Done Currently
 
-Currently not directly adopting:
+Currently not directly adopted:
 
-- Heavy Canvas / A2UI package rendering platform
+- Heavy Canvas / A2UI package rendering platforms
 - Large-scale business domain workbench deployment
 - Business page walls
-- Directly maintaining capability / policy truth in frontend
+- Directly maintaining capability / policy truth in the frontend
 
 Reasons:
 
-- The core goal of the current stage is to first stabilize the Stable Core.
-- Prematurely introducing heavy UI package runtime amplifies frontend-backend boundary complexity.
-- Automatic Agent currently needs task, workflow, stability, and takeover workbenches more than business domain page expansion.
+- The core goal of the current phase is to first get the Stable Core running reliably.
+- Introducing heavy UI package runtime prematurely amplifies frontend-backend boundary complexity.
+- Automatic Agent currently needs four types of workbenches: task, workflow, stability, and takeover, not business domain page expansion.
 
 ## 10. Closure Conclusion
 
@@ -304,4 +305,4 @@ A more reasonable baseline is:
 - A Console that can view health status
 - A Task / Workflow Cockpit that can drill down into evidence
 - An Approval Center that can handle approvals and explanations
-- An Admin Console that can takeover and limit damage
+- An Admin Console that can take over and mitigate damage

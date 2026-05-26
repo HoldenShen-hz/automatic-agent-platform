@@ -5,7 +5,7 @@
 
 ## Context
 
-Enterprises need to integrate with existing Identity Providers (IdP) to achieve single sign-on and automated user lifecycle management.
+Enterprises need to integrate with existing identity providers (IdP) to achieve single sign-on and automated user lifecycle management.
 
 ## Decision
 
@@ -13,7 +13,7 @@ Enterprises need to integrate with existing Identity Providers (IdP) to achieve 
 
 | Protocol | Description |
 |----------|-------------|
-| SAML 2.0 | Common for enterprise IdPs |
+| SAML 2.0 | Common for enterprise IdP |
 | OIDC | Recommended for modern applications |
 | OAuth 2.0 | Third-party authorization |
 
@@ -37,17 +37,17 @@ interface SCIMGroup {
 
 ### User Lifecycle (Saga Pattern)
 
-All user lifecycle operations use prepare/commit/compensate semantics and record audit logs:
+All user lifecycle operations use prepare/commit/compensate semantics with audit logging:
 
 | Phase | Onboarding | Transfer | Offboarding |
 |-------|------------|----------|-------------|
-| prepare | Verify IdP credentials, pre-allocate accounts, check quotas | Get current permissions, generate change list | Backup data, generate permission recovery list |
-| commit | Create accounts, join default groups, send welcome notifications | Update organization info, sync permission changes | Disable accounts, recover permissions, export data |
-| compensate | Rollback account creation, send exception notifications | Rollback organization info, rollback permission changes | Restore accounts, unfreeze permissions (emergency cases) |
+| prepare | Verify IdP credentials, pre-allocate account, check quota | Get current permissions, generate change list | Backup data, generate permission recovery list |
+| commit | Create account, join default group, send welcome notification | Update organization info, sync permission changes | Disable account, recover permissions, export data |
+| compensate | Rollback account creation, send exception notification | Rollback organization info, rollback permission changes | Restore account, unfreeze permissions (emergency only) |
 
-Audit log records: operation type, operator, timestamp, pre/post state, compensation action execution results.
+Audit logging records: operation type, operator, timestamp, pre/post state changes, compensation action execution results.
 
-### Sync Strategy
+### Sync Strategies
 
 - Real-time sync: SCIM webhook
 - Periodic sync: Incremental sync job
@@ -64,13 +64,13 @@ Pros:
 Cons:
 
 - IdP integration complexity
-- Sync delays may cause permission issues
+- Sync delay may cause permission issues
 
 ## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§48` Enterprise SSO/SCIM Integration Architecture

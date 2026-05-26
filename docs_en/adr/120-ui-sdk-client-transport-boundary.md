@@ -1,50 +1,50 @@
-# ADR-120 UI and SDK Client Transport Boundary
+# ADR-120 UI And SDK Client Transport Boundary
 
 - Status: Accepted
 - Decision Date: 2026-05-25
 
 ## Background
 
-Both the UI client and the SDK client talk to the same platform APIs, but they run in different environments:
+Both UI client and SDK client access the same platform API, but they serve different runtime environments:
 
-- The UI runs in the browser and must handle offline behavior, token refresh, and WebSocket interaction ergonomics.
-- The SDK runs in automation or server-side environments and prioritizes deterministic requests, explicit handshakes, and SSE streaming subscriptions.
+- UI runs in browser, needs to handle offline, token refresh, WebSocket interactive experience.
+- SDK runs in automation/server environment, more emphasizes deterministic requests, explicit handshake, SSE streaming subscription.
 
-These differences already exist in the implementation, but they were not previously documented as authoritative design choices. That caused several reviews to misclassify them as inconsistency defects.
+These differences already exist in implementation, but previously lacked authoritative explanation, causing several reviews to misinterpret them as "inconsistent defects".
 
 ## Decision
 
-### 1. Offline writes
+### 1. Offline Write
 
-- The offline write queue is a UI-only capability.
-- The SDK does not own browser-style offline replay; network failures return explicit errors by default.
-- `ui-operator` in the UI offline queue represents a local operation agent, not a server-side principal.
+- Offline write queue is UI-only capability.
+- SDK does not承担浏览器offline replay responsibility; network failure defaults to explicit error return.
+- `ui-operator` in UI offline queue only represents local operation agent, does not equal server-side principal.
 
-### 2. Version negotiation
+### 2. Version Negotiation
 
-- The UI uses the `Accept-Version` header to express acceptable API versions.
-- The SDK uses `/handshake` together with `X-Platform-Version`, `X-SDK-Version`, and `X-Contract-Version` for explicit negotiation.
-- Both mechanisms may coexist; they do not need identical per-request headers.
+- UI expresses frontend-acceptable API version set through `Accept-Version` header.
+- SDK uses `/handshake` and `X-Platform-Version` / `X-SDK-Version` / `X-Contract-Version` for explicit version negotiation.
+- The two can coexist, not requiring per-request header to be completely consistent.
 
-### 3. Auth refresh and interceptors
+### 3. Authentication Refresh and Interceptor
 
-- The UI may use an interceptor chain for token injection, `401` refresh, and retry.
-- The SDK keeps retry logic inside the request path rather than exposing a browser-style token-refresh interceptor model.
-- These paths share the authentication contract, but not the same implementation shape.
+- UI allows using interceptor chain for token injection, 401 refresh, and retry.
+- SDK internalizes retry logic in request path, rather than exposing browser-style token-refresh interceptor pattern.
+- These two paths share authentication contract, but do not share implementation forms.
 
-### 4. Realtime subscription and fallback
+### 4. Realtime Subscription and Degradation
 
-- The UI's primary realtime transport is WebSocket.
-- The SDK's primary streaming transport is SSE.
-- In the UI, `sse-fallback` currently represents a degraded state only; it does not mean a real SSE channel is automatically established.
+- UI primary realtime transport is WebSocket.
+- SDK primary streaming transport is SSE.
+- In UI, `sse-fallback` currently only indicates degradation state, does not mean automatically establishing real SSE channel.
 
-### 5. Resilience strategy
+### 5. Resilience Strategy
 
-- UI transport may use a local circuit breaker to protect interaction ergonomics and fail fast.
-- SDK transport defaults to bounded retries and backoff, without a UI-style built-in breaker.
-- WebSocket reconnect and SSE reconnect may use different backoff, jitter, and max-attempt policies.
+- UI transport can use local circuit breaker to protect interactive experience and fast fail-fast.
+- SDK transport defaults to limited retry and backoff, does not built-in UI-style breaker.
+- WebSocket reconnect and SSE reconnect can have different backoff/jitter/max-attempt strategies.
 
-## Consequences
+## Result
 
-- UI and SDK client transport differences are treated as an intentional boundary, not as something that must be fully isomorphic.
-- If future implementation sharing is desired, it should start with shared contracts and telemetry rather than forcing the transport mechanisms to merge.
+- UI and SDK client transport differences are viewed as intentional boundary, not requiring complete isomorphism.
+- If sharing implementation in the future, should be based on shared contract/telemetry as前提, rather than forcibly merging transport mechanisms.

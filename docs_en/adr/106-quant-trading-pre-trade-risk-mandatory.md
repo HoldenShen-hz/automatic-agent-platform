@@ -20,7 +20,7 @@
 
 ## Background
 
-The cost of erroneous execution in quantitative trading domain is extremely high, and must have pre-trade risk control independent of platform general risk.
+The cost of erroneous execution in quantitative trading domain is extremely high, must have pre-trade risk independent of platform general risk.
 
 ## Decision
 
@@ -29,4 +29,4 @@ The cost of erroneous execution in quantitative trading domain is extremely high
 
 ## Consequences
 
-- `quant-trading` domain has non-bypassable pre-trade risk boundaries
+- `quant-trading` domain has non-bypassable pre-trade risk boundary

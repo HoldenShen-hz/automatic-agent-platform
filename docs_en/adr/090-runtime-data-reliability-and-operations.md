@@ -10,23 +10,23 @@ Accepted
 
 ## Background
 
-`§20`, `§24`-`§32`, `§33`, `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event / projection / DLQ, knowledge / memory / artifact, HA, deployment, and roadmap. These chapters together constitute production runtime foundation, but past ADRs were mostly recorded by single-point technical selection, lacking unified decisions面向长期运行.
+`§20`, `§24`-`§32`, `§33`, `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event / projection / DLQ, knowledge / memory / artifact, HA, deployment, and roadmap. These chapters together constitute production runtime foundation, but past ADRs mostly recorded single-point technology selections, lacking unified decisions for long-term operations.
 
 ## Decision
 
 Platform runtime and data reliability adopt the following unified principles:
 
-- Long-running tasks must have sleep, wake, TTL, lease / fencing, recovery, and人工接管 capabilities.
-- Configuration must be layered, versioned, canary, auditable, and not allowed to scatter配置 at runtime.
+- Long-running tasks must have sleep, wake, TTL, lease / fencing, recovery, and manual takeover capabilities.
+- Configuration must be layered, versioned, canary-deployable, auditable; runtime scattered configuration is not allowed.
 - Truth table, event log, projection, artifact, audit are different projections of the same State & Evidence Plane.
-- Projection must be rebuildable; DLQ must be diagnosable, replayable, and upgradeable to incident.
+- Projection must be rebuildable; DLQ must be diagnosable, replayable, upgradable to incident.
 - HA, backup, restore, deployment promotion must align with readiness / promote criteria contract.
-- Roadmap and success criteria are part of architecture governance, and cannot be mixed into contract as temporary TODO.
+- Roadmap and success criteria are part of architecture governance, cannot be temporary TODOs mixed into contract.
 
 ## Trade-offs
 
-- Do not take projection as authoritative state.
-- Do not allow key workflow recovery relying only on logs.
+- Do not treat projection as authoritative state.
+- Do not allow critical workflow recovery relying only on logs.
 - Do not allow deployment and configuration changes to bypass release / readiness / promote criteria.
 
 ## Impact
@@ -57,8 +57,8 @@ Corresponding implementation boundaries:
 - `src/platform/five-plane-control-plane/config-center/*`
 - `config/*`
 
-## Testing Requirements
+## Test Requirements
 
 - unit tests: state transition, lease/fencing, config resolution, projection rebuild.
 - integration tests: long-running workflow, DLQ replay, startup recovery, release readiness.
-- contract tests: Executions or deployments without lease, evidence, or readiness must not enter production chain.
+- contract tests: execution or deployment without lease, without evidence, without readiness cannot enter production chain.

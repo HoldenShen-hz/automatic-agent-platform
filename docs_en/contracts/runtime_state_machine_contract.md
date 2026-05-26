@@ -3,7 +3,7 @@
 > **v4.3 Compatibility Note**: This file is retained as historical task/workflow/OAPEFLIR view state documentation. v4.3 state progression authority is governed by [ADR-110](../adr/110-runtime-state-machine-authority.md), [harness-run-contract.md](./harness-run-contract.md), [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md), [side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md), and [budget-ledger-contract.md](./budget-ledger-contract.md); new modules must advance truth through `RuntimeStateMachine.transition(command)`.
 
 > **OAPEFLIR Related**: The OAPEFLIR paragraphs in this document only express stage projection sequence, do not define any truth-grade run/node state machine.
-> **Update Date**: 2026-04-17
+> **Updated**: 2026-04-17
 
 ## 1. Scope
 

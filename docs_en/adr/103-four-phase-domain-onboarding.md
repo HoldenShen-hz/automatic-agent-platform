@@ -6,12 +6,12 @@
 
 - **Observe**: Collect domain modeling and dependency input
 - **Assess**: Check readiness and certification requirements
-- **Plan**: Plan modeling, development, certification, canary four phases
-- **Execute**: Progress onboarding phase by phase
-- **Feedback**: Accumulate structured evidence for each phase
+- **Plan**: Plan modeling, development, certification, rollout four phases
+- **Execute**: Advance onboarding phase by phase
+- **Feedback**: Precipitate structured evidence each phase
 - **Learn**: Review onboarding patterns
-- **Improve**: Optimize onboarding gates
-- **Release**: Only after canary passes can enter active
+- **Improve**: Optimize onboarding gate
+- **Release**: Cannot enter active until rollout passes
 
 ---
 
@@ -20,18 +20,18 @@
 
 ## Background
 
-If domain onboarding does not have fixed phases, it will skip governance, testing, or canary validation.
+If domain onboarding does not have fixed phases, governance, testing, or rollout verification will be skipped.
 
 ## Decision
 
-Domain onboarding is fixed as four phases:
+Domain onboarding is fixed to four phases:
 
 1. Modeling
 2. Development
 3. Certification
-4. Canary
+4. Rollout
 
 ## Consequences
 
-- Onboarding no longer relies on verbal processes
+- Onboarding no longer relies on oral process
 - Domain readiness and rollout have consistent gates

@@ -5,7 +5,7 @@
 
 ## Context
 
-Platform administrators cannot manage all affairs. Governance authority needs to be delegated to subordinate organizations.
+Platform administrators cannot manage all affairs, so governance rights need to be delegated to subordinate organizations.
 
 ## Decision
 
@@ -35,17 +35,17 @@ interface DelegationScope {
 
 | Level | Delegable Permissions | Constraints |
 |-------|----------------------|-------------|
-| Platform Level | Permissions only outside NonOverridableInvariant | Must comply with non-overridable constraints such as security boundaries, audit requirements |
-| Business Group Level | Permissions within business group | Subject to upper-level delegation constraints |
-| Department Level | Permissions within department | Subject to upper-level delegation constraints |
+| Platform Level | Permissions only outside NonOverridableInvariant | Must comply with non-overridable constraints like security boundaries, audit requirements |
+| Business Group Level | Within business group | Subject to upper-level delegation constraints |
+| Department Level | Within department | Subject to upper-level delegation constraints |
 | Team Level | Limited permissions | Subject to upper-level delegation constraints |
 
-Note: NonOverridableInvariant is a platform-level security invariant. No delegation can override such constraints (e.g., security boundaries, audit requirements). Platform-level delegation is not "all permissions", but restricted all permissions after excluding NonOverridableInvariant.
+Note: NonOverridableInvariant is a platform-level security invariant that no delegation can override (such as security boundaries, audit requirements, etc.). Platform-level delegation is not "all permissions" but restricted all permissions after excluding NonOverridableInvariant.
 
 ### Constraint Types
 
 | Constraint Type | Description |
-|-----------------|-------------|
+|----------------|-------------|
 | budget_limit | Budget cap |
 | risk_threshold | Risk cap |
 | approval_required | Requires upper-level approval |
@@ -53,9 +53,9 @@ Note: NonOverridableInvariant is a platform-level security invariant. No delegat
 
 ### Delegation Audit
 
-- All delegation operations recorded in audit logs
+- All delegation operations record audit logs
 - Delegation relationship changes notify both parties
-- Regular review of delegation validity
+- Periodic review of delegation validity
 
 ## Consequences
 
@@ -63,7 +63,7 @@ Pros:
 
 - Distributed governance improves efficiency
 - Constraint mechanism prevents permission abuse
-- Audit trail ensures compliance
+- Audit tracking ensures compliance
 
 Cons:
 
@@ -75,6 +75,6 @@ Cons:
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§51` Tiered Governance Delegation

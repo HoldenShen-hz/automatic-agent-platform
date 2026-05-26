@@ -36,8 +36,8 @@ Related documents:
 
 Rules:
 
-- Before any production declaration, each SLO must have calculation口径, data source, and alert threshold.
-- Targets without observable口径 must not be written as external SLA.
+- Before any production declaration, each SLO must have calculation formula, data source, and alert threshold.
+- Targets without observable calculation formula must not be written as external SLA.
 
 ## 4. Alert Classification
 
@@ -45,7 +45,7 @@ Rules:
 | --- | --- | --- |
 | `P0` | Platform core unavailable | New tasks cannot execute, authoritative DB not writable |
 | `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain largely ineffective |
-| `P2` | Single division or local capability significantly degraded |某 division failure rate spiked |
+| `P2` | Single division or local capability significantly degraded | Some division failure rate spiked |
 | `P3` | Local anomaly or capacity warning | Queue latency rising, cost drift elevated |
 
 ## 5. Alerts Must Include
@@ -91,7 +91,7 @@ Allowed to auto-execute:
 - admission control tightening
 - provider traffic switching
 - queue rate limiting
--某 tenant / division throttling
+- some tenant / division throttling
 
 Prohibited from auto-execute:
 
@@ -103,7 +103,7 @@ Prohibited from auto-execute:
 
 Phase 1a / 1b must freeze at minimum:
 
-- SLI name and口径
+- SLI name and calculation formula
 - P0-P3 classification
 - Basic runbook checklist
 

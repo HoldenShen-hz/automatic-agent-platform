@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This governance document governs the following content in the OAPEFLIR eight-stage cognitive cycle:
+This governance document standardizes the following content within the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and governance boundaries
 - **Assess**: Execution assessment and permission governance
@@ -19,41 +19,41 @@ This governance document governs the following content in the OAPEFLIR eight-sta
 
 ## 1. Objective
 
-Define the minimum governance process for document and design changes to avoid starting coding before drafts are finalized.
+Define the minimum governance process for document and design changes to avoid starting coding before draft completion.
 
 ## 2. Scope
 
-Applicable to:
+Applies to:
 
-- Adding new core contracts.
-- Modifying main architecture boundaries.
+- New core contracts.
+- Modifying main architectural boundaries.
 - Adjusting phase scope.
 - Introducing high-risk new capabilities.
 
 ## 3. Minimum Process
 
-1. First update main documents or contracts.
-2. If trade-offs are involved, supplement ADRs.
-3. If current implementation sequence is affected, update operations.
-4. If current decisions are affected, update reviews.
+1. Update main documents or contracts first.
+2. Add ADR if trade-offs are involved.
+3. Update operations if affecting current implementation order.
+4. Update reviews if affecting current judgments.
 
 ## 4. Pre-Coding Requirements
 
 - If a contract is not stable, corresponding core code should not be written directly.
-- If P0 document gaps still clearly exist in reviews, documents should be prioritized for completion.
+- If P0 document gaps still clearly exist in reviews, documentation should be prioritized.
 
 ## 5. Change Request Template
 
-All core contract, architecture, and main document changes must be formally submitted via the following template:
+All core contracts, architecture, and main document changes must be formally submitted using the following template:
 
 ```markdown
 ## Change Title
-[Brief description of change intent]
+[Short description of change intent]
 
 ## Change Type
 - [ ] New contract
 - [ ] Modify contract
-- [ ] Main architecture boundary adjustment
+- [ ] Main architectural boundary adjustment
 - [ ] Phase scope adjustment
 - [ ] High-risk new capability introduction
 
@@ -63,9 +63,9 @@ All core contract, architecture, and main document changes must be formally subm
 - Rollback complexity (Low/Medium/High):
 
 ## Change Rationale
-[Why this change is needed]
+[Why this change is being made]
 
-## Alternative Solutions
+## Alternatives
 [If any, list at least one alternative and reason for not selecting it]
 
 ## Approval Process
@@ -85,16 +85,16 @@ All core contract, architecture, and main document changes must be formally subm
 
 ## 6. Approval Role Definitions
 
-| Role | Responsibility | Applicable Changes |
-|------|----------------|-------------------|
-| Architect | Approve main architecture boundary changes | §4-§9 Platform infrastructure layer |
-| Technical Lead | Approve contract field changes | All contract files |
-| Operations Lead | Approve operations process changes | `docs_zh/operations/` |
+| Role | Responsibilities | Applicable Changes |
+|------|-----------------|-------------------|
+| Architect | Approve main architectural boundary changes | §4-§9 Platform infrastructure layer |
+| Tech Lead | Approve contract field changes | All contract files |
+| Ops Lead | Approve operations process changes | `docs_zh/operations/` |
 | Security Review | Approve high-risk new capabilities | New features with security impact |
 
 ## 7. Toolchain References
 
-- **Document Tracking**: Manage change requests via GitHub PR / Issues
+- **Document Tracking**: Managed via GitHub PR / Issues
 - **ADR Management**: [`docs_zh/adr/README.md`](../adr/README.md)
 - **Contract Registry**: [`docs_zh/contracts/README.md`](../contracts/README.md)
 - **Architecture Index**: [`docs_zh/architecture/README.md`](../architecture/README.md)

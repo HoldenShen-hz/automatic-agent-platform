@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the detector interface and behavior for `§63` drift detection.
+This contract defines the drift detector interface and behavior specification for `§63`.
 
 ## 2. Canonical Objects
 
@@ -29,8 +29,8 @@ type DriftDetectorType =
 
 ## 4. `DriftDetectorConfig` Minimum Fields
 
-- `window_size` — statistical window size
-- `threshold` — drift threshold
+- `window_size` — statistical window size (sample count)
+- `threshold` — drift determination threshold
 - `sensitivity` — detection sensitivity (0-1)
 - `method` — detection method
 
@@ -39,18 +39,18 @@ type DriftDetectorType =
 - `detector_id`
 - `drift_detected` — boolean
 - `drift_type` — input_drift | output_drift | behavioral_drift | quality_drift
-- `confidence` — confidence (0-1)
+- `confidence` — confidence level (0-1)
 - `severity` — SEV2 | SEV3 | SEV4
-- `details` — detailed drift information
+- `details` — specific drift information
 
 ## 6. Rules
 
-- DriftDetector must provide independent detection capability for each drift type.
-- Detection results must include severity and confidence.
-- Configuration changes must trigger recalibration.
+- DriftDetector must provide independent detection capability for each drift type
+- Detection results must include severity and confidence
+- Configuration changes must trigger recalibration
 
 ## 7. Test Requirements
 
-- unit: coverage for each drift detection algorithm
+- unit: coverage for all drift detection algorithms
 - integration: detector -> alert -> response chain
-- contract: detector type and configuration integrity validation
+- contract: detector type and configuration completeness validation

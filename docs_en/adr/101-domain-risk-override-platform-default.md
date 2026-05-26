@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Platform default risk matrix and domain specialized risk input
+- **Observe**: Platform default risk matrix and domain-specific risk input
 - **Assess**: Determine whether domain override is allowed
 - **Plan**: Form domain risk profile
 - **Execute**: Apply domain risk priority before task execution
@@ -20,14 +20,14 @@
 
 ## Background
 
-Platform default risk matrix is insufficient to cover high-sensitivity domains such as finance, legal, and medical.
+Platform default risk matrix is insufficient to cover high-sensitivity domains such as finance, legal, and healthcare.
 
 ## Decision
 
 - Domain risk profile takes priority over platform default risk matrix
-- Any override must leave audit reasons
+- Any override must leave audit reason
 - Without explicit domain risk profile, high-risk automation is prohibited
-- `advisory_only`, `human_accountable`, `deterministic_hot_path_only` domains default to prohibiting crossing human accountability boundaries
+- `advisory_only`, `human_accountable`, `deterministic_hot_path_only` domains default to prohibiting bypass of human accountability boundary
 
 ## Consequences
 

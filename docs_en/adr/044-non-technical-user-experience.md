@@ -14,7 +14,7 @@ Non-technical users (business operators, operations personnel) need simplified i
 | Role | Description | Interface |
 |------|-------------|-----------|
 | business_operator | Business operator | Simplified interface |
-| team_lead | Team lead | Management view |
+| org_node_owner(team) | Team leader for `OrgNodeType.team` | Management view |
 | executive | Executive | Report view |
 | admin | Administrator | Full-featured interface |
 
@@ -29,36 +29,36 @@ Non-technical users (business operators, operations personnel) need simplified i
 
 - Push notifications
 - Email notifications
-- In-app messaging
+- In-app messages
 - Real-time status updates
 
-### Assistive Features
+### Auxiliary Features
 
 | Feature | Description |
 |---------|-------------|
 | Task Templates | Predefined templates for common tasks |
 | Quick Actions | One-click execution for common operations |
-| History | Operable audit trail |
+| History | Traceable operation history |
 | Export Reports | Data export support |
 
 ## Consequences
 
-Benefits:
+Pros:
 
-- Reduces barriers for non-technical users
+- Lower barrier for non-technical users
 - Templating improves efficiency
 - Real-time feedback enhances experience
 
-Trade-offs:
+Cons:
 
-- Multi-role interfaces increase complexity
+- Multi-role interface increases complexity
 - Template maintenance requires ongoing investment
 
-## Cross-references
+## Cross References
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-043 Unified Operations Dashboard](./043-unified-operations-dashboard.md)
 
-## Source Section
+## Source Sections
 
 - `§44` Non-Technical User Experience Architecture

@@ -38,7 +38,7 @@ type ListingCategory =
 1. Developer develops Pack
 2. Local testing (coverage >= 80%)
 3. Submit for review
-4. Certification evaluation (Prompt Injection check, code signature verification, SBOM review, vulnerability scan)
+4. Certification evaluation (Prompt Injection check, code signature verification, SBOM review, vulnerability scanning)
 5. List on marketplace
 
 ### Pricing Models
@@ -53,28 +53,28 @@ type ListingCategory =
 ### Ratings and Rankings
 
 - User ratings (1-5 stars)
-- Download count ranking
-- Trends ranking
-- Editor's picks
+- Download volume ranking
+- Trending list
+- Editor picks
 
 ## Consequences
 
-Benefits:
+Pros:
 
 - Open ecosystem attracts partners
-- Market mechanism incentivizes high-quality Packs
+- Marketplace mechanism incentivizes high-quality Packs
 - Certification process ensures quality
 
-Trade-offs:
+Cons:
 
 - Platform governance complexity
 - Quality inconsistency risk
 
-## Cross-references
+## Cross References
 
 - [Platform Architecture §22 SDK and Developer Experience](../architecture/00-platform-architecture.md)
 - [Platform Architecture §30 Business Pack Model](../architecture/00-platform-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§55` Agent Marketplace and Ecosystem

@@ -1,291 +1,181 @@
-# Runtime Sequence Diagrams
+# Runtime Sequence
 
-> Last updated: 2026-04-12
+> **Last Updated**: 2026-05-26
 >
-> This document describes the seven core runtime execution paths in the Automatic Agent System.
+> This document describes the key runtime main chain of the current Automatic Agent Platform, unified using current object and directory naming, and no longer follows the old system's `WorkflowState / Phase1bOrchestrator / TransitionService` narrative.
 
 ---
 
-## 1. Task Intake → Workflow Start
+## 1. Task Admission → Mission Resolution → HarnessRun Creation
 
-```
-+-------------+     +--------------+     +-----------------+     +------------------+
-|   Client    |     |  HTTP API    |     |  IntakeRouter   |     | Phase1bOrchestr. |
-|  (CLI/SDK)   |     |   Server     |     |                  |     |                  |
-+--------------+     +-------+------+     +--------+---------+     +--------+---------+
-       |                  |                        |                       |
-       | POST /tasks      |                        |                       |
-       |----------------->|                        |                       |
-       |                  |                        |                       |
-       |                  | routeTask()            |                       |
-       |                  |---------------------->|                       |
-       |                  |                        |                       |
-       |                  |                        | Division routing       |
-       |                  |                        | Create TaskRecord      |
-       |                  |                        | Create WorkflowState   |
-       |                  |                        |---------------------->|
-       |                  |                        |                       |
-       |                  |                        |                       | TransitionService
-       |                  |                        |                       | queued→pending
-       |                  |                        |                       | createTier1Event
-       |                  |                        |                       |
-       |                  |                        |                       | dispatch:ticket_created
-       |                  |                        |                       | (Tier-2 event)
-       |                  |                        |                       |
-       |  Task created    |                        |                       |
-       |<-----------------|                        |                       |
-       |                  |                        |                       |
+```text
+Client / UI / SDK
+  -> P1 HTTP API (`task-routes` / `mission-routes`)
+  -> P2 MissionResolver / MissionGovernanceService
+  -> P3 IntakeAdmissionService
+  -> P5 Truth Store + Event / Outbox append
+  -> P3 Harness runtime bootstrap
 ```
 
-**Key Points:**
-- `IntakeRouter.routeTask()` performs Division routing based on task content
-- Task and WorkflowState created atomically
-- Tier-1 `task:status_changed` event created within same transaction
-- Tier-2 `dispatch:ticket_created` event emitted after commit
+Key Steps:
+
+1. The caller submits a task or Mission association request.
+2. P1 completes authentication, input validation, and tenant scope resolution.
+3. P2 executes Mission resolution and permission/risk/budget/policy intersection validation.
+4. P3 `IntakeAdmissionService` generates an admission chain object and creates or binds `HarnessRun`.
+5. P5 writes truth + event facts in the same transaction; on failure, rolls back entirely, not allowing only half the state to be written.
+
+Current implementation locations:
+
+- `src/platform/five-plane-interface/api/http-server/task-routes.ts`
+- `src/platform/five-plane-control-plane/mission/`
+- `src/platform/five-plane-orchestration/harness/runtime/`
+- `src/platform/five-plane-state-evidence/truth/`
 
 ---
 
-## 2. Workflow Step Dispatch → Execution Lease → Worker Writeback
+## 2. Harness Orchestration → Dispatch → Lease → Worker Execution
 
-```
-+---------------------+   +------------------+   +-----------------+   +----------------+
-| ExecutionDispatch   |   | WorkerRegistry    |   | ExecutionLease  |   |     Worker     |
-|    Service          |   |    Service        |   |    Service      |   |    (Agent)     |
-+---------+----------+   +---------+---------+   +---------+--------+   +-------+--------+
-          |                         |                      |                     |
-          | dispatchNext()          |                      |                     |
-          | listDispatchableTickets|                      |                     |
-          |<-----------------------|                      |                     |
-          |                         |                      |                     |
-          | evaluateWorkersForTicket|                      |                     |
-          |<-----------------------|                      |                     |
-          | eligibleWorkers[]       |                      |                     |
-          |                         |                      |                     |
-          | selectEligibleWorkers()|                      |                     |
-          |                         |                      |                     |
-          | acquireLease()          |                      |                     |
-          |---------------------------------------------->|                     |
-          |                         |                      |                     |
-          |                         |         Insert ExecutionLeaseRecord         |
-          |                         |         fencing_token = latest + 1        |
-          |                         |                      |                     |
-          | lease.acquired          |                      |                     |
-          |<----------------------------------------------|                     |
-          |                         |                      |                     |
-          | dispatch:ticket_claimed (Tier-2)               |                     |
-          |                         |                      |                     |
-          |                         |     heartbeat()      |                     |
-          |                         |<---------------------|                     |
-          |                         |                      |                     |
-          |                         |                      |       execute()     |
-          |                         |                      |<------------------- |
-          |                         |                      |                     |
-          |                         |                      |    execution writeback
-          |                         |                      |    with fencing_token
-          |                         |                      |-------------------->|
-          |                         |                      |                     |
-          |                         |                      |     validateWrite   |
-          |                         |                      |     (fencing token)  |
-          |                         |                      |                     |
-          |                         |                      |     success/reject   |
-          |                         |                      |<--------------------|
-          |                         |                      |                     |
+```text
+HarnessRun
+  -> Planner / Routing / Replan
+  -> ExecutionDispatchService
+  -> ExecutionLeaseService
+  -> Worker Pool
+  -> Execution Engine / Tool Executor / Plugin Executor
+  -> Writeback with lease + fencing
 ```
 
-**Key Points:**
-- `fencing_token` increments on each lease acquisition
-- Worker must include `fencing_token` in writeback
-- `validateWriteAccess()` rejects writes with stale tokens (split-brain prevention)
-- Heartbeat renews lease; if missed → `reclaimExpiredLeases()`
+Key Steps:
+
+1. P3 makes orchestration decisions based on `PlanGraphBundle`, constraints, risk, and context.
+2. P4 `ExecutionDispatchService` selects executable tickets and workers.
+3. `ExecutionLeaseService` assigns lease / fencing tokens to ensure single authoritative writeback.
+4. Workers execute specific actions such as tool/plugin/browser/human-wait.
+5. Execution results are written back to the truth store using lease/fencing for concurrency protection.
+
+Current implementation locations:
+
+- `src/platform/five-plane-execution/dispatcher/`
+- `src/platform/five-plane-execution/lease/`
+- `src/platform/five-plane-execution/worker-pool/`
+- `src/platform/five-plane-execution/execution-engine/`
 
 ---
 
-## 3. Approval Requested → Approved/Rejected → Resume
+## 3. Event Facts → DurableEventBus → Consumer / DLQ
 
-```
-+--------------+   +-----------------+   +----------------+   +-----------------+
-|  Execution   |   |  ApprovalService |   |  Human (HITL)  |   | TransitionServ. |
-|   Service    |   |                  |   |                |   |                 |
-+-------+------+   +--------+---------+   +-------+--------+   +--------+--------+
-        |                      |                    |                    |
-        | executing             |                    |                    |
-        |--------------------->|                    |                    |
-        |                      |                    |                    |
-        | Execution enters     |                    |                    |
-        | "blocked" state      |                    |                    |
-        |                      |                    |                    |
-        |                      | createApproval()    |                    |
-        |                      |                    |                    |
-        |                      | ApprovalRecord     |                    |
-        |                      | status = REQUESTED |                    |
-        |                      |------------------->|                    |
-        |                      |                    |                    |
-        |                      |      approval request      |           |
-        |                      |<---------------------|       |           |
-        |                      |                    |                    |
-        |                      |                    |   approve/reject   |
-        |                      |                    |<------------------ |
-        |                      |                    |                    |
-        |                      | processApproval()  |                    |
-        |                      |                    |                    |
-        |                      |                    |                    | blocked→executing
-        |                      |                    |                    | (or failed)
-        |                      |                    |                    |
-        |  resume/fail         |                    |                    |
-        |<---------------------|                    |                    |
-        |                      |                    |                    |
+```text
+Producer
+  -> P5 truth mutation
+  -> Event append / Outbox append
+  -> DurableEventBus
+  -> Consumer ack / retry
+  -> DLQ on terminal failure
 ```
 
-**Key Points:**
-- `blocked` is a terminal-ish state in Execution state machine
-- `ApprovalService` creates `ApprovalRecord` with `requestJson` (context) and `responseJson` (decision)
-- Human decision triggers `TransitionService.transition()` to resume or fail
-- Workflow continues from `currentStepIndex`
+Key Steps:
+
+1. Any Tier-1 state change writes to truth first, then appends event facts.
+2. `DurableEventBus` is responsible for dispatching events to consumers by level.
+3. Consumer failures are no longer silently swallowed by `DurableEventBusAsync`, but return to the main chain for retry/alert/DLQ.
+4. After reaching the failure boundary, it enters DLQ and is handled by subsequent replay or manual recovery.
+
+Current implementation locations:
+
+- `src/platform/five-plane-state-evidence/events/`
+- `src/platform/five-plane-state-evidence/dlq/`
+- `src/platform/five-plane-state-evidence/outbox/`
 
 ---
 
-## 4. Event Emit → Persist → Replay/Recovery
+## 4. Federation Audit / Trust Governance Main Chain
 
-```
-+--------------+   +-----------------+   +----------------+   +-----------------+
-|   Producer   |   | DurableEventBus |   |    SQLite      |   | RecoveryService |
-|   Service    |   |                 |   |    Store       |   |                 |
-+-------+------+   +--------+--------+   +-------+--------+   +--------+--------+
-        |                     |                    |                    |
-        | emit(Tier1, event)  |                    |                    |
-        |-------------------->|                    |                    |
-        |                     |                    |                    |
-        |                     | db.transaction()    |                    |
-        |                     |-------------------->|                    |
-        |                     |                    |                    |
-        |                     | Insert EventRecord |                    |
-        |                     |-------------------->|                    |
-        |                     |                    |                    |
-        |                     | Commit              |                    |
-        |                     |<--------------------|                    |
-        |                     |                    |                    |
-        |                     | dispatch to consumers|                   |
-        |                     | (tier-specific ack) |                    |
-        |                     |                    |                    |
-        |                     |                    |                    |
-        |                     |                    |  RuntimeRecoveryService
-        |                     |                    |  detects anomaly   |
-        |                     |                    |<-------------------|
-        |                     |                    |                    |
-        |                     |                    |   RuntimeRecoveryReplay
-        |                     |                    |   Service.replay() |
-        |                     |                    |                    |
-        |                     |                    |   Rebuild state    |
-        |                     |                    |   from Tier1 events |
-        |                     |                    |                    |
-        |                     |                    |   reclaimExpired   |
-        |                     |                    |   Leases()         |
-        |                     |                    |                    |
+```text
+Federation action
+  -> FederationAudit.record()
+  -> persistent snapshot / archive
+  -> TrustRelationship evaluate / enforce
+  -> expiry / reauth / revoke gate
 ```
 
-**Key Points:**
-- **Tier 1**: `db.transaction()` ensures event persisted before `commit()`; consumers must ack
-- **Tier 2**: At-least-once; small percentage loss acceptable
-- **Tier 3**: Best-effort; high-frequency transient events (e.g., stream chunks)
-- `RuntimeRecoveryService` detects:
-  - Stale leases (heartbeat missed)
-  - Stall detection (execution not progressing)
-  - Orphaned tickets (worker disappeared)
-- `RuntimeRecoveryReplayService` replays Tier-1 events to rebuild consistent state
+Key Steps:
+
+1. Federation actions enter `FederationAudit`, write activity snapshots, and archive according to policy.
+2. At query time, multi-condition intersection filtering is executed, not just filtering by the first index condition.
+3. `TrustRelationship` checks `expiresAt`, periodic reauth, and status during admission and evaluation.
+4. Expired, revoked, or unreverified trust within the window no longer only affects scoring, but directly exits the active available state.
+
+Current implementation locations:
+
+- `src/scale-ecosystem/federation/federation-audit.ts`
+- `src/scale-ecosystem/federation/trust-relationship.ts`
 
 ---
 
-## 5. State Transition: Task Lifecycle
+## 5. UI Common Query Chain
 
+```text
+Web / Electron / Mobile
+  -> shared api-client (`/v1/*`)
+  -> runtime baseUrl = /api
+  -> P1 Layer C routes
+  -> MissionControl / Knowledge / Pack services
 ```
-                    +-------------------------------------------------------------+
-                    |                        Task                                 |
-                    +-------------------------------------------------------------+
 
-    queued ────────┬─────────────────────────────────────────────────────────────
-                   |
-                   | TransitionService.transition(reasonCode, traceId, ...)
-                   | [task intake, workflow created]
-                   ▼
-              pending ────────────────────────────────────────────────────────────
-                   |
-                   | dispatch:ticket_claimed (Tier-2 event)
-                   | execution lease acquired
-                   ▼
-           in_progress ─────────────────────────────────────────────────────────
-                   |
-                   ├────────────────────────────────────────────────────────────┐
-                   │                                                            │
-                   │ [tool blocked, approval needed, dependency not met]         │
-                   ▼                                                            ▼
-        awaiting_decision                                                (awaiting_decision)
-                   │                                                            │
-                   │ [human approved, tool unblocked, dependency satisfied]       │
-                   │                                                            │
-                   └────────────────────────────────────────────────────────────┘
-                                       |
-                                       ▼
-                    +------------------+------------------+
-                    │                                     │
-              succeeded                                 failed
-                    │                                     │
-                    │      [terminal states - no transitions]
-                    └─────────────────────────────────────┘
+Key Steps:
 
-    Any non-terminal state ────────────────────────────────────────────────────────
-                   │
-                   | [cancelled by user or system]
-                   ▼
-               cancelled
-```
+1. Frontend endpoint catalog uniformly defines `/v1/*` paths.
+2. At runtime,拼接with `baseUrl=/api`, ultimately accessing `/api/v1/*`.
+3. Public queries default to Layer C routing, not `/admin/*`.
+4. Representative public interfaces include:
+   - `/v1/workers`
+   - `/v1/queues`
+   - `/v1/agents`
+   - `/v1/dashboard/metrics`
+   - `/v1/explanations`
+   - `/v1/meta/contract-version`
+   - `/v1/knowledge`
+   - `/v1/marketplace`
+   - `/v1/packs/:packId/versions`
+   - `/v1/workflows/builder`
+
+Current implementation locations:
+
+- `ui/packages/shared/api-client/src/endpoints.ts`
+- `src/platform/five-plane-interface/api/http-server/dashboard-routes.ts`
+- `src/platform/five-plane-interface/api/http-server/plane-routes.ts`
+- `src/platform/five-plane-interface/api/http-server/pack-routes.ts`
+- `src/platform/five-plane-interface/api/http-server/task-routes.ts`
 
 ---
 
-## 6. Lease Lifecycle (Fencing Token)
+## 6. Electron Platform Bridge Chain
 
+```text
+Electron preload
+  -> exposeInMainWorld("AA_ELECTRON")
+  -> exposeInMainWorld("__AA_ELECTRON__")
+  -> desktop-platform-adapter resolve bridge
+  -> shared platform APIs
 ```
-+-------------------------------------------------------------------------+
-|                        Lease Lifecycle with Fencing Token                       |
-+-------------------------------------------------------------------------+
 
-Time ──────────────────────────────────────────────────────────────────────────────►
+Key Steps:
 
-Worker A acquired lease_id=1, fencing_token=1 ──────────────────────────────────►
-    │
-    │  heartbeat() renews lease
-    │
-Worker A acquired lease_id=2, fencing_token=2 ─────────────────────────────────►
-    │
-    │  (lease_id=1 expires or released)
-    │
-Worker A crashes ────────────────────────────────────────────────────────────────
-                                                                                     │
-                                                                                     ▼
-                                                                              Worker B tries
-                                                                              to write with
-                                                                              fencing_token=1
-                                                                              (stale!)
+1. Preload exposes dual-name bridge, compatible with historical callers and current adapter.
+2. `desktop-platform-adapter` prioritizes reading `__AA_ELECTRON__` and is compatible with `AA_ELECTRON`.
+3. Desktop capabilities such as secure storage, deep link, shell, and windowing are uniformly injected via PlatformAdapter.
 
-    validateWriteAccess() ──────────────────────────────────────────────────────►
-           │
-           │ fencing_token mismatch (current=2, received=1)
-           ▼
-      REJECTED
-           │
-           │ (prevents split-brain: stale worker can't overwrite)
-           ▼
-    Lease reclaimed, new lease issued to healthy worker
-```
+Current implementation locations:
+
+- `ui/apps/electron-win/src/preload.ts`
+- `ui/packages/shared/platform/src/desktop-platform-adapter.ts`
+- `ui/packages/shared/platform/src/bridge-types.ts`
 
 ---
 
-## 7. Key Files for Each Flow
+## 7. Current Reading Suggestions
 
-| Flow | Key Files |
-|------|-----------|
-| Task Intake | `intake-router.ts`, `phase1b-orchestration.ts`, `transition-service.ts` |
-| Dispatch → Lease → Writeback | `execution-dispatch-service.ts`, `execution-lease-service.ts`, `execution-worker-writeback-service.ts` (`worker-pool/`) |
-| Approval | `approval-service.ts`, `transition-service.ts` |
-| Recovery/Replay | `runtime-recovery-service.ts`, `runtime-recovery-replay-service.ts`, `durable-event-bus.ts` |
-| Task State Machine | `transition-service.ts` (lines ~100-200 for Task transitions) |
-| Lease Validation | `execution-lease-service.ts` (`validateWriteAccess()`) |
+1. To understand "how tasks enter the system", first read the P1/P2/P3 corresponding chapters in `01-code-structure.md`, then sections 1 and 2 of this document.
+2. To understand "how state and events close the loop", first read section 3 of this document, then the P4/P5 diagrams in `03-module-diagrams.md`.
+3. To understand "how frontend connects to backend", first read sections 5 and 6 of this document, then `05-cross-platform-ui-architecture.md`.

@@ -4,16 +4,16 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
 
-- **Observe**: Region, quota, SLA, feedback, marketplace, connector health signals
-- **Assess**: Cross-region routing, resource competition, SLA stratification, ecosystem governance
+- **Observe**: Region, quota, SLA, feedback, market, connector health signals
+- **Assess**: Cross-region routing, resource competition, SLA tiering, ecosystem governance
 - **Plan**: Region selection, quota allocation, connector execution, and ecosystem expansion strategy
-- **Execute**: Multi-region operation, preemption, fair scheduling, connector calls, marketplace installation
-- **Feedback**: User feedback, quality signals, marketplace performance, and connector health feedback
+- **Execute**: Multi-region operation, preemption, fair scheduling, connector calls, marketplace install
+- **Feedback**: User feedback, quality signals, marketplace performance, and connector health return
 - **Learn**: Marketplace performance, resource strategy, and feedback-driven improvement
 - **Improve**: SLA, scheduler, connector, and ecosystem capability continuous optimization
-- **Release**: Cross-region, ecosystem components, and connector tiered rollout
+- **Release**: Cross-region, ecosystem components, and connector tiered release
 
 ---
 
@@ -22,7 +22,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Background
 
-The current authoritative source corresponds to the multi-region, SLA, and ecosystem expansion chapters in `docs_zh/architecture/00-platform-architecture.md`. The current repository already has:
+The current authoritative source corresponds to multi-region, SLA, and ecosystem expansion chapters in `docs_zh/architecture/00-platform-architecture.md`. The current repository already has:
 
 - `src/scale-ecosystem/multi-region`
 - `src/scale-ecosystem/resource-manager`
@@ -31,35 +31,35 @@ The current authoritative source corresponds to the multi-region, SLA, and ecosy
 - `src/scale-ecosystem/feedback-loop`
 - `src/scale-ecosystem/integration`
 
-But the maturity of these directories varies significantly.
+But the maturity of these directories is clearly inconsistent.
 
-## Decisions
+## Decision
 
-### 1. Multi-region routing must simultaneously be constrained by data residency and execution proximity
+### 1. Multi-Region Routing Must Simultaneously Constrain Data Residency and Execution Proximity
 
-Region selection cannot just look at latency, but must simultaneously satisfy:
+Region selection cannot look at latency alone, must also satisfy:
 
 - data residency
 - legal transfer rule
 - workload affinity
 - recovery topology
 
-### 2. Quota, preemption, fair scheduling belong to unified scheduler governance surface
+### 2. Quota, Preemption, Fair Scheduling Belong to Unified Scheduler Governance Plane
 
-Resource competition management is not a scattered policy collection, but a unified scheduler contract.
+Resource competition management is not a scattered strategy collection, but a unified scheduler contract.
 
-### 3. SLA tier must directly affect scheduling and isolation
+### 3. SLA Tier Must Directly Influence Scheduling and Isolation
 
-SLA is not a pure report field, and must participate in:
+SLA is not a pure reporting field, must participate in:
 
 - queue priority
 - reservation
 - preemption
 - escalation
 
-### 4. Marketplace, feedback, and connectors adopt unified ecosystem governance approach
+### 4. Marketplace, Feedback, Connectors Use Unified Ecosystem Governance Approach
 
-Although these three capabilities have different scenarios, all must comply with:
+These three types of capabilities, although different scenarios, must all comply with:
 
 - manifest / metadata
 - lifecycle
@@ -68,5 +68,5 @@ Although these three capabilities have different scenarios, all must comply with
 
 ## Consequences
 
-- `scale-ecosystem` will become unified module boundary for cross-region and open ecosystem
+- `scale-ecosystem` will become the unified module boundary for cross-region and open ecosystem
 - Subsequent implementation will prioritize supplementing scheduler, connector, and cross-region contracts

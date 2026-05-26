@@ -5,7 +5,7 @@
 
 ## Context
 
-Enterprises have deep organizational hierarchies from business group to department to team. The platform needs to express this hierarchical relationship and support tiered governance.
+Enterprises have deep organizational hierarchies of business group -> department -> team, and the platform needs to express this hierarchical relationship to support tiered governance.
 
 ## Decision
 
@@ -38,38 +38,38 @@ interface OrgTreeSaga {
 }
 ```
 
-### Tiered Governance Strategy (v4.3 OrgNode hierarchy)
+### Tiered Governance Policy (v4.3 OrgNode hierarchy)
 
-> Note: R5-66 Fix - v4.3 uses OrgNode hierarchy to replace CEO/VP governance levels.
+> Note: R5-66 Fix - v4.3 has replaced CEO/VP governance hierarchy with OrgNode hierarchy.
 
 | Level | Governance Autonomy | Approval Chain (OrgNode) |
-|-------|--------------------|--------------------------|
-| Company Level | Platform management | OrgNode(root)/Governance Committee |
-| Business Group Level | Business group management | OrgNode(business_group) |
-| Department Level | Department management | OrgNode(department) |
-| Team Level | Team management | OrgNode(team) |
-| Individual Level | Individual management | OrgNode(individual) |
+|-------|---------------------|-------------------------|
+| Company Level | Platform managed | OrgNode(root)/Governance Committee |
+| Business Group Level | Business group managed | OrgNode(business_group) |
+| Department Level | Department managed | OrgNode(department) |
+| Team Level | Team managed | OrgNode(team) |
+| Individual Level | Individual managed | OrgNode(individual) |
 
-### Relationship with Tenants
+### Relationship with Tenant
 
 - Tenant is the top-level isolation unit
-- Organization hierarchy subdivides within tenant
+- Organization hierarchy is subdivided within tenant
 - No organizational relationship across tenants
 
-### OrgTree Cascade Change Compensation Semantics
+### OrgTree Cascade Change Compensating Semantics
 
-Organization structure changes (such as department dissolution, team merger, personnel transfer) have cascade effects. OrgTreeSaga ensures:
+Organization changes (such as department dissolution, team merger, personnel transfer) have cascade effects. OrgTreeSaga guarantees:
 
-1. **Prepare Phase**: Collect all affected nodes, child nodes, associated permissions, and associated approval chains
+1. **Prepare Phase**: Collect all affected nodes, child nodes, associated permissions, associated approval chains
 2. **Commit Phase**: Atomically execute all changes
-3. **Compensate Phase**: If any change fails, reverse rollback all committed changes and return the list of unrecovered operations
+3. **Compensate Phase**: When any change fails, reverse rollback all committed changes, return list of unrecovered operations
 4. **Audit Phase**: Record complete change trajectory, including compensation execution results
 
 ## Consequences
 
 Pros:
 
-- Hierarchy model matches enterprise reality
+- Hierarchical model matches enterprise reality
 - Tiered governance improves management efficiency
 - Clear approval chains
 
@@ -83,6 +83,6 @@ Cons:
 - [ADR-002 Division System](./002-division-system.md)
 - [ADR-047 Organization Approval Routing](./047-organization-approval-routing.md)
 
-## Source Section
+## Source Sections
 
 - `§46` Organization Hierarchy Model

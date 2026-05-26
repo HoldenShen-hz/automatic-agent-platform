@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Read run, checkpoint, sleep lease, and recovery status
+- **Observe**: Read run, checkpoint, sleep lease, and recovery state
 - **Assess**: Determine whether recovery or replay is needed
 - **Plan**: Plan persist/checkpoint/resume boundaries
 - **Execute**: Persist HarnessRun, NodeRun, NodeAttempt, decision, and context
@@ -20,7 +20,7 @@
 
 ## Background
 
-Harness without persistence can only do short-term computation, and cannot support async, recovery, replay, and long-running.
+Harness without persistence can only do short-duration computation, cannot support async, recovery, replay, and long-running.
 
 ## Decision
 
@@ -36,4 +36,4 @@ Harness without persistence can only do short-term computation, and cannot suppo
 
 ## v4.3 ADR Remediation
 
-- A-30: This ADR originally used `phase 8b` as delivery gate terminology,根因 was that durable execution ADR followed historical phase scheduling, and did not switch to the主架构 unified ring口径. Fix: The text now changed to `Ring 2 durable-readiness`.
+- A-30: This ADR originally used `phase 8b` as delivery gate terminology, root cause being durable execution ADR followed historical phase scheduling, did not switch to main architecture unified ring口径. Fix: Main text now changed to `Ring 2 durable-readiness`.

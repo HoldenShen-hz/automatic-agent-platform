@@ -12,8 +12,8 @@
 
 - Conclusions must be bound to sources, citations, and confidence levels.
 - Factual statements must be traceable to evidence.
-- Outbound reports must pass quality gates.
+- External reports must pass quality gates.
 
-## Acceptance Entry Criteria
+## Acceptance Criteria
 
-- Prior to GA, evidence of source verification, citation checking, report review, and quality assessment must be provided.
+- Prior to GA, evidence of source verification, citation checks, report reviews, and quality assessment must be provided.

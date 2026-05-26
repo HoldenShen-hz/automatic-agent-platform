@@ -11,7 +11,7 @@ When multiple business lines run concurrently, resource competition occurs, requ
 
 ### Resource Pool Model
 
-ResourcePool/ResourceAllocation is deeply integrated with BudgetLedger/BudgetReservation to uniformly manage resource allocation and budget deduction. Together, they constitute the atomic unit of resource allocation:
+ResourcePool/ResourceAllocation is deeply integrated with BudgetLedger/BudgetReservation, unified management of resource allocation and budget charging. Together, they constitute the atomic unit of resource allocation:
 
 ```typescript
 interface ResourcePool {
@@ -37,8 +37,8 @@ interface ResourceAllocation {
 | compute | Compute resources |
 | memory | Memory resources |
 | storage | Storage resources |
-| api_quota | API call quotas |
-| llm_token | LLM Token quotas |
+| api_quota | API call quota |
+| llm_token | LLM Token quota |
 
 ### Scheduling Strategies
 
@@ -46,7 +46,7 @@ interface ResourceAllocation {
 |----------|-------------|
 | priority | Priority first |
 | fair_share | Fair sharing |
-| fifo | First in first out |
+| fifo | First come first served |
 | weighted_fair | Weighted fair queue |
 
 ### Resource Quotas
@@ -61,7 +61,7 @@ interface ResourceAllocation {
 Pros:
 
 - Fair resource allocation prevents starvation
-- Priority mechanism ensures critical business
+- Priority mechanism guarantees critical business
 - Dynamic adjustment adapts to load changes
 
 Cons:
@@ -74,6 +74,6 @@ Cons:
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)
 
-## Source Section
+## Source Sections
 
 - `§53` Scaling Resource Competition Management

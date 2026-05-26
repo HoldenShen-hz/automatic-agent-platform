@@ -4,16 +4,17 @@
 Accepted
 
 ## Background
-The panic mode allowList has strong break-glass characteristics, but previously had no authoritative governance documentation.
+Panic mode allowList has strong break-glass nature, but previously lacked authoritative governance explanation.
 
 ## Decision
-- allowList is only used for break-glass scenarios, not as a regular pass-through mechanism.
-- allowList hit does not equal unlimited permissions; audit, rate control, and high-risk action limits must still be retained.
-- allowList member addition, modification, and removal must go through governance approval and audit trail.
-- panic allowList must maintain consistent口径 with execution plane admission control; one side pass-through while the other has no audit is not allowed.
+- allowList only used for break-glass scenarios, not as regular release mechanism.
+- allowList hit does not equal unlimited permissions; still must retain audit, rate control, and high-risk action restrictions.
+- allowList member addition, change, removal must go through governance approval and audit留痕.
+- Panic allowList and execution plane admission control must maintain consistent口径, not allowing release on one side and no audit on the other.
 
 ## Result
-- Converges "privileged bypass" to a governed emergency capability, rather than an implicit backdoor.
+- Converge "privileged bypass" to governed emergency capability, not implicit backdoor.
 
 ## Related Implementation
 - `src/ops-maturity/emergency/platform-panic-service.ts`
+

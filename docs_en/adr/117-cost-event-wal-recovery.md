@@ -4,22 +4,23 @@
 Accepted
 
 ## Background
-Cost event write-ahead log already introduces pending/committed status, but the recovery strategy for orphaned pending entries previously had no authoritative description.
+Cost event write-ahead log has introduced pending/committed states, but recovery strategy for orphaned pending entries previously lacked authoritative description.
 
 ## Decision
-- Pending WAL entries must be sweepable on a regular schedule.
-- Orphan determination must include at least:
+- Pending WAL entry must be periodically sweepable.
+- Orphan determination includes at minimum:
   - Status still `pending`
   - Exceeded recovery window
   - No corresponding commit / settle evidence
 - Recovery actions allow two types:
-  - Mark as `orphaned` for manual audit
+  - Mark as `orphaned` for human audit
   - Safely delete and output audit record
-- `unsourcedRecordCount` is only an observability metric, not a replacement for WAL recovery.
+- `unsourcedRecordCount` only serves as observability metric, does not replace WAL recoverer.
 
 ## Result
-- Cost ledger crash recovery no longer stays at comment level.
+- Cost ledger crash recovery no longer停留在注释层.
 
 ## Related Implementation
 - `src/platform/five-plane-control-plane/cost-alert/*`
 - `src/ops-maturity/cost-optimizer/*`
+

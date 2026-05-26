@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/user-operations/index.ts` |
 | domain_status | spec_ready |
 | risk_level | high |
-| accountable_role | User Operations Manager |
+| accountable_role | User Operations Lead |
 
 ## Hard Constraints
 
 - All user touchpoints must enforce frequency limits.
-- User profiles, segmentation, and message content must comply with data classification policies.
+- Profiling, segmentation, and message content must comply with data classification policies.
 - High-risk touchpoints must support pause, recall, and audit.
 
-## Acceptance Entry
+## Acceptance Criteria
 
-- Pre-GA must provide frequency control, unsubscribe, user segmentation audit, and experiment evaluation evidence.
+- Prior to GA, evidence of frequency control, unsubscribe, user segmentation audit, and experiment evaluation must be provided.

@@ -4,40 +4,40 @@
 Accepted
 
 ## Background
-Business Pack lifecycle stages, the four-phase domain onboarding flow, pack-domain associations, and `trustTier` / `sandboxTier` constraints previously lived in separate modules with no single authoritative rule set. That made it easy to drift into states such as:
+Business Pack lifecycle, domain onboarding four phases, pack-domain association, and `trustTier` / `sandboxTier` constraints previously existed in different modules, lacking unified authoritative rules, easily leading to:
 
-- a domain reaching `gray_rollout` or `active` while its pack is still in an earlier stage
-- a pack reaching `published` or `running` before domain certification or rollout is complete
-- inconsistent association and primary-pack behavior during domain or pack retirement
-- no fail-closed compatibility matrix for `trustTier` and `sandboxTier`
+- Domain has entered `gray_rollout` or `active`, but pack still at too early phase
+- Pack has `published` / `running`, but domain certification or rollout not yet completed
+- After domain / pack decommissioning, association and default primary pack semantics inconsistent
+- `trustTier` and `sandboxTier` no unified compatibility matrix
 
 ## Decision
-- `domain_modeling` maps to pack stage `development`
-- `pack_development` maps to pack stage `testing`
-- `security_certification` maps to pack stage `certified`
-- `gray_rollout` maps to pack stage `published` or `running`
+- `domain_modeling` corresponds to pack `development`
+- `pack_development` corresponds to pack `testing`
+- `security_certification` corresponds to pack `certified`
+- `gray_rollout` corresponds to pack `published` or `running`
 
-- a domain must not advance to the next onboarding phase while its associated pack is still earlier than the required mapped stage
-- before a domain completes `gray_rollout` and becomes `active`, its primary associated pack must be at least `published`
-- before a pack moves from `certified` to `published` or `running`, its associated domain must already have completed `security_certification`
+- Domain cannot advance to next onboarding phase when associated pack is still earlier than corresponding phase
+- Before domain completes `gray_rollout` and enters `active`, associated primary pack must be at least `published`
+- Before pack goes from `certified` to `published` / `running`, associated domain must have completed `security_certification`
 
-- when a domain becomes `deprecated` or `archived`:
-  - no new pack associations are allowed
-  - already-associated externally published packs must first move to `deprecated` before the domain can be fully archived
-- when a pack becomes `deprecated` or `archived`:
-  - audit associations may remain
-  - it must no longer act as the primary pack for new onboarding or routing decisions
+- When domain is `deprecated` / `archived`:
+  - No new pack association allowed
+  - Associated packs in external release state must first enter `deprecated`, then allow domain final archive
+- When pack is `deprecated` / `archived`:
+  - Allow retention of audit association
+  - But cannot continue as primary pack for new onboarding / routing decisions
 
-- `trustTier` and `sandboxTier` use a fail-closed compatibility matrix:
-  - `internal` may use `read_only`, `workspace_write`, `scoped_external_access`, or `restricted_exec`
-  - `trusted` requires at least `workspace_write`
-  - `community` requires at least `scoped_external_access`
-  - `external` requires at least `restricted_exec`
+- `trustTier` and `sandboxTier` use fail-closed compatibility matrix:
+  - `internal` can use `read_only` / `workspace_write` / `scoped_external_access` / `restricted_exec`
+  - `trusted` minimum requires `workspace_write`
+  - `community` minimum requires `scoped_external_access`
+  - `external` minimum requires `restricted_exec`
 
-## Consequences
-- pack lifecycle, domain onboarding, and association governance now share one stage mapping
-- rollout, certification, and retirement no longer depend on implicit conventions
-- `trustTier` and `sandboxTier` now have an explicit authoritative matrix, and future registration and binding logic must fail closed against it
+## Result
+- Pack lifecycle, domain onboarding, association governance adopt same set of phase mappings
+- Rollout, certification, decommissioning no longer rely on implicit agreements
+- `trustTier` / `sandboxTier` have clear authoritative matrix, subsequent registration and binding logic按此fail-closed
 
 ## Related Implementation
 - `src/domains/operations/domain-onboarding-service.ts`

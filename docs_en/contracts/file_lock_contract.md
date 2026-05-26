@@ -29,7 +29,7 @@ Related documents:
 - `runtime_repository_and_migration_contract.md`
 - `error_code_registry.md`
 
-## 2. Goals
+## 2. Objectives
 
 Phase 1a / 1b must at minimum achieve:
 

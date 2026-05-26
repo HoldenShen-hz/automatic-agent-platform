@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Price changes exceeding threshold require human approval.
-- Promotion, inventory, and order actions must preserve auditable evidence.
+- Price changes exceeding threshold must require manual approval.
+- Promotions, inventory, and order actions must retain auditable evidence.
 - Agents must not bypass platform budget, approval, and side effect reconciliation.
 
 ## Acceptance Criteria
 
-- Price guardrail, order side effect reconciliation, inventory consistency, and escalation to human evidence must be provided before GA.
+- Before GA, must provide price guardrail, order side effect reconciliation, inventory consistency, and manual transfer evidence.

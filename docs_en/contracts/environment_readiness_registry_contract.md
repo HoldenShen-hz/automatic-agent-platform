@@ -19,9 +19,9 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the readiness registry for external environments and critical runtime dependencies.
+This contract defines the readiness registry for external environments and key runtime dependencies.
 
-It answers the question: Before entering staging, pre-prod, or prod, how does the system uniformly record whether external dependencies such as providers, gateways, sandboxes, worker fleets, and artifact stores are ready.
+It answers the question: before entering staging, pre-prod or prod, how does the system uniformly record whether external dependencies like providers, gateways, sandboxes, worker fleet, artifact store, etc. are ready.
 
 Related documents:
 
@@ -30,11 +30,11 @@ Related documents:
 - `release_rollout_and_rollback_contract.md`
 - `slo_alerting_and_runbook_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
-- Transform readiness from "relying on human memory" to a unified registry.
-- Provide authoritative readiness facts for release gates, go-live gates, and incident diagnostics.
-- Unified modeling of credentials, secondary gates, owners, and last verified time.
+- Turn readiness from "relying on human memory" into unified registry.
+- Provide authoritative readiness facts for release gate, go-live gate and incident diagnosis.
+- Uniformly model credential, secondary gates, owner, last verified time.
 
 ## 3. Key Objects
 
@@ -46,15 +46,15 @@ Related documents:
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `readiness_id` | `string` | Readiness record ID |
-| `environment` | `dev \| test \| staging \| pre-prod \| prod` | Environment |
+| `readiness_id` | `string` | readiness record ID |
+| `environment` | `dev \| test \| staging \| pre-prod \| prod` | Belonging environment |
 | `component_type` | `provider \| gateway \| sandbox \| worker_fleet \| artifact_store \| notification_channel \| external_service` | Component type |
 | `component_id` | `string` | Component identifier |
-| `credential_ready` | `boolean` | Whether credentials are ready |
+| `credential_ready` | `boolean` | Whether credential is ready |
 | `secondary_gates_json` | `json` | Secondary gates such as webhook, moderation, quota, attestation |
-| `owner` | `string` | Maintenance owner |
-| `last_verified_at` | `timestamp` | Last verification time |
-| `is_active` | `boolean` | Whether currently active |
+| `owner` | `string` | Maintaining owner |
+| `last_verified_at` | `timestamp` | Most recent verification time |
+| `is_active` | `boolean` | Whether currently effective |
 | `notes?` | `string` | Supplementary notes |
 
 ## 5. Gate Semantics
@@ -71,9 +71,9 @@ Minimum gate model:
 
 Rules:
 
-- When `credential_ready = false`, all formal operations depending on this component fail-closed by default.
-- When secondary gates fail, the corresponding capability should be blocked, not just logged as a warning.
-- When `last_verified_at` is too old, the system may degrade readiness to `stale` and trigger re-verification.
+- When `credential_ready = false`, all formal operations depending on this component default to fail-closed.
+- When secondary gate fails, should block corresponding capability rather than only issuing warning.
+- When `last_verified_at` is too old, system can degrade readiness to `stale` and trigger review.
 
 ## 6. `EnvironmentReadinessSummary`
 
@@ -87,17 +87,17 @@ Minimum fields:
 - `stale`
 - `all_ready`
 
-## 7. Relationship with Release Gates
+## 7. Relationship with Release Gate
 
-- Staging / pre-prod / prod go-live gates should reference the readiness registry rather than manual verbal confirmation.
-- Release gates must be able to answer:
+- Go-live gate for staging / pre-prod / prod should reference readiness registry rather than human verbal confirmation.
+- Release gate must be able to answer:
   - Which external dependencies are not ready
   - Who is responsible
-  - When was the last verification
+  - When was the most recent verification
 
 ## 8. Current Boundaries
 
-Currently prioritized coverage:
+Current priority coverage:
 
 - provider
 - gateway
@@ -105,13 +105,13 @@ Currently prioritized coverage:
 - artifact store
 - worker fleet
 
-Currently excluded:
+Currently not doing:
 
-- Fine-grained readiness sub-tables for each third-party business platform
-- Directly copying business-domain-specific readiness models into the current system
+- Fine-grained readiness sub-table explosion for each third-party business platform
+- Directly copying business domain-specific readiness model into current system
 
 ## 9. Closure Conclusion
 
-Environment readiness should not exist only in verbal release checks.
+Environment readiness should not only exist in release verbal checks.
 
-It should become a first-class registry that is queryable, auditable, and consumable by release gates.
+It should become a first-class registry that is queryable, auditable and consumable by release gate.

@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/marketing/index.ts` |
 | domain_status | spec_ready |
 | risk_level | high |
-| accountable_role | Brand Manager / Legal Reviewer |
+| accountable_role | Brand Lead / Legal Reviewer |
 
 ## Hard Constraints
 
-- All external content must pass brand consistency checks.
+- External content must pass brand tone consistency checks.
 - Advertising law, copyright, and trademark compliance checks must not be skipped.
-- Crisis PR recommendations must receive human review before external release.
+- Crisis PR recommendations must be manually reviewed before external distribution.
 
-## Acceptance Entry
+## Acceptance Criteria
 
-- Pre-GA must provide brand consistency, advertising law compliance, human sign-off, and external audit evidence.
+- Prior to GA, evidence of brand consistency, advertising law compliance, manual sign-off, and external distribution audits must be provided.

@@ -5,15 +5,15 @@
 
 ## Context
 
-Different businesses have different SLA requirements. The platform needs to support SLA tiered guarantees.
+Different businesses have different SLA requirements, and the platform needs to support tiered SLA guarantees.
 
 ## Decision
 
-### SLA Levels
+### SLA Tiers
 
-| Level | Name | Availability | Response Time | Concurrency | Prerequisites |
-|-------|------|--------------|---------------|-------------|---------------|
-| platinum | Platinum | 99.99% | < 100ms | 1000+ | Required: automatic failover + quorum + capacity reservation + drill evidence |
+| Tier | Name | Availability | Response Time | Concurrency | Prerequisites |
+|------|------|-------------|---------------|--------------|---------------|
+| platinum | Platinum | 99.95% | < 100ms | 1000+ | Required: Auto failover + quorum + capacity reservation + drill evidence |
 | gold | Gold | 99.9% | < 500ms | 500 | - |
 | silver | Silver | 99.5% | < 1s | 100 | - |
 | bronze | Bronze | 99% | < 5s | 50 | - |
@@ -46,6 +46,10 @@ interface SLARequirement {
 
 All SLA commitments must be traceable to `HarnessRun / NodeRun / NodeAttemptReceipt` evidence.
 
+Supplementary notes:
+
+- `99.99%` is only allowed to be separately committed in dedicated deployments or exclusive contracts, and should not be written as platform default platinum tier in general ADRs.
+
 ## Consequences
 
 Pros:
@@ -56,7 +60,7 @@ Pros:
 
 Cons:
 
-- Multi-level SLA increases operational complexity
+- Multi-level SLA increases operations complexity
 - Compensation calculation requires precision
 
 ## Cross References
@@ -64,6 +68,6 @@ Cons:
 - [ADR-053 Scaling Resource Competition Management](./053-scaling-resource-competition-management.md)
 - [Platform Architecture §27 Performance Architecture and SLO](../architecture/00-platform-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§54` SLA Tiered Guarantees

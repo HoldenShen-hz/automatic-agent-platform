@@ -1,13 +1,13 @@
 # Architecture Decision Records (ADR)
 
-> This directory contains Architecture Decision Records (ADR) for the project. Each ADR records the background, considerations, and conclusions of important technical decisions.
+> This directory contains the project's Architecture Decision Records (ADR). Each ADR records the background, considerations, and conclusions of important technical decisions.
 > `docs_zh/adr/README.md` and `docs_en/adr/README.md` must keep numbers, status, and dates synchronized; if body translation is delayed, record according to `docs_zh/reference/docs-sync.md`.
 
 ## ADR Index
 
 | Number | Title | Status | Decision Date |
 |------|------|------|----------|
-| [001](./001-three-layer-architecture.md) | Three-Layer Decentralized Architecture | Accepted | 2026-04-02 |
+| [001](./001-three-layer-architecture.md) | Three-Layer Separation Architecture | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | Division System | Accepted | 2026-04-02 |
 | [003A](./003-memory-six-layers.md) | Six-Layer Memory Model and KV Cache Fixed Prefix | Superseded by ADR-020 | 2026-04-02 |
 | [003B](./003-memory-seven-layers.md) | Seven-Layer Memory Model (Historical Alias / Jump Page) | Superseded by ADR-020 | 2026-04-02 |
@@ -18,16 +18,16 @@
 | [008](./008-cost-model.md) | Cost Model | Accepted | 2026-04-02 |
 | [009](./009-deployment-ops.md) | Deployment and Operations | Accepted | 2026-04-02 |
 | [010](./010-commercial-model.md) | Commercial Model | Accepted | 2026-04-02 |
-| [011](./011-effect-ts-adoption.md) | Whether Effect-TS is Used as Core Runtime Foundation | Accepted | 2026-04-03 |
-| [012](./012-sqlite-phase-1-2-primary-store.md) | Whether SQLite is Used as Phase 1-2 Sole Primary Storage | Accepted | 2026-04-03 |
-| [013](./013-eventemitter-phase-2-boundary.md) | Whether EventEmitter Continues to be Used to Phase 2 | Accepted | 2026-04-03 |
+| [011](./011-effect-ts-adoption.md) | Whether Effect-TS as Core Runtime Foundation | Accepted | 2026-04-03 |
+| [012](./012-sqlite-phase-1-2-primary-store.md) | Whether SQLite as Phase 1-2 Sole Primary Store | Accepted | 2026-04-03 |
+| [013](./013-eventemitter-phase-2-boundary.md) | Whether EventEmitter Continues to Phase 2 | Accepted | 2026-04-03 |
 | [014](./014-org-model-code-boundary.md) | Whether Organization Model Directly Maps to Code Objects | Accepted | 2026-04-03 |
-| [015](./015-unified-extension-marketplace.md) | Whether Skills and Plugins Converge to Single Marketplace | Accepted | 2026-04-03 |
-| [016](./016-oapeflir-loop-model.md) | OAPEFLIR Eight-Stage Cognitive Loop Model | Accepted | 2026-04-17 |
+| [015](./015-unified-extension-marketplace.md) | Whether Skill and Plugin Converge to Single Marketplace | Accepted | 2026-04-03 |
+| [016](./016-oapeflir-loop-model.md) | OAPEFLIR Eight-Stage Cognitive Cycle Model | Accepted | 2026-04-17 |
 | [017](./017-knowledge-architecture-refactor.md) | Knowledge Three-Index Architecture Refactor | Accepted | 2026-04-17 |
-| [018](./018-rollout-eleven-state-machine.md) | Rollout Eleven-State State Machine and Six-Phase Release | Superseded by ADR-075 | 2026-04-17 |
+| [018](./018-rollout-eleven-state-machine.md) | Rollout Eleven-State State Machine and Six-Stage Release | Superseded by ADR-075 | 2026-04-17 |
 | [019](./019-agent-handoff-four-layer-protocol.md) | Agent Handoff Four-Layer Serialization Protocol | Accepted | 2026-04-17 |
-| [020](./020-memory-six-plane-model.md) | Memory Six-Plane Model and Automatic Promotion Rules | Accepted | 2026-04-17 |
+| [020](./020-memory-six-plane-model.md) | Memory Six-Plane Model and Auto-Promotion Rules | Accepted | 2026-04-17 |
 | [021](./021-inter-plane-communication-contract.md) | Inter-Plane Communication Contract | Accepted | 2026-04-03 |
 | [022](./022-api-contract-and-versioning.md) | API Contract and Versioning Architecture | Accepted | 2026-04-03 |
 | [023](./023-service-communication-architecture.md) | Service Communication Architecture | Accepted | 2026-04-03 |
@@ -35,7 +35,7 @@
 | [025](./025-stability-architecture-seven-layers.md) | Stability Architecture | Accepted | 2026-04-03 |
 | [026](./026-risk-control-architecture.md) | Risk Control Architecture | Accepted | 2026-04-03 |
 | [027](./027-security-architecture.md) | Security and Reliability Architecture | Accepted | 2026-04-03 |
-| [028](./028-incident-and-event-handling-architecture.md) | Incident and Event Handling Architecture | Accepted | 2026-04-03 |
+| [028](./028-incident-and-event-handling-architecture.md) | Exception Event Handling Architecture | Accepted | 2026-04-03 |
 | [029](./029-oapeflir-controlled-cognition-kernel.md) | OAPEFLIR Controlled Cognition Kernel | Accepted | 2026-04-17 |
 | [030](./030-runtime-execution-plane.md) | Runtime Execution Plane | Accepted | 2026-04-03 |
 | [031](./031-disaster-recovery-and-high-availability.md) | Disaster Recovery and High Availability Architecture | Accepted | 2026-04-03 |
@@ -53,20 +53,20 @@
 | [043](./043-unified-operations-dashboard.md) | Unified Operations Dashboard | Accepted | 2026-04-20 |
 | [044](./044-non-technical-user-experience.md) | Non-Technical User Experience Architecture | Accepted | 2026-04-20 |
 | [046](./046-organization-hierarchy-model.md) | Organization Hierarchy Model | Accepted | 2026-04-20 |
-| [047](./047-organization-approval-routing.md) | Organization Architecture Approval Routing | Accepted | 2026-04-20 |
+| [047](./047-organization-approval-routing.md) | Organization Approval Routing | Accepted | 2026-04-20 |
 | [048](./048-enterprise-sso-scim-integration.md) | Enterprise SSO/SCIM Integration Architecture | Accepted | 2026-04-20 |
 | [049](./049-department-compliance-policy-engine.md) | Department Compliance Policy Engine | Accepted | 2026-04-20 |
 | [050](./050-knowledge-domain-isolation.md) | Knowledge Domain Isolation and Controlled Sharing | Accepted | 2026-04-20 |
 | [051](./051-tiered-governance-delegation.md) | Tiered Governance Delegation | Accepted | 2026-04-20 |
 | [052](./052-multi-region-deployment-architecture.md) | Multi-Region Deployment Architecture | Accepted | 2026-04-20 |
-| [053](./053-scaling-resource-competition-management.md) | Scaled Resource Competition Management | Accepted | 2026-04-20 |
+| [053](./053-scaling-resource-competition-management.md) | Scaling Resource Competition Management | Accepted | 2026-04-20 |
 | [054](./054-sla-tiered-guarantees.md) | SLA Tiered Guarantees | Accepted | 2026-04-20 |
 | [055](./055-agent-marketplace-and-ecosystem.md) | Agent Marketplace and Ecosystem | Accepted | 2026-04-20 |
 | [056](./056-feedback-driven-continuous-improvement.md) | Feedback-Driven Continuous Improvement Pipeline | Accepted | 2026-04-20 |
 | [057](./057-external-system-integration-framework.md) | External System Integration Framework | Accepted | 2026-04-20 |
 | [058](./058-emergency-stop-and-global-circuit-breaker.md) | Emergency Stop and Global Circuit Breaker Architecture | Accepted | 2026-04-20 |
 | [059](./059-agent-explainability-and-decision-transparency.md) | Agent Explainability and Decision Transparency | Accepted | 2026-04-20 |
-| [060](./060-explicit-planning-hub.md) | Explicit Planning Layer and Plan Hub | Accepted | 2026-04-17 |
+| [060](./060-explicit-planning-hub.md) | Explicit Planning Hub | Accepted | 2026-04-17 |
 | [061](./061-agent-unified-lifecycle-management.md) | Agent Unified Lifecycle Management Architecture | Accepted | 2026-04-20 |
 | [062](./062-offline-and-edge-deployment-architecture.md) | Offline and Edge Deployment Architecture | Accepted | 2026-04-20 |
 | [063](./063-agent-behavior-drift-detection.md) | Agent Behavior Drift Detection Architecture | Accepted | 2026-04-20 |
@@ -76,14 +76,14 @@
 | [071](./071-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
-| [069](./069-platform-self-operating-agent.md) | Platform Self-Operating Agent Architecture | Partially Superseded | 2026-04-20 |
+| [069](./069-platform-self-operating-agent.md) | Platform Self-Ops Agent Architecture | Partially Superseded | 2026-04-20 |
 | [070](./070-conclusion.md) | Conclusion | Superseded by ADR-109 to ADR-113 | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Testing Matrix | Partially Superseded | 2026-04-17 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Partially Superseded | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
 | [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
 | [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Partially Superseded | 2026-04-17 |
-| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven-Type Signal Preprocessing | Accepted | 2026-04-17 |
-| [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four-Pattern Detector | Accepted | 2026-04-17 |
+| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Preprocessing | Accepted | 2026-04-17 |
+| [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four Pattern Detectors | Accepted | 2026-04-17 |
 | [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
 | [082](./082-natural-language-entry-and-goal-decomposition.md) | Natural Language Entry And Goal Decomposition | Accepted | 2026-04-20 |
 | [083](./083-proactive-agent-and-progressive-autonomy.md) | Proactive Agent And Progressive Autonomy | Accepted | 2026-04-20 |
@@ -123,26 +123,26 @@
 | [117](./117-cost-event-wal-recovery.md) | Cost Event WAL Recovery | Accepted | 2026-05-25 |
 | [118](./118-panic-allowlist-governance.md) | Panic Allowlist Governance | Accepted | 2026-05-25 |
 | [119](./119-pack-domain-lifecycle-coordination.md) | Pack Domain Lifecycle Coordination | Accepted | 2026-05-25 |
-| [120](./120-ui-sdk-client-transport-boundary.md) | UI and SDK Client Transport Boundary | Accepted | 2026-05-25 |
-| [121](./121-timeout-and-worker-liveness-hierarchy.md) | Timeout and Worker Liveness Hierarchy | Accepted | 2026-05-25 |
-| [122](./122-domain-evidence-and-session-boundary.md) | Domain Evidence and Session Replay Boundary | Accepted | 2026-05-25 |
+| [120](./120-ui-sdk-client-transport-boundary.md) | UI And SDK Client Transport Boundary | Accepted | 2026-05-25 |
+| [121](./121-timeout-and-worker-liveness-hierarchy.md) | Timeout And Worker Liveness Hierarchy | Accepted | 2026-05-25 |
+| [122](./122-domain-evidence-and-session-boundary.md) | Domain Evidence And Session Replay Boundary | Accepted | 2026-05-25 |
 
 ## Status Description
 
 - **Draft**: Under discussion, decision not yet made
-- **Proposed**: Proposed, waiting for approval
+- **Proposed**: Proposed, awaiting approval
 - **Accepted**: Accepted and implemented
 - **Superseded**: Superseded by new ADR
 - **Deprecated**: Deprecated
 
 ## Notes
 
-- Historical directory simultaneously retains `003-memory-six-layers.md` and `003-memory-seven-layers.md`; where `seven-layers` is retained only as historical alias / jump page, and canonical content uses `003-memory-six-layers.md` as the standard.
-- Plugin SPI ADR has been unified and converged to `071-plugin-spi-framework.md`; the old `066-plugin-spi-framework.md` duplicate copy has been removed, and all references are unified to ADR-071.
-- Newly added `091-108` address the Harness eight pillars and domain governance supplementation items.
-- Newly added `109-122` are the v4.3 Contract Freeze and follow-on implementation clarification entry points: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, MVP / Hardening / Enterprise three-ring boundary, plus the canonical description for tenant scope / auth precedence / self-healing boundary / interface rate-limit keys / WAL recovery / panic allowlists / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary.
-- `109-122` constrain old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming, tenant resolution, and cross-layer boundary semantics through freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary rules; historical ADR text is retained and not directly rewritten.
+- Historical directory simultaneously retains `003-memory-six-layers.md` and `003-memory-seven-layers.md`; where `seven-layers` only preserved as historical alias / jump page, canonical content uses `003-memory-six-layers.md` as standard.
+- Plugin SPI ADR has been uniformly converged to `071-plugin-spi-framework.md`; old `066-plugin-spi-framework.md` duplicate copy has been removed, all references uniformly changed to ADR-071.
+- New `091-108` are used to承接Harness eight pillars and domain governance supplements.
+- New `109-122` are v4.3 Contract Freeze and subsequent implementation clarification entries: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event layering, MVP / Hardening / Enterprise three-ring boundary, and authoritative explanations for tenant scope / auth precedence / self-healing boundary / interface rate-limit / WAL recovery / panic allowlist / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary.
+- `109-122` constrain old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming, tenant resolution, and cross-layer boundary semantics through freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary rules; historical ADR main text preserved, not directly rewritten.
 
 ## Creating New ADR
 
-New ADR should follow standard template; numbering retains number blocks by batch and evolution stage, and does not force fill historical gaps. See [../governance/source_of_truth.md](../governance/source_of_truth.md) for details.
+New ADR should follow standard template; numbers retain number ranges by batch and evolution stage, not强制补齐historical gaps. For details, refer to [../governance/source_of_truth.md](../governance/source_of_truth.md).

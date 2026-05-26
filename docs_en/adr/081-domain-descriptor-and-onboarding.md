@@ -4,15 +4,15 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
 
 - **Observe**: Domain signals, knowledge structure, and risk profile input
 - **Assess**: Domain risk assessment and onboarding review
-- **Plan**: Domain templates, domain workflows, and onboarding runbooks
-- **Execute**: Expose tools/plugins/knowledge by domain boundary
-- **Feedback**: Domain-level feedback, effectiveness metrics, and launch validation
-- **Learn**: Domain pattern accumulation and domain template correction
-- **Improve**: Domain bundle, prompt, recipe improvement candidates
+- **Plan**: Domain templates, domain workflow, and onboarding runbook
+- **Execute**: Expose tools/plugins/knowledge according to domain boundaries
+- **Feedback**: Domain-level feedback, effectiveness metrics, and production validation
+- **Learn**: Domain pattern precipitation and domain template refinement
+- **Improve**: Domain bundle, prompt, and recipe improvement candidates
 - **Release**: Domain package rollout, certification, and launch
 
 ---
@@ -22,17 +22,17 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Background
 
-v2.7 `§37-§38` requires the platform to no longer treat business domains as opaque business packages, but to use `DomainDescriptor` as a structured governance unit, unifying risk profile, knowledge structure, evaluation framework, Prompt library, Recipes, and cross-domain interaction strategy.
+v2.7 `§37-§38` requires the platform to no longer treat business domains as opaque business packages, but instead to use `DomainDescriptor` as a structured governance unit, unifying risk profiles, knowledge structures, evaluation frameworks, Prompt libraries, Recipes, and cross-domain interaction strategies.
 
-The current repository already has `src/domains/*` directory and initial implementation of `src/domains/registry/*`, but authoritative decisions are still missing, leading to:
+The current repository already has the `src/domains/*` directory and initial implementation of `src/domains/registry/*`, but the authoritative decision is still missing, leading to:
 
 - Inconsistent domain definition fields and lifecycle
-- Onboarding runbooks can only rely on verbal agreements
-- Most `src/domains/*` directories still停留在空壳 barrel
+- Onboarding runbook relying on oral agreements
+- `src/domains/*` directories still remain as empty shells
 
-## Decisions
+## Decision
 
-### 1. `DomainDescriptor` serves as the domain authoritative root object
+### 1. `DomainDescriptor` As Domain Authoritative Root Object
 
 Each domain must declare at minimum:
 
@@ -48,20 +48,20 @@ Each domain must declare at minimum:
 - `governancePolicy`
 - `lifecycleState`
 
-### 2. Domain onboarding adopts a four-phase fixed runbook
+### 2. Domain Onboarding Uses Four-Phase Fixed Runbook
 
-The onboarding process is fixed as:
+Onboarding process is fixed as:
 
 1. Domain Modeling
 2. Development Verification
 3. Security Certification
-4. Rolling Launch
+4. Gray Rollout
 
 Any new domain must leave structured evidence, not just submit code directories.
 
-### 3. Domain is the unified boundary for bundle, knowledge, evaluation, and governance
+### 3. Domain Is the Unified Boundary for Bundle, Knowledge, Evaluation, and Governance
 
-The following capabilities must all be挂靠到 domain:
+The following capabilities must all attach to the domain:
 
 - tool bundle
 - workflow registry
@@ -70,19 +70,19 @@ The following capabilities must all be挂靠到 domain:
 - eval dataset / gate
 - ownership / budget / SLO
 
-### 4. Domain onboarding prioritizes constraints first, then allows extension
+### 4. Domain Onboarding Priority: Constraints First, Then Extensions
 
-When adding new domains, first supplement:
+When adding a new domain, first supplement:
 
 - contract
 - schema
 - registry / validation
 - smoke test
 
-Then supplement business-specific implementation, to avoid "write code first, then fill boundaries".
+Then supplement business-specific implementation, avoid "write code first, fix boundaries later".
 
 ## Consequences
 
 - Subsequent implementation of `src/domains/*` must converge around `DomainDescriptor`
-- Design of `§37-§38` will no longer be scattered across multiple parallel documents
-- Domain onboarding upgraded from "convention-based integration" to "contract-based onboarding"
+- Design of `§37-§38` is no longer scattered across multiple parallel documents
+- Domain onboarding upgraded from "conventional integration" to "contract-based onboarding"

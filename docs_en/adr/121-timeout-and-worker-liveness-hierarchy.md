@@ -1,36 +1,36 @@
-# ADR-121 Timeout and Worker Liveness Hierarchy
+# ADR-121 Timeout And Worker Liveness Hierarchy
 
 - Status: Accepted
 - Decision Date: 2026-05-25
 
 ## Background
 
-The interface layer, gateway layer, and execution layer already define timeout and heartbeat parameters, but the hierarchy between them had not been documented clearly. Reviews therefore conflated thresholds that serve different goals.
+Interface layer, gateway layer, execution layer all have timeout/heartbeat parameters, but previously no unified explanation of their hierarchy, causing reviews to mix multiple different-purpose thresholds.
 
 ## Decision
 
-### 1. HTTP timeout hierarchy
+### 1. HTTP Timeout Hierarchy
 
-- server socket timeout must be greater than or equal to request handler timeout
-- request handler timeout must be greater than or equal to downstream channel gateway or request adapter timeout
-- default intent:
-  - socket timeout sets the upper bound for connection lifetime
-  - handler timeout sets the upper bound for a single API handling path
-  - gateway timeout sets the upper bound for a single downstream call
+- Server socket timeout must be greater than or equal to request handler timeout.
+- Request handler timeout must be greater than or equal to downstream channel gateway/request adapter timeout.
+- Default semantics:
+  - Socket timeout responsible for connection lifecycle upper bound
+  - Handler timeout responsible for single API processing upper bound
+  - Gateway timeout responsible for single external call upper bound
 
-### 2. Worker heartbeat threshold
+### 2. Worker Heartbeat Threshold
 
-- `DEFAULT_WORKER_HEARTBEAT_STALENESS_MS` is the worker liveness gate for local dispatch and handshake
-- it is used to answer "can this worker be scheduled now?" and is not the cross-region failover RTO SLA
-- cross-region RTO remains the responsibility of the failover, health-check, and reconciliation systems
+- `DEFAULT_WORKER_HEARTBEAT_STALENESS_MS` is the local dispatch/handshake worker liveness gate.
+- It is used to quickly determine "whether this worker can currently be scheduled", not cross-region failover RTO SLA.
+- Cross-region RTO still handled by failover / health-check / reconciliation system.
 
 ### 3. Principles
 
-- the local liveness gate may be much stricter than cross-region RTO
-- "worker stale" must not be interpreted directly as "trigger region failover immediately"
-- scheduling thresholds and failover thresholds must be tuned and observed separately
+- Local liveness gate can be much stricter than cross-region RTO.
+- Do not directly interpret "worker stale" as "should immediately trigger region failover".
+- Scheduling threshold and failover threshold must be separately tuned, separately observed.
 
-## Consequences
+## Result
 
-- a `30s` worker heartbeat staleness threshold and minute-level region RTO targets are no longer treated as a semantic conflict
-- timeout configuration is now understood as layered design with distinct responsibilities, not as values that happen to match numerically
+- `30s` worker heartbeat stale threshold and `minutes` level region RTO target no longer viewed as semantic conflict.
+- Design intent of timeout configuration changed from "numerical coincidence" to "explicit layering, each with its role".

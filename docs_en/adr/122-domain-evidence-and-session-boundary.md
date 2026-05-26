@@ -1,33 +1,33 @@
-# ADR-122 Domain Evidence and Session Replay Boundary
+# ADR-122 Domain Evidence And Session Replay Boundary
 
 - Status: Accepted
 - Decision Date: 2026-05-25
 
 ## Background
 
-Domain registration, knowledge namespaces, checkpoint envelopes, and session JSONL replay already exist, but their authority boundaries were not documented explicitly. That led reviews to conflate evidence responsibilities from different layers.
+Domain registry, knowledge namespace, checkpoint envelope, session JSONL replay all exist, but their authority boundary was not explicitly written before, causing reviews to mix evidence responsibilities of different layers.
 
 ## Decision
 
-### 1. Responsibilities of session replay
+### 1. Session Replay Responsibilities
 
-- `SessionDualStorageService` is authoritative for session timelines and interaction events
-- session replay is not the domain lifecycle audit bus and not the knowledge namespace policy engine
-- the authoritative source for domain lifecycle events remains the structured events published by the domain registry
+- `SessionDualStorageService` authoritative responsibility is to save session timeline and interaction events.
+- Session replay is not domain lifecycle audit bus, nor knowledge namespace policy engine.
+- Domain lifecycle event authoritative source is still domain registry published structured events.
 
-### 2. Domain ownership in checkpoints
+### 2. Checkpoint Domain Attribution
 
-- checkpoint envelopes may carry `domainId` and `namespaceId` for retention, routing, and governance ownership
-- schema authority for checkpoint payloads still belongs to the payload schema and envelope schema contracts
-- the domain meta model does not replace payload schema version validation
+- Checkpoint envelope can carry `domainId` / `namespaceId`, used for retention, routing, governance attribution.
+- But checkpoint payload schema authority still determined by payload schema / envelope schema contract.
+- Domain meta model does not负责替代payload schema version validation.
 
-### 3. Relationship between knowledge namespaces and sessions
+### 3. Knowledge Namespace and Session Relationship
 
-- the domain registry defines which knowledge namespaces are allowed for a domain
-- session replay does not re-evaluate namespace policy for historical messages by default
-- if domain-aware replay or inspection is needed, upper-layer inspect or governance views should compose session timelines with domain registry and checkpoint metadata instead of forcing all domain events into session JSONL
+- Domain registry is responsible for declaring which knowledge namespaces a domain allows.
+- Session replay does not re-execute namespace policy judgment on historical messages by default.
+- If domain-aware replay/inspection is needed, should combine session timeline with domain registry / checkpoint metadata through upper-layer inspect/governance view, rather than stuffing all domain events into session JSONL.
 
-## Consequences
+## Result
 
-- session chronology, domain lifecycle, checkpoint schema, and knowledge namespace each keep a single authority
-- if future cross-layer inspection views are added, they should use compositional queries rather than forcing one storage system to own every governance responsibility
+- Session chronology, domain lifecycle, checkpoint schema, knowledge namespace each retain single authority.
+- If cross-layer inspect view is added later, should go through composite query, rather than making single storage承担all governance responsibilities.

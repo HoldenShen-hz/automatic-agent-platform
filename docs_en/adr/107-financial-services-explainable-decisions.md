@@ -11,7 +11,7 @@
 - **Feedback**: Receive fairness and compliance feedback
 - **Learn**: Identify bad decision patterns
 - **Improve**: Adjust scoring and explanation templates
-- **Release**: Financial domain explanation obligations enter acceptance gate
+- **Release**: Financial domain explanation obligation included in acceptance gate
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Background
 
-Automated decisions in financial services domain must meet explainability and fair lending requirements.
+Automated decisions in financial services domain must meet explainable and fair lending requirements.
 
 ## Decision
 
-- Adverse decisions must include structured explanation
+- Adverse decisions must be accompanied by structured explanation
 - Explanation must be traceable to evidence and rules
 
 ## Consequences
 
-- `financial-services` domain output no longer just includes results, but must also carry reasons
+- Output of `financial-services` domain is not just results, but must also carry reasons
