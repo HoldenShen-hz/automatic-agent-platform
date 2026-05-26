@@ -31,7 +31,7 @@ import {
   createStableReleasePackage,
   type StableReleasePackageReport,
 } from "../../platform/shared/stability/stable-release-package.js";
-import type { StableGateTargetStatus } from "../../platform/shared/stability/stable-release-gate.js";
+import type { StableGateTargetStatus } from "../../platform/shared/stability/release-gate.js";
 import type {
   ArtifactRef,
   DataNamespaceRecord,

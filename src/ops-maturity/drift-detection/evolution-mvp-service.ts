@@ -16,8 +16,7 @@ import type { BudgetPolicy } from "../../platform/model-gateway/cost-tracker/bud
 import type { ApprovalRequest, ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { ExperienceCacheService } from "../../platform/five-plane-state-evidence/memory/experience-cache-service.js";
-import type { MemoryService } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
+import { ExperienceCacheService, type MemoryService } from "../../platform/five-plane-state-evidence/memory-gateway/index.js";
 import {
   assertEvolutionScope,
   buildRecommendedBudgetPolicy,

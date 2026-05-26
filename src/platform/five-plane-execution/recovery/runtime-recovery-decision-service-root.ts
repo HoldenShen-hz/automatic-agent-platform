@@ -25,7 +25,7 @@
 
 import type { DeadLetterRecord, ExecutionRecord } from "../../contracts/types/domain.js";
 
-import { MemoryService } from "../../five-plane-state-evidence/memory/memory-service.js";
+import { MemoryService } from "../../five-plane-state-evidence/memory-gateway/index.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";

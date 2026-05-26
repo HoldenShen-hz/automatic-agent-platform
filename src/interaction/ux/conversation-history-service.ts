@@ -9,7 +9,7 @@
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { MemoryRecord, MemorySourceTrustLevel } from "../../platform/contracts/types/domain.js";
-import type { MemoryService } from "../../platform/five-plane-state-evidence/memory/index.js";
+import type { MemoryService } from "../../platform/five-plane-state-evidence/memory-gateway/index.js";
 import type { DetectedIntent } from "../nl-gateway/index.js";
 
 interface ConversationMemoryServicePort {

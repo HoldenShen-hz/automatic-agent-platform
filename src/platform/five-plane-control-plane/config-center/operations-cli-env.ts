@@ -1,7 +1,7 @@
 import { join } from "node:path";
 
 import type { EnvironmentName } from "../../contracts/types/domain.js";
-import type { StableGateTargetStatus } from "../../shared/stability/stable-release-gate.js";
+import type { StableGateTargetStatus } from "../../shared/stability/release-gate.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { readTrimmedEnv } from "./runtime-env.js";
 

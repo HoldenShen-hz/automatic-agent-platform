@@ -13,7 +13,7 @@ import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-
 import type { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { MemoryService } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
+import type { MemoryService } from "../../platform/five-plane-state-evidence/memory-gateway/index.js";
 import { EvolutionMvpService } from "./evolution-mvp-service.js";
 
 /**

@@ -32,7 +32,7 @@ export type StableGateVerdict = "promote_approved" | "conditional" | "promote_bl
 /** Options for building a gate report */
 export interface StableReleaseGateOptions {
   /** Root directory containing evidence bundle profiles */
-  evidenceRootDir: string;
+  evidenceRootDir?: string;
   /** Target status to evaluate promotion toward */
   targetStatus?: StableGateTargetStatus;
 }
@@ -105,6 +105,7 @@ export interface StableReleaseGateReport {
 const GRAY_PROFILES: StableEvidenceProfileName[] = ["smoke"];
 const PRODUCTION_PROFILES: StableEvidenceProfileName[] = ["smoke", "24h", "72h"];
 const CANARY_PROFILES: StableEvidenceProfileName[] = ["smoke"];
+const DEFAULT_EVIDENCE_ROOT_DIR = join(process.cwd(), "data", "stable-evidence");
 
 /** Base criteria that are always required regardless of target status */
 const BASE_REQUIRED_CRITERION_IDS = new Set<StableGateCriterionId>([
@@ -258,7 +259,7 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
   const targetStatus = options.targetStatus ?? "canary";
   const requiredCriterionIds = resolveRequiredCriterionIds(targetStatus);
   const requiredProfiles = resolveRequiredProfiles(targetStatus);
-  const reports = collectEvidenceReports(options.evidenceRootDir, requiredProfiles);
+  const reports = collectEvidenceReports(options.evidenceRootDir ?? DEFAULT_EVIDENCE_ROOT_DIR, requiredProfiles);
   const checkedAt = new Date().toISOString();
 
   // Index reports by presence and status

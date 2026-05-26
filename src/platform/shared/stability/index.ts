@@ -56,3 +56,5 @@ export {
   type BulkheadConfig,
   type BulkheadMetrics,
 } from "../../stability/bulkhead-isolation.js";
+
+export * from "./release-gate.js";

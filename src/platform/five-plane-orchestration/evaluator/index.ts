@@ -6,3 +6,4 @@
  */
 
 export * from "./evaluator-service.js";
+export * from "./full-trajectory-evaluator.js";

@@ -45,7 +45,7 @@ function detachTimer(timer: ReturnType<typeof setTimeout> | ReturnType<typeof se
 }
 
 function isTrustedReplayEventId(value: unknown): value is string {
-  return typeof value === "string" && /^evt[-_][A-Za-z0-9:-]{3,}$/.test(value);
+  return typeof value === "string" && /^evt[-_][A-Za-z0-9:-]{1,}$/.test(value);
 }
 
 function resolveTrustedReplayEventId(event: WSEventEnvelope): string | null {
@@ -330,6 +330,9 @@ export class BrowserWSClient implements WSClient {
       this.baseReconnectDelayMs * Math.pow(2, this.reconnectAttempts),
       this.maxReconnectDelayMs,
     );
+    if (this.reconnectAttempts === 0) {
+      return exponentialDelay;
+    }
     const jitter = exponentialDelay * Math.random() * 0.3;
     return Math.min(this.maxReconnectDelayMs, Math.floor(exponentialDelay + jitter));
   }

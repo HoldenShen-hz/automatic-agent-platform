@@ -10,7 +10,7 @@
  * - tool_completed: Crash after a tool execution completes
  * - before_commit: Crash just before the workflow state is committed
  *
- * @see Stable Release Gate: stable-release-gate.ts
+ * @see Stable Release Gate contract in the stability module
  */
 
 import { InternalAppError } from "../../contracts/errors.js";

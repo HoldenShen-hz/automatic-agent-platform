@@ -20,7 +20,7 @@ import type { ArtifactRef } from "../../contracts/executable-contracts/index.js"
 import { nowIso } from "../../contracts/types/ids.js";
 import type { StalledExecutionEscalationPackage } from "../../five-plane-execution/recovery/stalled-execution-escalation-service.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import { sanitizeStructuredOutput } from "../../five-plane-execution/tool-executor/tool-output-sanitizer.js";
+import { sanitizeStructuredOutput } from "../../five-plane-execution/tool-gateway/index.js";
 import {
   buildIncidentTimelineMarkdown,
   DiagnosticsService,

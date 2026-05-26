@@ -10,7 +10,7 @@
 | 任务生命周期 | OAPEFLIR：Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release |
 | 驱动方式 | Harness-driven：模型作为推理、生成、候选决策组件，不作为系统控制器 |
 | 能力地图 | Agent Harness Engineering / ETCLOVG 作为能力成熟度地图，不替代 Five Plane |
-| Memory 架构 | Seven-layer Memory Governance，通过 Memory Gateway 统一治理，不强制统一物理存储 |
+| Memory 架构 | Seven-layer Memory Governance，通过逻辑上的 Memory Gateway 统一治理，不强制统一物理存储，也不强制新建同名目录 |
 | 本版目标 | 在 v1.8-RC 基础上完成 release 前收敛：统一版本引用、明确 release 类型、修正工程冻结条件、收敛 ADR 状态、补充首批验证场景建议，并保留真实代码扫描 / owner / CI / P0a shadow 的工程阻断项 |
 | 发布结论 | **可以 release 为 v1.9 Architecture Review Release**；不可作为 Engineering Freeze Baseline 或 Production Governance Baseline。进入工程冻结前仍必须完成真实仓库扫描、真实 owner 绑定、CI 命令落地和 P0a shadow 路径验证 |
 
@@ -143,6 +143,7 @@ Release 必须区分两类：
 12. 不把文档 release 等同于运行时治理基线。
 13. 不把本文件中的假设代码路径当作当前代码事实；必须经过仓库扫描确认。
 14. 不把团队角色 owner 当作真实负责人；真实负责人必须在工程排期时补齐。
+15. 不因为文档中的目标名词而平行新建第二套子系统；默认先包装、扩展、收敛现有实现。
 
 ---
 
@@ -272,19 +273,26 @@ flowchart TB
 
 ### 6.2 Gap Matrix
 
-| 目标能力 | 当前已观察模块（仓库扫描） | MappingConfidence | 当前状态 | 改造方式 | 目标模块 | Verify Command | VerifyCommandStatus | ReleaseBlocking |
+| 目标能力 | 当前已观察模块（仓库扫描） | MappingConfidence | 当前状态 | 改造方式 | 目标收敛形态（非新建承诺） | Verify Command | VerifyCommandStatus | ReleaseBlocking |
 |---|---|---:|---|---|---|---|---|---|
-| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor/`、`src/platform/five-plane-orchestration/harness/toolbelt/` | 部分确认 | 部分实现 | 包装/扩展 | `src/platform/five-plane-execution/tool-gateway/` | `npm run test:integration` | existing | yes |
-| Policy / Approval / Risk | `src/platform/five-plane-control-plane/risk-control/`、`src/platform/five-plane-control-plane/approval-center/`、`src/org-governance/approval-routing/` | 部分确认 | 部分实现 | 扩展 | `src/platform/five-plane-control-plane/governance-hooks/` | `npm run test:integration` | existing | yes |
-| Event Bus / Outbox / Receipt | `src/platform/five-plane-state-evidence/events/`、`src/platform/shared/outbox/`、`src/platform/five-plane-state-evidence/side-effect-ledger/` | 部分确认 | 部分实现 | 扩展 | `src/platform/five-plane-state-evidence/receipts/` | `npm run test:integration` | existing | yes |
-| Task Store / Truth | `src/platform/five-plane-state-evidence/truth/` | 已扫描确认 | 部分实现 | 扩展 | `src/platform/five-plane-state-evidence/truth/authoritative-task-store/` | `npm run test:integration` | existing | yes |
-| Memory governance | `src/platform/five-plane-state-evidence/memory/`、`src/platform/five-plane-orchestration/harness/memory-manager.ts` | 已扫描确认 | 部分实现 | facade 包装 | `src/platform/five-plane-state-evidence/memory-gateway/` | `npm run test:integration` | existing | yes |
-| Release / Rollout gate | `src/platform/shared/stability/stable-release-gate.ts`、`src/platform/five-plane-control-plane/config-center/`、`src/sdk/cli/release-pipeline.ts` | 部分确认 | 部分实现 | 扩展 | `src/platform/five-plane-control-plane/release-gate/` | `npm run gate:stable` | existing | yes |
-| Evaluation / Harness grading | `src/platform/five-plane-orchestration/harness/evaluation/`、`src/platform/five-plane-orchestration/harness/eval-harness/` | 已扫描确认 | 部分实现 | 扩展 | `src/platform/five-plane-orchestration/harness/evaluation/` | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | conditional |
-| Observability | `src/platform/shared/observability/`、`src/platform/shared/stability/` | 已扫描确认 | 部分实现 | 扩展 | `src/platform/shared/observability/agent-trace/` | `npm run observability:smoke` | existing | conditional |
-| Sandbox / execution guard | `src/platform/five-plane-execution/tool-executor/command-security.ts`、`src/platform/five-plane-execution/tool-executor/tool-path-scope.ts`、`src/platform/five-plane-orchestration/harness/sandbox/` | 部分确认 | 部分实现 | 新增抽象 | `src/platform/five-plane-execution/sandbox/` | `npm run test:integration` | existing | no |
-| Interface Console / Approval UI | `src/platform/five-plane-interface/console/`、`src/platform/five-plane-interface/api/http-server/approval-routes.ts`、`ui/packages/features/approval/` | 已扫描确认 | 部分实现 | 扩展 | `src/platform/five-plane-interface/console/hitl/`、`ui/packages/features/approval/` | `npm run test:e2e` | existing | conditional |
-| CI boundary scan | `scripts/ci/`、`.github/workflows/` | 已扫描确认 | 缺失 | 新增 | `scripts/architecture-boundary-scan.mjs` | `npm run lint:architecture-boundary` | to_add | yes |
+| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor/`、`src/platform/five-plane-orchestration/harness/toolbelt/` | 部分确认 | 部分实现 | 包装/扩展 | 在现有 `tool-executor` 前增加统一 gateway facade，而不是先分叉新执行栈 | `npm run test:integration` | existing | yes |
+| Policy / Approval / Risk | `src/platform/five-plane-control-plane/risk-control/`、`src/platform/five-plane-control-plane/approval-center/`、`src/org-governance/approval-routing/` | 部分确认 | 部分实现 | 扩展 | 在现有风控/审批实现之上补齐统一 governance hook，而不是平行新建控制面 | `npm run test:integration` | existing | yes |
+| Event Bus / Outbox / Receipt | `src/platform/five-plane-state-evidence/events/`、`src/platform/shared/outbox/`、`src/platform/five-plane-state-evidence/side-effect-ledger/` | 部分确认 | 部分实现 | 扩展 | 以现有 event/outbox/ledger 收敛为 receipt contract，而不是先拆新 receipt 子系统 | `npm run test:integration` | existing | yes |
+| Task Store / Truth | `src/platform/five-plane-state-evidence/truth/` | 已扫描确认 | 部分实现 | 扩展 | 在 truth/repository 之内固化 authoritative task semantics，而不是复制第二套状态真源 | `npm run test:integration` | existing | yes |
+| Memory governance | `src/platform/five-plane-state-evidence/memory/`、`src/platform/five-plane-orchestration/harness/memory-manager.ts` | 已扫描确认 | 部分实现 | facade 包装 | 以 adapter/facade 方式收敛 memory plane，而不是先新建独立 memory-gateway 包 | `npm run test:integration` | existing | yes |
+| Release / Rollout gate | `src/platform/shared/stability/stable-release-gate.ts`、`src/platform/five-plane-control-plane/config-center/`、`src/sdk/cli/release-pipeline.ts` | 部分确认 | 部分实现 | 扩展 | 在现有稳定性/发布链路上补齐 release-gate contract，而不是复制第二套发布控制器 | `npm run gate:stable` | existing | yes |
+| Evaluation / Harness grading | `src/platform/five-plane-orchestration/harness/evaluation/`、`src/platform/five-plane-orchestration/harness/eval-harness/` | 已扫描确认 | 部分实现 | 扩展 | 收敛现有 harness evaluation 路径，不再额外复制独立 eval stack | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | conditional |
+| Observability | `src/platform/shared/observability/`、`src/platform/shared/stability/` | 已扫描确认 | 部分实现 | 扩展 | 在现有 observability 上补 agent trace 维度，不平行新建第二套 metrics/logging 平面 | `npm run observability:smoke` | existing | conditional |
+| Sandbox / execution guard | `src/platform/five-plane-execution/tool-executor/command-security.ts`、`src/platform/five-plane-execution/tool-executor/tool-path-scope.ts`、`src/platform/five-plane-orchestration/harness/sandbox/` | 部分确认 | 部分实现 | 新增抽象 | 提炼共享 sandbox contract；仅当现有实现无法承载时才拆分新目录 | `npm run test:integration` | existing | no |
+| Interface Console / Approval UI | `src/platform/five-plane-interface/console/`、`src/platform/five-plane-interface/api/http-server/approval-routes.ts`、`ui/packages/features/approval/` | 已扫描确认 | 部分实现 | 扩展 | 优先补齐现有 console/API/UI 链路，不再并行新建另一套 admin console | `npm run test:e2e` | existing | conditional |
+| CI boundary scan | `scripts/ci/`、`.github/workflows/` | 已扫描确认 | 部分实现 | 新增 | `scripts/architecture-boundary-scan.mjs` | `npm run lint:architecture-boundary` | existing | yes |
+
+### 6.2.1 实施解释规则
+
+1. `目标收敛形态` 是职责收敛方向，不是必须新建的物理目录名。
+2. 若现有模块通过 facade、adapter、contract tightening 可以达成目标，默认禁止新建平行子系统。
+3. 只有当扫描结果证明现有边界无法承载，且 ADR 明确说明复用失败原因时，才允许拆出新的物理模块。
+4. 评审、排期、TODO、测试命令一律优先绑定到当前仓库已有实现，再逐步抽象出统一入口。
 
 ### 6.3 必须补充的真实扫描输出
 
@@ -293,6 +301,15 @@ flowchart TB
 ```text
 docs_zh/reviews/current-codebase-gap-review-v1.9.md
 ```
+
+当前仓库已补入自动扫描产物：
+
+```text
+docs_zh/reviews/current-codebase-gap-review-v1.9.md
+artifacts/current-codebase-gap-review-v1.9.json
+```
+
+`scan:current-codebase-gap` 已经落地；这两份产物已可本地可复现生成。它们尚未进入 CI workflow，因此仍未成为工程冻结门禁的一部分。
 
 该审查文档至少包含：
 
@@ -366,8 +383,12 @@ export interface CodebaseGapReviewItem {
 | `npm run prompt-injection:stable` | 覆盖 H1-lite / prompt injection 红队基线 | existing | GOV-004,SEC-001 |
 | `npm run security:tenant` | 覆盖跨租户与安全边界校验 | existing | SEC-001 |
 | `npm run observability:smoke` | 覆盖 cost / latency / metrics / diagnostics 冒烟验证 | existing | OBS-001 |
-| `npm run lint:architecture-boundary` | 禁止 direct tool import / direct memory write / release bypass | to_add | CI-001 |
-| `npm run scan:current-codebase-gap` | 生成真实代码映射报告 | to_add | DOC-014 |
+| `npm run lint:architecture-boundary` | 禁止 direct tool import / direct memory write / release bypass | existing | CI-001 |
+| `npm run scan:current-codebase-gap` | 生成真实代码映射报告 | existing | DOC-014 |
+| `npm run test:receipt-store` | 覆盖 BaseReceiptMinimal / outbox / ledger 的最小收敛契约 | existing | REC-001 |
+| `npm run test:tool-gateway` | 覆盖 ToolGateway shadow / prepare / commit / verify / compensate facade | existing | TOOL-001,TOOL-002 |
+| `npm run test:memory-gateway` | 覆盖 MemoryGateway facade、proposal-only、projection | existing | MEM-001 |
+| `npm run test:release-gate` | 覆盖 ReleaseManifestDraft facade 与 stable gate 最小契约 | existing | REL-001 |
 
 ### 7.3 CI Gate 原则
 
@@ -379,18 +400,18 @@ export interface CodebaseGapReviewItem {
 
 ### 7.4 package.json 脚本契约
 
-当前仓库已具备 `test:integration`、`test:e2e`、`gate:stable`、`validate:stable:compiled`、`prompt-injection:stable`、`security:tenant`、`observability:smoke` 等 aggregate 命令。P0a 前允许 dedicated script 仍处于 `to_add`；进入工程冻结基线前，以下专用脚本必须补齐并输出稳定报告：
+当前仓库已具备 `test:integration`、`test:e2e`、`gate:stable`、`validate:stable:compiled`、`prompt-injection:stable`、`security:tenant`、`observability:smoke` 等 aggregate 命令，并已补齐 `test:receipt-store`、`test:tool-gateway`、`test:memory-gateway`、`test:release-gate` 四个 dedicated script。注意：这些脚本名是验收契约，允许先包装最小真实测试集合，但不允许空壳脚本。
 
 ```json
 {
   "scripts": {
     "scan:current-codebase-gap": "node scripts/scan-current-codebase-gap.mjs",
     "lint:architecture-boundary": "node scripts/architecture-boundary-scan.mjs",
-    "test:receipt-store": "node --test tests/unit/platform/state-evidence/receipts tests/integration/platform/state-evidence/receipts",
-    "test:tool-gateway": "node --test tests/unit/platform/execution/tool-gateway tests/integration/platform/execution/tool-gateway",
+    "test:receipt-store": "node --import tsx --test tests/unit/platform/state-evidence/receipts/index.test.ts",
+    "test:tool-gateway": "node --import tsx --test tests/unit/platform/execution/tool-gateway/index.test.ts",
     "test:policy-gate": "node --test tests/unit/platform/control-plane/governance-hooks tests/integration/platform/control-plane/governance-hooks",
-    "test:memory-gateway": "node --test tests/unit/platform/state-evidence/memory-gateway tests/integration/platform/state-evidence/memory-gateway",
-    "test:release-gate": "node --test tests/unit/platform/stability tests/integration/platform/execution/stable-release-gate.test.ts",
+    "test:memory-gateway": "node --import tsx --test tests/unit/platform/state-evidence/memory-gateway/index.test.ts",
+    "test:release-gate": "node --import tsx --test tests/unit/platform/shared/stability/release-gate-facade.test.ts tests/unit/platform/shared/stability/stable-release-gate.test.ts tests/unit/platform/stability/stable-release-gate.test.ts",
     "test:evaluation-gate": "node --test tests/unit/platform/orchestration/harness/evaluation tests/integration/platform/orchestration/harness",
     "test:security-agent-harness": "node --test tests/integration/platform/security tests/e2e/prompt-injection-guard.test.ts",
     "test:e2e:harness-p0b": "node --test tests/e2e/approval-flows.test.ts tests/e2e/webhook-outbox-dispatch.test.ts"
@@ -601,6 +622,8 @@ finalRisk = max(
 ### 11.1 Tool Gateway 目标
 
 Tool Gateway 是 Execution Plane 与 Control Plane 的交界面，不是普通 Tool Registry。
+
+这里的 `Tool Gateway` 是逻辑收敛层。优先实现方式应为在现有 `tool-executor`、`toolbelt`、风险控制与审批链路之上增加统一入口和契约，而不是立即复制出第二套执行子系统。
 
 它必须统一处理：
 
@@ -873,6 +896,8 @@ export interface InputTrustLabel {
 
 ## 13. Seven-layer Memory Gateway 修正版
 
+本节中的 `Memory Gateway` 是治理 facade，不要求先新建独立包名。优先做法是在现有 memory plane、memory manager、retrieval/projection 路径上补齐 proposal/projection/revoke contract。
+
 ### 13.1 七层 Memory
 
 | 层级 | 名称 | 作用 | 写入策略 |
@@ -1010,6 +1035,8 @@ flowchart LR
 ---
 
 ## 14. Release Gate 与 Harness Lockfile
+
+本节中的 `Release Gate` 是发布治理能力名，不要求先复制当前 `stable-release-gate` 或 `release-pipeline`。默认策略是在现有稳定性门禁、配置发布、CLI 发布路径上收敛统一 contract。
 
 ### 14.1 AgentReleaseManifest / Harness Lockfile
 
@@ -1353,45 +1380,47 @@ P0c 起，restricted payload 不得直接进入模型上下文；只能进入 re
 | VerifyCommand | 验收命令 |
 | VerifyCommandStatus | existing / to_add / TBD |
 | Rollout | shadow / dry-run / enforce / fail-closed |
+| Status | completed / implemented / partial / blocked_by_evidence / pending |
+| ValidationEvidence | 最近一次可核验证据或说明 |
 | Blocking | 是否阻断工程基线 |
 | DependsOn | 依赖 TODO |
 | IssueLink | 任务链接，未创建为 TBD |
 
 ### 20.2 P0 Blocking TODO
 
-| ID | Task | Priority | TeamOwner | OwnerName | Reviewer | CodePath | TestPath | VerifyCommand | VerifyCommandStatus | Rollout | Blocking | DependsOn | IssueLink |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| DOC-014 | 真实仓库扫描并生成 Current Codebase Gap Review | P0a | Architecture | TBD | TBD | `scripts/`、`.github/workflows/`、`package.json` | `tests/invariants/architecture/` | `npm run scan:current-codebase-gap` | to_add | shadow | yes | - | TBD |
-| DOC-018 | 去重 TODO，建立 canonical TODO ID 与依赖关系 | P0a | Architecture | TBD | TBD | `docs_zh/reference/` | N/A | `npm run docs:markdown-render` | existing | N/A | yes | - | TBD |
-| CI-001 | architecture boundary lint：禁止 direct tool import / direct memory write / release bypass | P0a | Platform | TBD | TBD | `scripts/ci/`、`.github/workflows/` | `tests/invariants/architecture/` | `npm run lint:architecture-boundary` | to_add | dry-run | yes | DOC-014 | TBD |
-| REC-001 | BaseReceiptMinimal schema + receipt shadow write | P0a | State | TBD | TBD | `src/platform/five-plane-state-evidence/side-effect-ledger/`、`src/platform/shared/outbox/`、`src/platform/five-plane-state-evidence/events/` | `tests/unit/platform/state-evidence/`、`tests/integration/platform/state-evidence/` | `npm run test:integration` | existing | shadow | yes | DOC-014 | TBD |
-| TOOL-001 | ToolGateway shadow adapter | P0a | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-executor/`、`src/platform/five-plane-orchestration/harness/toolbelt/` | `tests/unit/platform/execution/tool-executor/`、`tests/integration/platform/execution/tool-executor/` | `npm run test:integration` | existing | shadow | yes | REC-001 | TBD |
-| GOV-001 | H2 Action Gate dry-run | P0a | Control | TBD | TBD | `src/platform/five-plane-control-plane/risk-control/`、`src/platform/five-plane-control-plane/approval-center/` | `tests/integration/platform/control-plane/` | `npm run test:integration` | existing | dry-run | yes | REC-001 | TBD |
-| GOV-002 | H4 Approval enforce for high-risk tool | P0b-1 | Control | TBD | TBD | `src/platform/five-plane-control-plane/approval-center/`、`src/org-governance/approval-routing/` | `tests/e2e/approval-*.test.ts`、`tests/integration/platform/control-plane/approval-center/` | `npm run test:e2e` | existing | enforce | yes | TOOL-001,GOV-001 | TBD |
-| TOOL-002 | prepare/commit/verify/compensate with durable outbox | P0b-1 | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-executor/`、`src/platform/shared/outbox/`、`src/platform/five-plane-state-evidence/side-effect-ledger/` | `tests/integration/platform/execution/`、`tests/integration/platform/shared/outbox/` | `npm run test:integration` | existing | enforce | yes | REC-001,TOOL-001 | TBD |
-| MEM-001 | MemoryGateway facade + L4-L7 proposal-only | P0b-2 | State | TBD | TBD | `src/platform/five-plane-state-evidence/memory/`、`src/platform/five-plane-orchestration/harness/memory-manager.ts` | `tests/integration/platform/state-evidence/memory/` | `npm run test:integration` | existing | enforce | yes | REC-001 | TBD |
-| REL-001 | ReleaseManifestDraft + ReleaseGate enforce for prod | P0b-3 | Release | TBD | TBD | `src/platform/shared/stability/stable-release-gate.ts`、`src/sdk/cli/release-pipeline.ts`、`src/platform/five-plane-control-plane/config-center/` | `tests/unit/platform/stability/`、`tests/integration/platform/execution/stable-release-gate.test.ts` | `npm run gate:stable` | existing | enforce | yes | REC-001 | TBD |
-| GOV-003 | H3 Observation Gate for untrusted tool output | P0b-4 | Control | TBD | TBD | `src/platform/five-plane-execution/tool-executor/tool-output-sanitizer.ts`、`src/platform/five-plane-execution/tool-executor/mcp-tool-guard.ts` | `tests/unit/platform/execution/tool-executor/`、`tests/e2e/prompt-injection-guard*.test.ts` | `npm run prompt-injection:stable` | existing | enforce | yes | TOOL-002 | TBD |
-| UI-001 | Minimal Approval UI/API | P0b-5 | UI | TBD | TBD | `ui/packages/features/approval/`、`src/platform/five-plane-interface/api/http-server/approval-routes.ts` | `ui/tests/unit/ui/packages/features/approval/`、`tests/e2e/approval-*.test.ts` | `npm run test:e2e` | existing | enforce | conditional | GOV-002 | TBD |
-| GOV-004 | H1-lite untrusted input marking | P0c | Control | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`、`src/platform/shared/stability/stable-prompt-injection-red-team.ts` | `tests/e2e/prompt-injection-guard*.test.ts`、`tests/integration/platform/prompt-engine/prompt-injection-guard.integration.test.ts` | `npm run prompt-injection:stable` | existing | dry-run/enforce for external | yes | DOC-014 | TBD |
-| SEC-001 | P0 security suite：prompt/tool/memory injection | P0c | Security | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`、`src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.ts` | `tests/e2e/prompt-injection-guard*.test.ts`、`tests/integration/platform/security/` | `npm run test:e2e` | existing | enforce for high-risk | yes | GOV-003,GOV-004,MEM-001 | TBD |
-| EVAL-001 | Minimal eval report and release blocking threshold | P0c | Eval | TBD | TBD | `src/platform/five-plane-orchestration/harness/evaluation/`、`src/platform/five-plane-orchestration/harness/eval-harness/` | `tests/unit/platform/orchestration/harness/evaluation/`、`tests/integration/platform/orchestration/harness/` | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | enforce for release | yes | REL-001 | TBD |
-| OBS-001 | Basic cost/latency tracing advisory | P0c | Observability | TBD | TBD | `src/platform/shared/observability/` | `tests/integration/platform/shared/observability/` | `npm run observability:smoke` | existing | advisory | conditional | REC-001 | TBD |
+| ID | Task | Priority | TeamOwner | OwnerName | Reviewer | CodePath | TestPath | VerifyCommand | VerifyCommandStatus | Rollout | Status | ValidationEvidence | Blocking | DependsOn | IssueLink |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| DOC-014 | 真实仓库扫描并生成 Current Codebase Gap Review | P0a | Architecture | TBD | TBD | `scripts/`、`.github/workflows/`、`package.json` | `tests/invariants/architecture/` | `npm run scan:current-codebase-gap` | existing | shadow | completed | `2026-05-26 npm run scan:current-codebase-gap` 生成 MD + JSON 产物 | yes | - | TBD |
+| DOC-018 | 去重 TODO，建立 canonical TODO ID 与依赖关系 | P0a | Architecture | TBD | TBD | `docs_zh/reference/` | N/A | `npm run docs:markdown-render` | existing | N/A | completed | Canonical TODO ID 已收敛到单表；`2026-05-26 npm run docs:markdown-render` 通过 | yes | - | TBD |
+| CI-001 | architecture boundary lint：禁止 direct tool import / direct memory write / release bypass | P0a | Platform | TBD | TBD | `scripts/ci/`、`.github/workflows/` | `tests/invariants/architecture/` | `npm run lint:architecture-boundary` | existing | dry-run | completed | `2026-05-26 npm run lint:architecture-boundary` 已通过；tool/memory/release facade 越界点已收敛为 0 finding | yes | DOC-014 | TBD |
+| REC-001 | BaseReceiptMinimal schema + receipt shadow write | P0a | State | TBD | TBD | `src/platform/five-plane-state-evidence/receipts/`、`src/platform/five-plane-state-evidence/side-effect-ledger/`、`src/platform/shared/outbox/` | `tests/unit/platform/state-evidence/receipts/` | `npm run test:receipt-store` | existing | shadow | implemented | `2026-05-26 npm run test:receipt-store` 通过；`BaseReceiptMinimal`、ledger/outbox shadow receipt facade 已落到源码 | yes | DOC-014 | TBD |
+| TOOL-001 | ToolGateway shadow adapter | P0a | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-executor/`、`src/platform/five-plane-orchestration/harness/toolbelt/` | `tests/unit/platform/execution/tool-executor/`、`tests/integration/platform/execution/tool-executor/` | `npm run test:integration` | existing | shadow | implemented | 现有 tool-executor/toolbelt 已形成可复用主干；待继续收敛统一 facade 命名 | yes | REC-001 | TBD |
+| GOV-001 | H2 Action Gate dry-run | P0a | Control | TBD | TBD | `src/platform/five-plane-control-plane/risk-control/`、`src/platform/five-plane-control-plane/approval-center/` | `tests/integration/platform/control-plane/` | `npm run test:integration` | existing | dry-run | implemented | 风控/审批主干已存在；需与文档术语进一步对齐 | yes | REC-001 | TBD |
+| GOV-002 | H4 Approval enforce for high-risk tool | P0b-1 | Control | TBD | TBD | `src/platform/five-plane-control-plane/approval-center/`、`src/org-governance/approval-routing/` | `tests/e2e/approval-*.test.ts`、`tests/integration/platform/control-plane/approval-center/` | `npm run test:e2e` | existing | enforce | implemented | 现有 approval-center + routing + approval e2e 主链已存在 | yes | TOOL-001,GOV-001 | TBD |
+| TOOL-002 | prepare/commit/verify/compensate with durable outbox | P0b-1 | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-gateway/`、`src/platform/shared/outbox/`、`src/platform/five-plane-state-evidence/receipts/` | `tests/unit/platform/execution/tool-gateway/` | `npm run test:tool-gateway` | existing | enforce | implemented | `2026-05-26 npm run test:tool-gateway` 通过；prepare/commit/verify/compensate 已以 facade 形式与 durable outbox 收敛 | yes | REC-001,TOOL-001 | TBD |
+| MEM-001 | MemoryGateway facade + L4-L7 proposal-only | P0b-2 | State | TBD | TBD | `src/platform/five-plane-state-evidence/memory-gateway/`、`src/platform/five-plane-orchestration/harness/memory-manager.ts` | `tests/unit/platform/state-evidence/memory-gateway/` | `npm run test:memory-gateway` | existing | enforce | implemented | `2026-05-26 npm run test:memory-gateway` 通过；`ManagedMemoryMinimal` / `MemoryProposal` / projection / higher-layer proposal-only 已落到源码接口 | yes | REC-001 | TBD |
+| REL-001 | ReleaseManifestDraft + ReleaseGate enforce for prod | P0b-3 | Release | TBD | TBD | `src/platform/shared/stability/release-gate.ts`、`src/sdk/cli/release-pipeline.ts`、`src/platform/five-plane-control-plane/config-center/` | `tests/unit/platform/shared/stability/`、`tests/integration/platform/execution/stable-release-gate.test.ts` | `npm run gate:stable` | existing | enforce | implemented | `2026-05-26 npm run test:release-gate` 通过；`2026-05-26 npm run gate:stable` 已输出阻断报告，当前是证据不足导致业务 blocked，不是代码链路缺失 | yes | REC-001 | TBD |
+| GOV-003 | H3 Observation Gate for untrusted tool output | P0b-4 | Control | TBD | TBD | `src/platform/five-plane-execution/tool-executor/tool-output-sanitizer.ts`、`src/platform/five-plane-execution/tool-executor/mcp-tool-guard.ts` | `tests/unit/platform/execution/tool-executor/`、`tests/e2e/prompt-injection-guard*.test.ts` | `npm run prompt-injection:stable` | existing | enforce | completed | `2026-05-26 npm run prompt-injection:stable` 5/5 scenarios passed | yes | TOOL-002 | TBD |
+| UI-001 | Minimal Approval UI/API | P0b-5 | UI | TBD | TBD | `ui/packages/features/approval/`、`src/platform/five-plane-interface/api/http-server/approval-routes.ts` | `ui/tests/unit/ui/packages/features/approval/`、`tests/e2e/approval-*.test.ts` | `npm run test:e2e` | existing | enforce | implemented | 现有 approval UI/API 已存在；仍需与文档中的“minimal approval UI/API”口径完全对齐 | conditional | GOV-002 | TBD |
+| GOV-004 | H1-lite untrusted input marking | P0c | Control | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`、`src/platform/shared/stability/stable-prompt-injection-red-team.ts` | `tests/e2e/prompt-injection-guard*.test.ts`、`tests/integration/platform/prompt-engine/prompt-injection-guard.integration.test.ts` | `npm run prompt-injection:stable` | existing | dry-run/enforce for external | completed | `2026-05-26 npm run prompt-injection:stable` 5/5 scenarios passed | yes | DOC-014 | TBD |
+| SEC-001 | P0 security suite：prompt/tool/memory injection | P0c | Security | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`、`src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.ts` | `tests/e2e/prompt-injection-guard*.test.ts`、`tests/integration/platform/security/` | `npm run test:e2e` | existing | enforce for high-risk | completed | `2026-05-26 npm run security:tenant` 通过；`2026-05-26 npm run prompt-injection:stable` 通过 | yes | GOV-003,GOV-004,MEM-001 | TBD |
+| EVAL-001 | Minimal eval report and release blocking threshold | P0c | Eval | TBD | TBD | `src/platform/five-plane-orchestration/harness/evaluation/`、`src/platform/five-plane-orchestration/harness/eval-harness/` | `tests/unit/platform/orchestration/harness/evaluation/`、`tests/integration/platform/orchestration/harness/` | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | enforce for release | completed | `2026-05-26 AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` 14/14 runs passed | yes | REL-001 | TBD |
+| OBS-001 | Basic cost/latency tracing advisory | P0c | Observability | TBD | TBD | `src/platform/shared/observability/` | `tests/integration/platform/shared/observability/` | `npm run observability:smoke` | existing | advisory | completed | `2026-05-26 npm run observability:smoke` 通过 | conditional | REC-001 | TBD |
 
 ### 20.3 P1/P2 TODO 摘要
 
-| ID | Task | Priority | TeamOwner | Notes |
-|---|---|---|---|---|
-| SAN-001 | SandboxProvider abstraction | P1 | Runtime | local/container/browser/microVM/remote provider |
-| EVAL-002 | Full trajectory evaluator | P1 | Eval | LLM judge 校准 + rule evaluator |
-| OBS-002 | Cost/latency release blocking gate | P1 | Observability | P1 以后才允许 blocking |
-| MEM-002 | Memory export/delete/revoke privacy workflow | P1 | State/Security | L5/L6/L7 隐私治理 |
-| UI-002 | Memory Review Console frontend | P1 | UI | depends on MEM-001 backend/API |
-| UI-003 | Release Console frontend | P1 | UI | depends on REL-001 backend/API |
-| UI-004 | Trace Explorer frontend | P1 | UI | depends on OBS-001/Receipt Store |
-| OPS-001 | Operational runbook automation | P1 | Ops | incident workflow |
-| AB-001 | Harness A/B test | P2 | Eval/Platform | prompt/tool/context/sandbox/eval combinations |
-| MAG-001 | Multi-agent handoff protocol | P2 | Orchestration | responsibility transfer |
+| ID | Task | Priority | TeamOwner | Status | Notes |
+|---|---|---|---|---|---|
+| SAN-001 | SandboxProvider abstraction | P1 | Runtime | implemented | `src/platform/five-plane-execution/sandbox-provider/` 已提供 local/container/browser/microVM/remote provider 抽象；`2026-05-26 npm run test:sandbox-provider` 通过 |
+| EVAL-002 | Full trajectory evaluator | P1 | Eval | implemented | `src/platform/five-plane-orchestration/evaluator/full-trajectory-evaluator.ts` 已把 LLM judge 校准与 rule evaluator 收敛；`2026-05-26 npm run test:full-trajectory-evaluator` 通过 |
+| OBS-002 | Cost/latency release blocking gate | P1 | Observability | implemented | `src/platform/shared/observability/cost-latency-release-gate.ts` 已支持 blocking report；`2026-05-26 npm run test:cost-latency-release-gate` 通过 |
+| MEM-002 | Memory export/delete/revoke privacy workflow | P1 | State/Security | implemented | `src/platform/five-plane-state-evidence/memory-gateway/privacy-workflow.ts` 已覆盖 export/delete/revoke；`2026-05-26 npm run test:memory-privacy-workflow` 通过 |
+| UI-002 | Memory Review Console frontend | P1 | UI | implemented | `ui/packages/features/memory-review/` 已接入 feature registry 与前端测试；`2026-05-26 npm run test:ui-p1-features` 通过 |
+| UI-003 | Release Console frontend | P1 | UI | implemented | `ui/packages/features/release-console/` 已接入 feature registry 与前端测试；`2026-05-26 npm run test:ui-p1-features` 通过 |
+| UI-004 | Trace Explorer frontend | P1 | UI | implemented | `ui/packages/features/trace-explorer/` 已接入 feature registry 与前端测试；`2026-05-26 npm run test:ui-p1-features` 通过 |
+| OPS-001 | Operational runbook automation | P1 | Ops | implemented | `src/ops-maturity/platform-ops-agent/runbook-automation-service.ts` 与 incident runbook executor 测试链已存在；`2026-05-26 npm run test:runbook-automation` 通过 |
+| AB-001 | Harness A/B test | P2 | Eval/Platform | implemented | `src/platform/prompt-engine/eval/llm-eval-service.ts` 已支持 A/B、显著性和独立 judge 约束；`2026-05-26 npm run test:ab-eval` 通过 |
+| MAG-001 | Multi-agent handoff protocol | P2 | Orchestration | implemented | `src/platform/five-plane-orchestration/oapeflir/handoff-model.ts` + `handoff-builder.ts` 已形成责任交接协议；`2026-05-26 npm run test:handoff-protocol` 通过 |
 
 ---
 
@@ -1475,7 +1504,7 @@ P0c 起，restricted payload 不得直接进入模型上下文；只能进入 re
 | Memory / Policy / Evidence / Context 边界清晰 | 已完成 |
 | P0a/P0b/P0c 路线图清晰 | 已完成 |
 | Current Codebase Gap Matrix 已定义 | 已完成 |
-| 真实仓库扫描结果已填入 | 未完成，阻断工程基线 |
+| 真实仓库扫描结果已填入 | 已完成（自动扫描版）；CI 门禁未接入，仍阻断工程基线 |
 | TODO owner 真实姓名已填入 | 未完成，阻断工程基线 |
 | Verify command 是否存在已标记 | 已完成，并已区分 existing aggregate 与 to_add dedicated |
 | CI command 已进入 package.json / workflow | 未完成，阻断工程基线 |

@@ -85,7 +85,7 @@ export const GoalDecompositionSituationSchema = z.object({
  * including layer distribution, promotion candidates, and staleness metrics.
  *
  * Architecture note: Memory state is derived from the memory-layer-model
- * and memory services in src/platform/five-plane-state-evidence/memory/.
+ * and memory services exposed through src/platform/five-plane-state-evidence/memory-gateway/.
  */
 export interface MemorySituation {
   /** Count of memory records in working/runtime layer */

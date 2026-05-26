@@ -5,7 +5,9 @@ export * as pluginExecutor from "./plugin-executor/index.js";
 export * as queue from "./queue/index.js";
 export * as recovery from "./recovery/index.js";
 export * as resource from "./resource/index.js";
+export * as sandboxProvider from "./sandbox-provider/index.js";
 export * as startup from "./startup/index.js";
+export * as toolGateway from "./tool-gateway/index.js";
 export * as toolExecutor from "./tool-executor/index.js";
 export * as workerPool from "./worker-pool/index.js";
 

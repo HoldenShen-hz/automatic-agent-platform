@@ -1,4 +1,5 @@
 export * as agentDelegation from "./agent-delegation/index.js";
+export * as evaluator from "./evaluator/index.js";
 export * as escalation from "./escalation/index.js";
 export * as hitl from "./hitl/index.js";
 export * as oapeflir from "./oapeflir/index.js";

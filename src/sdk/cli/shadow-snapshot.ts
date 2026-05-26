@@ -27,7 +27,7 @@
 
 import { loadShadowSnapshotCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { ShadowSnapshotService } from "../../platform/five-plane-execution/tool-executor/shadow-snapshot-service.js";
+import { ShadowSnapshotService } from "../../platform/five-plane-execution/tool-gateway/index.js";
 import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 // R31-43 FIX: Defer environment loading and service creation to main() to avoid module-level side effects

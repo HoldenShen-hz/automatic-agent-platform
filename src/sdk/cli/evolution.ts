@@ -37,7 +37,7 @@ import { ApprovalService } from "../../platform/five-plane-control-plane/approva
 import { BudgetGuard } from "../../platform/model-gateway/cost-tracker/budget-guard.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { EvolutionMvpService } from "../../ops-maturity/drift-detection/evolution-mvp-service.js";
-import { MemoryService } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
+import { MemoryService } from "../../platform/five-plane-state-evidence/memory-gateway/index.js";
 
 /**
  * Main entry point for the evolution CLI.

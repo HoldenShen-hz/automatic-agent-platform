@@ -1,6 +1,6 @@
 import type { MemoryLayer, MemorySourceTrustLevel, EnvironmentName } from "../../contracts/types/domain.js";
 import { ValidationError } from "../../contracts/errors.js";
-import type { StructuredMemoryContent } from "../../five-plane-state-evidence/memory/memory-schema.js";
+import type { StructuredMemoryContent } from "../../five-plane-state-evidence/memory-gateway/index.js";
 import type { ProviderHealthSummary } from "../../shared/observability/provider-health-tracker.js";
 import type { ModelGovernanceSnapshot } from "../../prompt-engine/eval/prompt-model-policy-governance-service.js";
 import type { ModelRouteClass, ModelRouteFallbackLease, ModelRouteRiskLevel } from "../../model-gateway/provider-registry/model-routing-service.js";

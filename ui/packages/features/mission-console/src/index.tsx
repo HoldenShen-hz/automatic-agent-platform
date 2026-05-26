@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { MissionConsoleWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("mission-console");
 
 const missionConsoleFeature = createFeatureModule({
   id: "mission-console",
-  title: "Mission Console",
+  title: featureCopy.title,
   group: "Mission Control",
   path: "/mission-control/missions",
   permission: "authenticated",
   status: "Implemented/Contracted",
-  summary: "Mission overview, task and run ownership, budget posture, and evidence lineage.",
+  summary: featureCopy.summary,
   render: MissionConsoleWebView,
 });
 

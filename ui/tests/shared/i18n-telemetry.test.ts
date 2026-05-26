@@ -33,6 +33,6 @@ describe("shared i18n and telemetry", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url).toBe("https://otel.example.test/v1/logs");
     expect(requests[0]?.body).toContain("\"service.name\":\"automatic-agent-platform-ui\"");
-    expect(requests[0]?.body).toContain("\"body\":\"ui.loaded\"");
+    expect(requests[0]?.body).toContain("\"stringValue\":\"ui.loaded\"");
   });
 });

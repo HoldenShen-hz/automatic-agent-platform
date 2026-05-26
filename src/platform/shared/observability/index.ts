@@ -11,6 +11,7 @@
 
 export * from "./structured-logger.js";
 export * from "./trace-context.js";
+export * from "./cost-latency-release-gate.js";
 export * from "./diagnostics-support.js";
 export * from "./task-situation-builder.js";
 export * from "./agent-state-view-service.js";

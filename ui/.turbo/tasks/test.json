@@ -2,11 +2,8 @@
   "task": "test",
   "command": [
     "vitest",
-    "run",
-    "--run",
-    "tests/shared/api-client-runtime-regressions.test.ts",
-    "tests/unit/ui/shared/ws-client.test.ts"
+    "run"
   ],
-  "startedAt": "2026-05-25T01:11:21.558Z",
-  "completedAt": "2026-05-25T01:11:23.009Z"
+  "startedAt": "2026-05-26T08:39:03.018Z",
+  "completedAt": "2026-05-26T08:39:31.703Z"
 }

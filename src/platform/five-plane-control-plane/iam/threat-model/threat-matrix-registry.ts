@@ -92,8 +92,8 @@ const DEFAULT_ENTRIES: ThreatEntry[] = [
       "memory snapshot access controls",
     ],
     implementationRefs: [
-      "src/platform/five-plane-state-evidence/memory/encrypted-memory-store.ts",
-      "src/platform/five-plane-state-evidence/memory/memory-isolation-service.ts",
+      "src/platform/five-plane-state-evidence/memory-gateway/index.ts",
+      "src/platform/five-plane-orchestration/harness/memory-manager.ts",
       "src/platform/five-plane-control-plane/iam/audit-event-integrity.ts",
       "src/platform/five-plane-execution/agent/session-cleanup-service.ts",
     ],
@@ -160,4 +160,3 @@ export class ThreatMatrixRegistry {
 }
 
 export const defaultThreatMatrixRegistry = new ThreatMatrixRegistry();
-

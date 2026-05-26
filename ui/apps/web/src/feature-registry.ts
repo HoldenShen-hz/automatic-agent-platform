@@ -28,6 +28,9 @@ import costCenter from "@aa/feature-cost-center";
 import marketplace from "@aa/feature-marketplace";
 import analytics from "@aa/feature-analytics";
 import featureFlags from "../../../packages/features/feature-flags/src/index";
+import memoryReview from "../../../packages/features/memory-review/src/index";
+import releaseConsole from "../../../packages/features/release-console/src/index";
+import traceExplorer from "../../../packages/features/trace-explorer/src/index";
 import type { FeatureModule } from "@aa/ui-core";
 
 export const missionControlFeatureContracts = [
@@ -66,6 +69,9 @@ export const featureRegistry: readonly FeatureModule[] = [
   costCenter,
   marketplace,
   analytics,
+  memoryReview,
+  releaseConsole,
+  traceExplorer,
 ];
 
 export const LazyFeatureDashboard = dashboard;
