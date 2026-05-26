@@ -100,14 +100,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createTaskRoutes returns 10 routes", () => {
+test("createTaskRoutes returns 11 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  assert.equal(routes.length, 10);
+  assert.equal(routes.length, 11);
 });
 
 test("GET /v1/tasks returns task list", async () => {
@@ -153,6 +153,23 @@ test("GET /v1/workflows returns workflow list", async () => {
   assert.equal(response.statusCode, 200);
   const body = JSON.parse(response.body);
   assert.deepEqual(body.data.workflows.map((workflow: { taskId: string }) => workflow.taskId), ["task-2", "task-1"]);
+});
+
+test("GET /v1/workflows/builder returns Layer C workflow builder summaries", async () => {
+  const deps = {
+    authService: createMockAuthService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+  };
+  const routes = createTaskRoutes(deps);
+  const ctx = createMockContext("/v1/workflows/builder", ["v1", "workflows", "builder"]);
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.deepEqual(body.data.map((workflow) => workflow.id), ["wf-2", "wf-1"]);
+  assert.equal(body.data[0]?.title, "wf-2");
+  assert.equal(body.data[0]?.status, "running");
 });
 
 test("GET /v1/tasks supports cursor pagination", async () => {

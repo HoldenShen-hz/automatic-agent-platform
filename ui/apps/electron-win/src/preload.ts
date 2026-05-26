@@ -32,4 +32,5 @@ export function installElectronBridge(target: Window, bridge: ElectronBridge): v
     }
   ).__AA_ELECTRON_CONTEXT_BRIDGE__;
   contextBridge?.exposeInMainWorld("AA_ELECTRON", bridge);
+  contextBridge?.exposeInMainWorld("__AA_ELECTRON__", bridge);
 }

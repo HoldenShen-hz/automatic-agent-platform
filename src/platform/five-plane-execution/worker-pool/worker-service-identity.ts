@@ -58,11 +58,16 @@ export class WorkerServiceIdentityRegistry {
       );
     }
 
-    // R13-19 fix: Store in memory map for coordinator restarts
-    this.memoryStore.set(identity.workerId, identity);
-
-    // R13-19 fix: Persist identity to durable storage when store is available
     if (this.store) {
+      const workerStore = this.store.worker as typeof this.store.worker & {
+        upsertWorkerIdentity?: (record: WorkerIdentityRecord) => void;
+      };
+      if (typeof workerStore.upsertWorkerIdentity !== "function") {
+        throw new ValidationError(
+          "worker_identity.persistence_not_supported",
+          "worker_identity.persistence_not_supported",
+        );
+      }
       const record: WorkerIdentityRecord = {
         workerId: identity.workerId,
         serviceIdentity: identity.serviceIdentity,
@@ -71,14 +76,10 @@ export class WorkerServiceIdentityRegistry {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      try {
-        (this.store.worker as typeof this.store.worker & {
-          upsertWorkerIdentity?: (record: WorkerIdentityRecord) => void;
-        }).upsertWorkerIdentity?.(record);
-      } catch {
-        // Persistence failure should not prevent registration
-      }
+      workerStore.upsertWorkerIdentity(record);
     }
+
+    this.memoryStore.set(identity.workerId, identity);
     return identity;
   }
 
@@ -150,14 +151,24 @@ export class WorkerServiceIdentityRegistry {
         getWorkerIdentity?: (workerId: string) => WorkerIdentityRecord | null;
       }).getWorkerIdentity?.(workerId);
       if (record) {
+        const parsedTenants = JSON.parse(record.allowedNodeRunTenantsJson);
+        if (!Array.isArray(parsedTenants) || parsedTenants.some((tenantId) => typeof tenantId !== "string")) {
+          throw new ValidationError(
+            "worker_identity.allowed_tenants_invalid",
+            "worker_identity.allowed_tenants_invalid",
+          );
+        }
         return {
           workerId: record.workerId,
           serviceIdentity: record.serviceIdentity,
           mtlsPeerFingerprint: record.mtlsPeerFingerprint,
-          allowedNodeRunTenants: JSON.parse(record.allowedNodeRunTenantsJson),
+          allowedNodeRunTenants: parsedTenants,
         };
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       // Storage lookup failure returns null
     }
     return null;

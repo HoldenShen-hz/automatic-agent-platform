@@ -9,7 +9,9 @@ export class DesktopPlatformAdapter extends DefaultPlatformAdapter {
 }
 
 export class ElectronPlatformAdapter extends DesktopPlatformAdapter {
-  public constructor(private readonly bridge: ElectronBridge | undefined = globalThis.window?.__AA_ELECTRON__) {
+  public constructor(
+    private readonly bridge: ElectronBridge | undefined = globalThis.window?.__AA_ELECTRON__ ?? globalThis.window?.AA_ELECTRON,
+  ) {
     super("windows");
   }
 

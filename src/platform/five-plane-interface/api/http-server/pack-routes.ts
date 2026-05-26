@@ -113,6 +113,22 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
+      pathname: "/v1/marketplace",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const tenantId = resolveTenantScope(principal, undefined);
+        const limit = readLimit(ctx.request, 50);
+        void tenantId;
+        return buildJsonResponse(ctx.requestId, 200, deps.packCatalogService.listPacks(limit).map((pack) => ({
+          id: pack.packId,
+          name: pack.name,
+          category: pack.domainId,
+          version: pack.version,
+        })));
+      },
+    },
+    {
+      method: "GET",
       pathname: null,
       segments: true,
       handler: (ctx) => {
@@ -130,6 +146,29 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
           throw new ApiError(404, "pack.not_found", `Pack ${packId} not found.`);
         }
         return buildJsonResponse(ctx.requestId, 200, pack);
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (segments[0] !== "v1" || segments[1] !== "packs" || segments.length !== 4 || segments[3] !== "versions") {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const packId = segments[2]!;
+        const pack = deps.packCatalogService.getPack(packId);
+        if (pack == null) {
+          throw new ApiError(404, "pack.not_found", `Pack ${packId} not found.`);
+        }
+        return buildJsonResponse(ctx.requestId, 200, [{
+          id: `${pack.packId}:${pack.version}`,
+          version: pack.version,
+          createdAt: pack.createdAt,
+          status: pack.lifecycleStage === "approved" || pack.lifecycleStage === "published" ? "published" : pack.lifecycleStage === "deprecated" ? "deprecated" : "draft",
+        }]);
       },
     },
     {

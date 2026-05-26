@@ -149,3 +149,61 @@ test("WorkerServiceIdentityRegistry can register multiple workers", () => {
   assert.equal(decision1.accepted, true);
   assert.equal(decision2.accepted, true);
 });
+
+test("WorkerServiceIdentityRegistry.register fails closed when durable persistence fails", () => {
+  const registry = new WorkerServiceIdentityRegistry({
+    worker: {
+      upsertWorkerIdentity() {
+        throw new Error("Storage unavailable");
+      },
+    },
+  } as never);
+
+  assert.throws(
+    () => registry.register({
+      workerId: "worker-1",
+      serviceIdentity: "service-a",
+      mtlsPeerFingerprint: "fp-123",
+      allowedNodeRunTenants: ["tenant-1"],
+    }),
+    /Storage unavailable/,
+  );
+
+  const decision = registry.evaluateClaim({
+    workerId: "worker-1",
+    nodeRunId: "nr-1",
+    tenantId: "tenant-1",
+    serviceIdentity: "service-a",
+    mtlsPeerFingerprint: "fp-123",
+  });
+  assert.equal(decision.accepted, false);
+  assert.equal(decision.reasonCode, "worker_identity.worker_unknown");
+});
+
+test("WorkerServiceIdentityRegistry.evaluateClaim rejects invalid durable tenant payload", () => {
+  const registry = new WorkerServiceIdentityRegistry({
+    worker: {
+      getWorkerIdentity() {
+        return {
+          workerId: "worker-1",
+          serviceIdentity: "service-a",
+          mtlsPeerFingerprint: "fp-123",
+          allowedNodeRunTenantsJson: "{\"tenant\":\"bad\"}",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      },
+    },
+  } as never);
+
+  assert.throws(
+    () => registry.evaluateClaim({
+      workerId: "worker-1",
+      nodeRunId: "nr-1",
+      tenantId: "tenant-1",
+      serviceIdentity: "service-a",
+      mtlsPeerFingerprint: "fp-123",
+    }),
+    /worker_identity\.allowed_tenants_invalid/,
+  );
+});

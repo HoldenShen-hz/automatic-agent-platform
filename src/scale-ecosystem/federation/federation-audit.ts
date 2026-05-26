@@ -4,6 +4,8 @@
  */
 
 import { randomUUID } from "crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 // Types
 export interface FederationAuditRecord {
@@ -72,6 +74,27 @@ export interface AuditRetentionPolicy {
   compressArchives: boolean;
 }
 
+export interface FederationAuditStorageOptions {
+  readonly persistent?: boolean;
+  readonly storageDir?: string;
+}
+
+interface PersistedFederationAuditRecord {
+  id: string;
+  timestamp: string;
+  orgId: string;
+  actor?: string;
+  action: AuditAction;
+  resourceType: ResourceType;
+  resourceId?: string;
+  targetOrgId?: string;
+  status: AuditStatus;
+  details: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+  correlationId?: string;
+}
+
 // Default retention: 7 years for compliance
 const DEFAULT_RETENTION_POLICY: AuditRetentionPolicy = {
   maxAgeDays: 2555,
@@ -79,6 +102,29 @@ const DEFAULT_RETENTION_POLICY: AuditRetentionPolicy = {
   archiveBeforeDelete: true,
   compressArchives: true,
 };
+
+const DEFAULT_FEDERATION_AUDIT_DIR =
+  process.env.AA_FEDERATION_AUDIT_DIR?.trim() || join(process.cwd(), ".runtime", "federation", "audit");
+
+function isTestRuntime(): boolean {
+  return process.env.AA_RUNNING_TESTS === "1"
+    || process.env.NODE_TEST_CONTEXT === "child-v8"
+    || process.env.VITEST === "true";
+}
+
+function serializeRecord(record: FederationAuditRecord): PersistedFederationAuditRecord {
+  return {
+    ...record,
+    timestamp: record.timestamp.toISOString(),
+  };
+}
+
+function deserializeRecord(record: PersistedFederationAuditRecord): FederationAuditRecord {
+  return {
+    ...record,
+    timestamp: new Date(record.timestamp),
+  };
+}
 
 /**
  * FederationAudit provides comprehensive audit trail for all
@@ -92,9 +138,61 @@ export class FederationAudit {
   private readonly indexByAction: Map<string, Set<string>> = new Map();
   private readonly indexByResource: Map<string, Set<string>> = new Map();
   private readonly indexByCorrelation: Map<string, Set<string>> = new Map();
+  private readonly persistent: boolean;
+  private readonly storageDir: string;
+  private readonly snapshotPath: string;
+  private readonly archivePath: string;
 
-  constructor(retentionPolicy?: Partial<AuditRetentionPolicy>) {
+  constructor(
+    retentionPolicy?: Partial<AuditRetentionPolicy>,
+    storageOptions: FederationAuditStorageOptions = {},
+  ) {
     this.retentionPolicy = { ...DEFAULT_RETENTION_POLICY, ...retentionPolicy };
+    this.persistent = storageOptions.persistent ?? !isTestRuntime();
+    this.storageDir = storageOptions.storageDir ?? DEFAULT_FEDERATION_AUDIT_DIR;
+    this.snapshotPath = join(this.storageDir, "federation-audit-records.json");
+    this.archivePath = join(this.storageDir, "federation-audit-archive.ndjson");
+    if (this.persistent) {
+      this.loadFromDisk();
+    }
+  }
+
+  private ensureStorageDir(): void {
+    mkdirSync(this.storageDir, { recursive: true });
+  }
+
+  private loadFromDisk(): void {
+    if (!existsSync(this.snapshotPath)) {
+      return;
+    }
+    const raw = readFileSync(this.snapshotPath, "utf8").trim();
+    if (raw.length === 0) {
+      return;
+    }
+    const parsed = JSON.parse(raw) as PersistedFederationAuditRecord[];
+    this.records.clear();
+    for (const item of parsed) {
+      this.records.set(item.id, deserializeRecord(item));
+    }
+    this.rebuildIndices();
+  }
+
+  private persistSnapshot(): void {
+    if (!this.persistent) {
+      return;
+    }
+    this.ensureStorageDir();
+    const snapshot = [...this.records.values()].map(serializeRecord);
+    writeFileSync(this.snapshotPath, JSON.stringify(snapshot, null, 2), "utf8");
+  }
+
+  private appendArchive(records: readonly FederationAuditRecord[]): void {
+    if (!this.persistent || records.length === 0) {
+      return;
+    }
+    this.ensureStorageDir();
+    const payload = records.map((record) => JSON.stringify(serializeRecord(record))).join("\n");
+    appendFileSync(this.archivePath, `${payload}\n`, "utf8");
   }
 
   // Record Operations
@@ -107,33 +205,29 @@ export class FederationAudit {
 
     this.records.set(record.id, record);
     this.indexRecord(record);
+    this.persistSnapshot();
 
     return record;
   }
 
   private indexRecord(record: FederationAuditRecord): void {
-    // Index by organization
     this.getOrCreateIndexSet(this.indexByOrg, record.orgId).add(record.id);
 
     if (record.targetOrgId) {
       this.getOrCreateIndexSet(this.indexByOrg, record.targetOrgId).add(record.id);
     }
 
-    // Index by actor
     if (record.actor) {
       this.getOrCreateIndexSet(this.indexByActor, record.actor).add(record.id);
     }
 
-    // Index by action
     this.getOrCreateIndexSet(this.indexByAction, record.action).add(record.id);
 
-    // Index by resource
     if (record.resourceId) {
       const resourceKey = `${record.resourceType}:${record.resourceId}`;
       this.getOrCreateIndexSet(this.indexByResource, resourceKey).add(record.id);
     }
 
-    // Index by correlation ID
     if (record.correlationId) {
       this.getOrCreateIndexSet(this.indexByCorrelation, record.correlationId).add(record.id);
     }
@@ -153,7 +247,6 @@ export class FederationAudit {
   query(query: AuditQuery): FederationAuditRecord[] {
     let recordIds: Set<string> | null = null;
 
-    // Build initial record set from first available index
     if (query.orgId) {
       recordIds = this.indexByOrg.get(query.orgId) ?? new Set();
     } else if (query.actor) {
@@ -171,7 +264,10 @@ export class FederationAudit {
       const record = this.records.get(id);
       if (!record) continue;
 
-      // Apply filters
+      if (query.orgId && record.orgId !== query.orgId && record.targetOrgId !== query.orgId) continue;
+      if (query.actor && record.actor !== query.actor) continue;
+      if (query.action && record.action !== query.action) continue;
+      if (query.correlationId && record.correlationId !== query.correlationId) continue;
       if (query.targetOrgId && record.targetOrgId !== query.targetOrgId) continue;
       if (query.resourceType && record.resourceType !== query.resourceType) continue;
       if (query.resourceId && record.resourceId !== query.resourceId) continue;
@@ -182,10 +278,8 @@ export class FederationAudit {
       results.push(record);
     }
 
-    // Sort by timestamp descending (most recent first)
     results.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-    // Apply pagination
     const offset = query.offset ?? 0;
     const limit = query.limit ?? 100;
     return results.slice(offset, offset + limit);
@@ -220,18 +314,17 @@ export class FederationAudit {
 
   // Summary
   getSummary(query?: Partial<AuditQuery>): AuditSummary {
-    // Build query without limit/offset to get all matching records
     const queryParams: AuditQuery = {
-      ...(query?.orgId !== undefined && { orgId: query.orgId }),
-      ...(query?.actor !== undefined && { actor: query.actor }),
-      ...(query?.action !== undefined && { action: query.action }),
-      ...(query?.resourceType !== undefined && { resourceType: query.resourceType }),
-      ...(query?.resourceId !== undefined && { resourceId: query.resourceId }),
-      ...(query?.targetOrgId !== undefined && { targetOrgId: query.targetOrgId }),
-      ...(query?.status !== undefined && { status: query.status }),
-      ...(query?.startTime !== undefined && { startTime: query.startTime }),
-      ...(query?.endTime !== undefined && { endTime: query.endTime }),
-      ...(query?.correlationId !== undefined && { correlationId: query.correlationId }),
+      ...(query?.orgId !== undefined ? { orgId: query.orgId } : {}),
+      ...(query?.actor !== undefined ? { actor: query.actor } : {}),
+      ...(query?.action !== undefined ? { action: query.action } : {}),
+      ...(query?.resourceType !== undefined ? { resourceType: query.resourceType } : {}),
+      ...(query?.resourceId !== undefined ? { resourceId: query.resourceId } : {}),
+      ...(query?.targetOrgId !== undefined ? { targetOrgId: query.targetOrgId } : {}),
+      ...(query?.status !== undefined ? { status: query.status } : {}),
+      ...(query?.startTime !== undefined ? { startTime: query.startTime } : {}),
+      ...(query?.endTime !== undefined ? { endTime: query.endTime } : {}),
+      ...(query?.correlationId !== undefined ? { correlationId: query.correlationId } : {}),
     };
     const records = this.query(queryParams);
 
@@ -275,6 +368,7 @@ export class FederationAudit {
 
   async applyRetentionPolicy(): Promise<{ deleted: number; archived: number }> {
     const expiredIds = this.getExpiredRecordIds();
+    const archivedRecords: FederationAuditRecord[] = [];
     let deleted = 0;
     let archived = 0;
 
@@ -283,7 +377,7 @@ export class FederationAudit {
       if (!record) continue;
 
       if (this.retentionPolicy.archiveBeforeDelete) {
-        // Archive logic would go here (e.g., write to cold storage)
+        archivedRecords.push(record);
         archived++;
       }
 
@@ -291,8 +385,9 @@ export class FederationAudit {
       deleted++;
     }
 
-    // Rebuild indices
+    this.appendArchive(archivedRecords);
     this.rebuildIndices();
+    this.persistSnapshot();
 
     return { deleted, archived };
   }
@@ -325,7 +420,7 @@ export class FederationAudit {
       if (!record.id || record.id !== id) {
         issues.push(`Record ID mismatch: expected ${id}, got ${record.id}`);
       }
-      if (!record.timestamp || !(record.timestamp instanceof Date)) {
+      if (!record.timestamp || !(record.timestamp instanceof Date) || Number.isNaN(record.timestamp.getTime())) {
         issues.push(`Invalid timestamp for record ${id}`);
       }
       if (!record.orgId) {
@@ -347,6 +442,9 @@ export class FederationAudit {
   }
 }
 
-export function createFederationAudit(retentionPolicy?: Partial<AuditRetentionPolicy>): FederationAudit {
-  return new FederationAudit(retentionPolicy);
+export function createFederationAudit(
+  retentionPolicy?: Partial<AuditRetentionPolicy>,
+  storageOptions?: FederationAuditStorageOptions,
+): FederationAudit {
+  return new FederationAudit(retentionPolicy, storageOptions);
 }

@@ -5,7 +5,7 @@
 > **关联文档**：《企业级 Agent 平台总体技术架构设计文档》v2.7 §35 推荐代码目录
 > **关联文档**：《老系统→新平台移植评估文档》v1.1
 > **设计日期**：2026-04-19
-> **最后续修**：2026-05-18（第三轮结构 review，补齐 UI Monorepo、Mission/Yono、测试专项目录、src/testing/benchmarks 与当前代码统计）
+> **最后续修**：2026-05-26（同步 P1 公共接口、联邦治理持久化、事件可靠性与 Electron/UI 契约修复）
 
 ---
 
@@ -32,6 +32,18 @@
 | 测试结构 | `tests/unit`、`integration`、`e2e`、`golden`、`performance`、`invariants`、`leaks` 等均存在 | 更新测试目录说明，补齐 invariants/leaks |
 | 运行配置与部署 | `config/`、`deploy/` 已覆盖环境、域、风险、安全、Helm、Terraform、Prometheus、Chaos、runbooks | 在顶层总览和运维目录说明中补齐 |
 | 文档风险 | 大量统计仍可能随代码快速变化而过期 | 统计表改为“结构快照”，要求后续脚本生成 |
+
+### 1.2 最近结构同步（2026-05-26）
+
+本轮没有改动七层主骨架，但最近一批代码收口已经影响“结构应该怎么理解”的正式口径：
+
+| 同步主题 | 当前代码事实 | 文档口径 |
+| ------ | ------------ | -------- |
+| P1 公共查询接口 | `dashboard-routes.ts` 已补齐 `/v1/workers`、`/v1/queues`、`/v1/agents`、`/v1/dashboard/metrics`、`/v1/explanations`、`/v1/meta/contract-version` | UI/HTTP 公共查询默认读取 Layer C `/v1/*`，不再把 `/admin/*` 当公共数据面 |
+| P1 Pack / Knowledge / Builder 公共接口 | `pack-routes.ts`、`plane-routes.ts`、`task-routes.ts` 已补齐 `/v1/marketplace`、`/v1/knowledge`、`/v1/packs/:packId/versions`、`/v1/workflows/builder` | `platform/five-plane-interface/api/http-server/` 是当前公共导出面权威 |
+| 联邦治理持久化 | `scale-ecosystem/federation/` 下 `federation-audit.ts`、`trust-relationship.ts` 已具备持久化/恢复/归档/策略 enforce | federation 不再是“纯规格承诺”，而是已落库的运行时能力 |
+| 事件可靠性 | `durable-event-bus-async.ts` 已修复异步失败吞错 | P5 事件主链继续以可靠投递和失败可见性为准 |
+| Electron 平台桥 | `ui/apps/electron-win/src/preload.ts` 与 `ui/packages/shared/platform/` 已统一桥接兼容层 | `ui/` 的桌面壳层已有正式 bridge 兼容契约，不只是 smoke shell |
 
 ---
 

@@ -2,8 +2,12 @@
   "task": "test",
   "command": [
     "vitest",
-    "run"
+    "run",
+    "tests/unit/ui/apps/electron-win/preload.test.ts",
+    "tests/shared/platform.test.ts",
+    "tests/shared/api-client.test.ts",
+    "tests/shared/endpoint-type-contracts.test.ts"
   ],
-  "startedAt": "2026-05-26T08:39:03.018Z",
-  "completedAt": "2026-05-26T08:39:31.703Z"
+  "startedAt": "2026-05-26T12:07:27.006Z",
+  "completedAt": "2026-05-26T12:07:28.682Z"
 }

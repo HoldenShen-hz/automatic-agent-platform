@@ -5,6 +5,8 @@
  */
 
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -16,6 +18,7 @@ import {
   type AuditStatus,
   type AuditQuery,
 } from "../../../src/scale-ecosystem/federation/federation-audit.js";
+import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FederationAudit Construction Tests
@@ -161,6 +164,42 @@ test("federation-audit: query filters by targetOrgId", () => {
   const results = audit.query({ targetOrgId: "org-2" });
   assert.equal(results.length, 1);
   assert.equal(results[0]?.targetOrgId, "org-2");
+});
+
+test("federation-audit: query applies all filters together", () => {
+  const audit = new FederationAudit(undefined, { persistent: false });
+  audit.record({
+    orgId: "org-1",
+    actor: "alice",
+    action: "trust.established",
+    resourceType: "trust",
+    resourceId: "trust-1",
+    targetOrgId: "org-2",
+    status: "success",
+    correlationId: "corr-1",
+    details: {},
+  });
+  audit.record({
+    orgId: "org-1",
+    actor: "bob",
+    action: "trust.established",
+    resourceType: "trust",
+    resourceId: "trust-2",
+    targetOrgId: "org-2",
+    status: "success",
+    correlationId: "corr-2",
+    details: {},
+  });
+
+  const results = audit.query({
+    orgId: "org-1",
+    actor: "alice",
+    action: "trust.established",
+    correlationId: "corr-1",
+  });
+  assert.equal(results.length, 1);
+  assert.equal(results[0]?.actor, "alice");
+  assert.equal(results[0]?.correlationId, "corr-1");
 });
 
 test("federation-audit: query applies pagination with limit", () => {
@@ -342,6 +381,59 @@ test("federation-audit: applyRetentionPolicy respects archiveBeforeDelete", asyn
 
   const result = await audit.applyRetentionPolicy();
   assert.equal(result.archived, 1);
+});
+
+test("federation-audit: applyRetentionPolicy writes archive records to disk", async () => {
+  const workspace = createTempWorkspace("federation-audit-archive-");
+  try {
+    const storageDir = join(workspace, "audit-store");
+    const audit = new FederationAudit(
+      { maxAgeDays: 0, minRetentionDays: 0, archiveBeforeDelete: true, compressArchives: false },
+      { persistent: true, storageDir },
+    );
+    audit.record({
+      orgId: "org-1",
+      action: "trust.revoked",
+      resourceType: "trust",
+      resourceId: "trust-1",
+      status: "success",
+      details: {},
+    });
+
+    const result = await audit.applyRetentionPolicy();
+    assert.equal(result.archived, 1);
+    const archivePath = join(storageDir, "federation-audit-archive.ndjson");
+    assert.equal(existsSync(archivePath), true);
+    assert.match(readFileSync(archivePath, "utf8"), /trust\.revoked/);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("federation-audit: persistent snapshot survives restart", () => {
+  const workspace = createTempWorkspace("federation-audit-persist-");
+  try {
+    const storageDir = join(workspace, "audit-store");
+    const audit = new FederationAudit(undefined, { persistent: true, storageDir });
+    const record = audit.record({
+      orgId: "org-1",
+      action: "org.registered",
+      resourceType: "organization",
+      resourceId: "org-1",
+      status: "success",
+      details: { source: "test" },
+    });
+
+    assert.equal(existsSync(join(storageDir, "federation-audit-records.json")), true);
+
+    const reloaded = new FederationAudit(undefined, { persistent: true, storageDir });
+    const loaded = reloaded.getRecord(record.id);
+    assert.ok(loaded != null);
+    assert.equal(loaded?.orgId, "org-1");
+    assert.equal(loaded?.action, "org.registered");
+  } finally {
+    cleanupPath(workspace);
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

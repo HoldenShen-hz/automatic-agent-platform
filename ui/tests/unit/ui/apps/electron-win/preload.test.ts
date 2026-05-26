@@ -66,6 +66,7 @@ describe("installElectronBridge", () => {
     installElectronBridge(targetWindow, bridge);
 
     expect(exposeInMainWorld).toHaveBeenCalledWith("AA_ELECTRON", bridge);
+    expect(exposeInMainWorld).toHaveBeenCalledWith("__AA_ELECTRON__", bridge);
     expect(Object.prototype.hasOwnProperty.call(targetWindow, "__AA_ELECTRON__")).toBe(false);
   });
 });

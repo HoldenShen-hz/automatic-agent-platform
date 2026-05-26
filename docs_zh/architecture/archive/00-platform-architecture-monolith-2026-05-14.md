@@ -1,13 +1,43 @@
 # 《企业级 Agent 平台总体技术架构设计文档》
 
 > **文档版本**：v4.3
-> **文档状态**：规格固化版 / Release Candidate 2
+> **文档状态**：已归档历史版本（非当前权威源）
 > **文档定位**：企业级 / 平台级 Agent System 总体技术架构设计文档（稳定性优先 · AI 运营完备 · 业务域接入完备 · 垂直业务域深化完备（24 域） · 统一领域元模型 · 多 Agent 协作协议 · 智能交互完备 · 组织治理完备 · 规模化生态完备 · 运营成熟度完备 · Harness 权威运行时 · OAPEFLIR 受控认知框架 · 最小生产闭环 · 三环实施优先级 · 落地导向版）
 > **适用对象**：架构委员会、平台研发团队、Runtime 团队、SRE、安全团队、治理团队、业务域接入团队、AI/ML 工程团队、业务线负责人、非技术业务操作者、组织管理层、合规/审计团队、生态合作伙伴、边缘/现场运维团队、**垂直业务域架构师（量化交易·电商·广告·金融·数据·代码·运营·行业调研·学术调研·知识库·财务·法务·在线直播·广告素材·游戏开发·游戏上架·人力资源·供应链·医疗健康·教育培训·客户服务·内容审核·IT运维·市场营销）**
 > **设计目标**：构建一套以稳定性、风险控制、安全可靠、异常处理为第一原则的企业级 Agent 平台，使 Agent 作为高风险自动化单元在企业环境中可控、可恢复、可审计地长期运行；同时具备完整的 AI 运营能力（LLM 抽象、Prompt 治理、模型质量、成本管控），确保平台在 AI 层面同样可控、可演进；提供结构化的业务域建模与接入框架；构建面向非技术用户的智能交互层；建立完整的组织治理体系和规模化运行生态层；补齐运营成熟度层；**并以 HarnessRuntime 作为唯一可执行运行时，将 OAPEFLIR 收敛为受控认知与治理框架，使 Agent 从"一次性模型调用"升级为"受约束、图计划、可恢复、可审计、可运维"的生产级系统**
 > **v4.3 版本定位**：规格固化版。本版本收敛权威对象、MVP 物理边界、运行时命名和可测试 invariant；历史 v4.1 与 OAPEFLIR v4.4 Executable Spec 仅作为迁移输入。实现优先级以 §33 MVP / Hardening / Enterprise 三环为准。HarnessRuntime 是唯一可执行入口，HarnessRun 是唯一权威 Run，PlanGraphBundle 是 P3 → P4 的 canonical execution contract，OAPEFLIR 阶段只作为 StageRationale / TraceProjection / Audit View；默认使用 Trace Replay，不假设 LLM 可确定性重放。
 
 > **权威源模型**：Executable Runtime Contract、Schema / Zod / OpenAPI / Event Registry 是机器验收权威；本文档是人类架构权威；ADR 是变更裁决权威。若机器契约与本文档冲突，必须通过同一 PR/ADR 修正文档或 schema，不允许实现静默覆盖；安全、风险、合规与数据保护类冲突在不改变权威对象归属的前提下以更严格者为准。
+
+---
+
+## 归档说明（2026-05-26）
+
+1. 本文档已转入 `docs_zh/architecture/archive/`，保留其历史设计语义、章节编号和迁移背景，不再作为当前系统的唯一上位设计源。
+2. 当前权威架构文档请优先阅读：
+   - [00-platform-architecture.md](../00-platform-architecture.md)
+   - [01-code-structure.md](../01-code-structure.md)
+   - [03-module-diagrams.md](../03-module-diagrams.md)
+   - [04-runtime-sequence.md](../04-runtime-sequence.md)
+   - [05-cross-platform-ui-architecture.md](../05-cross-platform-ui-architecture.md)
+3. 本文档与当前实现如有冲突，以当前权威文档、机器契约、OpenAPI、Schema、Review 回写为准。
+
+### 与当前实现的关键差异提示
+
+| 主题 | 本归档文档中的历史口径 | 当前系统口径 |
+|---|---|---|
+| 架构权威源 | 本文档作为“总体技术架构设计文档”直接承载顶层权威 | 当前唯一上位设计源是 [00-platform-architecture.md](../00-platform-architecture.md)，本文件仅保留为历史归档 |
+| UI 公共查询层 | 历史上允许通过 `/api/v1/admin/workers`、`/api/v1/admin/*` 表达部分管理面能力 | 当前公共 UI 契约已收敛到 Layer C 的 `/v1/workers`、`/v1/queues`、`/v1/agents`、`/v1/dashboard/metrics` 等入口 |
+| 前端 API 路径体系 | 历史正文多处以 `/api/v1/*` 直接描述前后端接口 | 当前前端运行时默认 `baseUrl=/api`，endpoint catalog 统一为 `/v1/*`，拼接后形成 `/api/v1/*` |
+| 联邦治理持久化 | 归档版本中的联邦审计、trust relationship 更偏规格承诺 | 当前实现已经补齐 `FederationAudit`、`TrustRelationship` 的持久化、恢复、归档与策略 enforce |
+| 事件可靠性 | 归档版本强调 Tier-1 事件可靠性与失败可见性 | 当前实现已修复 `DurableEventBusAsync` 吞掉异步失败的问题，失败重新回到主链处理 |
+| Electron 平台桥 | 归档期未固化桌面桥接命名差异 | 当前实现已统一 `AA_ELECTRON` / `__AA_ELECTRON__` 桥接兼容层 |
+
+### 当前实现证据入口
+
+1. 系统级审查与修复回写：[/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/system-review-2026-05-26.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/system-review-2026-05-26.md)
+2. 当前架构目录索引：[/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/architecture/README.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/architecture/README.md)
+3. 当前公共 API 与路由导出面：`src/platform/five-plane-interface/api/http-server/`、`src/platform/five-plane-interface/api/openapi-document.ts`
 
 ---
 

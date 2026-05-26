@@ -55,6 +55,7 @@ export interface MobileBridge {
 declare global {
   interface Window {
     __AA_ELECTRON__?: ElectronBridge;
+    AA_ELECTRON?: ElectronBridge;
     __TAURI__?: TauriBridge;
   }
 

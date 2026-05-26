@@ -40,12 +40,12 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createPackRoutes returns 3 routes", () => {
+test("createPackRoutes returns 5 routes", () => {
   const routes = createPackRoutes({
     authService: createMockAuthService(),
     packCatalogService: new PackCatalogService(),
   });
-  assert.equal(routes.length, 3);
+  assert.equal(routes.length, 5);
 });
 
 test("POST /v1/packs creates a pack and GET /v1/packs returns it", async () => {
@@ -90,4 +90,52 @@ test("GET /v1/packs/:id returns 404 for unknown pack", async () => {
   await assert.rejects(async () => {
     await callRoute(routes, createMockContext("/v1/packs/unknown", ["v1", "packs", "unknown"]));
   }, /Pack unknown not found/);
+});
+
+test("GET /v1/marketplace returns public marketplace summaries", async () => {
+  const packCatalogService = new PackCatalogService();
+  packCatalogService.createPack({
+    packId: "pack.ops",
+    name: "Ops Pack",
+    version: "2.0.0",
+    domainId: "operations",
+    createdBy: "actor-1",
+  });
+  const routes = createPackRoutes({
+    authService: createMockAuthService(),
+    packCatalogService,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/marketplace", ["v1", "marketplace"]));
+  if (!response) throw new Error("marketplace handler returned null");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.deepEqual(body.data[0], {
+    id: "pack.ops",
+    name: "Ops Pack",
+    category: "operations",
+    version: "2.0.0",
+  });
+});
+
+test("GET /v1/packs/:id/versions returns public version history", async () => {
+  const packCatalogService = new PackCatalogService();
+  packCatalogService.createPack({
+    packId: "pack.finance",
+    name: "Finance Pack",
+    version: "1.2.3",
+    domainId: "finance",
+    createdBy: "actor-1",
+  });
+  const routes = createPackRoutes({
+    authService: createMockAuthService(),
+    packCatalogService,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/packs/pack.finance/versions", ["v1", "packs", "pack.finance", "versions"]));
+  if (!response) throw new Error("versions handler returned null");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.equal(body.data[0]?.version, "1.2.3");
+  assert.equal(body.data[0]?.status, "draft");
 });

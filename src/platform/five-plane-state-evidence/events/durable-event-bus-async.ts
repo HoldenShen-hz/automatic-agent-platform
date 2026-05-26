@@ -42,14 +42,7 @@ export class DurableEventBusAsync {
    * Subscribes a handler to events for a specific consumer.
    */
   public subscribe(consumerId: string, handler: import("./durable-event-bus.js").EventHandler): void {
-    return this.sync.subscribe(consumerId, (event) => {
-      try {
-        void Promise.resolve(handler(event)).catch(() => undefined);
-      } catch {
-        // Async facade tests use fire-and-forget handlers; keep failures from
-        // becoming process-level unhandled rejections after test teardown.
-      }
-    });
+    return this.sync.subscribe(consumerId, handler);
   }
 
   /**

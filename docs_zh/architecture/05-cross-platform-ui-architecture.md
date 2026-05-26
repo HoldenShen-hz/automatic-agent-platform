@@ -2,7 +2,7 @@
 
 automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-platform-ui-architecture-v2.md
 
-> **文档版本**：v4.3
+> **文档版本**：v4.4
 > **文档状态**：Accepted
 > **基线文档**：`00-platform-architecture.md` v4.3 五平面架构 · `contracts/ui_console_and_cockpit_contract.md`
 > **前序文档**：`10-cross-platform-ui-architecture.md`（v1 概览，已 Superseded）· `11-cross-platform-ui-implementation-design.md`（v1 实施，已 Superseded）
@@ -23,6 +23,7 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 | v3.1 | 2026-04-23 | —    | 仓内 `ui/` Monorepo 基线已落地：补齐 shared core、PlatformAdapter、design tokens、implemented-first feature registry、planned feature seam、Web 可构建 app shell、桌面/移动端 smoke-ready shell、UI 子工程测试基线与 `current_todo_list` 的 `UI0-UI7` 波次。 |
 | v3.2 | 2026-04-23 | —    | 仓内 `Phase 1-4` 代码基线对齐：补齐 `policy / audit / workers / queues` 四个一级 feature，增强 Web 分组导航、桌面/移动平台能力测试与 `current_todo_list` 的 `Phase 1-4` 阶段计划；正文新增仓内对齐快照。 |
 | v4.3 | 2026-05-10 | —    | 现行架构口径升级：正文与测试基线统一回写到五平面 v4.3，补充 `PlanGraphBundle -> NodeRun -> NodeAttemptReceipt` 的 canonical handoff，并把 UI 对运行链的说明从 legacy task/workflow 叙事收敛到 HarnessRun/runtime truth。 |
+| v4.4 | 2026-05-26 | —    | 对齐最近代码收口：公共查询接口补齐 `/api/v1/agents`、`/api/v1/dashboard/metrics`、`/api/v1/explanations`、`/api/v1/marketplace`、`/api/v1/knowledge`、`/api/v1/packs/:packId/versions`、`/api/v1/workflows/builder` 与 `/api/v1/meta/contract-version`；前端 endpoint catalog 已统一为 `/v1/*` + runtime `baseUrl=/api`；Electron bridge 兼容 `AA_ELECTRON` / `__AA_ELECTRON__`。 |
 
 #### v3.0 变更明细
 
@@ -127,7 +128,7 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 | #   | 问题                                                  | 详情                                                                                                                                                                                   | 本文档改进                                                            |
 | --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | A-1 | UI 功能模块与 UI 契约页面映射不清                     | 契约定义 5 页（TaskCockpit/WorkflowCockpit/ApprovalCenter/StabilityPanel/AdminTakeoverConsole）；Doc-10/11 定义 14 个 features 模块，无显式映射                                        | §4 新增显式映射表                                                     |
-| A-2 | REST API 端点含假设性端点                             | Doc-10 §10.6.2 列出 `/api/v1/agents`、`/api/v1/dashboard/metrics`、`/api/v1/explanations` 等端点，后端 http-server 路由中不存在                                                        | §5.2 区分 [Implemented] 与 [Planned] 端点；§5.2.3 新增 API Layer 分级 |
+| A-2 | REST API 端点含假设性端点                             | 该差距已在 2026-05-26 收口；`/api/v1/agents`、`/api/v1/dashboard/metrics`、`/api/v1/explanations`、`/api/v1/marketplace`、`/api/v1/knowledge`、`/api/v1/packs/:packId/versions`、`/api/v1/workflows/builder`、`/api/v1/meta/contract-version` 已有后端导出面 | §5.2、§5.2.3、§5.2.4 统一回写为当前真实状态 |
 | A-3 | WebSocket 事件类型不一致                              | 后端 `TaskWebSocketEvent` 定义 6 种事件（status_changed/progress/message_delta/artifact_ready/approval_requested/completed/failed）；Doc-10 §10.6.3 列出 15 种 UI 事件，多数无后端对应 | §5.3 按 [Implemented]/[Planned] 分层                                  |
 | A-4 | MissionControlService 提供的视图未在 UI 文档中引用    | `getSnapshot()`/`getTaskCockpit()`/`getWorkflowCockpit()`/`getStabilityPanel()`/`getAdminTakeoverConsole()`/`listApprovalQueue()` 是现成后端入口                                       | §4 各页面蓝图直接引用 MCS 方法                                        |
 | A-5 | Console 信息架构（契约 §3）与 features 模块分组不对齐 | 契约定义 4 组导航（Mission Control/Operations/Governance/Admin）；Doc-10/11 按 features 平铺                                                                                           | §4.1 采用契约信息架构作为一级导航                                     |
@@ -969,19 +970,19 @@ React 层通过 Context Provider 注入：
 | Governance      | `audit`             | Audit                      | admin-routes audit endpoint                                   | [Implemented/Contracted] | Web/桌面      |
 | Governance      | `compliance`        | Compliance                 | [Planned] `/api/v1/compliance`                                | [Planned]                | Web/桌面      |
 | Admin           | `takeover`          | AdminTakeoverConsole(§5.5) | `MissionControlService.getAdminTakeoverConsole()`             | [Implemented/Internal]   | Web/桌面      |
-| Admin           | `workers`           | Workers                    | `OperatorConsoleBackendService.getWorkerPanel()`              | [Implemented/Internal]   | Web/桌面      |
-| Admin           | `queues`            | Queues                     | `OperatorConsoleBackendService` queue API                     | [Implemented/Internal]   | Web/桌面      |
+| Admin           | `workers`           | Workers                    | `GET /api/v1/workers` + MissionControlService.getStabilityPanel() | [Implemented/Contracted] | Web/桌面      |
+| Admin           | `queues`            | Queues                     | `GET /api/v1/queues` + MissionControlService.getStabilityPanel()  | [Implemented/Contracted] | Web/桌面      |
 | Extended        | `conversation`      | NL 对话                    | NLEntryService + IntentParser + ConversationHistoryService    | [Implemented/Partial]    | 全平台        |
 | Extended        | `workflow-builder`  | —                          | WorkflowBuilderService (interaction/ux/)                      | [Planned]                | Web/桌面      |
 | Extended        | `workflow-debugger` | —                          | DebuggerService + inspect CLI                                 | [Planned]                | Web/桌面      |
-| Extended        | `agent-manager`     | Agent 监控中心 (§4.2.7)    | `AgentRegistryService` → `/api/v1/agents` [Planned]           | [Planned]                | 全平台        |
+| Extended        | `agent-manager`     | Agent 监控中心 (§4.2.7)    | `GET /api/v1/agents` + MissionControlService stable worker projection | [Implemented/Contracted] | 全平台        |
 | Extended        | `hitl`              | —                          | HITL notification module + approval-routes                    | [Implemented/Partial]    | 全平台        |
-| Shared          | `explainability`    | —                          | [Planned] `/api/v1/explanations`                              | [Planned]                | Web/桌面      |
+| Shared          | `explainability`    | —                          | `GET /api/v1/explanations`                                    | [Implemented/Contracted] | Web/桌面      |
 | Shared          | `cost-center`       | —                          | [Planned] `/api/v1/costs`                                     | [Planned]                | Web/桌面      |
-| Shared          | `marketplace`       | —                          | [Planned] `/api/v1/marketplace`                               | [Planned]                | Web/桌面/移动 |
+| Shared          | `marketplace`       | —                          | `GET /api/v1/marketplace` + `GET /api/v1/packs/:packId/versions` | [Implemented/Contracted] | Web/桌面/移动 |
 | Shared          | `domain-wizard`     | —                          | DomainOnboardingService (interaction/ux/onboarding/)          | [Implemented/Internal]   | Web/桌面      |
 | Shared          | `settings`          | 配置管理中心 (§4.2.9)      | admin-routes + user preference API + DomainUIConfig           | [Implemented/Partial]    | 全平台        |
-| Shared          | `analytics`         | 数据统计平台 (§4.2.8)      | `GET /api/v1/dashboard/metrics` + MissionControlService       | [Planned]                | 全平台        |
+| Shared          | `analytics`         | 数据统计平台 (§4.2.8)      | `GET /api/v1/dashboard/metrics` + MissionControlService       | [Implemented/Contracted] | 全平台        |
 
 ## 4.2 契约核心页面蓝图
 
@@ -1148,7 +1149,7 @@ interface AdminTakeoverView {
 
 > 实时监控所有 Agent 的健康状态、心跳、能力、负载，并提供管理操作。
 
-**数据源**：`AgentRegistryService` (authoritative) → `GET /api/v1/agents` [Planned Layer C] + `agent.health_changed` WS 事件
+**数据源**：`GET /api/v1/agents` [Implemented/Contracted Layer C] + `MissionControlService.getStabilityPanel()` 派生 worker/agent 投影 + `agent.health_changed` WS 事件
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -1229,7 +1230,7 @@ interface AgentMonitorView {
 
 > 多层级运营指标看板，覆盖任务、Agent、Workflow、成本、SLO 等全维度统计。
 
-**数据源**：`GET /api/v1/dashboard/metrics` [Planned Layer C] + `MissionControlService.getSnapshot()` + `CostTrackingService` + `dashboard.metric_updated` WS 事件
+**数据源**：`GET /api/v1/dashboard/metrics` [Implemented/Contracted Layer C] + `MissionControlService.getSnapshot()` + `CostTrackingService` + `dashboard.metric_updated` WS 事件
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -1492,8 +1493,8 @@ interface TenantConfig {
 | Policy     | admin-routes policy endpoint                          | `{ policy_id, type, rules[], enabled, version, updated_by }`               | list · get · update · toggle                  | Layer C   |
 | Audit      | admin-routes audit endpoint                           | `{ audit_id, user_id, action, resource, timestamp, details }`              | search · filter · export · mark_compliance    | Layer C   |
 | Compliance | [Planned] `/api/v1/compliance`                        | `{ compliance_id, standard, checks[], status, last_audit, score }`         | list · run_check · export_report              | Layer C   |
-| Workers    | `OperatorConsoleBackendService.getWorkerPanel()`      | `{ worker_id, status, current_execution, heartbeat, load, region }`        | list · drain · restart · view_logs            | Layer A→C |
-| Queues     | `OperatorConsoleBackendService` queue API             | `{ queue_name, depth, processing, dead_letter_count, oldest_message_age }` | list · purge_dlq · retry_dlq · pause · resume | Layer A→C |
+| Workers    | `GET /api/v1/workers` + `MissionControlService.getStabilityPanel()` | `{ worker_id, status, current_execution, heartbeat, load, region }`        | list · drain · restart · view_logs            | Layer C   |
+| Queues     | `GET /api/v1/queues` + `MissionControlService.getStabilityPanel()`  | `{ queue_name, depth, processing, dead_letter_count, oldest_message_age }` | list · purge_dlq · retry_dlq · pause · resume | Layer C   |
 
 ## 4.3 页面数据 truth source 分层（契约 §6 落地）
 
@@ -2492,12 +2493,12 @@ export function toTaskVM(dto: TaskDTO): TaskVM {
 
 | UI 功能        | 建议端点                         | 方法    | 数据源建议                            | 状态      | 优先级 |
 | -------------- | -------------------------------- | ------- | ------------------------------------- | --------- | ------ |
-| Agent 管理     | `/api/v1/agents`                 | CRUD    | AgentRegistry + AgentLifecycleService | [Planned] | P1     |
+| Agent 列表     | `/api/v1/agents`                 | GET     | dashboard-routes + MissionControlService projection | [Implemented/Contracted] | P1     |
 | Workflow CRUD  | `/api/v1/workflows`              | CRUD    | OrchestrationPlane workflow 存储      | [Planned] | P1     |
-| Marketplace    | `/api/v1/marketplace`            | GET     | MarketplaceService (scale-ecosystem/) | [Planned] | P2     |
-| 解释查询       | `/api/v1/explanations`           | POST    | ExplainabilityService (ops-maturity/) | [Planned] | P2     |
+| Marketplace    | `/api/v1/marketplace`            | GET     | pack-routes + PackCatalogService      | [Implemented/Contracted] | P1     |
+| 解释查询       | `/api/v1/explanations`           | GET     | dashboard-routes summary projection   | [Implemented/Contracted] | P1     |
 | 成本数据       | `/api/v1/costs`                  | GET     | CostService (ops-maturity/)           | [Planned] | P2     |
-| Dashboard 指标 | `/api/v1/dashboard/metrics`      | GET     | DashboardProjectionService            | [Planned] | P1     |
+| Dashboard 指标 | `/api/v1/dashboard/metrics`      | GET     | dashboard-routes + MissionControlService snapshot | [Implemented/Contracted] | P1     |
 | Dashboard KPI  | `/api/v1/dashboard/kpis`         | GET     | MissionControlService 聚合            | [Planned] | P1     |
 | Dashboard 趋势 | `/api/v1/dashboard/trend/{m}`    | GET     | DashboardProjectionService            | [Planned] | P2     |
 | Dashboard 导出 | `/api/v1/dashboard/export`       | POST    | DashboardProjectionService            | [Planned] | P2     |
@@ -2536,8 +2537,8 @@ export function toTaskVM(dto: TaskDTO): TaskVM {
 | `GET /admin/v1/*`                          | Layer B/C | Layer C  | 部分已有 JSON 响应(Contracted)；HTML 部分标注 Internal      |
 | `CRUD /api/v1/agents` (Planned)            | —         | Layer C  | 直接按 Layer C 标准设计                                     |
 | `CRUD /api/v1/workflows` (Planned)         | —         | Layer C  | 直接按 Layer C 标准设计                                     |
-| `GET /api/v1/marketplace` (Planned)        | —         | Layer C  | 直接按 Layer C 标准设计                                     |
-| `POST /api/v1/explanations` (Planned)      | —         | Layer C  | 直接按 Layer C 标准设计                                     |
+| `GET /api/v1/marketplace`                  | C (done)  | Layer C  | 已有公开查询端点，可直接按 Layer C 消费                     |
+| `GET /api/v1/explanations`                 | C (done)  | Layer C  | 已有公开查询端点，可直接按 Layer C 消费                     |
 | `GET /api/v1/costs` (Planned)              | —         | Layer C  | 直接按 Layer C 标准设计                                     |
 
 **前端消费规则**：
@@ -2555,13 +2556,13 @@ export function toTaskVM(dto: TaskDTO): TaskVM {
 | --------------------------------- | --------------------------------- | ------------- | ------------ | --------------------------------------------- | ---------------------------- | ------------------- | ----------------------------------- | ---------------- | --------- |
 | `MissionControlService`           | `.getSnapshot()`                  | A             | C            | `MissionControlSnapshotDTO` (JSON Schema)     | Bearer JWT + RBAC L2+        | `/api/v1/`          | unit + integration + contract       | Phase 1 Gate 1   | Pending   |
 | `MissionControlService`           | `.getTaskCockpit()`               | A → C (done)  | C            | —                                             | —                            | —                   | —                                   | —                | Graduated |
-| `MissionControlService`           | `.getWorkflowCockpit()`           | A             | C            | `WorkflowCockpitDTO` (JSON Schema)            | Bearer JWT + RBAC L2+        | `/api/v1/`          | unit + integration + contract       | Phase 1 Gate 2   | Pending   |
-| `MissionControlService`           | `.getStabilityPanel()`            | A             | C            | `StabilityPanelDTO` (JSON Schema)             | Bearer JWT + RBAC L3+ (SRE)  | `/api/v1/`          | unit + integration + contract       | Phase 2 Gate 1   | Pending   |
+| `MissionControlService`           | `.getWorkflowCockpit()`           | A             | C            | `WorkflowCockpitDTO` (JSON Schema)            | Bearer JWT + RBAC L2+        | `/api/v1/`          | unit + integration + contract       | Phase 1 Gate 2   | Graduated |
+| `MissionControlService`           | `.getStabilityPanel()`            | A             | C            | `StabilityPanelDTO` (JSON Schema)             | Bearer JWT + RBAC L3+ (SRE)  | `/api/v1/`          | unit + integration + contract       | Phase 2 Gate 1   | Graduated |
 | `MissionControlService`           | `.getAdminTakeoverConsole()`      | A             | C            | `AdminTakeoverDTO` (JSON Schema)              | Bearer JWT + RBAC L4 (admin) | `/api/v1/`          | unit + integration + security       | Phase 2 Gate 1   | Pending   |
 | `OperatorConsoleBackendService`   | `.getSnapshot()`                  | A             | C            | `OperatorSnapshotDTO` (JSON Schema)           | Bearer JWT + RBAC L3+        | `/api/v1/`          | unit + integration + contract       | Phase 2 Gate 1   | Pending   |
 | `OperatorConsoleBackendService`   | `.getIncidentTimeline()`          | A             | C            | `IncidentTimelineDTO` (JSON Schema)           | Bearer JWT + RBAC L2+        | `/api/v1/`          | unit + integration + contract       | Phase 1 Gate 2   | Pending   |
-| `OperatorConsoleBackendService`   | `.getWorkerPanel()`               | A             | C            | `WorkerPanelDTO` (JSON Schema)                | Bearer JWT + RBAC L3+        | `/api/v1/`          | unit + integration                  | Phase 2 Gate 2   | Pending   |
-| `OperatorConsoleBackendService`   | queue API                         | A             | C            | `QueueStatusDTO` (JSON Schema)                | Bearer JWT + RBAC L3+        | `/api/v1/`          | unit + integration                  | Phase 2 Gate 2   | Pending   |
+| `MissionControlService`           | worker projection via `/v1/workers` | A → C (done)  | C            | `WorkerPanelDTO` (JSON Schema)                | Bearer JWT + RBAC L3+        | `/api/v1/`          | unit + integration + contract       | Phase 2 Gate 2   | Graduated |
+| `MissionControlService`           | queue projection via `/v1/queues`   | A → C (done)  | C            | `QueueStatusDTO` (JSON Schema)                | Bearer JWT + RBAC L3+        | `/api/v1/`          | unit + integration + contract       | Phase 2 Gate 2   | Graduated |
 | Console routes                    | `GET /console/*`                  | B             | B            | —（保持内部 HTML 入口）                       | —                            | —                   | —                                   | —                | N/A       |
 | Admin routes                      | `GET /admin/v1/*` (HTML portions) | B             | B/C          | 已有 JSON 部分保持 C；HTML 部分标注 Internal  | —                            | —                   | —                                   | —                | Partial   |
 | `DomainOnboardingService`         | interaction/ux/onboarding/        | A             | C            | `DomainOnboardingDTO` (JSON Schema)           | Bearer JWT + RBAC L2+        | `/api/v1/`          | unit + integration + contract       | Phase 2 Gate 1   | Pending   |
@@ -4080,12 +4081,12 @@ v3.0 新增 3 个功能模块对 CI 的影响：
 | `GET /admin/v1/*`                      | [Implemented/Contracted] | Layer B/C | takeover, workers, policy, settings                                |
 | MissionControlService.\*               | [Implemented/Internal]   | Layer A   | dashboard, task-cockpit, wf-cockpit, stability, takeover, approval |
 | OperatorConsoleBackendService.\*       | [Implemented/Internal]   | Layer A   | inspect, incidents, workers                                        |
-| `CRUD /api/v1/agents`                  | [Planned]                | Layer C   | agent-manager                                                      |
+| `GET /api/v1/agents`                   | [Implemented/Contracted] | Layer C   | agent-manager                                                      |
 | `CRUD /api/v1/workflows`               | [Planned]                | Layer C   | workflow-cockpit, workflow-builder                                 |
-| `GET /api/v1/marketplace`              | [Planned]                | Layer C   | marketplace                                                        |
-| `POST /api/v1/explanations`            | [Planned]                | Layer C   | explainability                                                     |
+| `GET /api/v1/marketplace`              | [Implemented/Contracted] | Layer C   | marketplace                                                        |
+| `GET /api/v1/explanations`             | [Implemented/Contracted] | Layer C   | explainability                                                     |
 | `GET /api/v1/costs`                    | [Planned]                | Layer C   | cost-center                                                        |
-| `GET /api/v1/dashboard/metrics`        | [Planned]                | Layer C   | dashboard (L2-L4)                                                  |
+| `GET /api/v1/dashboard/metrics`        | [Implemented/Contracted] | Layer C   | dashboard (L2-L4)                                                  |
 | `GET /api/v1/tasks/:id/evidence`       | [Planned]                | Layer C   | task-cockpit (L4)                                                  |
 | `GET /api/v1/tasks/:id/timeline`       | [Planned]                | Layer C   | task-cockpit (L5)                                                  |
 | `DELETE /api/v1/tasks/:id`             | [Implemented/Contracted] | Layer C   | task-cockpit (取消任务)                                            |

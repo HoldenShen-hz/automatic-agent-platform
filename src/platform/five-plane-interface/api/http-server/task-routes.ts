@@ -137,6 +137,18 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
+      pathname: "/v1/workflows/builder",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const workflows = deps.missionControlService.listWorkflowCockpits(
+          readLimit(ctx.request, 25),
+          principal.tenantId != null ? principal.tenantId : undefined,
+        );
+        return buildJsonResponse(ctx.requestId, 200, workflows.map((summary) => toWorkflowDto(summary)));
+      },
+    },
+    {
+      method: "GET",
       pathname: null,
       segments: true,
       handler: (ctx) => {
@@ -584,6 +596,22 @@ function mapCreateTaskSourceToInputSource(source: "user" | "perception" | "syste
     default:
       return "ui";
   }
+}
+
+function toWorkflowDto(summary: ReturnType<MissionControlService["listWorkflowCockpits"]>[number]) {
+  return {
+    id: summary.workflowId,
+    title: summary.workflowId,
+    status:
+      summary.workflowStatus === "completed"
+        ? "completed"
+        : summary.workflowStatus === "paused"
+          ? "paused"
+          : "running",
+    currentStage: summary.resumableFromStep ?? `step-${summary.currentStepIndex}`,
+    owner: summary.divisionId,
+    steps: [],
+  };
 }
 
 function paginateByCursor<T extends { updatedAt: string; taskId: string }>(

@@ -28,7 +28,7 @@ describe("shared platform adapter", () => {
 
   it("uses the electron bridge when present", async () => {
     const calls: string[] = [];
-    window.__AA_ELECTRON__ = {
+    window.AA_ELECTRON = {
       async readSecureValue() { return "token"; },
       async writeSecureValue() { calls.push("write"); },
       async deleteSecureValue() { calls.push("delete"); },
@@ -52,7 +52,7 @@ describe("shared platform adapter", () => {
     expect((await adapter.runShell("health")).stdout).toBe("shell:health");
     expect(calls).toContain("clipboard:hello");
     expect(calls).toContain("deeplink:aa://deep");
-    delete window.__AA_ELECTRON__;
+    delete window.AA_ELECTRON;
   });
 
   it("uses the tauri bridge when present", async () => {

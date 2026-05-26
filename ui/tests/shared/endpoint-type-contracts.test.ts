@@ -8,7 +8,7 @@ describe("endpoint contract typing", () => {
   it("keeps typed response/body metadata attached to the endpoint catalog", () => {
     expect(endpointCatalog.tasks.method).toBe("GET");
     expect(endpointCatalog.tasksCreate.method).toBe("POST");
-    expect(endpointCatalog.preferences.path).toBe("/preferences");
+    expect(endpointCatalog.preferences.path).toBe("/v1/preferences");
     expectTypeOf<TaskDTO[]>().toMatchTypeOf<readonly TaskDTO[]>();
     expectTypeOf<Partial<TaskDTO>>().toMatchTypeOf<Partial<TaskDTO>>();
     expectTypeOf<Partial<WorkflowDTO>>().toMatchTypeOf<Partial<WorkflowDTO>>();

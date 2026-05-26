@@ -33,6 +33,26 @@ export function createPlaneRoutes(deps: PlaneRouteDeps): RouteDefinition[] {
   return [
     {
       method: "GET",
+      pathname: "/v1/knowledge",
+      handler: (ctx) => {
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        if (!deps.knowledgePlaneService) {
+          return buildJsonResponse(ctx.requestId, 200, []);
+        }
+        return buildJsonResponse(ctx.requestId, 200, deps.knowledgePlaneService.listNamespaces().map((namespace) => {
+          const inspected = deps.knowledgePlaneService?.inspectNamespace(namespace.path);
+          return {
+            id: namespace.path,
+            title: namespace.path,
+            kind: "document" as const,
+            updatedAt: new Date().toISOString(),
+            documentCount: inspected?.documentCount ?? 0,
+          };
+        }));
+      },
+    },
+    {
+      method: "GET",
       pathname: "/v1/knowledge/namespaces",
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "viewer");

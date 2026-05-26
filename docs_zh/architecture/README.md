@@ -14,14 +14,19 @@
    模块图、关系图和结构图示。
 5. [04-runtime-sequence.md](./04-runtime-sequence.md)
    关键运行时序列和主链路图。
+6. [archive/README.md](./archive/README.md)
+   历史架构快照与当前归档快照索引。
 
 ## 使用原则
 
 - 先看 `00`，再看 `01`，最后按需进入 `02-04`。
 - 若 `02-04` 与 `00` 冲突，以 `00` 为准。
 - 本目录不放执行追踪、一次性 review 或临时 TODO。
+- 需要核对历史大文档或某次架构快照时，进入 `archive/`，不要把归档内容直接当成当前唯一权威。
 
 ## 最近同步
 
 - 2026-05-14：`docs_zh/reviews/issues-table.md` 中的架构/实现一致性问题以本目录 README 为索引入口重新挂接；具体代码级修复证据仍记录在 review 表对应行和 `scripts/ci/audit-review-batch-resource-contracts.mjs`。
 - 大型结构项（巨型文件拆分、符号链接迁移、全局类型逃逸清理）不在 `00-platform-architecture.md` 内伪装为已完成，继续按治理边界和后续拆分计划推进。
+- 2026-05-26：补充 `archive/README.md` 与 `archive/01-platform-architecture-current-snapshot-2026-05-26.md`，让 archive 同时保留历史 monolith 与当前最新归档快照。
+- 2026-05-26：正式目录同步最近代码与架构收口，重点更新 `00-platform-architecture.md`、`01-code-structure.md`、`03-module-diagrams.md`、`04-runtime-sequence.md`、`05-cross-platform-ui-architecture.md`，把 Layer C 公共接口、联邦治理持久化、事件可靠性、Electron/UI 契约修复回写到正文。

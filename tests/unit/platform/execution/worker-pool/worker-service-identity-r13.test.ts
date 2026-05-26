@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-service-identity.js";
 
 /**
  * R13-19 tests: WorkerServiceIdentityRegistry persistence to durable storage
@@ -182,50 +183,35 @@ test("R13-19: WorkerServiceIdentityRegistry returns worker_unknown for unregiste
   assert.equal(decision.reasonCode, "worker_identity.worker_unknown", "Reason should be worker_unknown");
 });
 
-test("R13-19: Persistence failure does not prevent registration (graceful degradation)", () => {
-  let persistenceFailed = false;
-
-  const mockStore: MockStore = {
-    upsertWorkerIdentity(_record: WorkerIdentityRecord) {
-      persistenceFailed = true;
-      throw new Error("Storage unavailable");
+test("R13-19: Persistence failure prevents registration and avoids memory-only acceptance", () => {
+  const registry = new WorkerServiceIdentityRegistry({
+    worker: {
+      upsertWorkerIdentity() {
+        throw new Error("Storage unavailable");
+      },
+      getWorkerIdentity() {
+        return null;
+      },
     },
-    getWorkerIdentity(): WorkerIdentityRecord | null {
-      return null;
-    },
-  };
+  } as never);
 
-  function register(identity: {
-    workerId: string;
-    serviceIdentity: string;
-    mtlsPeerFingerprint: string;
-    allowedNodeRunTenants: readonly string[];
-  }): typeof identity {
-    const record: WorkerIdentityRecord = {
-      workerId: identity.workerId,
-      serviceIdentity: identity.serviceIdentity,
-      mtlsPeerFingerprint: identity.mtlsPeerFingerprint,
-      allowedNodeRunTenantsJson: JSON.stringify(identity.allowedNodeRunTenants),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    try {
-      mockStore.upsertWorkerIdentity?.(record);
-    } catch {
-      // Persistence failure should not prevent registration
-    }
-    return identity;
-  }
+  assert.throws(
+    () => registry.register({
+      workerId: "worker-1",
+      serviceIdentity: "service-a",
+      mtlsPeerFingerprint: "fp-123",
+      allowedNodeRunTenants: ["tenant-1"],
+    }),
+    /Storage unavailable/,
+  );
 
-  const identity = {
+  const decision = registry.evaluateClaim({
     workerId: "worker-1",
+    nodeRunId: "node-run-1",
+    tenantId: "tenant-1",
     serviceIdentity: "service-a",
     mtlsPeerFingerprint: "fp-123",
-    allowedNodeRunTenants: ["tenant-1"] as const,
-  };
-
-  const result = register(identity);
-
-  assert.equal(result.workerId, "worker-1", "Registration should still return identity");
-  assert.equal(persistenceFailed, true, "Persistence should have been attempted");
+  });
+  assert.equal(decision.accepted, false);
+  assert.equal(decision.reasonCode, "worker_identity.worker_unknown");
 });

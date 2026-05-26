@@ -5,6 +5,8 @@
  */
 
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -13,6 +15,7 @@ import {
   TrustLevel,
   type TrustPolicy,
 } from "../../../src/scale-ecosystem/federation/trust-relationship.js";
+import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TrustRelationshipManager Construction Tests
@@ -506,4 +509,80 @@ test("trust-relationship: getPoliciesForLevel returns matching policies", () => 
 
   const policies = manager.getPoliciesForLevel(TrustLevel.ADMIN);
   assert.ok(policies.length > 0);
+});
+
+test("trust-relationship: expired trusts are blocked from active resolution", async () => {
+  const manager = new TrustRelationshipManager([], { persistent: false });
+  const trust = await manager.createTrustRelationship({
+    sourceOrgId: "org-1",
+    targetOrgId: "org-2",
+    level: TrustLevel.READ,
+    capabilities: ["cap-1"],
+    expiresAt: new Date(Date.now() - 1_000),
+  });
+
+  const active = await manager.getTrustBetweenOrgs("org-1", "org-2");
+  assert.equal(active, undefined);
+
+  const loaded = await manager.getTrustRelationship(trust.id);
+  assert.equal(loaded?.status, "expired");
+});
+
+test("trust-relationship: overdue reauth blocks trust usage", async () => {
+  const policy: TrustPolicy = {
+    id: "reauth-policy",
+    name: "Reauth Policy",
+    description: "Forces periodic re-verification",
+    minTrustLevel: TrustLevel.READ,
+    maxDelegationDepth: 1,
+    allowedCapabilities: ["cap-1"],
+    requiredCapabilities: [],
+    requirePeriodicReauth: true,
+    reauthIntervalDays: 1,
+  };
+  const manager = new TrustRelationshipManager([policy], { persistent: false });
+  const trust = await manager.createTrustRelationship({
+    sourceOrgId: "org-1",
+    targetOrgId: "org-2",
+    level: TrustLevel.READ,
+    capabilities: ["cap-1"],
+    policyId: "reauth-policy",
+  });
+  const stored = await manager.getTrustRelationship(trust.id);
+  if (stored == null) {
+    throw new Error("expected trust");
+  }
+  stored.lastVerifiedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+  const active = await manager.getTrustBetweenOrgs("org-1", "org-2");
+  assert.equal(active, undefined);
+  assert.equal(stored.status, "expired");
+});
+
+test("trust-relationship: persistent storage survives manager restart", async () => {
+  const workspace = createTempWorkspace("trust-relationship-");
+  try {
+    const storageDir = join(workspace, "trust-store");
+    const manager = new TrustRelationshipManager([], { persistent: true, storageDir });
+    const trust = await manager.createTrustRelationship({
+      sourceOrgId: "org-1",
+      targetOrgId: "org-2",
+      level: TrustLevel.WRITE,
+      capabilities: ["cap-1", "cap-2"],
+    });
+    await manager.updateMetrics(trust.id, { success: true, latencyMs: 25 });
+
+    const snapshotPath = join(storageDir, "trust-relationships.json");
+    assert.equal(existsSync(snapshotPath), true);
+    const raw = JSON.parse(readFileSync(snapshotPath, "utf8")) as { relationships: Array<{ id: string }> };
+    assert.equal(raw.relationships.some((item) => item.id === trust.id), true);
+
+    const reloaded = new TrustRelationshipManager([], { persistent: true, storageDir });
+    const loaded = await reloaded.getTrustRelationship(trust.id);
+    assert.ok(loaded != null);
+    assert.equal(loaded?.sourceOrgId, "org-1");
+    assert.equal(loaded?.metrics.successfulInteractions, 1);
+  } finally {
+    cleanupPath(workspace);
+  }
 });

@@ -59,7 +59,7 @@ describe("shared api-client", () => {
       if (request.path.includes("/approvals")) {
         return { status: 200, data: { approvals: [{ approvalId: "approval-1", taskId: "task-1", riskLevel: "medium", reasonSummary: "review" }] } as T };
       }
-      if (request.path.includes("/admin/workers")) {
+      if (request.path.includes("/v1/workers")) {
         return { status: 200, data: { workers: [{ id: "worker-1", status: "idle", queue: "default", heartbeatLagMs: 0 }] } as T };
       }
       return { status: 200, data: { queues: [{ id: "default", ready: 1, inFlight: 0, retries: 0, dlq: 0 }] } as T };
@@ -114,7 +114,7 @@ describe("shared api-client", () => {
     expect(mapEventToQuery({ channel: "global", type: "panic.activated", payload: {} }).scope).toBe("panic");
     expect(mapEventToQuery({ channel: "global", type: "config.feature-flags.updated", payload: {} }).queryKey).toEqual(["feature-flags"]);
     expect(Object.values(endpointCatalog).length).toBeGreaterThanOrEqual(41);
-    expect(endpointCatalog.contractVersion.path).toBe("/meta/contract-version");
+    expect(endpointCatalog.contractVersion.path).toBe("/v1/meta/contract-version");
   });
 
   it("routes websocket events through the query router", () => {

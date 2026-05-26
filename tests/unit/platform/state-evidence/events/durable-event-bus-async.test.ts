@@ -237,3 +237,35 @@ test("DurableEventBusAsync deliverPending delegates to sync", async () => {
     cleanupPath(workspace);
   }
 });
+
+test("DurableEventBusAsync does not swallow async handler failures", async () => {
+  const workspace = createTempWorkspace("aa-async-bus-failure-");
+  try {
+    const { bus, db, store } = createTestBus(workspace);
+    seedTaskAndExecution(db, store, { taskId: "task-failure", executionId: "exec-failure", traceId: "trace-failure" });
+
+    bus.subscribe("failure_consumer", async () => {
+      throw new Error("projection failed");
+    });
+
+    await bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-failure",
+      executionId: "exec-failure",
+      traceId: "trace-failure",
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
+    });
+
+    await assert.rejects(
+      () => bus.deliverPending("failure_consumer"),
+      /event_delivery\.dead_lettered/,
+    );
+
+    const pending = bus.pendingForConsumer("failure_consumer");
+    assert.equal(pending.length, 0);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
