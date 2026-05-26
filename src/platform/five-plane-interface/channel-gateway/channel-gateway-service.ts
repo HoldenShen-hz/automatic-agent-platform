@@ -27,6 +27,7 @@ import {
   GatewayRateLimitError,
   normalizeGatewayDeliveryFailure,
 } from "./errors.js";
+import { DEFAULT_DELIVERY_CONFIG } from "./channel-gateway-delivery-support.js";
 import {
   normalizeWebhookRequestEnvelope,
   parseMetadata,
@@ -106,7 +107,7 @@ export class ChannelGatewayService {
     this.requestTimeoutMs = Math.max(
       1,
       Math.min(
-        Math.trunc(options.requestTimeoutMs ?? 5_000),
+        Math.trunc(options.requestTimeoutMs ?? DEFAULT_DELIVERY_CONFIG.timeoutMs),
         Math.max(1, Math.trunc(options.maxRequestTimeoutMs ?? 30_000)),
       ),
     );
@@ -165,6 +166,9 @@ export class ChannelGatewayService {
         });
 
         request.on("error", reject);
+        request.setTimeout(this.requestTimeoutMs, () => {
+          request.destroy(new Error("gateway.request_timeout"));
+        });
         if (init?.signal) {
           if (init.signal.aborted) {
             request.destroy(new Error("gateway.request_aborted"));

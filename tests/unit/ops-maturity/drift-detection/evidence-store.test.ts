@@ -189,3 +189,26 @@ test("InMemoryEvidenceStore getRecent returns records in insertion order", async
   assert.equal(results[0]?.id, "ev_2");
   assert.equal(results[1]?.id, "ev_3");
 });
+
+test("InMemoryEvidenceStore falls back when structuredClone is unavailable", async () => {
+  const originalStructuredClone = globalThis.structuredClone;
+  const store = new InMemoryEvidenceStore();
+  try {
+    (globalThis as typeof globalThis & { structuredClone?: typeof structuredClone }).structuredClone = undefined;
+    const record = createEvidenceRecord({
+      id: "ev_fallback",
+      metadata: {
+        nested: {
+          ok: true,
+        },
+      },
+    });
+    await store.append(record);
+
+    const loaded = await store.getById("ev_fallback");
+    assert.deepEqual(loaded, record);
+    assert.notEqual(loaded?.metadata, record.metadata);
+  } finally {
+    (globalThis as typeof globalThis & { structuredClone?: typeof structuredClone }).structuredClone = originalStructuredClone;
+  }
+});

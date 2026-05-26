@@ -75,6 +75,13 @@ export interface RecordUsageInput {
   quantity: number;
   source: BillingUsageSource;
   capturedAt?: string;
+  actualPricing?: {
+    readonly unitPriceUsd?: number;
+    readonly chargeUsd?: number;
+    readonly provider?: string | null;
+    readonly model?: string | null;
+    readonly pricingVersion?: string | null;
+  };
   budgetControl?: {
     readonly tenantId: string;
     readonly harnessRunId: string;

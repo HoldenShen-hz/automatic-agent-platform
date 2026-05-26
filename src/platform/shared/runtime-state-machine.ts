@@ -331,6 +331,13 @@ function hasAuditRef(auditRef: string | undefined): auditRef is string {
 }
 
 function assertAuditRef<TAggregate extends RuntimeStateAggregate>(command: RuntimeTransitionCommand<TAggregate>): void {
+  const requiresAuditRef =
+    command.aggregateType === "HarnessRun"
+    || command.aggregateType === "NodeRun"
+    || command.aggregateType === "SideEffectRecord";
+  if (!requiresAuditRef) {
+    return;
+  }
   if (!hasAuditRef(command.auditRef)) {
     throw new WorkflowStateError("runtime_state_machine.audit_ref_required", "Audit ref is required for audited transitions.", {
       details: { aggregateType: command.aggregateType, toStatus: command.toStatus },

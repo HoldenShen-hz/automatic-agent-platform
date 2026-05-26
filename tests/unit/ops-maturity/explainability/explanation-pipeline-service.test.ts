@@ -269,3 +269,63 @@ test("ExplanationPipelineService requires forensic budget for L3 generation", ()
     /explanation\.forensic_budget_required/,
   );
 });
+
+test("ExplanationPipelineService validates forensic reservation through preflight hook", () => {
+  const service = new ExplanationPipelineService({
+    validateForensicBudgetReservation: (reservationId) => {
+      if (reservationId !== "budget:forensics:approved") {
+        throw new Error(`budget.reservation_not_found:${reservationId}`);
+      }
+    },
+  });
+
+  assert.throws(
+    () => service.generate({
+      taskId: "task:l3:unknown-budget",
+      stageId: "review",
+      summary: "Forensic run",
+      decision: "accept",
+      decisionFactors: [],
+      evidence: [],
+      riskNotes: [],
+    }, "L3", { forensicBudgetReservationId: "budget:forensics:missing" }),
+    /budget\.reservation_not_found:budget:forensics:missing/,
+  );
+
+  const bundle = service.generate({
+    taskId: "task:l3:approved-budget",
+    stageId: "review",
+    summary: "Forensic run",
+    decision: "accept",
+    decisionFactors: [],
+    evidence: [],
+    riskNotes: [],
+  }, "L3", { forensicBudgetReservationId: "budget:forensics:approved" });
+
+  assert.equal(bundle.depth, "L3");
+});
+
+test("ExplanationPipelineService fails closed when version lock serialization cannot complete", () => {
+  const service = new ExplanationPipelineService();
+  const circularLabels: unknown[] = ["visible"];
+  circularLabels.push(circularLabels);
+
+  assert.throws(
+    () => service.generate({
+      taskId: "task:l2:circular",
+      stageId: "review",
+      summary: "Circular rationale",
+      decision: "accept",
+      decisionFactors: [],
+      evidence: [],
+      riskNotes: [],
+    }, "L2", {
+      recordedFacts: [JSON.stringify("safe")],
+      modelRationales: ["safe"],
+      inferredSummary: "Circular rationale",
+      // @ts-expect-error exercising runtime serialization guard
+      visibilityLabels: circularLabels,
+    }),
+    /explanation\.version_lock_serialization_failed:rationale_/,
+  );
+});

@@ -33,6 +33,7 @@ export function buildCostOptimizationRecommendation(
   const downgradePath = currentProfile != null
     && recommendedProfile != null
     && currentCostUsd >= 100
+    && hasCompatibleCapabilities(currentProfile, recommendedProfile)
     && totalTokenCostPer1k(recommendedProfile) < totalTokenCostPer1k(currentProfile);
   const estimatedSavingsUsd = Number((
     currentCostUsd
@@ -68,6 +69,14 @@ function resolveSavingsRatio(
 
 function totalTokenCostPer1k(profile: ModelProfileMetadata): number {
   return profile.pricing.inputPer1kUsd + profile.pricing.outputPer1kUsd;
+}
+
+function hasCompatibleCapabilities(
+  currentProfile: ModelProfileMetadata,
+  recommendedProfile: ModelProfileMetadata,
+): boolean {
+  const currentCapabilities = new Set(currentProfile.capabilities);
+  return recommendedProfile.capabilities.every((capability) => currentCapabilities.has(capability));
 }
 
 export function prioritizeCostOptimizationRecommendations(

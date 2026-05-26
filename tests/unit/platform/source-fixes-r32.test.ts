@@ -47,7 +47,8 @@ test("R32-14/R32-16/R32-17/R32-18/R32-20/R32-21/R32-22/R32-23/R32-24/R32-26/R32-
   assert.match(levelManagerSource, /"frozen",\s+"suggestion",\s+"supervised",\s+"semi_auto",\s+"full_auto"/);
   assert.match(autonomySource, /const order: readonly AutonomyLevel\[] = \["frozen", "suggestion", "supervised", "semi_auto", "full_auto"\]/);
   assert.match(ambiguityHandlerSource, /export \{ detectAmbiguity \} from "\.\.\/disambiguation-handler\/index\.js";/);
-  assert.ok(!goalDecomposerSource.includes("const normalized = description.toLowerCase();"));
+  assert.match(goalDecomposerSource, /hasTemplateSignalMatch\(description, \["campaign", "marketing".*2\)/s);
+  assert.match(goalDecomposerSource, /hasTemplateSignalMatch\(description, \["launch", "release".*2\)/s);
   assert.ok(!goalDecomposerSource.includes("estimatedDuration: `${Math.max(1, tasks.length)}d`"));
 });
 

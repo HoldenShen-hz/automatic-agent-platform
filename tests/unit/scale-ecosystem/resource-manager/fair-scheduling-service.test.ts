@@ -248,3 +248,40 @@ test("QuotaPolicySchema rejects empty scopeId", () => {
 
   assert.equal(result.success, false);
 });
+
+test("FairSchedulingService.schedule excludes preemption victims with active leases", () => {
+  const service = new FairSchedulingService();
+  const request: FairSchedulingRequest = {
+    quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
+    claim: createResourceClaim({ requestedUnits: 10 }),
+    queueItems: [],
+    preemptionCandidates: [
+      createPreemptionCandidate({ executionId: "leased-victim", priority: 1 }),
+      createPreemptionCandidate({ executionId: "safe-victim", priority: 2 }),
+    ],
+    activeLeaseLookup: (executionId) => executionId === "leased-victim",
+  };
+
+  const decision = service.schedule(request);
+
+  assert.equal(decision.preemption.shouldPreempt, true);
+  assert.equal(decision.preemption.victimExecutionId, "safe-victim");
+});
+
+test("FairSchedulingService.schedule softens hard quota enforcement when region quorum is not met", () => {
+  const service = new FairSchedulingService();
+  const request: FairSchedulingRequest = {
+    quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
+    claim: createResourceClaim({ requestedUnits: 10 }),
+    queueItems: [],
+    preemptionCandidates: [],
+    quorumRegionCount: 2,
+    acknowledgedRegionCount: 1,
+  };
+
+  const decision = service.schedule(request);
+
+  assert.equal(decision.queue.quotaExceeded, false);
+  assert.equal(decision.preemption.shouldPreempt, false);
+  assert.ok(decision.queue.reasonCodes.includes("resource_manager.quota_quorum_degraded"));
+});

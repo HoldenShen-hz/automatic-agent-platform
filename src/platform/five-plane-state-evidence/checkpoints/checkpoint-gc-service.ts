@@ -103,14 +103,19 @@ export class CheckpointGCService {
   private readonly retentionPolicy: CheckpointRetentionPolicy;
   private readonly gcLockPath: string;
   private gcInProgress = false;
+  private readonly executionExists: ((executionId: string) => boolean) | null;
 
   public constructor(
     rootDir: string,
     retentionPolicy: Partial<CheckpointRetentionPolicy> = {},
+    options: {
+      readonly executionExists?: ((executionId: string) => boolean) | null;
+    } = {},
   ) {
     this.rootDir = rootDir;
     this.retentionPolicy = { ...DEFAULT_CHECKPOINT_RETENTION_POLICY, ...retentionPolicy };
     this.gcLockPath = join(rootDir, ".checkpoint-gc.lock");
+    this.executionExists = options.executionExists ?? null;
   }
 
   /**
@@ -428,8 +433,9 @@ export class CheckpointGCService {
     const ageMs = referenceTimestamp - this.resolveCheckpointBirthtimeMs(stats);
     const maxAge = this.retentionPolicy.maxAgeMs;
     const isExpired = ageMs > maxAge;
+    const isOrphaned = this.executionExists?.(executionId) === false;
 
-    if (!isExpired) {
+    if (!isExpired && !isOrphaned) {
       // Check version limit separately
       return null;
     }
@@ -444,8 +450,10 @@ export class CheckpointGCService {
       sizeBytes: Number(stats.size),
       createdAt: stats.birthtime.toISOString(),
       executionId,
-      isOrphaned: false,
-      reason: `expired: age ${ageMs}ms exceeds max ${maxAge}ms`,
+      isOrphaned,
+      reason: isOrphaned
+        ? "orphaned_execution_checkpoint"
+        : `expired: age ${ageMs}ms exceeds max ${maxAge}ms`,
     };
   }
 

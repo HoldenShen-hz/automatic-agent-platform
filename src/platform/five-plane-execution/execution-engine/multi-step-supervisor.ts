@@ -592,22 +592,26 @@ export async function executeStepLoop(
       // before execution begins. On success, the event is marked as "committed" inside the
       // transaction. On crash recovery, uncommitted cost events can be detected and cleaned up.
       const costEventId = newId("cost");
-      const costEventWAL: CostEventRecord = {
-        id: costEventId,
-        ...buildTaskExecutionCostEvent({
-          taskId,
-          sessionId,
-          executionId,
-          agentId: step.agentId,
-          llmResult,
-          fallbackInputTokens: 30 + index * 10,
-          fallbackOutputTokens: 12 + index * 5,
-          fallbackCostUsd: 0.001 + index * 0.0005,
-          createdAt: nowIso(),
-        }),
-      };
-      // Pre-write cost event to WAL table before execution to ensure it's not lost on crash
-      deps.store.billing.insertCostEventWAL(costEventWAL, "pending");
+      const costEventWAL = llmResult == null
+        ? null
+        : {
+            id: costEventId,
+            ...buildTaskExecutionCostEvent({
+              taskId,
+              sessionId,
+              executionId,
+              agentId: step.agentId,
+              llmResult,
+              fallbackInputTokens: 0,
+              fallbackOutputTokens: 0,
+              fallbackCostUsd: 0,
+              createdAt: nowIso(),
+            }),
+          } satisfies CostEventRecord;
+      if (costEventWAL != null) {
+        // Only write cost WAL when we have real provider usage telemetry.
+        deps.store.billing.insertCostEventWAL(costEventWAL, "pending");
+      }
 
       maybeInjectWorkflowCrash(input.crashInjection, {
         point: "before_commit",
@@ -623,8 +627,9 @@ export async function executeStepLoop(
         deps.store.artifact.insertArtifact(artifact.record);
         deps.store.workflow.insertStepOutput(stepOutput);
 
-        // R4-28: Mark WAL cost event as committed now that execution succeeded
-        deps.store.billing.commitCostEventWAL(costEventId);
+        if (costEventWAL != null) {
+          deps.store.billing.commitCostEventWAL(costEventId);
+        }
 
         const assistantResponseMessage: MessageRecord = {
           id: newId("msg"),
@@ -719,8 +724,8 @@ export async function executeStepLoop(
             sessionId,
             executionId,
             agentId: null,
-            provider: "minimax",
-            model: "MiniMax-M2.7",
+            provider: "internal",
+            model: "context-compaction",
             inputTokens: latestCompaction.usageBeforeTokens,
             outputTokens: latestCompaction.stage2Triggered ? latestCompaction.usageAfterStage2Tokens : latestCompaction.usageAfterStage1Tokens,
             costUsd: 0.0005,
@@ -783,13 +788,13 @@ function buildTaskExecutionCostEvent(input: {
 }): Omit<CostEventRecord, "id"> {
   const promptTokens = input.llmResult?.usage.promptTokens ?? input.fallbackInputTokens;
   const completionTokens = input.llmResult?.usage.completionTokens ?? input.fallbackOutputTokens;
-  const model = input.llmResult?.model ?? "MiniMax-M2.7";
+  const model = input.llmResult?.model ?? "unattributed";
   return {
     taskId: input.taskId,
     sessionId: input.sessionId,
     executionId: input.executionId,
     agentId: input.agentId,
-    provider: input.llmResult?.provider ?? "minimax",
+    provider: input.llmResult?.provider ?? "unattributed",
     model,
     inputTokens: promptTokens,
     outputTokens: completionTokens,

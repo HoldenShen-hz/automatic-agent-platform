@@ -7,6 +7,7 @@ import { selectEdgeLocalModel, type LocalModelProfile } from "./local-model/inde
 import { orderEdgeSyncQueue } from "./sync-queue/index.js";
 
 export type EdgeDeploymentMode = "edge_micro" | "edge_standard" | "edge_mobile" | "edge_hybrid";
+export type EdgeDurationUnit = "ms" | "seconds" | "minutes" | "hours";
 
 export interface EdgeRuntimeProfile {
   readonly edgeNodeId: string;
@@ -22,6 +23,7 @@ export interface EdgeRuntimeProfile {
   readonly connectivityMode: "offline" | "intermittent" | "online";
   readonly maxLocalRetentionHours: number;
   readonly offlineMaxDuration?: number;
+  readonly offlineMaxDurationUnit?: EdgeDurationUnit;
   readonly keyLease?: string;
   readonly certificateStatus?: "valid" | "revoked";
   readonly allowedModels: readonly string[];
@@ -140,7 +142,7 @@ export class EdgeRuntimeSyncService {
     if (Number.isNaN(createdAtMillis)) {
       throw new Error("edge_runtime.invalid_created_at");
     }
-    if (Date.now() - createdAtMillis > profile.offlineMaxDuration!) {
+    if (Date.now() - createdAtMillis > normalizeEdgeDurationMs(profile.offlineMaxDuration!, profile.offlineMaxDurationUnit)) {
       throw new Error("edge_runtime.offline_window_exceeded");
     }
     if (request.edgeNodeId !== profile.edgeNodeId) {
@@ -398,4 +400,19 @@ export function resolveEdgeDeploymentMode(profile: EdgeRuntimeProfile): EdgeDepl
     return "edge_micro";
   }
   return "edge_standard";
+}
+
+function normalizeEdgeDurationMs(duration: number, unit: EdgeDurationUnit | undefined): number {
+  const normalizedDuration = Math.max(0, duration);
+  switch (unit ?? "ms") {
+    case "hours":
+      return normalizedDuration * 60 * 60 * 1000;
+    case "minutes":
+      return normalizedDuration * 60 * 1000;
+    case "seconds":
+      return normalizedDuration * 1000;
+    case "ms":
+    default:
+      return normalizedDuration;
+  }
 }

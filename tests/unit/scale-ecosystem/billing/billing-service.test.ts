@@ -500,6 +500,57 @@ test("BillingService recordUsage compensates persisted charge when budget settle
   assert.equal(releaseCalls, 1);
 });
 
+test("BillingService recordUsage settles against actual pricing and writes adjustment delta", async () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
+  service.createAccount({ accountId: "acct_actual", ownerId: "owner_actual", planId: "plan_basic" });
+
+  const settleCalls: number[] = [];
+  (service as unknown as {
+    budgetAllocator: {
+      reserve: (input: { ledger: { version: number } }) => { ledger: { version: number; currency: string; hardCap: number }; reservation: { budgetReservationId: string } };
+      settle: (input: { actualAmount: number }) => Promise<{ ledger: { version: number } }>;
+    };
+  }).budgetAllocator = {
+    reserve: () => ({
+      ledger: { version: 1, currency: "USD", hardCap: 0.2 },
+      reservation: { budgetReservationId: "reservation_actual" },
+    }),
+    settle: async (input) => {
+      settleCalls.push(input.actualAmount);
+      return { ledger: { version: 2 } };
+    },
+  };
+
+  await service.recordUsage({
+    accountId: "acct_actual",
+    metricType: "task_execution",
+    quantity: 10,
+    source: "api",
+    actualPricing: {
+      unitPriceUsd: 0.02,
+      provider: "openai",
+      model: "gpt-4.1",
+      pricingVersion: "2026-05",
+    },
+    budgetControl: {
+      tenantId: "tenant_actual",
+      harnessRunId: "run_actual",
+      traceId: "trace_actual",
+      emittedBy: "billing-test",
+    },
+  });
+
+  const ledgerEntries = store.billing.listLedgerEntriesForAccount("acct_actual");
+  const usageCharge = ledgerEntries.find((entry) => entry.entryType === "usage_charge");
+  const adjustment = ledgerEntries.find((entry) => entry.entryType === "adjustment");
+  assert.equal(usageCharge?.amountUsd, 0.1);
+  assert.equal(adjustment?.amountUsd, 0.1);
+  assert.equal(adjustment?.sourceRef, "actual_pricing:openai:gpt-4.1:2026-05");
+  assert.deepEqual(settleCalls, [0.2]);
+});
+
 test("BillingService reads existing quota counter inside transaction during recordUsage", async () => {
   const trackedDb = createTrackedMockDb();
   const store = createMockStore();

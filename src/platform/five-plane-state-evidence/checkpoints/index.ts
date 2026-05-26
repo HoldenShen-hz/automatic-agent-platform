@@ -8,6 +8,7 @@ export {
   // Envelope format
   CHECKPOINT_ENVELOPE_SCHEMA_VERSION,
   DEFAULT_MAX_CHECKPOINT_SIZE_BYTES,
+  DEFAULT_CRITICAL_DOMAIN_MAX_CHECKPOINT_SIZE_BYTES,
   type CompressionAlgorithm,
   type CheckpointEnvelopeMetadata,
   type CheckpointEnvelope,

@@ -524,6 +524,36 @@ test("GoalDecompositionService returns human_assisted for short unmatched descri
   assert.equal(result.requiresHumanReview, true);
 });
 
+test("GoalDecompositionService does not match marketing template on a single incidental keyword", async () => {
+  const service = new GoalDecompositionService();
+  const goal: Goal = {
+    goalId: "template_false_positive_marketing",
+    description: "整理市场营销术语表并同步给培训团队",
+    owner: "operations",
+    successCriteria: [],
+    constraints: [],
+    priority: "normal",
+  };
+
+  const result = await service.decompose(goal);
+  assert.notEqual(result.decompositionStrategy, "template");
+});
+
+test("GoalDecompositionService requires multiple aligned signals before matching marketing template", async () => {
+  const service = new GoalDecompositionService();
+  const goal: Goal = {
+    goalId: "template_true_positive_marketing",
+    description: "策划一次营销推广活动并准备广告投放素材",
+    owner: "operations",
+    successCriteria: [],
+    constraints: [],
+    priority: "normal",
+  };
+
+  const result = await service.decompose(goal);
+  assert.equal(result.decompositionStrategy, "template");
+});
+
 // Task graph construction tests
 test("GoalDecompositionService constructs task graph with correct dependency structure", async () => {
   const service = new GoalDecompositionService();
@@ -600,7 +630,7 @@ test("GoalDecompositionService rejects cyclic dependency graphs from llm_plan ge
       constraints: [],
       priority: "normal",
     }),
-    /goal_decomposer\.cycle_detected:cycle_goal/,
+    /goal_decomposer\.cycle_detected:cycle_goal:cycle_goal:llm:1->cycle_goal:llm:2->cycle_goal:llm:3/,
   );
 });
 

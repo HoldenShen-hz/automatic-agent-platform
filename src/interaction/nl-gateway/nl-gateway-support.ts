@@ -473,16 +473,18 @@ export function deriveConversationState(
   confirmationRequired: boolean,
   blockedByPolicy: boolean,
 ): ConversationState {
-  if (blockedByPolicy) {
-    return "Clarifying";
-  }
-  if (requiresClarification) {
-    return "Clarifying";
-  }
-  if (confirmationRequired) {
-    return "Confirming";
-  }
-  return "Executing";
+  const decisionKey = `${requiresClarification ? 1 : 0}:${confirmationRequired ? 1 : 0}:${blockedByPolicy ? 1 : 0}`;
+  const decisionTable: Record<string, ConversationState> = {
+    "1:1:1": "Clarifying",
+    "1:1:0": "Clarifying",
+    "1:0:1": "Clarifying",
+    "1:0:0": "Clarifying",
+    "0:1:1": "Clarifying",
+    "0:1:0": "Confirming",
+    "0:0:1": "Clarifying",
+    "0:0:0": "Executing",
+  };
+  return decisionTable[decisionKey] ?? "Clarifying";
 }
 
 export function buildRiskPreview(

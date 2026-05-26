@@ -144,3 +144,24 @@ test("AutonomyBoundaryPolicy handles empty learning objects", () => {
   // Empty array returns vacuously true from every(), so allowed is true
   assert.equal(decision.allowed, true);
 });
+
+test("AutonomyBoundaryPolicy requires promoted multi-evidence learning objects for auto_execute changes", () => {
+  const policy = new AutonomyBoundaryPolicy();
+  const decision = policy.decide("planning_policy", [
+    {
+      learningObjectId: "lo_1",
+      learningType: "failure_pattern",
+      title: "Pattern",
+      summary: "Summary",
+      confidence: 0.95,
+      evidenceRefs: ["artifact:1"],
+      sourceSignalIds: ["sig_1"],
+      recommendation: "Use narrower scope",
+      validatedBy: "evidence",
+      promotionStatus: "validated",
+      createdAt: Date.now(),
+    },
+  ], { actionMode: "auto_execute" });
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reasonCode, "improvement.auto_execute_requires_promoted_evidence");
+});

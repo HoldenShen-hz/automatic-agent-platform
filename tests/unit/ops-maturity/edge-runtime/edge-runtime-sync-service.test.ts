@@ -156,6 +156,36 @@ describe("EdgeRuntimeSyncService", () => {
 
       assert.equal(receipt.record.createdAt, createdAt);
     });
+
+    test("interprets offlineMaxDuration using the declared unit", () => {
+      const service = new EdgeRuntimeSyncService();
+      const secondsProfile: EdgeRuntimeProfile = {
+        ...defaultProfile,
+        offlineMaxDuration: 60,
+        offlineMaxDurationUnit: "seconds",
+      };
+      const freshRequest: OfflineExecutionRequest = {
+        edgeNodeId: "node-001",
+        taskId: "task-006",
+        modality: "text",
+        createdAt: new Date(Date.now() - 30_000).toISOString(),
+        riskScore: 0.2,
+        taskType: "summarize",
+      };
+
+      const receipt = service.executeOffline(secondsProfile, defaultModels, freshRequest);
+      assert.equal(receipt.record.taskId, "task-006");
+
+      const staleRequest: OfflineExecutionRequest = {
+        ...freshRequest,
+        taskId: "task-007",
+        createdAt: new Date(Date.now() - 61_000).toISOString(),
+      };
+      assert.throws(
+        () => service.executeOffline(secondsProfile, defaultModels, staleRequest),
+        /edge_runtime\.offline_window_exceeded/,
+      );
+    });
   });
 
   describe("buildSyncEnvelope", () => {

@@ -6,6 +6,47 @@ import {
   buildCostOptimizationRecommendation,
   CostOptimizationService,
 } from "../../../../src/ops-maturity/cost-optimizer/index.js";
+import type { ModelMetadataRegistry } from "../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
+
+function buildCompatibleDowngradeRegistry(): ModelMetadataRegistry {
+  return {
+    version: "test",
+    providers: {
+      minimax: {
+        status: "active",
+        authMethods: ["api_key"],
+      },
+    },
+    profiles: {
+      balanced: {
+        provider: "minimax",
+        modelId: "MiniMax-M1",
+        tier: "balanced",
+        capabilities: ["reasoning", "writing", "tool_use"],
+        contextWindowTokens: 204800,
+        maxOutputTokens: 65536,
+        pricing: {
+          inputPer1kUsd: 0.003,
+          outputPer1kUsd: 0.015,
+        },
+        metadataSource: "bundled_snapshot",
+      },
+      "balanced-lite": {
+        provider: "minimax",
+        modelId: "MiniMax-M1-Lite",
+        tier: "fast",
+        capabilities: ["tool_use"],
+        contextWindowTokens: 131072,
+        maxOutputTokens: 32768,
+        pricing: {
+          inputPer1kUsd: 0.001,
+          outputPer1kUsd: 0.005,
+        },
+        metadataSource: "bundled_snapshot",
+      },
+    },
+  };
+}
 
 function makeCostRecord(overrides: Record<string, unknown>) {
   return {
@@ -72,6 +113,31 @@ test("CostOptimizationService.recordCost throws for empty decisionRef", () => {
       }),
     /cost_optimizer\.unsourced_record/,
   );
+});
+
+test("CostOptimizationService never drives unsourcedRecordCount below zero after valid records", () => {
+  const service = new CostOptimizationService();
+
+  service.recordCost(makeCostRecord({
+    subjectType: "task",
+    subjectId: "task_clean",
+    costType: "llm",
+    llmCostUsd: 1,
+    amountUsd: 1,
+    decisionRef: "dec_clean_1",
+    capturedAt: "2026-04-21T00:00:00.000Z",
+  }));
+  service.recordCost(makeCostRecord({
+    subjectType: "task",
+    subjectId: "task_clean",
+    costType: "llm",
+    llmCostUsd: 1,
+    amountUsd: 1,
+    decisionRef: "dec_clean_2",
+    capturedAt: "2026-04-21T00:01:00.000Z",
+  }));
+
+  assert.equal(service.buildDashboardSlice().unsourcedRecordCount, 0);
 });
 
 test("CostOptimizationService.aggregate returns per-subject totals", () => {
@@ -152,11 +218,21 @@ test("buildCostOptimizationRecommendation uses medium risk when cost > 100", () 
 test("buildCostOptimizationRecommendation suggests model downgrade when a cheaper peer exists", () => {
   const result = buildCostOptimizationRecommendation("model_heavy_task", 200, {
     modelRef: "balanced",
+    registry: buildCompatibleDowngradeRegistry(),
   });
   assert.ok(result != null);
   assert.equal(result.action, "downgrade_model");
   assert.equal(result.currentModelRef, "balanced");
   assert.ok(typeof result.recommendedModelRef === "string");
+});
+
+test("buildCostOptimizationRecommendation keeps right_size when cheaper peers are capability-incompatible", () => {
+  const result = buildCostOptimizationRecommendation("model_heavy_task", 200, {
+    modelRef: "balanced",
+  });
+  assert.ok(result != null);
+  assert.equal(result.action, "right_size");
+  assert.equal(result.recommendedModelRef, undefined);
 });
 
 test("CostOptimizationService.buildRecommendations generates recommendations for subjects with cost >= 10", () => {

@@ -88,6 +88,7 @@ export interface WorkerHandshakeDecision {
     | "execution_not_found"
     | "lease_not_active"
     | "lease_expired"
+    | "leader_region_mismatch"
     | "remote_session_viewer_only"
     | "remote_session_consistency_mismatch"
     | "remote_workspace_sync_conflict"

@@ -853,7 +853,17 @@ function resolveTierLimit(ledger: BudgetLedger, context: BudgetAllocatorContext)
       `budget_context.tier_limit_currency_mismatch: tier limit currency ${context.tierLimitCurrency} does not match ledger currency ${ledger.currency}.`,
     );
   }
-  return context.tierLimit ?? ledger.hardCap;
+  const baseTierLimit = context.tierLimit ?? ledger.hardCap;
+  if (context.recommendationRegistry != null && context.recommendationSubjectId != null) {
+    const recommendedLimit = context.recommendationRegistry.resolveRecommendedLimitUsd(
+      context.recommendationSubjectId,
+      baseTierLimit,
+    );
+    if (recommendedLimit != null) {
+      return Math.min(baseTierLimit, recommendedLimit);
+    }
+  }
+  return baseTierLimit;
 }
 
 function settleLedger(ledger: BudgetLedger, reservation: BudgetReservation, actualAmount: number): BudgetLedger {

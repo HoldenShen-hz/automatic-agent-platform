@@ -10,6 +10,7 @@ import {
   type PlanGraphBundle,
 } from "../../contracts/executable-contracts/index.js";
 import { TaskSituationBuilder } from "../../shared/observability/task-situation-builder.js";
+import { ExecutionBudgetRegistry } from "../../shared/execution-budget-registry.js";
 import type {
   DualChannelStepOutput,
   FeedbackSignal,
@@ -146,6 +147,8 @@ export interface OapeflirLoopServiceOptions {
   dbPath?: string;
   /** Event publisher for emitting OAPEFLIR lifecycle events. */
   eventPublisher?: import("../../five-plane-state-evidence/events/typed-event-publisher.js").TypedEventPublisher | null;
+  /** Shared domain budget registry for proactive and loop execution accounting. */
+  executionBudgetRegistry?: ExecutionBudgetRegistry | null;
 }
 
 export class OapeflirLoopService extends OapeflirLoopSupport {
@@ -170,6 +173,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
   public loopController: HarnessLoopController | null = null;
   /** Optional control-plane sink reserved for directive emission integrations. */
   private readonly directiveSink: ControlPlaneDirectiveSink | null;
+  private readonly executionBudgetRegistry: ExecutionBudgetRegistry | null;
   // R4-25 (INV-BUDGET-001) fix: Store dbPath for budget reservation before bridge execution
   protected readonly dbPath: string | undefined;
 
@@ -183,6 +187,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
     this.learning = options.learningService ?? new StrategyLearningService();
     this.autonomyBoundary = options.autonomyBoundary ?? new AutonomyBoundaryPolicy();
     this.directiveSink = options.directiveSink ?? null;
+    this.executionBudgetRegistry = options.executionBudgetRegistry ?? null;
     if (options.executeBridge) {
       this.executeBridge = options.executeBridge;
     } else if (options.dbPath) {
@@ -211,6 +216,16 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         "aa.workflow.step_count": input.workflow.executionSteps.length,
       },
     }, async () => {
+      const domainId = input.workflow.workflow.divisionId ?? "unassigned";
+      const startedAt = nowIso();
+      const sharedBudgetDecision = this.executionBudgetRegistry?.evaluateDomainBudget(
+        domainId,
+        startedAt,
+        input.constraintPack?.budgetEnvelope?.maxSteps ?? input.constraintPack?.budget?.maxSteps ?? null,
+      );
+      if (sharedBudgetDecision != null && !sharedBudgetDecision.allowed) {
+        throw new Error(`${sharedBudgetDecision.reasonCode ?? "execution_budget_registry.domain_budget_exhausted"}:${domainId}`);
+      }
       const timeline = new OapeflirStageTimelineBuilder();
 
       // R5-3: Create FSM instance to track stage transitions
@@ -646,10 +661,14 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           }
           fsm.recordStageEntry("improve");
 
-          const boundary = await this.runStage("improve", () => this.autonomyBoundary.decide("planning_policy", validatedLearningObjects), {
-          taskId: input.taskId,
-          learningObjectCount: validatedLearningObjects.length,
-        });
+          const boundary = await this.runStage("improve", () => this.autonomyBoundary.decide(
+            "planning_policy",
+            validatedLearningObjects,
+            { actionMode: resolveAutonomyActionMode(input.constraintPack?.autonomyMode ?? "semi_auto") },
+          ), {
+            taskId: input.taskId,
+            learningObjectCount: validatedLearningObjects.length,
+          });
         if (boundary.allowed) {
           const candidate = this.candidateRegistry.register({
             taskId: input.taskId,
@@ -864,7 +883,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         task: observedTask,
       };
 
-      return {
+      const result = {
         observation: validatedObservation,
         assessment: validatedAssessment,
         plan: loopPlan,
@@ -886,6 +905,8 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         graphPatch: loopGraphPatch,
         harnessDecision,
       };
+      this.executionBudgetRegistry?.recordExecution(domainId, result.outcome.score, nowIso());
+      return result;
     });
   }
 
@@ -1015,4 +1036,16 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
     };
   }
 
+}
+
+function resolveAutonomyActionMode(
+  autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto" | string,
+): "auto_execute" | "suggest" | "silent_record" {
+  if (autonomyMode === "full_auto") {
+    return "auto_execute";
+  }
+  if (autonomyMode === "semi_auto") {
+    return "suggest";
+  }
+  return "silent_record";
 }

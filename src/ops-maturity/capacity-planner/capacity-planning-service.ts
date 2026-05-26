@@ -188,7 +188,12 @@ export class CapacityPlanningService {
       budgetHeadroomPercent: Math.max(0, 100 - Math.max(0, estimatedCostDeltaPercent)),
       approvalCapacityNeeded: sloRisk === "high" ? 2 : 1,
       providerQuotaPressure,
-      regionFailoverReservePercent: this.computeDynamicFailoverReserve(sloRisk === "low" ? "gold" : sloRisk === "medium" ? "silver" : "bronze"),
+      regionFailoverReservePercent: this.computeDynamicFailoverReserve(
+        sloRisk === "low" ? "gold" : sloRisk === "medium" ? "silver" : "bronze",
+        forecast.trend,
+        providerQuotaPressure,
+        options.latestErrorBudgetBurn ?? 0,
+      ),
     };
   }
 
@@ -241,11 +246,16 @@ export class CapacityPlanningService {
     return `${resourceType}:${regionId ?? "global"}`;
   }
 
-  private computeDynamicFailoverReserve(slaTier: "gold" | "silver" | "bronze"): number {
-    switch (slaTier) {
-      case "gold": return 30;
-      case "silver": return 20;
-      case "bronze": return 15;
-    }
+  private computeDynamicFailoverReserve(
+    slaTier: "gold" | "silver" | "bronze",
+    trend: CapacityForecast["trend"],
+    providerQuotaPressure: number,
+    errorBudgetBurn: number,
+  ): number {
+    const base = slaTier === "gold" ? 30 : slaTier === "silver" ? 20 : 15;
+    const trendAdjustment = trend === "up" ? 5 : trend === "down" ? -3 : 0;
+    const quotaAdjustment = providerQuotaPressure >= 0.9 ? 10 : providerQuotaPressure >= 0.75 ? 5 : 0;
+    const burnAdjustment = errorBudgetBurn >= 0.2 ? 10 : errorBudgetBurn >= 0.1 ? 5 : 0;
+    return Math.max(10, Math.min(50, base + trendAdjustment + quotaAdjustment + burnAdjustment));
   }
 }

@@ -26,6 +26,7 @@ export interface FairQueueSnapshot {
   readonly orderedItemIds: readonly string[];
   readonly starvedItemIds: readonly string[];
   readonly quotaExceeded: boolean;
+  readonly reasonCodes: readonly string[];
 }
 
 export interface PromotionBudgetPolicy {
@@ -49,6 +50,9 @@ export interface FairSchedulingRequest {
   readonly queueItems: readonly FairQueueItem[];
   readonly preemptionCandidates: readonly PreemptionCandidate[];
   readonly promotionBudget?: PromotionBudgetPolicy | null;
+  readonly activeLeaseLookup?: ((executionId: string) => boolean) | null;
+  readonly quorumRegionCount?: number | null;
+  readonly acknowledgedRegionCount?: number | null;
 }
 
 export interface FairSchedulingDecision {
@@ -60,10 +64,7 @@ export interface FairSchedulingDecision {
 export class FairSchedulingService {
   public schedule(request: FairSchedulingRequest): FairSchedulingDecision {
     const ordered = orderFairQueue(request.queueItems);
-    // Evaluate quota using hardLimit as the rejection threshold (not burstLimit)
-    const quotaDecision = evaluateMultiDimensionalQuota(request.quotaPolicy, {
-      workerUnits: request.claim.requestedUnits,
-    });
+    const quotaDecision = this.evaluateQuotaDecision(request);
     const quotaExceeded = !quotaDecision.passed;
     const starvedItemIds = request.queueItems
       .filter((item) => item.ageMs >= 15 * 60_000)
@@ -72,8 +73,9 @@ export class FairSchedulingService {
       request.claim.schedulingClass.tenantId,
       request.promotionBudget ?? null,
     );
+    const eligiblePreemptionCandidates = this.filterPreemptableCandidates(request);
     const victim = quotaExceeded && promotionBudget.allowed
-      ? choosePreemptionVictim(request.preemptionCandidates)
+      ? choosePreemptionVictim(eligiblePreemptionCandidates)
       : null;
 
     return {
@@ -81,6 +83,7 @@ export class FairSchedulingService {
         orderedItemIds: ordered.map((item) => item.itemId),
         starvedItemIds,
         quotaExceeded,
+        reasonCodes: quotaDecision.reasonCodes,
       },
       preemption: {
         shouldPreempt: quotaExceeded && promotionBudget.allowed && victim != null,
@@ -95,6 +98,37 @@ export class FairSchedulingService {
       },
       promotionBudget,
     };
+  }
+
+  private evaluateQuotaDecision(request: FairSchedulingRequest): {
+    passed: boolean;
+    reasonCodes: readonly string[];
+  } {
+    const requestedUnits = {
+      workerUnits: request.claim.requestedUnits,
+    };
+    // Evaluate quota using hardLimit as the rejection threshold (not burstLimit)
+    const strictDecision = evaluateMultiDimensionalQuota(request.quotaPolicy, requestedUnits);
+    const quorumRegionCount = Math.max(0, request.quorumRegionCount ?? 0);
+    const acknowledgedRegionCount = Math.max(0, request.acknowledgedRegionCount ?? 0);
+    if (!strictDecision.passed && quorumRegionCount > 0 && acknowledgedRegionCount < quorumRegionCount) {
+      return {
+        passed: true,
+        reasonCodes: ["resource_manager.quota_quorum_degraded"],
+      };
+    }
+    return {
+      passed: strictDecision.passed,
+      reasonCodes: strictDecision.passed ? [] : ["resource_manager.quota_exceeded"],
+    };
+  }
+
+  private filterPreemptableCandidates(request: FairSchedulingRequest): readonly PreemptionCandidate[] {
+    const lookup = request.activeLeaseLookup ?? null;
+    if (lookup == null) {
+      return request.preemptionCandidates;
+    }
+    return request.preemptionCandidates.filter((candidate) => !lookup(candidate.executionId));
   }
 
   private evaluatePromotionBudget(

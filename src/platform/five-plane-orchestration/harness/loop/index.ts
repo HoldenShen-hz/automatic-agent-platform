@@ -1,5 +1,10 @@
 import { MS_PER_HOUR } from "../../../contracts/constants/time.js";
 import type { ConstraintPack, HarnessDecisionAction } from "../index.js";
+import {
+  DEFAULT_BACKOFF_BASE_MS,
+  DEFAULT_BACKOFF_MAX_MS,
+  DEFAULT_EXPONENTIAL_BACKOFF_MULTIPLIER,
+} from "../../../shared/reliability/reliability-constants.js";
 
 export interface HarnessLoopGuards {
   readonly maxIterations: number;
@@ -18,8 +23,8 @@ export interface HarnessLoopState {
 }
 
 // Backoff constants per §9.3
-const BACKOFF_BASE_MS = 1000; // 1 second base
-const BACKOFF_MAX_MS = 60000; // 60 seconds max
+const BACKOFF_BASE_MS = DEFAULT_BACKOFF_BASE_MS; // 1 second base
+const BACKOFF_MAX_MS = DEFAULT_BACKOFF_MAX_MS; // 60 seconds max
 const JITTER_FACTOR = 0.1; // 10% jitter
 
 export interface HarnessLoopProgress {
@@ -83,7 +88,7 @@ export class HarnessLoopController {
    * @returns Backoff delay in milliseconds (base=1s, max=60s, 10% jitter)
    */
   public getBackoffMs(): number {
-    const exponentialDelay = BACKOFF_BASE_MS * Math.pow(2, this.state.retryAttempt - 1);
+    const exponentialDelay = BACKOFF_BASE_MS * Math.pow(DEFAULT_EXPONENTIAL_BACKOFF_MULTIPLIER, this.state.retryAttempt - 1);
     const cappedDelay = Math.min(exponentialDelay, BACKOFF_MAX_MS);
     const jitter = cappedDelay * JITTER_FACTOR * Math.random();
     return Math.min(BACKOFF_MAX_MS, Math.floor(cappedDelay + jitter));

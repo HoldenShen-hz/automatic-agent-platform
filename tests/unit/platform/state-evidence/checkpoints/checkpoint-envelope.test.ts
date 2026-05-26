@@ -12,6 +12,7 @@ import {
   CheckpointSizeExceededError,
   CheckpointEnvelopeInvalidError,
   DEFAULT_MAX_CHECKPOINT_SIZE_BYTES,
+  DEFAULT_CRITICAL_DOMAIN_MAX_CHECKPOINT_SIZE_BYTES,
   CHECKPOINT_ENVELOPE_SCHEMA_VERSION,
   type CheckpointEnvelope,
 } from "../../../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
@@ -110,6 +111,19 @@ describe("CheckpointEnvelope", () => {
 
       assert.strictEqual(envelope.schema, "workflow_step_checkpoint.v1");
       assert.strictEqual(envelope.metadata.payloadSchemaVersion, "workflow_step_checkpoint.v1");
+    });
+
+    it("should apply stricter default size limit for critical domains", async () => {
+      const checkpoint = createTestCheckpoint({
+        output: {
+          payload: "x".repeat(DEFAULT_CRITICAL_DOMAIN_MAX_CHECKPOINT_SIZE_BYTES + 1024),
+        },
+      });
+
+      await assert.rejects(
+        async () => createCheckpointEnvelope(checkpoint, "test.v1", { domainId: "quant-trading" }),
+        CheckpointSizeExceededError,
+      );
     });
   });
 

@@ -250,7 +250,12 @@ export class PlatformPanicService {
         reasonCodes: [],
       };
     }
-    if (check.actorId != null && activation.directive.allowList?.includes(check.actorId)) {
+    const allowListBypassAllowed = check.mode === "approval" || check.mode === "deploy";
+    if (
+      allowListBypassAllowed
+      && check.actorId != null
+      && activation.directive.allowList?.includes(check.actorId)
+    ) {
       return {
         blocked: false,
         directiveId: activation.directive.directiveId,

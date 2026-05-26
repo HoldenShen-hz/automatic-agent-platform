@@ -197,16 +197,17 @@ export class PlatformOpsAgentService {
     incidentLevel: "warning" | "incident" | "critical_incident",
     capacityRisk: "low" | "medium" | "high",
   ): OpsActionType {
-    if (incidentLevel !== "warning") {
-      return input.errorRate >= 0.2 ? "failover" : "restart_service";
+    const preferred = incidentLevel !== "warning"
+      ? (input.errorRate >= 0.2 ? "failover" : "restart_service")
+      : capacityRisk !== "low"
+        ? "scale_capacity"
+        : summarizeOpsHealth(input.probes) === "degraded"
+          ? "tune_config"
+          : "developer_assist";
+    if (this.definition.allowedActionTypes.includes(preferred)) {
+      return preferred;
     }
-    if (capacityRisk !== "low") {
-      return "scale_capacity";
-    }
-    if (summarizeOpsHealth(input.probes) === "degraded") {
-      return "tune_config";
-    }
-    return "developer_assist";
+    return this.definition.allowedActionTypes[0] ?? preferred;
   }
 
   private buildSummary(

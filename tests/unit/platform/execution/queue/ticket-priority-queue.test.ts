@@ -219,3 +219,37 @@ test("TicketPriorityQueue dispatchAfter null is treated as immediately ready", (
   const immediate = queue.dequeue();
   assert.deepEqual(immediate!.payload, "immediate");
 });
+
+test("TicketPriorityQueue promotes deferred tickets once dispatchAfter is reached", () => {
+  const queue = new TicketPriorityQueue();
+  const originalNow = Date.now;
+  const readyAt = Date.parse("2026-01-01T00:00:10.000Z");
+  Date.now = () => readyAt - 1_000;
+  try {
+    queue.enqueue({ payload: "later", priority: 10, dispatchAfter: new Date(readyAt).toISOString() });
+    assert.equal(queue.peek(), null);
+    Date.now = () => readyAt;
+    assert.equal(queue.dequeue()?.payload, "later");
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test("TicketPriorityQueue treats invalid dispatchAfter as immediately ready", () => {
+  const queue = new TicketPriorityQueue();
+  queue.enqueue({ payload: "invalid-time", dispatchAfter: "not-a-date", priority: 2 });
+  assert.equal(queue.dequeue()?.payload, "invalid-time");
+});
+
+test("TicketPriorityQueue reorders heap correctly when multiple children compete", () => {
+  const queue = new TicketPriorityQueue();
+  queue.enqueue({ payload: "p1", priority: 1 });
+  queue.enqueue({ payload: "p4", priority: 4 });
+  queue.enqueue({ payload: "p3", priority: 3 });
+  queue.enqueue({ payload: "p2", priority: 2 });
+
+  assert.deepEqual(
+    [queue.dequeue()?.payload, queue.dequeue()?.payload, queue.dequeue()?.payload, queue.dequeue()?.payload],
+    ["p4", "p3", "p2", "p1"],
+  );
+});

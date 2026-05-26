@@ -237,6 +237,22 @@ test.describe("WorkflowDebuggerService", () => {
       assert.equal(result.length, 2);
     });
 
+    test("comparison report suppresses cost drift when decisionRef no longer matches", () => {
+      const service = new WorkflowDebuggerService();
+      const report = service.buildComparisonReport(
+        "wf-123",
+        [
+          { workflowId: "wf-123", stepId: "deploy", status: "done", timestamp: "2026-04-20T00:00:00.000Z", label: "deploy", decisionRef: "decision-a", costUsd: 0.1 },
+        ],
+        [
+          { workflowId: "wf-123", stepId: "deploy", status: "done", timestamp: "2026-04-20T00:00:01.000Z", label: "deploy", decisionRef: "decision-b", costUsd: 0.2 },
+        ],
+      );
+
+      assert.ok(report.differences.includes("decision_ref:deploy:decision-a->decision-b"));
+      assert.ok(!report.differences.includes("cost:deploy:0.1->0.2"));
+    });
+
     test("includes timestamp from matching frame in hit result", () => {
       const service = new WorkflowDebuggerService();
       const timestamp = "2026-04-20T12:30:00.000Z";

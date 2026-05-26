@@ -327,3 +327,22 @@ test("RegionFailoverOrchestrator.checkAndFailover returns didFailover true when 
   assert.equal(typeof result.didFailover, "boolean");
   assert.ok(result.targetRegionId === null || typeof result.targetRegionId === "string");
 });
+
+test("RegionFailoverOrchestrator requires execution handover confirmation before RTO closes", async () => {
+  const orchestrator = new RegionFailoverOrchestrator();
+  orchestrator.registerRegion(createHealthCheckConfig({ regionId: "us-east-1", retryCount: 0 }));
+  orchestrator.registerRegion(createHealthCheckConfig({ regionId: "us-west-2", retryCount: 5 }));
+
+  const result = await orchestrator.orchestrateFailover("us-east-1", ["us-east-1", "us-west-2"]);
+  if (!result.success || result.targetRegionId == null) {
+    return;
+  }
+
+  assert.throws(
+    () => orchestrator.assertFailoverWithinRto("us-east-1", result.targetRegionId),
+    /execution_handover_pending/,
+  );
+
+  orchestrator.confirmExecutionHandover("us-east-1", result.targetRegionId);
+  assert.doesNotThrow(() => orchestrator.assertFailoverWithinRto("us-east-1", result.targetRegionId));
+});

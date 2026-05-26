@@ -27,6 +27,7 @@ export interface WorkflowTraceFrame {
   readonly timestamp: string;
   readonly label: string;
   readonly decision?: string;
+  readonly decisionRef?: string;
   readonly costUsd?: number;
   readonly durationMs?: number;
   readonly outcome?: string;
@@ -159,7 +160,10 @@ export class WorkflowDebuggerService {
         continue;
       }
       this.appendFieldDifference(differences, "decision", leftStepId, leftFrame.decision, rightFrame.decision);
-      this.appendFieldDifference(differences, "cost", leftStepId, leftFrame.costUsd, rightFrame.costUsd);
+      this.appendFieldDifference(differences, "decision_ref", leftStepId, leftFrame.decisionRef, rightFrame.decisionRef);
+      if (this.areComparableCostFrames(leftFrame, rightFrame)) {
+        this.appendFieldDifference(differences, "cost", leftStepId, leftFrame.costUsd, rightFrame.costUsd);
+      }
       this.appendFieldDifference(differences, "duration", leftStepId, leftFrame.durationMs, rightFrame.durationMs);
       this.appendFieldDifference(differences, "outcome", leftStepId, leftFrame.outcome, rightFrame.outcome);
       this.appendFieldDifference(
@@ -204,6 +208,16 @@ export class WorkflowDebuggerService {
     differences.push(`${field}:${stepId}:${String(leftValue ?? "missing")}->${String(rightValue ?? "missing")}`);
   }
 
+  private areComparableCostFrames(leftFrame: WorkflowTraceFrame, rightFrame: WorkflowTraceFrame): boolean {
+    if (leftFrame.costUsd == null && rightFrame.costUsd == null) {
+      return false;
+    }
+    if (leftFrame.decisionRef == null || rightFrame.decisionRef == null) {
+      return true;
+    }
+    return leftFrame.decisionRef === rightFrame.decisionRef;
+  }
+
   private normalizeBreakpoint(breakpoint: DebugBreakpointDefinition): DebugBreakpointDefinition & {
     readonly workflowId: string;
     readonly planGraphId: string;
@@ -239,6 +253,7 @@ export class WorkflowDebuggerService {
       status: frame.status,
       ...(frame.decision !== undefined ? { decision: frame.decision } : {}),
       ...(frame.costUsd !== undefined ? { cost: frame.costUsd } : {}),
+      ...(frame.decisionRef !== undefined ? { decisionRef: frame.decisionRef } : {}),
       ...(frame.durationMs !== undefined ? { durationMs: frame.durationMs } : {}),
     };
     if (frame.nodeRunId) {

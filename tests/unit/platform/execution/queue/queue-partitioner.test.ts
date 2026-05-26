@@ -255,6 +255,22 @@ test("QueuePartitioner detectOverload handles delayed jobs in count", () => {
   assert.equal(overloads.length, 1);
 });
 
+test("QueuePartitioner detectOverload returns overloaded stats payload", () => {
+  const partitioner = new QueuePartitioner();
+  const mockAdapter = new MockQueueAdapter();
+  partitioner.registerPartition({
+    name: "queue:task",
+    aggregateType: "task",
+    priority: 1,
+    consumerGroup: "cg-task",
+    config: { maxDepth: 1, alertThreshold: 1, consumerCount: 1, partitioningStrategy: "byAggregateType" },
+  });
+  mockAdapter._addJobs("queue:task", 2, "waiting");
+  const overloads = partitioner.detectOverload(mockAdapter);
+  assert.equal(overloads[0]?.aggregateType, "task");
+  assert.equal(overloads[0]?.stats.waiting, 2);
+});
+
 test("QueuePartitioner route uses default partition strategy when no partition registered", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();

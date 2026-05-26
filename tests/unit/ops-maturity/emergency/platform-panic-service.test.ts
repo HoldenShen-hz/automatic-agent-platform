@@ -168,6 +168,21 @@ test("PlatformPanicService.evaluateExecution allows allow-listed actor", () => {
   assert.equal(decision.reasonCodes.includes("panic.allow_list_bypass"), true);
 });
 
+test("PlatformPanicService.evaluateExecution does not allow allow-listed actor to bypass write freeze", () => {
+  const service = createTestService();
+  service.activate(createActivationRequest({ issuedBy: "op1", allowList: ["operator-2"] }));
+  const check: PanicExecutionCheck = {
+    scope: "platform",
+    mode: "write",
+    actorId: "operator-2",
+  };
+
+  const decision = service.evaluateExecution(check);
+
+  assert.equal(decision.blocked, true);
+  assert.equal(decision.reasonCodes.includes("panic.execution_blocked"), true);
+});
+
 test("PlatformPanicService.resume succeeds with valid plan", () => {
   const service = createTestService();
   const activation = service.activate(createActivationRequest({ issuedBy: "op1" }));

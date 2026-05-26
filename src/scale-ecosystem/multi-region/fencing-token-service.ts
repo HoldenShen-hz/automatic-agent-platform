@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 /**
  * Fencing token for single-leader enforcement across regions.
@@ -56,6 +57,7 @@ interface FencingTokenPersistenceSnapshot {
 
 export interface FencingTokenServiceOptions {
   readonly storagePath?: string | null;
+  readonly database?: AuthoritativeSqlDatabase;
 }
 
 /**
@@ -66,10 +68,13 @@ export class FencingTokenService {
   private readonly leaderships = new Map<string, LeadershipState>();
   private readonly entityLeadership = new Map<string, LeadershipState>();
   private readonly storagePath: string | null;
+  private readonly database: AuthoritativeSqlDatabase | null;
   private epochCounter = 0;
 
   public constructor(options: FencingTokenServiceOptions = {}) {
+    this.database = options.database ?? null;
     this.storagePath = resolveFencingTokenStoragePath(options.storagePath);
+    this.ensureDatabaseSchema();
     this.loadPersistedState();
   }
 
@@ -276,6 +281,23 @@ export class FencingTokenService {
   }
 
   private loadPersistedState(): void {
+    if (this.database != null) {
+      try {
+        const row = this.database.connection
+          .prepare(`SELECT snapshot_json FROM multi_region_fencing_token_state WHERE state_key = 'global'`)
+          .get() as { snapshot_json?: string } | undefined;
+        const raw = row?.snapshot_json?.trim() ?? "";
+        if (raw.length === 0) {
+          return;
+        }
+        this.applySnapshot(raw);
+      } catch {
+        this.epochCounter = 0;
+        this.entityLeadership.clear();
+        this.leaderships.clear();
+      }
+      return;
+    }
     if (this.storagePath == null) {
       return;
     }
@@ -284,18 +306,7 @@ export class FencingTokenService {
       if (raw.length === 0) {
         return;
       }
-      const snapshot = JSON.parse(raw) as Partial<FencingTokenPersistenceSnapshot>;
-      this.epochCounter = typeof snapshot.epochCounter === "number" && Number.isFinite(snapshot.epochCounter)
-        ? Math.max(0, Math.trunc(snapshot.epochCounter))
-        : 0;
-      const persistedLeadership = snapshot.entityLeadership ?? {};
-      for (const [key, state] of Object.entries(persistedLeadership)) {
-        if (!isLeadershipState(state)) {
-          continue;
-        }
-        this.entityLeadership.set(key, state);
-        this.leaderships.set(state.regionId, state);
-      }
+      this.applySnapshot(raw);
     } catch {
       this.epochCounter = 0;
       this.entityLeadership.clear();
@@ -311,18 +322,27 @@ export class FencingTokenService {
   }
 
   private persistState(): void {
-    if (this.storagePath == null) {
-      return;
-    }
-    mkdirSync(dirname(this.storagePath), { recursive: true });
     const snapshot: FencingTokenPersistenceSnapshot = {
       epochCounter: this.epochCounter,
       entityLeadership: Object.fromEntries(this.entityLeadership.entries()),
     };
+    const snapshotJson = JSON.stringify(snapshot, null, 2);
+    if (this.database != null) {
+      this.database.connection
+        .prepare(`INSERT INTO multi_region_fencing_token_state (state_key, snapshot_json, updated_at)
+          VALUES ('global', ?, ?)
+          ON CONFLICT(state_key) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at`)
+        .run(snapshotJson, nowIso());
+      return;
+    }
+    if (this.storagePath == null) {
+      return;
+    }
+    mkdirSync(dirname(this.storagePath), { recursive: true });
     const tempPath = `${this.storagePath}.${Date.now()}.${randomUUID()}.tmp`;
     let renamed = false;
     try {
-      writeFileSync(tempPath, JSON.stringify(snapshot, null, 2), "utf8");
+      writeFileSync(tempPath, snapshotJson, "utf8");
       renameSync(tempPath, this.storagePath);
       renamed = true;
     } finally {
@@ -337,6 +357,9 @@ export class FencingTokenService {
   }
 
   private acquirePersistenceLock(): () => void {
+    if (this.database != null) {
+      return () => {};
+    }
     if (this.storagePath == null) {
       return () => {};
     }
@@ -350,6 +373,33 @@ export class FencingTokenService {
         unlinkSync(lockPath);
       }
     };
+  }
+
+  private ensureDatabaseSchema(): void {
+    if (this.database == null) {
+      return;
+    }
+    this.database.connection.exec(`
+CREATE TABLE IF NOT EXISTS multi_region_fencing_token_state (
+  state_key TEXT PRIMARY KEY,
+  snapshot_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);`);
+  }
+
+  private applySnapshot(raw: string): void {
+    const snapshot = JSON.parse(raw) as Partial<FencingTokenPersistenceSnapshot>;
+    this.epochCounter = typeof snapshot.epochCounter === "number" && Number.isFinite(snapshot.epochCounter)
+      ? Math.max(0, Math.trunc(snapshot.epochCounter))
+      : 0;
+    const persistedLeadership = snapshot.entityLeadership ?? {};
+    for (const [key, state] of Object.entries(persistedLeadership)) {
+      if (!isLeadershipState(state)) {
+        continue;
+      }
+      this.entityLeadership.set(key, state);
+      this.leaderships.set(state.regionId, state);
+    }
   }
 }
 

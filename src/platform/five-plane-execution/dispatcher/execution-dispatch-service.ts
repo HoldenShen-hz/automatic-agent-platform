@@ -207,6 +207,7 @@ export class ExecutionDispatchService {
 
     tickets = sortTicketsForDeterministicDispatch(tickets);
     tickets = interleaveTicketsByTenant(tickets);
+    tickets = this.prioritizeStarvedTickets(tickets, options.starvedExecutionIds ?? null);
 
     const queueAvailability = this.queueAvailabilitySnapshot?.();
     if (queueAvailability?.state === "unavailable") {
@@ -524,7 +525,15 @@ export class ExecutionDispatchService {
       return {
         outcome: "dispatched",
         reasonCode: selection.reasonCode,
-        ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
+        ticket:
+          this.store.worker.getExecutionTicket(ticket.id) ?? {
+            ...ticket,
+            status: "claimed",
+            assignedWorkerId: selectedWorker.workerId,
+            leaseId: grantedLease.id,
+            claimedAt: occurredAt,
+            updatedAt: occurredAt,
+          },
         worker: selectedWorker,
         leaseId: grantedLease.id,
         trace,
@@ -878,17 +887,101 @@ export class ExecutionDispatchService {
     return this.workers.listWorkers();
   }
 
+  private prioritizeStarvedTickets(
+    tickets: ExecutionTicketRecord[],
+    starvedExecutionIds: readonly string[] | null,
+  ): ExecutionTicketRecord[] {
+    if (starvedExecutionIds == null || starvedExecutionIds.length === 0) {
+      return tickets;
+    }
+    const starved = new Set(starvedExecutionIds);
+    return [...tickets].sort((left, right) => {
+      const leftStarved = starved.has(left.executionId);
+      const rightStarved = starved.has(right.executionId);
+      if (leftStarved === rightStarved) {
+        return 0;
+      }
+      return leftStarved ? -1 : 1;
+    });
+  }
+
   private getCandidateWorker(workerId: string): RegisteredWorkerView | null {
     const workerStore = this.store.worker as {
-      getWorker?: (id: string) => RegisteredWorkerView | null;
-      listWorkers?: () => RegisteredWorkerView[];
+      getWorker?: (id: string) => RegisteredWorkerView | Record<string, unknown> | null;
+      listWorkers?: () => Array<RegisteredWorkerView | Record<string, unknown>>;
     };
     const directWorker = workerStore.getWorker?.(workerId) ?? null;
     if (directWorker) {
-      return directWorker;
+      return this.normalizeCandidateWorker(directWorker);
     }
-    const listedWorker = workerStore.listWorkers?.().find((worker) => worker.workerId === workerId) ?? null;
-    return listedWorker ?? this.workers.getWorker(workerId);
+    const listedWorker =
+      workerStore.listWorkers?.().find((worker) => {
+        return typeof worker === "object" && worker != null && "workerId" in worker && worker.workerId === workerId;
+      }) ?? null;
+    if (listedWorker) {
+      return this.normalizeCandidateWorker(listedWorker);
+    }
+    const registryWorker = this.workers.getWorker(workerId);
+    return registryWorker ? this.normalizeCandidateWorker(registryWorker) : null;
+  }
+
+  private normalizeCandidateWorker(worker: RegisteredWorkerView | Record<string, unknown>): RegisteredWorkerView {
+    const candidate = worker as Partial<RegisteredWorkerView> & {
+      runningExecutionsJson?: string | null;
+      capabilitiesJson?: string | null;
+    };
+    const runningExecutionIds =
+      Array.isArray(candidate.runningExecutionIds)
+        ? candidate.runningExecutionIds.filter((value): value is string => typeof value === "string")
+        : parseJsonArray(candidate.runningExecutionsJson ?? "[]");
+    const capabilities =
+      Array.isArray(candidate.capabilities)
+        ? candidate.capabilities.filter((value): value is string => typeof value === "string")
+        : parseJsonArray(candidate.capabilitiesJson ?? "[]");
+    const maxConcurrency = Math.max(Number(candidate.maxConcurrency ?? 1), 1);
+    const availableSlots = Math.max(
+      0,
+      Number(candidate.availableSlots ?? maxConcurrency - runningExecutionIds.length),
+    );
+    return {
+      workerId: candidate.workerId ?? "",
+      status: candidate.status ?? "idle",
+      schedulingStatus: candidate.schedulingStatus ?? "healthy",
+      placement: candidate.placement ?? "local",
+      isolationLevel: candidate.isolationLevel ?? "standard",
+      repoVersion: candidate.repoVersion ?? null,
+      remoteSessionStatus: candidate.remoteSessionStatus ?? null,
+      lastAcknowledgedStreamOffset: candidate.lastAcknowledgedStreamOffset ?? null,
+      streamResumeSuccessRate: candidate.streamResumeSuccessRate ?? null,
+      credentialRefreshSuccessRate: candidate.credentialRefreshSuccessRate ?? null,
+      sessionConsistencyCheckStatus: candidate.sessionConsistencyCheckStatus ?? null,
+      sessionConsistencyCheckedAt: candidate.sessionConsistencyCheckedAt ?? null,
+      workspaceSyncStatus: candidate.workspaceSyncStatus ?? null,
+      workspaceSyncCheckedAt: candidate.workspaceSyncCheckedAt ?? null,
+      saturation: candidate.saturation ?? null,
+      activeLeaseCount: Number(candidate.activeLeaseCount ?? runningExecutionIds.length),
+      meanStartupLatencyMs: candidate.meanStartupLatencyMs ?? null,
+      sandboxSuccessRate: candidate.sandboxSuccessRate ?? null,
+      repoCacheHitRate: candidate.repoCacheHitRate ?? null,
+      registrationVerifiedAt: candidate.registrationVerifiedAt ?? null,
+      registrationChallengeId: candidate.registrationChallengeId ?? null,
+      trusted: candidate.trusted ?? true,
+      capabilities,
+      runningExecutionIds,
+      maxConcurrency,
+      queueAffinity: candidate.queueAffinity ?? null,
+      runtimeInstanceId: candidate.runtimeInstanceId ?? null,
+      restartedFromRuntimeInstanceId: candidate.restartedFromRuntimeInstanceId ?? null,
+      restartGeneration: Number(candidate.restartGeneration ?? 0),
+      cpuPct: candidate.cpuPct ?? null,
+      memoryMb: candidate.memoryMb ?? null,
+      toolBacklogCount: Number(candidate.toolBacklogCount ?? 0),
+      currentStepId: candidate.currentStepId ?? null,
+      lastProgressAt: candidate.lastProgressAt ?? null,
+      lastHeartbeatAt: candidate.lastHeartbeatAt ?? nowIso(),
+      updatedAt: candidate.updatedAt ?? nowIso(),
+      availableSlots,
+    };
   }
 
   private enqueueDispatchDlq(

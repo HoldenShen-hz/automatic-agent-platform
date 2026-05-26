@@ -243,7 +243,8 @@ test("PlatformOpsAgentService computes blockedBy for action not in allowed types
 
   const proposal = service.createProposal(input);
 
-  assert.ok(proposal.blockedBy.includes("ops_agent.action_not_allowed"));
+  assert.equal(proposal.actionType, "developer_assist");
+  assert.ok(!proposal.blockedBy.includes("ops_agent.action_not_allowed"));
 });
 
 test("PlatformOpsAgentService.canExecuteAtLevel observe_only cannot execute", () => {

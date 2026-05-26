@@ -5,6 +5,47 @@ import {
   buildCostOptimizationRecommendation,
   prioritizeCostOptimizationRecommendations,
 } from "../../../../../src/ops-maturity/cost-optimizer/recommendation-engine/index.js";
+import type { ModelMetadataRegistry } from "../../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
+
+function buildCompatibleDowngradeRegistry(): ModelMetadataRegistry {
+  return {
+    version: "test",
+    providers: {
+      minimax: {
+        status: "active",
+        authMethods: ["api_key"],
+      },
+    },
+    profiles: {
+      balanced: {
+        provider: "minimax",
+        modelId: "MiniMax-M1",
+        tier: "balanced",
+        capabilities: ["reasoning", "writing", "tool_use"],
+        contextWindowTokens: 204800,
+        maxOutputTokens: 65536,
+        pricing: {
+          inputPer1kUsd: 0.003,
+          outputPer1kUsd: 0.015,
+        },
+        metadataSource: "bundled_snapshot",
+      },
+      "balanced-lite": {
+        provider: "minimax",
+        modelId: "MiniMax-M1-Lite",
+        tier: "fast",
+        capabilities: ["tool_use"],
+        contextWindowTokens: 131072,
+        maxOutputTokens: 32768,
+        pricing: {
+          inputPer1kUsd: 0.001,
+          outputPer1kUsd: 0.005,
+        },
+        metadataSource: "bundled_snapshot",
+      },
+    },
+  };
+}
 
 test("buildCostOptimizationRecommendation returns null when cost < 10", () => {
   assert.equal(buildCostOptimizationRecommendation("subj", 0), null);
@@ -53,10 +94,20 @@ test("buildCostOptimizationRecommendation calculates higher savings for high cos
 test("buildCostOptimizationRecommendation derives savings from actual model price delta", () => {
   const result = buildCostOptimizationRecommendation("subj", 200, {
     modelRef: "balanced",
+    registry: buildCompatibleDowngradeRegistry(),
   });
   assert.ok(result != null);
   assert.equal(result.action, "downgrade_model");
   assert.equal(result.estimatedSavingsUsd, 133.33);
+});
+
+test("buildCostOptimizationRecommendation stays on right_size when cheaper peers drop required capabilities", () => {
+  const result = buildCostOptimizationRecommendation("subj", 200, {
+    modelRef: "balanced",
+  });
+  assert.ok(result != null);
+  assert.equal(result.action, "right_size");
+  assert.equal(result.recommendedModelRef, undefined);
 });
 
 test("prioritizeCostOptimizationRecommendations sorts by estimatedSavingsUsd descending", () => {

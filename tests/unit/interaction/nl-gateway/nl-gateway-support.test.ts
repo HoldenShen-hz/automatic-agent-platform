@@ -307,20 +307,28 @@ test("buildMissingSlotQuestions handles unknown slot", () => {
   assert.ok(questions.some((q) => q.includes("unknown_slot")));
 });
 
-test("deriveConversationState returns Clarifying when blocked", () => {
-  assert.equal(deriveConversationState(false, false, true), "Clarifying");
-});
+test("deriveConversationState covers the full decision matrix", () => {
+  const cases = [
+    { requiresClarification: true, confirmationRequired: true, blockedByPolicy: true, expected: "Clarifying" },
+    { requiresClarification: true, confirmationRequired: true, blockedByPolicy: false, expected: "Clarifying" },
+    { requiresClarification: true, confirmationRequired: false, blockedByPolicy: true, expected: "Clarifying" },
+    { requiresClarification: true, confirmationRequired: false, blockedByPolicy: false, expected: "Clarifying" },
+    { requiresClarification: false, confirmationRequired: true, blockedByPolicy: true, expected: "Clarifying" },
+    { requiresClarification: false, confirmationRequired: true, blockedByPolicy: false, expected: "Confirming" },
+    { requiresClarification: false, confirmationRequired: false, blockedByPolicy: true, expected: "Clarifying" },
+    { requiresClarification: false, confirmationRequired: false, blockedByPolicy: false, expected: "Executing" },
+  ] as const;
 
-test("deriveConversationState returns Clarifying when requires clarification", () => {
-  assert.equal(deriveConversationState(true, false, false), "Clarifying");
-});
-
-test("deriveConversationState returns Confirming when confirmation required", () => {
-  assert.equal(deriveConversationState(false, true, false), "Confirming");
-});
-
-test("deriveConversationState returns Executing by default", () => {
-  assert.equal(deriveConversationState(false, false, false), "Executing");
+  for (const testCase of cases) {
+    assert.equal(
+      deriveConversationState(
+        testCase.requiresClarification,
+        testCase.confirmationRequired,
+        testCase.blockedByPolicy,
+      ),
+      testCase.expected,
+    );
+  }
 });
 
 test("resolveAutonomyMode returns suggestion when confirmation required", () => {

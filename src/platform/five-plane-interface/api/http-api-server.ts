@@ -8,6 +8,10 @@ import { parse as parseUrl } from "node:url";
 import { GatewayTargetDirectoryService } from "../channel-gateway/gateway-target-directory-service.js";
 import { ChannelGatewayService } from "../channel-gateway/channel-gateway-service.js";
 import type { ChannelGatewayDeliveryService } from "../channel-gateway/channel-gateway-delivery-service.js";
+import {
+  DEFAULT_RATE_LIMIT_CONFIG as DEFAULT_CHANNEL_RATE_LIMIT_CONFIG,
+  type RateLimitConfig as ChannelRateLimitConfig,
+} from "../channel-gateway/channel-gateway-delivery-support.js";
 import type { ApprovalService } from "../../five-plane-control-plane/approval-center/approval-service.js";
 import { ConfigRolloutService } from "../../five-plane-control-plane/config-center/config-rollout-service.js";
 import { TenantBoundaryRegistryService } from "../../five-plane-control-plane/tenant/index.js";
@@ -1115,8 +1119,11 @@ export class HttpApiServer {
       };
       const timeout = setTimeout(() => {
         this.activeRequestDrainResolvers.delete(onDrained);
-        for (const socket of this.activeSockets) {
-          socket.destroy();
+        this.server.closeIdleConnections?.();
+        if (this.activeRequestCount > 0) {
+          for (const socket of this.activeSockets) {
+            socket.destroy();
+          }
         }
         resolve();
       }, SHUTDOWN_DRAIN_TIMEOUT_MS);
@@ -1235,12 +1242,40 @@ function normalizeApiTimeout(value: number | undefined, fallback: number, max: n
   return Math.min(Math.trunc(value), max);
 }
 
-function createDefaultApiRateLimiter(env: NodeJS.ProcessEnv): DistributedRateLimiter | null {
+export function deriveApiRateLimitDefaultsFromChannelProviders(
+  rateLimitConfig: ChannelRateLimitConfig = DEFAULT_CHANNEL_RATE_LIMIT_CONFIG,
+): { maxCalls: number; windowMs: number } {
+  const entries = [
+    rateLimitConfig.telegram,
+    rateLimitConfig.slack,
+    rateLimitConfig.webhook,
+    rateLimitConfig.default,
+  ].filter((item): item is NonNullable<typeof item> => item != null);
+  if (entries.length === 0) {
+    return { maxCalls: 100, windowMs: 1000 };
+  }
+  const baseWindowMs = Math.max(
+    1,
+    Math.min(...entries.map((item) => Math.max(1, Math.trunc(item.windowMs)))),
+  );
+  let strictestMaxCalls = Number.POSITIVE_INFINITY;
+  for (const entry of entries) {
+    const normalizedLimit = Math.floor((entry.limit / Math.max(1, entry.windowMs)) * baseWindowMs);
+    strictestMaxCalls = Math.min(strictestMaxCalls, Math.max(1, normalizedLimit));
+  }
+  return {
+    maxCalls: Number.isFinite(strictestMaxCalls) ? strictestMaxCalls : 100,
+    windowMs: baseWindowMs,
+  };
+}
+
+export function createDefaultApiRateLimiter(env: NodeJS.ProcessEnv): DistributedRateLimiter | null {
   if (env["AA_API_RATE_LIMIT_DISABLED"] === "1") {
     return null;
   }
-  const maxCalls = parsePositiveIntegerEnv(env["AA_API_RATE_LIMIT_MAX_CALLS"]) ?? 100;
-  const windowMs = parsePositiveIntegerEnv(env["AA_API_RATE_LIMIT_WINDOW_MS"]) ?? 1000;
+  const coordinatedDefaults = deriveApiRateLimitDefaultsFromChannelProviders();
+  const maxCalls = parsePositiveIntegerEnv(env["AA_API_RATE_LIMIT_MAX_CALLS"]) ?? coordinatedDefaults.maxCalls;
+  const windowMs = parsePositiveIntegerEnv(env["AA_API_RATE_LIMIT_WINDOW_MS"]) ?? coordinatedDefaults.windowMs;
   const redis = readRedisConnectionConfigFromEnv("AA_API_RATE_LIMIT_REDIS", env);
   return new DistributedRateLimiter({
     maxCalls,

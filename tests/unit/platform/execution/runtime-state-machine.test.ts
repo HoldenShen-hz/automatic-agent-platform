@@ -6,33 +6,31 @@ import { RuntimeStateMachine } from "../../../../src/platform/five-plane-executi
 
 test("RuntimeStateMachine requires auditRef before applying audited transitions", () => {
   const machine = new RuntimeStateMachine({ persistEvent: () => {} });
-  const ledger = createBudgetLedger({
-    budgetLedgerId: "ledger-audit",
+  const nodeRun = createNodeRun({
     harnessRunId: "run-1",
-    tenantId: "tenant-1",
-    currency: "USD",
-    hardCap: 100,
-    reservedAmount: 0,
-    settledAmount: 0,
-    releasedAmount: 0,
-    status: "open",
-    version: 0,
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-audit",
+    status: "running",
+    currentSeq: 2,
+    leaseId: "lease-1",
+    fencingToken: "node-audit-fence",
   });
 
   assert.throws(
     () =>
       machine.transition({
-        aggregateType: "BudgetLedger",
-        aggregate: ledger,
-        fromStatus: "open",
-        toStatus: "soft_cap_reached",
-        expectedVersion: 0,
+        aggregateType: "NodeRun",
+        aggregate: nodeRun,
+        fromStatus: "running",
+        toStatus: "failed",
+        expectedSeq: 2,
         traceId: "trace-audit",
         tenantId: "tenant-1",
-        reasonCode: "budget.soft_cap",
+        reasonCode: "node.failed",
         emittedBy: "test",
         leaseId: "lease-1",
-        fencingToken: "fence-1",
+        fencingToken: "node-audit-fence",
       }),
     /Audit ref is required for audited transitions\./,
   );

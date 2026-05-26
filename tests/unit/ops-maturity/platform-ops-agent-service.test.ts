@@ -52,6 +52,7 @@ test("PlatformOpsAgentService respects panic and action allow-list guardrails", 
     observedAt: "2026-04-20T00:00:00.000Z",
   });
 
-  assert.deepEqual(proposal.blockedBy, ["ops_agent.action_not_allowed", "ops_agent.blocked_by_panic"]);
+  assert.deepEqual(proposal.blockedBy, ["ops_agent.blocked_by_panic"]);
+  assert.equal(proposal.actionType, "developer_assist");
   assert.equal(service.execute(proposal.proposalId).executed, false);
 });

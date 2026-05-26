@@ -248,6 +248,46 @@ test("CapacityPlanningService builds recommendation with hold action for stable 
   assert.equal(recommendation.estimatedCostDeltaPercent, 0);
 });
 
+test("CapacityPlanningService raises failover reserve when trend, quota pressure, and error burn worsen", () => {
+  const service = new CapacityPlanningService();
+  service.recordSignal({
+    resourceType: "workers",
+    timestamp: "2026-04-20T00:00:00.000Z",
+    usage: 100,
+  });
+  service.recordSignal({
+    resourceType: "workers",
+    timestamp: "2026-04-20T01:00:00.000Z",
+    usage: 140,
+  });
+  service.recordSignal({
+    resourceType: "workers",
+    timestamp: "2026-04-20T02:00:00.000Z",
+    usage: 190,
+  });
+
+  const forecast = service.forecast("workers", 2, {
+    start: "2026-04-20T00:00:00.000Z",
+    end: "2026-04-20T02:00:00.000Z",
+  });
+  const conservative = service.buildRecommendation(forecast, {
+    costPerUnit: 0.1,
+    targetHeadroomPercent: 15,
+    maxQueueDepth: 200,
+    latestQueueDepth: 10,
+    latestErrorBudgetBurn: 0.02,
+  });
+  const stressed = service.buildRecommendation(forecast, {
+    costPerUnit: 0.1,
+    targetHeadroomPercent: 15,
+    maxQueueDepth: 100,
+    latestQueueDepth: 95,
+    latestErrorBudgetBurn: 0.25,
+  });
+
+  assert.ok(stressed.regionFailoverReservePercent > conservative.regionFailoverReservePercent);
+});
+
 test("CapacityPlanningService uses default generatedAt timestamp when not provided", () => {
   const service = new CapacityPlanningService();
   service.recordSignal({

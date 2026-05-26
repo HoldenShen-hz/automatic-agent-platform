@@ -12,6 +12,7 @@ import {
   type SelfHealingAction,
   type ComponentHealthState,
   type ExecutionGuard,
+  type SelfHealingEvent,
 } from "../../../../src/ops-maturity/platform-ops-agent/self-healing-service.js";
 
 function createAction(
@@ -379,6 +380,43 @@ test.describe("SelfHealingService", () => {
       const stats = service.getStatistics();
 
       assert.ok(typeof stats.componentsUnderHealing === "number");
+    });
+  });
+
+  test.describe("event emission and cooldown status", () => {
+    test("emits structured self-healing events with execution context", () => {
+      const events: SelfHealingEvent[] = [];
+      const service = new SelfHealingService(undefined, null, {
+        emit: (event) => {
+          events.push(event);
+        },
+      });
+
+      service.execute(createAction({
+        actionId: "ctx-action",
+        targetComponent: "ctx-component",
+        executionId: "exec-ctx",
+        harnessRunId: "run-ctx",
+      }));
+
+      assert.ok(events.length >= 1);
+      assert.equal(events[0]?.actionId, "ctx-action");
+      assert.equal(events[0]?.executionId, "exec-ctx");
+      assert.equal(events[0]?.harnessRunId, "run-ctx");
+    });
+
+    test("reports cooldown remaining time for recently failed component", () => {
+      const service = new SelfHealingService({ cooldownPeriodMs: 120_000 });
+      service.execute(createAction({
+        actionId: "cooldown-failure",
+        targetComponent: "cooldown-status-component",
+        runbookRef: "",
+        approvalRef: "",
+      }));
+
+      const cooldown = service.getCooldownStatus("cooldown-status-component");
+      assert.equal(cooldown.inCooldown, true);
+      assert.ok(cooldown.remainingMs > 0);
     });
   });
 

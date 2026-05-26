@@ -420,7 +420,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
       // R23-04 fix: §40.2 requires rejecting with error when cycle is detected, not just warning
       if (graphAnalysis.hasCycle) {
-        throw new Error(`goal_decomposer.cycle_detected:${goal.goalId}`);
+        throw new Error(`goal_decomposer.cycle_detected:${goal.goalId}:${graphAnalysis.cycleTaskIds.join("->")}`);
       }
 
       return {
@@ -504,17 +504,17 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       // If recipe matched but archetype doesn't map, fall through to regex patterns
     }
 
-    // R9-46: Fall back to regex pattern matching (previously limited to 5 fixed patterns).
-    if (/(campaign|marketing|广告|投放|素材|营销|推广)/i.test(description)) {
+    // Fall back to regex classification only when multiple template signals agree.
+    if (hasTemplateSignalMatch(description, ["campaign", "marketing", "广告", "投放", "素材", "营销", "推广", "活动"], 2)) {
       return "marketing_campaign";
     }
-    if (/(launch|release|deploy|上线|发布)/i.test(description)) {
+    if (hasTemplateSignalMatch(description, ["launch", "release", "deploy", "上线", "发布", "生产环境", "版本"], 2)) {
       return "release_launch";
     }
-    if (/(incident|outage|故障|恢复|排查)/i.test(description)) {
+    if (hasTemplateSignalMatch(description, ["incident", "outage", "故障", "恢复", "排查"], 2)) {
       return "incident_response";
     }
-    if (/(hire|recruit|onboard|招聘|候选人|入职)/i.test(description)) {
+    if (hasTemplateSignalMatch(description, ["hire", "recruit", "onboard", "招聘", "候选人", "入职"], 2)) {
       return "hiring_pipeline";
     }
     if (description.trim().length > 20) {
@@ -776,6 +776,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     parallelTaskGroups: string[][];
     criticalPathTaskIds: string[];
     maxDependencyDepth: number;
+    cycleTaskIds: string[];
   } {
     const taskIds = tasks.map((task) => task.taskId);
     const inDegree = new Map<string, number>(taskIds.map((taskId) => [taskId, 0]));
@@ -826,6 +827,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         parallelTaskGroups: parallelGroups,
         criticalPathTaskIds: [],
         maxDependencyDepth,
+        cycleTaskIds: taskIds.filter((taskId) => (inDegree.get(taskId) ?? 0) > 0),
       };
     }
 
@@ -869,6 +871,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       parallelTaskGroups: parallelGroups,
       criticalPathTaskIds: criticalPath,
       maxDependencyDepth,
+      cycleTaskIds: [],
     };
   }
 
@@ -902,4 +905,22 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
 function currentDepthFromTasks(_tasks: readonly PlannedTask[]): number {
   return 0;
+}
+
+function hasTemplateSignalMatch(
+  description: string,
+  keywords: readonly string[],
+  minimumMatches: number,
+): boolean {
+  const normalized = description.toLowerCase();
+  let matches = 0;
+  for (const keyword of keywords) {
+    if (normalized.includes(keyword.toLowerCase())) {
+      matches += 1;
+    }
+    if (matches >= minimumMatches) {
+      return true;
+    }
+  }
+  return false;
 }

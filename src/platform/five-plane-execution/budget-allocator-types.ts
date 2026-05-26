@@ -33,6 +33,12 @@ export interface BudgetAllocatorContext {
     readonly tokenInterval: number;
     readonly timeIntervalMs: number;
   };
+  readonly recommendationSubjectId?: string;
+  readonly recommendationRegistry?: BudgetRecommendationRegistryLike;
+}
+
+export interface BudgetRecommendationRegistryLike {
+  resolveRecommendedLimitUsd(subjectId: string, currentLimitUsd: number): number | null;
 }
 
 export interface BudgetSettlementResult {

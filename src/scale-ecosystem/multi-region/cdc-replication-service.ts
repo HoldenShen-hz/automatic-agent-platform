@@ -7,9 +7,14 @@
  * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §52
  */
 
+import { randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { createBackgroundTaskTraceContext } from "../../platform/shared/observability/background-task-trace.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 const cdcLogger = new StructuredLogger({ retentionLimit: 500 });
 
@@ -103,6 +108,20 @@ export interface ReplicationLagStatus {
   readonly lagMs: number;
   readonly lagSloMs: number;
   readonly withinSlo: boolean;
+}
+
+interface CDCReplicationPersistenceSnapshot {
+  readonly configs: Record<string, RegionReplicationConfig>;
+  readonly checkpoints: Record<string, CDCReplicationCheckpoint>;
+  readonly replicationQueues: Record<string, readonly CDCReplicationBatch[]>;
+  readonly latestSourceEventAt: Record<string, string>;
+  readonly processedEventCounts: Record<string, number>;
+  readonly confirmedBatchIds: Record<string, readonly string[]>;
+}
+
+export interface CDCReplicationServiceOptions {
+  readonly storagePath?: string | null;
+  readonly database?: AuthoritativeSqlDatabase;
 }
 
 /**
@@ -228,13 +247,27 @@ export interface CDCConflictResolutionResult {
 export class CDCReplicationService {
   private static readonly MAX_CONFLICT_TASKS = 512;
   private static readonly MAX_CONFLICTS_PER_TASK = 100;
+  private static readonly MAX_TRACKED_REGION_PAIRS = 256;
+  private static readonly MAX_TRACKED_VECTOR_CLOCKS = 2048;
   private readonly checkpoints = new Map<string, CDCReplicationCheckpoint>();
   private readonly configs = new Map<string, RegionReplicationConfig>();
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
   private readonly latestSourceEventAt = new Map<string, string>();
   private readonly processedEventCounts = new Map<string, number>();
+  private readonly confirmedBatchIds = new Map<string, Set<string>>();
   private readonly vectorClocks = new Map<string, VectorClock>();
   private readonly conflictHistory = new Map<string, CDCReplicationConflict[]>();
+  private readonly pairTouchedAt = new Map<string, number>();
+  private readonly vectorClockTouchedAt = new Map<string, number>();
+  private readonly storagePath: string | null;
+  private readonly database: AuthoritativeSqlDatabase | null;
+
+  public constructor(options: CDCReplicationServiceOptions = {}) {
+    this.database = options.database ?? null;
+    this.storagePath = resolveReplicationStateStoragePath(options.storagePath);
+    this.ensureDatabaseSchema();
+    this.loadPersistedState();
+  }
 
   /**
    * Register a replication configuration
@@ -242,6 +275,7 @@ export class CDCReplicationService {
   public registerReplication(config: RegionReplicationConfig): void {
     const key = this.getConfigKey(config.sourceRegionId, config.targetRegionId);
     this.configs.set(key, config);
+    this.touchPairKey(key);
 
     // Initialize checkpoint if not exists
     if (!this.checkpoints.has(key)) {
@@ -254,20 +288,26 @@ export class CDCReplicationService {
         processedAt: nowIso(),
       });
     }
+    this.pruneTrackedPairState();
+    this.persistState();
   }
 
   /**
    * Get replication configuration
    */
   public getConfig(sourceRegionId: string, targetRegionId: string): RegionReplicationConfig | undefined {
-    return this.configs.get(this.getConfigKey(sourceRegionId, targetRegionId));
+    const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
+    return this.configs.get(key);
   }
 
   /**
    * Get current checkpoint for replication pair
    */
   public getCheckpoint(sourceRegionId: string, targetRegionId: string): CDCReplicationCheckpoint | undefined {
-    return this.checkpoints.get(this.getConfigKey(sourceRegionId, targetRegionId));
+    const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
+    return this.checkpoints.get(key);
   }
 
   /**
@@ -279,6 +319,7 @@ export class CDCReplicationService {
     sourceEvents: readonly CDCReplicationEvent[],
   ): CDCReplicationBatch | null {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
     const checkpoint = this.checkpoints.get(key);
     const config = this.configs.get(key);
     const queueDepth = this.replicationQueues.get(key)?.length ?? 0;
@@ -324,6 +365,7 @@ export class CDCReplicationService {
 
     // Queue batch for async replication
     this.enqueueBatch(key, batch);
+    this.persistState();
 
     return batch;
   }
@@ -337,6 +379,10 @@ export class CDCReplicationService {
     batch: CDCReplicationBatch,
   ): void {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
+    if ((this.confirmedBatchIds.get(key)?.has(batch.batchId) ?? false)) {
+      return;
+    }
 
     const lastEvent = batch.events[batch.events.length - 1];
     const checkpoint: CDCReplicationCheckpoint = {
@@ -348,9 +394,7 @@ export class CDCReplicationService {
       processedAt: nowIso(),
     };
 
-    this.checkpoints.set(key, checkpoint);
-    this.processedEventCounts.set(key, Math.max(this.processedEventCounts.get(key) ?? 0, batch.endSequence));
-    this.removeBatchFromQueue(key, batch.batchId);
+    this.applyConfirmedBatchState(key, checkpoint, batch);
   }
 
   /**
@@ -363,7 +407,9 @@ export class CDCReplicationService {
     error: string,
   ): void {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
     this.removeBatchFromQueue(key, batch.batchId);
+    this.persistState();
     const traceContext = createBackgroundTaskTraceContext("cdc_replication_failure", [
       sourceRegionId,
       targetRegionId,
@@ -389,6 +435,7 @@ export class CDCReplicationService {
    */
   public getStatus(sourceRegionId: string, targetRegionId: string): ReplicationStatus {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
     const queue = this.replicationQueues.get(key);
 
     if (!queue || queue.length === 0) {
@@ -432,6 +479,7 @@ export class CDCReplicationService {
     totalSourceEvents: number,
   ): number {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
     const checkpoint = this.checkpoints.get(key);
     if (checkpoint != null) {
       return Math.max(0, totalSourceEvents - checkpoint.lastEventSequence);
@@ -445,6 +493,7 @@ export class CDCReplicationService {
 
   public getQueueDepth(sourceRegionId: string, targetRegionId: string): number {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.touchPairKey(key);
     return this.replicationQueues.get(key)?.length ?? 0;
   }
 
@@ -535,16 +584,21 @@ export class CDCReplicationService {
     const current = this.vectorClocks.get(entityId) ?? new VectorClock();
     current.update(regionId, sequence);
     this.vectorClocks.set(entityId, current);
+    this.touchVectorClock(entityId);
+    this.pruneVectorClocks();
     return current;
   }
 
   public getVectorClock(entityId: string): VectorClock | undefined {
+    this.touchVectorClock(entityId);
     return this.vectorClocks.get(entityId);
   }
 
   public mergeVectorClock(entityId: string, remoteClock: VectorClock): VectorClock {
     const merged = (this.vectorClocks.get(entityId) ?? new VectorClock()).merge(remoteClock);
     this.vectorClocks.set(entityId, merged);
+    this.touchVectorClock(entityId);
+    this.pruneVectorClocks();
     return merged;
   }
 
@@ -721,6 +775,7 @@ export class CDCReplicationService {
     }
     queue.push(batch);
     this.replicationQueues.set(key, queue);
+    this.touchPairKey(key);
   }
 
   private removeBatchFromQueue(key: string, batchId: string): void {
@@ -736,11 +791,219 @@ export class CDCReplicationService {
     this.replicationQueues.set(key, nextQueue);
   }
 
+  private loadPersistedState(): void {
+    if (this.database != null) {
+      try {
+        const row = this.database.connection
+          .prepare(`SELECT snapshot_json FROM multi_region_cdc_replication_state WHERE state_key = 'global'`)
+          .get() as { snapshot_json?: string } | undefined;
+        const raw = row?.snapshot_json?.trim() ?? "";
+        if (raw.length > 0) {
+          this.applySnapshot(raw);
+        }
+      } catch {
+        this.clearState();
+      }
+      return;
+    }
+    if (this.storagePath == null) {
+      return;
+    }
+    try {
+      const raw = readFileSync(this.storagePath, "utf8").trim();
+      if (raw.length > 0) {
+        this.applySnapshot(raw);
+      }
+    } catch {
+      this.clearState();
+    }
+  }
+
+  private persistState(): void {
+    if (this.database == null && this.storagePath == null) {
+      return;
+    }
+    const snapshotJson = JSON.stringify(this.buildPersistenceSnapshot(), null, 2);
+    if (this.database != null) {
+      this.database.transaction(() => {
+        this.database?.connection
+          .prepare(`INSERT INTO multi_region_cdc_replication_state (state_key, snapshot_json, updated_at)
+            VALUES ('global', ?, ?)
+            ON CONFLICT(state_key) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at`)
+          .run(snapshotJson, nowIso());
+      });
+      return;
+    }
+    if (this.storagePath == null) {
+      return;
+    }
+    mkdirSync(dirname(this.storagePath), { recursive: true });
+    const tempPath = `${this.storagePath}.${Date.now()}.${randomUUID()}.tmp`;
+    let renamed = false;
+    try {
+      writeFileSync(tempPath, snapshotJson, "utf8");
+      renameSync(tempPath, this.storagePath);
+      renamed = true;
+    } finally {
+      if (!renamed) {
+        try {
+          rmSync(tempPath, { force: true });
+        } catch {
+          // Best-effort cleanup for failed persistence.
+        }
+      }
+    }
+  }
+
+  private buildPersistenceSnapshot(): CDCReplicationPersistenceSnapshot {
+    return {
+      configs: Object.fromEntries(this.configs.entries()),
+      checkpoints: Object.fromEntries(this.checkpoints.entries()),
+      replicationQueues: Object.fromEntries(this.replicationQueues.entries()),
+      latestSourceEventAt: Object.fromEntries(this.latestSourceEventAt.entries()),
+      processedEventCounts: Object.fromEntries(this.processedEventCounts.entries()),
+      confirmedBatchIds: Object.fromEntries(
+        [...this.confirmedBatchIds.entries()].map(([key, batchIds]) => [key, [...batchIds]]),
+      ),
+    };
+  }
+
+  private applySnapshot(raw: string): void {
+    this.clearState();
+    const snapshot = JSON.parse(raw) as Partial<CDCReplicationPersistenceSnapshot>;
+
+    for (const [key, value] of Object.entries(snapshot.configs ?? {})) {
+      if (!isRegionReplicationConfig(value)) {
+        continue;
+      }
+      this.configs.set(key, value);
+      this.touchPairKey(key);
+    }
+    for (const [key, value] of Object.entries(snapshot.checkpoints ?? {})) {
+      if (!isReplicationCheckpoint(value)) {
+        continue;
+      }
+      this.checkpoints.set(key, value);
+      this.touchPairKey(key);
+    }
+    for (const [key, value] of Object.entries(snapshot.replicationQueues ?? {})) {
+      if (!Array.isArray(value)) {
+        continue;
+      }
+      const queue = value.filter(isReplicationBatch);
+      if (queue.length === 0) {
+        continue;
+      }
+      this.replicationQueues.set(key, queue);
+      this.touchPairKey(key);
+    }
+    for (const [key, value] of Object.entries(snapshot.latestSourceEventAt ?? {})) {
+      if (typeof value !== "string") {
+        continue;
+      }
+      this.latestSourceEventAt.set(key, value);
+    }
+    for (const [key, value] of Object.entries(snapshot.processedEventCounts ?? {})) {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        continue;
+      }
+      this.processedEventCounts.set(key, Math.max(0, Math.trunc(value)));
+    }
+    for (const [key, value] of Object.entries(snapshot.confirmedBatchIds ?? {})) {
+      if (!Array.isArray(value)) {
+        continue;
+      }
+      const batchIds = value.filter((entry): entry is string => typeof entry === "string");
+      if (batchIds.length === 0) {
+        continue;
+      }
+      this.confirmedBatchIds.set(key, new Set(batchIds));
+    }
+  }
+
+  private applyConfirmedBatchState(
+    key: string,
+    checkpoint: CDCReplicationCheckpoint,
+    batch: CDCReplicationBatch,
+  ): void {
+    const currentQueue = this.replicationQueues.get(key) ?? [];
+    const nextQueue = currentQueue.filter((entry) => entry.batchId !== batch.batchId);
+    const nextProcessedCount = Math.max(this.processedEventCounts.get(key) ?? 0, batch.endSequence);
+    const nextConfirmed = new Set(this.confirmedBatchIds.get(key) ?? []);
+    nextConfirmed.add(batch.batchId);
+
+    if (nextQueue.length === 0) {
+      this.replicationQueues.delete(key);
+    } else {
+      this.replicationQueues.set(key, nextQueue);
+    }
+    this.checkpoints.set(key, checkpoint);
+    this.processedEventCounts.set(key, nextProcessedCount);
+    this.confirmedBatchIds.set(key, nextConfirmed);
+    this.persistState();
+  }
+
   /**
    * Get config key
    */
   private getConfigKey(sourceRegionId: string, targetRegionId: string): string {
     return `${sourceRegionId}->${targetRegionId}`;
+  }
+
+  private touchPairKey(key: string, atMs: number = Date.now()): void {
+    this.pairTouchedAt.set(key, atMs);
+  }
+
+  private touchVectorClock(entityId: string, atMs: number = Date.now()): void {
+    if (this.vectorClocks.has(entityId)) {
+      this.vectorClockTouchedAt.set(entityId, atMs);
+    }
+  }
+
+  private pruneTrackedPairState(): void {
+    while (this.configs.size > CDCReplicationService.MAX_TRACKED_REGION_PAIRS) {
+      const evictionKey = this.findOldestIdlePairKey();
+      if (evictionKey == null) {
+        break;
+      }
+      this.deletePairState(evictionKey);
+    }
+  }
+
+  private findOldestIdlePairKey(): string | null {
+    let oldestKey: string | null = null;
+    let oldestTouchedAt = Number.POSITIVE_INFINITY;
+    for (const [key, touchedAt] of this.pairTouchedAt.entries()) {
+      if ((this.replicationQueues.get(key)?.length ?? 0) > 0) {
+        continue;
+      }
+      if (touchedAt < oldestTouchedAt) {
+        oldestTouchedAt = touchedAt;
+        oldestKey = key;
+      }
+    }
+    return oldestKey;
+  }
+
+  private deletePairState(key: string): void {
+    this.configs.delete(key);
+    this.checkpoints.delete(key);
+    this.replicationQueues.delete(key);
+    this.latestSourceEventAt.delete(key);
+    this.processedEventCounts.delete(key);
+    this.confirmedBatchIds.delete(key);
+    this.pairTouchedAt.delete(key);
+  }
+
+  private pruneVectorClocks(): void {
+    while (this.vectorClocks.size > CDCReplicationService.MAX_TRACKED_VECTOR_CLOCKS) {
+      const oldestEntityId = this.vectorClockTouchedAt.keys().next().value;
+      if (typeof oldestEntityId !== "string") {
+        break;
+      }
+      this.vectorClockTouchedAt.delete(oldestEntityId);
+      this.vectorClocks.delete(oldestEntityId);
+    }
   }
 
   private getEventVectorClock(event: CDCReplicationEvent): VectorClock | null {
@@ -757,6 +1020,28 @@ export class CDCReplicationService {
     } catch {
       return {};
     }
+  }
+
+  private clearState(): void {
+    this.checkpoints.clear();
+    this.configs.clear();
+    this.replicationQueues.clear();
+    this.latestSourceEventAt.clear();
+    this.processedEventCounts.clear();
+    this.confirmedBatchIds.clear();
+    this.pairTouchedAt.clear();
+  }
+
+  private ensureDatabaseSchema(): void {
+    if (this.database == null) {
+      return;
+    }
+    this.database.connection.exec(`
+CREATE TABLE IF NOT EXISTS multi_region_cdc_replication_state (
+  state_key TEXT PRIMARY KEY,
+  snapshot_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);`);
   }
 }
 
@@ -815,4 +1100,81 @@ export class MultiRegionReplicationCoordinator {
   public getRegionReplications(sourceRegionId: string): readonly RegionReplicationConfig[] {
     return this.regionConfigs.get(sourceRegionId) ?? [];
   }
+}
+
+function resolveReplicationStateStoragePath(explicitPath: string | null | undefined): string | null {
+  if (typeof explicitPath === "string") {
+    const trimmed = explicitPath.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  const envPath = process.env.AA_CDC_REPLICATION_STATE_PATH?.trim();
+  if (envPath != null && envPath.length > 0) {
+    return envPath;
+  }
+  if (
+    process.env.NODE_ENV === "test"
+    || process.env.NODE_TEST_CONTEXT != null
+    || process.argv.includes("--test")
+    || process.execArgv.includes("--test")
+  ) {
+    return null;
+  }
+  return join(process.cwd(), "data", "multi-region", "cdc-replication-state.json");
+}
+
+function isRegionReplicationConfig(value: unknown): value is RegionReplicationConfig {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Partial<RegionReplicationConfig>;
+  return typeof candidate.sourceRegionId === "string"
+    && typeof candidate.targetRegionId === "string"
+    && typeof candidate.batchSize === "number"
+    && typeof candidate.replicationIntervalMs === "number"
+    && typeof candidate.enabled === "boolean"
+    && typeof candidate.retryPolicy === "object"
+    && candidate.retryPolicy != null
+    && typeof candidate.retryPolicy.maxRetries === "number"
+    && typeof candidate.retryPolicy.backoffMs === "number";
+}
+
+function isReplicationCheckpoint(value: unknown): value is CDCReplicationCheckpoint {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Partial<CDCReplicationCheckpoint>;
+  return typeof candidate.checkpointId === "string"
+    && typeof candidate.sourceRegionId === "string"
+    && typeof candidate.targetRegionId === "string"
+    && (candidate.lastEventId == null || typeof candidate.lastEventId === "string")
+    && typeof candidate.lastEventSequence === "number"
+    && typeof candidate.processedAt === "string";
+}
+
+function isReplicationEvent(value: unknown): value is CDCReplicationEvent {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Partial<CDCReplicationEvent>;
+  return typeof candidate.id === "string"
+    && typeof candidate.sequence === "number"
+    && typeof candidate.eventType === "string"
+    && typeof candidate.taskId === "string"
+    && typeof candidate.payloadJson === "string"
+    && typeof candidate.createdAt === "string";
+}
+
+function isReplicationBatch(value: unknown): value is CDCReplicationBatch {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Partial<CDCReplicationBatch>;
+  return typeof candidate.batchId === "string"
+    && typeof candidate.sourceRegionId === "string"
+    && typeof candidate.targetRegionId === "string"
+    && Array.isArray(candidate.events)
+    && candidate.events.every(isReplicationEvent)
+    && typeof candidate.startSequence === "number"
+    && typeof candidate.endSequence === "number"
+    && typeof candidate.createdAt === "string";
 }

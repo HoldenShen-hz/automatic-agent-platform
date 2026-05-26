@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -6,6 +7,24 @@ import {
   type RegionReplicationConfig,
   type CDCReplicationBatch,
 } from "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+
+function createDb(): AuthoritativeSqlDatabase {
+  const connection = new DatabaseSync(":memory:");
+  return {
+    filePath: ":memory:",
+    backendType: "sqlite",
+    connection,
+    migrate: () => undefined,
+    getSchemaStatus: () => ({ currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: [] }),
+    assertSchemaCurrent: () => undefined,
+    integrityCheck: () => [],
+    healthCheck: async () => true,
+    close: () => connection.close(),
+    transaction: <T>(work: () => T): T => work(),
+    readTransaction: <T>(work: () => T): T => work(),
+  };
+}
 
 test("CDCReplicationService registers and retrieves replication config", () => {
   const service = new CDCReplicationService();
@@ -104,6 +123,43 @@ test("CDCReplicationService confirms batch and updates checkpoint", () => {
   const checkpoint = service.getCheckpoint("us-east", "eu-west");
   assert.equal(checkpoint?.lastEventSequence, 2);
   assert.equal(checkpoint?.lastEventId, "evt_2");
+});
+
+test("CDCReplicationService persists checkpoint and pending queue state atomically across restart", () => {
+  const db = createDb();
+  const events = [
+    { id: "evt_1", sequence: 1, eventType: "task:created", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:00:00Z" },
+    { id: "evt_2", sequence: 2, eventType: "task:updated", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:01:00Z" },
+    { id: "evt_3", sequence: 3, eventType: "task:completed", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:02:00Z" },
+  ] as const;
+
+  const first = new CDCReplicationService({ database: db });
+  first.registerReplication({
+    sourceRegionId: "us-east",
+    targetRegionId: "eu-west",
+    batchSize: 2,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  });
+
+  const pendingBatch = first.prepareBatch("us-east", "eu-west", events);
+  assert.ok(pendingBatch);
+
+  const beforeAckRestart = new CDCReplicationService({ database: db });
+  assert.equal(beforeAckRestart.getQueueDepth("us-east", "eu-west"), 1);
+  assert.equal(beforeAckRestart.prepareBatch("us-east", "eu-west", events), null);
+
+  beforeAckRestart.confirmBatch("us-east", "eu-west", pendingBatch!);
+
+  const afterAckRestart = new CDCReplicationService({ database: db });
+  assert.equal(afterAckRestart.getQueueDepth("us-east", "eu-west"), 0);
+  assert.equal(afterAckRestart.getCheckpoint("us-east", "eu-west")?.lastEventSequence, 2);
+
+  const nextBatch = afterAckRestart.prepareBatch("us-east", "eu-west", events);
+  assert.ok(nextBatch);
+  assert.equal(nextBatch?.startSequence, 3);
+  assert.equal(nextBatch?.endSequence, 3);
 });
 
 test("CDCReplicationService returns null when no new events", () => {
@@ -252,6 +308,32 @@ test("CDCReplicationService getRegisteredRegionPairs", () => {
 
   const pairs = service.getRegisteredRegionPairs();
   assert.equal(pairs.length, 2);
+});
+
+test("CDCReplicationService prunes idle region-pair state and stale vector clocks", () => {
+  const service = new CDCReplicationService();
+
+  for (let index = 0; index < 260; index += 1) {
+    service.registerReplication({
+      sourceRegionId: `src-${index}`,
+      targetRegionId: `dst-${index}`,
+      batchSize: 100,
+      replicationIntervalMs: 5000,
+      enabled: true,
+      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+    });
+  }
+
+  const pairs = service.getRegisteredRegionPairs();
+  assert.ok(pairs.length <= 256);
+  assert.equal(service.getConfig("src-0", "dst-0"), undefined);
+
+  for (let index = 0; index < 2050; index += 1) {
+    service.updateVectorClock(`entity-${index}`, "us-east", index + 1);
+  }
+
+  assert.equal(service.getVectorClock("entity-0"), undefined);
+  assert.ok(service.getVectorClock("entity-2049") != null);
 });
 
 test("CDCReplicationService returns idle status when no pending work", () => {

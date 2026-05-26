@@ -109,6 +109,7 @@ export interface WorkerWritebackDecision {
     | "worker_mismatch"
     | "lease_mismatch"
     | "lease_expired"
+    | "leader_region_mismatch"
     | "worker_not_trusted"
     | "remote_session_viewer_only"
     | "remote_session_consistency_mismatch"

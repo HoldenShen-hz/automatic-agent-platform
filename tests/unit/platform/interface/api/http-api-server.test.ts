@@ -6,7 +6,11 @@ import test from "node:test";
 import { brotliDecompressSync, gunzipSync } from "node:zlib";
 
 import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
-import { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import {
+  HttpApiServer,
+  createDefaultApiRateLimiter,
+  deriveApiRateLimitDefaultsFromChannelProviders,
+} from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
 import { ConfigRolloutService } from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 import { TenantBoundaryRegistryService } from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
 import { CostReportService } from "../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
@@ -502,6 +506,84 @@ test("HttpApiServer requires explicit env opt-in for local rate limiter fallback
     } else {
       process.env["AA_API_RATE_LIMIT_DISABLED"] = previousDisabled;
     }
+  }
+});
+
+test("HttpApiServer derives default API limiter from strictest downstream provider quota", async () => {
+  const defaults = deriveApiRateLimitDefaultsFromChannelProviders();
+  assert.deepEqual(defaults, { maxCalls: 30, windowMs: 1000 });
+
+  const limiter = createDefaultApiRateLimiter({});
+  assert.ok(limiter != null);
+
+  let lastResult = await limiter.checkAndConsume("tenant:test");
+  for (let index = 0; index < 29; index += 1) {
+    lastResult = await limiter.checkAndConsume("tenant:test");
+  }
+  assert.equal(lastResult.allowed, true);
+  assert.equal(lastResult.remaining, 0);
+
+  const blocked = await limiter.checkAndConsume("tenant:test");
+  assert.equal(blocked.allowed, false);
+  assert.ok((blocked.retryAfterMs ?? 0) > 0);
+});
+
+test("HttpApiServer drain timeout closes idle sockets before forcing active ones", async () => {
+  const { server } = createTestServer();
+  const originalSetTimeout = globalThis.setTimeout;
+  const closed: string[] = [];
+  try {
+    const idleSocket = {
+      destroy: () => {
+        closed.push("idle");
+      },
+    };
+    const activeSocket = {
+      destroy: () => {
+        closed.push("active");
+      },
+    };
+    (server as unknown as {
+      activeRequestCount: number;
+      activeSockets: Set<{ destroy: () => void }>;
+      server: { closeIdleConnections?: () => void };
+    }).activeRequestCount = 0;
+    (server as unknown as {
+      activeSockets: Set<{ destroy: () => void }>;
+      server: { closeIdleConnections?: () => void };
+    }).activeSockets = new Set([idleSocket, activeSocket]);
+    (server as unknown as {
+      server: { closeIdleConnections?: () => void };
+    }).server = {
+      closeIdleConnections: () => {
+        closed.push("closeIdleConnections");
+      },
+    };
+
+    globalThis.setTimeout = ((callback: (...args: unknown[]) => void) => {
+      queueMicrotask(() => {
+        callback();
+      });
+      return { unref() {} } as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout;
+
+    await (server as unknown as {
+      waitForActiveRequestsToDrain: () => Promise<void>;
+    }).waitForActiveRequestsToDrain();
+
+    assert.deepEqual(closed, []);
+
+    (server as unknown as {
+      activeRequestCount: number;
+    }).activeRequestCount = 1;
+    await (server as unknown as {
+      waitForActiveRequestsToDrain: () => Promise<void>;
+    }).waitForActiveRequestsToDrain();
+
+    assert.deepEqual(closed, ["closeIdleConnections", "idle", "active"]);
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    await server.stop();
   }
 });
 

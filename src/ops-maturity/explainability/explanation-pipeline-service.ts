@@ -87,6 +87,10 @@ export interface ExplanationViewOptions {
   readonly userAgent?: string;
 }
 
+export interface ExplanationPipelineServiceDeps {
+  readonly validateForensicBudgetReservation?: (reservationId: string) => void;
+}
+
 function explanationCacheKey(taskId: string, stageId: string, depth: ExplanationDepth): string {
   const depthKey = depth === "L3" ? "audit" : depth;
   return `${taskId}:${stageId}:${depthKey}`;
@@ -108,8 +112,16 @@ function audienceForDepth(depth: ExplanationDepth): "business" | "technical" | "
 }
 
 function buildVersionLockRef(rationale: Omit<StageRationale, "versionLockRef">): string {
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(rationale);
+  } catch (error) {
+    throw new Error(
+      `explanation.version_lock_serialization_failed:${rationale.rationaleId}:${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   const digest = createHash("sha256")
-    .update(JSON.stringify(rationale))
+    .update(serialized)
     .digest("hex")
     .slice(0, 24);
   return `vlock:${digest}`;
@@ -120,13 +132,15 @@ export class ExplanationPipelineService {
   private readonly versionLocks = new Map<string, string>();
   private readonly auditTrail = new Map<string, ExplanationAuditTrailEntry[]>();
 
+  public constructor(private readonly deps: ExplanationPipelineServiceDeps = {}) {}
+
   public generate(
     request: ExplanationRequest,
     depth: ExplanationDepth = "L2",
     options: ExplanationGenerateOptions = {},
   ): ExplanationBundle {
-    if (depth === "L3" && !options.forensicBudgetReservationId) {
-      throw new Error("explanation.forensic_budget_required");
+    if (depth === "L3") {
+      this.assertForensicBudgetReservation(options.forensicBudgetReservationId);
     }
     const stageId = request.stageId ?? request.stage ?? "unknown";
     const allowedCategories = new Set(request.allowedEvidenceCategories ?? request.evidence.map((item) => item.category));
@@ -278,5 +292,12 @@ export class ExplanationPipelineService {
 
   private appendAuditEntry(rationaleId: string, entry: ExplanationAuditTrailEntry): void {
     this.auditTrail.set(rationaleId, [...(this.auditTrail.get(rationaleId) ?? []), entry]);
+  }
+
+  private assertForensicBudgetReservation(reservationId: string | undefined): void {
+    if (reservationId == null || reservationId.trim().length === 0) {
+      throw new Error("explanation.forensic_budget_required");
+    }
+    this.deps.validateForensicBudgetReservation?.(reservationId);
   }
 }

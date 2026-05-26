@@ -43,6 +43,7 @@ import type {
   AcquireExecutionLeaseInput,
   ExecutionLeaseDecision,
   ExecutionLeaseHandoverDecision,
+  ExecutionLeaseLeadershipGuard,
   ExecutionWriteValidationResult,
   HandoverExecutionLeaseInput,
   ReleaseExecutionLeaseInput,
@@ -88,6 +89,7 @@ export type {
  */
 export class ExecutionLeaseService {
   private readonly workers: WorkerRegistryService;
+  private readonly leadershipGuard: ExecutionLeaseLeadershipGuard | null;
 
   /**
    * Creates a new ExecutionLeaseService instance.
@@ -97,8 +99,10 @@ export class ExecutionLeaseService {
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
+    options: { readonly leadershipGuard?: ExecutionLeaseLeadershipGuard | null } = {},
   ) {
     this.workers = new WorkerRegistryService(store);
+    this.leadershipGuard = options.leadershipGuard ?? null;
   }
 
   /**
@@ -139,6 +143,18 @@ export class ExecutionLeaseService {
           details: { executionId: input.executionId },
           executionId: input.executionId,
         });
+      }
+      const leadershipDecision = this.leadershipGuard?.validateLeaseAcquisition({
+        executionId: input.executionId,
+        workerId: input.workerId,
+        occurredAt,
+      });
+      if (leadershipDecision != null && !leadershipDecision.allowed) {
+        return {
+          outcome: "blocked",
+          reasonCode: leadershipDecision.reasonCode,
+          lease: null,
+        };
       }
 
       // First expire any lease that has already passed its expiration time
@@ -638,6 +654,29 @@ export class ExecutionLeaseService {
       const activeLease = this.store.worker.getActiveExecutionLease(input.executionId);
       // The authoritative fencing token is always from the latest lease
       const authoritativeFencingToken = latestLease.fencingToken;
+      const leadershipDecision = this.leadershipGuard?.validateWriteAccess({
+        executionId: input.executionId,
+        workerId: input.workerId,
+        occurredAt,
+      });
+      if (leadershipDecision != null && !leadershipDecision.allowed) {
+        this.insertLeaseAudit({
+          executionId: latestLease.executionId,
+          leaseId: latestLease.id,
+          workerId: input.workerId,
+          fencingToken: input.fencingToken,
+          eventType: "stale_write_rejected",
+          reasonCode: leadershipDecision.reasonCode,
+          recordedAt: occurredAt,
+        });
+
+        return {
+          allowed: false,
+          reasonCode: leadershipDecision.reasonCode,
+          authoritativeFencingToken,
+          activeLeaseId: activeLease?.id ?? null,
+        };
+      }
 
       // Reject if no active lease exists
       if (!activeLease) {
@@ -883,16 +922,14 @@ export class ExecutionLeaseService {
   private getLatestFencingToken(executionId: string): number {
     const workerStore = this.store.worker as typeof this.store.worker & {
       getLatestFencingToken?: (executionId: string) => number;
+      getLatestExecutionLease?: (executionId: string) => ExecutionLeaseRecord | null;
     };
     if (typeof workerStore.getLatestFencingToken !== "function") {
-      throw new StorageError(
-        "lease.latest_fencing_token_unsupported",
-        "Execution lease service requires worker store fencing token support.",
-        {
-          details: { executionId },
-          executionId,
-        },
-      );
+      const latestLease = workerStore.getLatestExecutionLease?.(executionId) ?? null;
+      if (latestLease) {
+        return latestLease.fencingToken;
+      }
+      return 0;
     }
     return workerStore.getLatestFencingToken(executionId);
   }

@@ -17,6 +17,7 @@ import {
   buildCostOptimizationRecommendation,
   type CostOptimizationRecommendation,
 } from "./recommendation-engine/index.js";
+import type { CostRecommendationListener } from "./budget-recommendation-registry.js";
 import { simulateCostOptimization } from "./simulator/index.js";
 
 export type CostSubjectType = "task" | "workflow" | "agent" | "model" | "domain" | "run";
@@ -62,10 +63,19 @@ export interface CostSimulationResult {
   readonly deltaUsd: number;
 }
 
+export interface CostOptimizationServiceOptions {
+  readonly recommendationListeners?: readonly CostRecommendationListener[];
+}
+
 export class CostOptimizationService {
   private static readonly MAX_UNSOURCED_RECORD_COUNT = 1000;
   private readonly records: CostAttributionRecord[] = [];
   private unsourcedRecordCount = 0;
+  private readonly recommendationListeners: readonly CostRecommendationListener[];
+
+  public constructor(options: CostOptimizationServiceOptions = {}) {
+    this.recommendationListeners = options.recommendationListeners ?? [];
+  }
 
   public recordCost(record: CostAttributionRecord): CostAttributionRecord {
     if (record.decisionRef.trim().length === 0) {
@@ -101,7 +111,7 @@ export class CostOptimizationService {
   }
 
   public buildRecommendations(subjectTypeOrHarnessRunId?: string): CostOptimizationRecommendation[] {
-    return Object.entries(this.aggregate(subjectTypeOrHarnessRunId))
+    const recommendations = Object.entries(this.aggregate(subjectTypeOrHarnessRunId))
       .map(([subjectId, cost]) => {
         const modelRef = this.resolveRepresentativeModelRef(subjectId);
         return buildCostOptimizationRecommendation(subjectId, cost, modelRef != null ? { modelRef } : {});
@@ -111,6 +121,10 @@ export class CostOptimizationService {
         ...item,
         riskLevel: this.riskLevelForSubject(item.subjectId, item.riskLevel),
       }));
+    for (const listener of this.recommendationListeners) {
+      listener.onRecommendations(recommendations);
+    }
+    return recommendations;
   }
 
   public simulate(scenarios: readonly CostSimulationScenarioInput[]): CostSimulationResult[] {

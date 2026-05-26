@@ -662,16 +662,21 @@ export class TrafficRoutingService {
    */
   private retireSlot(slot: DeploymentSlot): void {
     const now = nowIso();
+    const latest = this.db.connection
+      .prepare(`SELECT id, instance_count FROM deployment_slots
+        WHERE slot = ? AND status IN ('active', 'standby')
+        ORDER BY created_at DESC, rowid DESC
+        LIMIT 1`)
+      .get(slot) as RawRow | undefined;
+    if (latest == null) {
+      return;
+    }
+    const instanceCount = Number(latest.instance_count ?? 0);
     this.db.connection
       .prepare(`UPDATE deployment_slots
-        SET status = 'draining', traffic_weight = 0, updated_at = ?
-        WHERE id = (
-          SELECT id FROM deployment_slots
-          WHERE slot = ? AND status IN ('active', 'standby')
-          ORDER BY created_at DESC, rowid DESC
-          LIMIT 1
-        )`)
-      .run(now, slot);
+        SET status = ?, traffic_weight = 0, updated_at = ?
+        WHERE id = ?`)
+      .run(instanceCount === 0 ? "retired" : "draining", now, String(latest.id));
   }
 
   /**

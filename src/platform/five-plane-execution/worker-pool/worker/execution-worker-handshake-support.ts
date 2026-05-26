@@ -40,6 +40,7 @@ export function normalizeLeaseReason(reasonCode: string | null): WorkerHandshake
     reasonCode === "lease_not_found" ||
     reasonCode === "lease_not_active" ||
     reasonCode === "lease_expired" ||
+    reasonCode === "leader_region_mismatch" ||
     reasonCode === "worker_mismatch"
   ) {
     return reasonCode;

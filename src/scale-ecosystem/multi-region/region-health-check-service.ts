@@ -89,7 +89,7 @@ export interface FailoverRecord {
 
 export interface FailoverControlEvent {
   readonly eventId: string;
-  readonly eventType: "multi_region.failover_recorded" | "multi_region.fencing_epoch_changed";
+  readonly eventType: "multi_region.failover_recorded" | "multi_region.fencing_epoch_changed" | "multi_region.execution_handover_confirmed";
   readonly sourceRegionId: string;
   readonly targetRegionId: string;
   readonly recordedAt: string;
@@ -523,6 +523,7 @@ export class RegionFailoverOrchestrator {
   private readonly failoverRecords: FailoverRecord[] = [];
   private readonly failoverEvents: FailoverControlEvent[] = [];
   private readonly fencingEpochByRegion = new Map<string, number>();
+  private readonly pendingExecutionHandoverByPair = new Map<string, { startedAt: number; recordedAt: string }>();
   /** Default RTO target in milliseconds (30 seconds per §52) */
   private readonly defaultRtoMs = 30_000;
 
@@ -632,6 +633,10 @@ export class RegionFailoverOrchestrator {
     targetRegionId: string,
     rtoMs = this.defaultRtoMs,
   ): void {
+    const key = `${sourceRegionId}:${targetRegionId}`;
+    if (this.pendingExecutionHandoverByPair.has(key)) {
+      throw new Error(`region_failover.execution_handover_pending:${sourceRegionId}->${targetRegionId}`);
+    }
     const elapsedMs = this.getFailoverElapsedMs(sourceRegionId, targetRegionId);
     if (elapsedMs > rtoMs) {
       throw new RtoBreachError(sourceRegionId, targetRegionId, elapsedMs, rtoMs);
@@ -653,6 +658,27 @@ export class RegionFailoverOrchestrator {
     if (elapsedMs > rtoMs) {
       throw new RtoBreachError(sourceRegionId, targetRegionId, elapsedMs, rtoMs);
     }
+  }
+
+  public confirmExecutionHandover(
+    sourceRegionId: string,
+    targetRegionId: string,
+    confirmedAt: string = nowIso(),
+    rtoMs = this.defaultRtoMs,
+  ): void {
+    const key = `${sourceRegionId}:${targetRegionId}`;
+    this.pendingExecutionHandoverByPair.delete(key);
+    this.failoverEvents.push({
+      eventId: newId("failover_event"),
+      eventType: "multi_region.execution_handover_confirmed",
+      sourceRegionId,
+      targetRegionId,
+      recordedAt: confirmedAt,
+      fencingEpoch: this.fencingEpochByRegion.get(sourceRegionId) ?? 0,
+    });
+    const rpoRtoService = getRpoRtoTrackingService();
+    rpoRtoService.completeFailover(sourceRegionId, targetRegionId, true, null);
+    this.completeFailoverWithRtoCheck(sourceRegionId, targetRegionId, rtoMs);
   }
 
   /**
@@ -713,6 +739,10 @@ export class RegionFailoverOrchestrator {
       recordedAt,
       fencingEpoch,
     });
+    this.pendingExecutionHandoverByPair.set(`${sourceRegionId}:${targetRegionId}`, {
+      startedAt: Date.now(),
+      recordedAt,
+    });
 
     // Notify listeners
     for (const listener of this.failoverListeners) {
@@ -734,29 +764,18 @@ export class RegionFailoverOrchestrator {
       }
     }
 
-    // R21-06: Complete failover tracking and assert RTO SLA compliance
-    rpoRtoService.completeFailover(sourceRegionId, targetRegionId, true, null);
-
-    // R21-06: Enforce RTO<30s SLA - throw if exceeded
-    this.assertFailoverWithinRto(sourceRegionId, targetRegionId);
-
-    try {
-      rpoRtoService.assertSlaCompliance(regionPairId);
-    } catch (slaError) {
-      logger.log({
-        level: "error",
-        message: "multi_region.rto_sla_breach_detected",
-        traceId: failoverTraceContext.traceId,
-        correlationId: failoverTraceContext.correlationId,
-        data: {
-          sourceRegionId,
-          targetRegionId,
-          failoverId: record.failoverId,
-          regionPairId,
-          errorMessage: slaError instanceof Error ? slaError.message : String(slaError),
-        },
-      });
-    }
+    logger.log({
+      level: "info",
+      message: "multi_region.failover_waiting_for_execution_handover",
+      traceId: failoverTraceContext.traceId,
+      correlationId: failoverTraceContext.correlationId,
+      data: {
+        sourceRegionId,
+        targetRegionId,
+        failoverId: record.failoverId,
+        regionPairId,
+      },
+    });
 
     return {
       success: true,

@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { ExecutionBudgetRegistry } from "../../platform/shared/execution-budget-registry.js";
 import { resolveTriggerActionMode } from "./trigger-engine/index.js";
 import { shouldConsumeProactiveEvent } from "./event-watcher/index.js";
 
@@ -113,6 +114,7 @@ export interface ProactiveAgentServiceOptions {
   readonly budgetPoolsByDomain?: Readonly<Record<string, ProactiveBudgetPool>>;
   // R5-27: Link autonomy level to proactive triggers
   readonly initialAutonomyLevel?: "suggestion" | "supervised" | "semi_auto" | "full_auto";
+  readonly executionBudgetRegistry?: ExecutionBudgetRegistry;
 }
 
 interface TriggerRuntimeState {
@@ -229,6 +231,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly dailyTriggerBudgetByDomain: Readonly<Record<string, number>>;
   private readonly dailyTriggerUsage = new Map<string, number>();
   private readonly budgetPoolsByDomain: Readonly<Record<string, ProactiveBudgetPool>>;
+  private readonly executionBudgetRegistry: ExecutionBudgetRegistry | null;
   private readonly incidents: ProactiveIncident[] = [];
   // R5-27: Autonomy level linked to proactive triggers
   private currentAutonomyLevel: "suggestion" | "supervised" | "semi_auto" | "full_auto" = "full_auto";
@@ -238,6 +241,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     this.maxConsecutiveFailures = options.maxConsecutiveFailures ?? 3;
     this.dailyTriggerBudgetByDomain = options.dailyTriggerBudgetByDomain ?? {};
     this.budgetPoolsByDomain = options.budgetPoolsByDomain ?? {};
+    this.executionBudgetRegistry = options.executionBudgetRegistry ?? null;
     this.currentAutonomyLevel = options.initialAutonomyLevel ?? "full_auto";
   }
 
@@ -342,8 +346,17 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     const now = new Date(input.now ?? nowIso()).getTime();
     const dailyBudget = this.dailyTriggerBudgetByDomain[state.trigger.domainId];
     const usageKey = `${state.trigger.domainId}:${new Date(now).toISOString().slice(0, 10)}`;
+    const observedAt = new Date(now).toISOString();
+    const sharedBudgetDecision = this.executionBudgetRegistry?.evaluateDomainBudget(
+      state.trigger.domainId,
+      observedAt,
+      dailyBudget ?? null,
+    );
     if (dailyBudget != null && (this.dailyTriggerUsage.get(usageKey) ?? 0) >= dailyBudget) {
       reasons.push("proactive_agent.domain_budget_exhausted");
+    }
+    if (sharedBudgetDecision != null && !sharedBudgetDecision.allowed) {
+      reasons.push(sharedBudgetDecision.reasonCode ?? "execution_budget_registry.domain_budget_exhausted");
     }
     const budgetPool = this.budgetPoolsByDomain[state.trigger.domainId];
     if (budgetPool != null) {
@@ -433,6 +446,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
+    this.executionBudgetRegistry?.recordTrigger(state.trigger.domainId, state.lastFiredAt);
     const baseActionMode = state.trigger.action.actionType === "update_dashboard"
       ? "silent_record"
       : resolveTriggerActionMode(state.trigger.action.requireConfirmation, state.trigger.riskLevel);

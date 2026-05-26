@@ -112,6 +112,16 @@ export type {
 
 const AUTO_CREATED_BUDGET_LEDGER_HARD_CAP_BUFFER = 1.5;
 
+function resolveActualChargeUsd(input: RecordUsageInput, fallbackUnitPriceUsd: number): number {
+  if (typeof input.actualPricing?.chargeUsd === "number" && Number.isFinite(input.actualPricing.chargeUsd)) {
+    return roundCurrency(Math.max(0, input.actualPricing.chargeUsd));
+  }
+  if (typeof input.actualPricing?.unitPriceUsd === "number" && Number.isFinite(input.actualPricing.unitPriceUsd)) {
+    return roundCurrency(Math.max(0, input.quantity * input.actualPricing.unitPriceUsd));
+  }
+  return roundCurrency(input.quantity * fallbackUnitPriceUsd);
+}
+
 /**
  * Billing Service
  *
@@ -269,6 +279,8 @@ export class BillingService {
     const window = monthWindow(capturedAt);
     const unitPriceUsd = quota?.unitPriceUsd ?? 0;
     const estimatedChargeUsd = roundCurrency(quantity * unitPriceUsd);
+    const actualChargeUsd = resolveActualChargeUsd(input, unitPriceUsd);
+    const actualChargeDeltaUsd = roundCurrency(actualChargeUsd - estimatedChargeUsd);
     let reservedBudget: { ledger: BudgetLedger; reservation: BudgetReservation } | null = null;
     let existingCounter: QuotaCounterRecord | null = null;
     let recordsPersisted = false;
@@ -370,6 +382,24 @@ export class BillingService {
           }
         }
         this.store.billing.insertLedgerEntry(ledgerEntry);
+        if (actualChargeDeltaUsd !== 0) {
+          this.store.billing.insertLedgerEntry({
+            entryId: newId("ledger"),
+            accountId: account.accountId,
+            usageId: usageEvent.usageId,
+            periodId: window.periodId,
+            entryType: "adjustment",
+            amountUsd: actualChargeDeltaUsd,
+            currency: "USD",
+            sourceRef: [
+              "actual_pricing",
+              input.actualPricing?.provider?.trim() || "unknown_provider",
+              input.actualPricing?.model?.trim() || "unknown_model",
+              input.actualPricing?.pricingVersion?.trim() || "unspecified_version",
+            ].join(":"),
+            recordedAt: capturedAt,
+          });
+        }
         recordsPersisted = true;
       });
 
@@ -377,7 +407,7 @@ export class BillingService {
         ? undefined
         : createBudgetSettlement({
           budgetReservationId: reservedBudget.reservation.budgetReservationId,
-          actualAmount: ledgerEntry.amountUsd,
+          actualAmount: actualChargeUsd,
           settlementKind: "final",
         });
       settledBudget = reservedBudget == null
@@ -385,7 +415,7 @@ export class BillingService {
         : await this.budgetAllocator.settle({
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
-          actualAmount: ledgerEntry.amountUsd,
+          actualAmount: actualChargeUsd,
           expectedVersion: reservedBudget.ledger.version, // R11-12: CAS atomic settle
           context: {
             principal: input.budgetControl!.emittedBy,

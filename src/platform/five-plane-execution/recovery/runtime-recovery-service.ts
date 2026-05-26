@@ -61,6 +61,7 @@ import {
   ERROR_CLASS_TO_EXCEPTION_TYPE,
   CATEGORY_TO_EXCEPTION_TYPE,
 } from "./exception-recovery-types.js";
+import { getRpoRtoTrackingService } from "../../../scale-ecosystem/multi-region/rpo-rto-tracking.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -259,6 +260,12 @@ export interface CompensationResult {
   errors: string[];
 }
 
+export interface RuntimeRecoveryServiceOptions {
+  readonly workerRegionResolver?: (record: RuntimeRecoveryRecord) => string | null;
+  readonly primaryRegionResolver?: (record: RuntimeRecoveryRecord) => string | null;
+  readonly slaRegionPairResolver?: (record: RuntimeRecoveryRecord) => string | null;
+}
+
 /**
  * Context for compensation execution.
  */
@@ -318,6 +325,7 @@ export class DefaultCompensationExecutor implements CompensationExecutor {
 export class RuntimeRecoveryService {
   private readonly config: ExceptionRecoveryConfig;
   private readonly compensationExecutor: CompensationExecutor;
+  private readonly options: RuntimeRecoveryServiceOptions;
 
   /**
    * Creates a new RuntimeRecoveryService instance.
@@ -329,9 +337,11 @@ export class RuntimeRecoveryService {
     private readonly store: AuthoritativeTaskStore,
     config?: ExceptionRecoveryConfig,
     compensationExecutor?: CompensationExecutor,
+    options: RuntimeRecoveryServiceOptions = {},
   ) {
     this.config = config ?? loadExceptionRecoveryConfig();
     this.compensationExecutor = compensationExecutor ?? new DefaultCompensationExecutor();
+    this.options = options;
   }
 
   /**
@@ -344,7 +354,9 @@ export class RuntimeRecoveryService {
    * @returns Array of recovery candidates that are in active execution states
    */
   public listRecoverableExecutingRuns(now: string = nowIso(), tenantId?: string | null): RuntimeRecoveryCandidate[] {
-    return this.store.operations.listRecoverableExecutingRuns(now, tenantId).map((record) => toCandidate(record, "active_execution", this.config));
+    return this.store.operations
+      .listRecoverableExecutingRuns(now, tenantId)
+      .map((record) => toCandidate(record, "active_execution", this.config, this.options));
   }
 
   /**
@@ -357,7 +369,7 @@ export class RuntimeRecoveryService {
   public listBlockedRunsAwaitingApproval(tenantId?: string | null): RuntimeRecoveryCandidate[] {
     return this.store
       .listBlockedRunsAwaitingApproval(tenantId)
-      .map((record) => toCandidate(record, "approval_pending", this.config));
+      .map((record) => toCandidate(record, "approval_pending", this.config, this.options));
   }
 
   /**
@@ -370,7 +382,9 @@ export class RuntimeRecoveryService {
    * @returns Array of stale recovery candidates
    */
   public listStaleRuns(staleBefore: string, tenantId?: string | null): RuntimeRecoveryCandidate[] {
-    return this.store.operations.listStaleRuns(staleBefore, tenantId).map((record) => toCandidate(record, "stale_execution", this.config));
+    return this.store.operations
+      .listStaleRuns(staleBefore, tenantId)
+      .map((record) => toCandidate(record, "stale_execution", this.config, this.options));
   }
 
   public findRecoveryCandidates(query: LegacyRecoveryCandidateQuery = {}): LegacyRecoveryCandidate[] {
@@ -624,7 +638,12 @@ function inferReason(record: RuntimeRecoveryRecord): string {
  * @param config - The exception recovery configuration
  * @returns Typed recovery candidate interface
  */
-function toCandidate(record: RuntimeRecoveryRecord, reason: string, config: ExceptionRecoveryConfig): RuntimeRecoveryCandidate {
+function toCandidate(
+  record: RuntimeRecoveryRecord,
+  reason: string,
+  config: ExceptionRecoveryConfig,
+  options: RuntimeRecoveryServiceOptions = {},
+): RuntimeRecoveryCandidate {
   const normalizedAttempt = normalizeRecoveryAttempt(record.attempt);
   return {
     executionId: record.executionId,
@@ -655,7 +674,7 @@ function toCandidate(record: RuntimeRecoveryRecord, reason: string, config: Exce
             checkedAt: record.latestPrecheck.checkedAt,
           },
     reason,
-    suggestedAction: inferSuggestedAction(record, reason, config),
+    suggestedAction: inferSuggestedAction(record, reason, config, options),
   };
 }
 
@@ -663,8 +682,9 @@ function toLegacyCandidate(
   record: RuntimeRecoveryRecord,
   reason: string,
   config: ExceptionRecoveryConfig,
+  options: RuntimeRecoveryServiceOptions = {},
 ): LegacyRecoveryCandidate {
-  const candidate = toCandidate(record, reason, config);
+  const candidate = toCandidate(record, reason, config, options);
   const errorClassification = classifyLegacyError(record.latestErrorCode);
   return {
     ...candidate,
@@ -730,9 +750,17 @@ function inferSuggestedAction(
   record: RuntimeRecoveryRecord,
   reason: string,
   config: ExceptionRecoveryConfig,
+  options: RuntimeRecoveryServiceOptions = {},
 ): RecoverySuggestedAction {
   const thresholds = config.recoveryStrategyTable.byAttemptThreshold;
   const attempt = normalizeRecoveryAttempt(record.attempt);
+  const regionPairId = options.slaRegionPairResolver?.(record) ?? null;
+  if (regionPairId != null) {
+    const compliance = getRpoRtoTrackingService().getSlaCompliance(regionPairId);
+    if (!compliance.compliant && compliance.breaches.some((breach) => breach.startsWith("RTO:"))) {
+      return "escalate_takeover";
+    }
+  }
 
   // Approval blocked or inconsistent blocked state requires escalation
   if (reason === "approval_pending" || reason === "blocked_without_approval") {
@@ -763,6 +791,11 @@ function inferSuggestedAction(
   }
   // Active statuses can potentially be resumed
   if (record.status === "executing" || record.status === "prechecking" || record.status === "created") {
+    const workerRegionId = options.workerRegionResolver?.(record) ?? null;
+    const primaryRegionId = options.primaryRegionResolver?.(record) ?? null;
+    if (workerRegionId != null && primaryRegionId != null && workerRegionId !== primaryRegionId) {
+      return "retry_new_ticket";
+    }
     if (attempt >= thresholds.resumeSameWorkerMaxAttempts) {
       return "retry_new_ticket";
     }

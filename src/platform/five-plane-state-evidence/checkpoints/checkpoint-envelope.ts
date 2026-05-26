@@ -19,6 +19,7 @@ import { promisify } from "node:util";
 
 import { AppError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { getVerticalDomainBaseline } from "../../../domains/domain-baseline-catalog.js";
 
 const asyncGzip = promisify(gzip);
 const asyncGunzip = promisify(gunzip);
@@ -34,6 +35,7 @@ export const CHECKPOINT_ENVELOPE_SCHEMA_VERSION = "checkpoint_envelope.v1";
  * Default maximum checkpoint size in bytes (10MB).
  */
 export const DEFAULT_MAX_CHECKPOINT_SIZE_BYTES = 10 * 1024 * 1024;
+export const DEFAULT_CRITICAL_DOMAIN_MAX_CHECKPOINT_SIZE_BYTES = 2 * 1024 * 1024;
 
 /**
  * Compression algorithm used in the envelope.
@@ -141,7 +143,7 @@ export async function createCheckpointEnvelope<T = unknown>(
   payloadSchemaVersion: string,
   options: CreateCheckpointEnvelopeOptions = {},
 ): Promise<CheckpointEnvelope> {
-  const maxSizeBytes = options.maxSizeBytes ?? DEFAULT_MAX_CHECKPOINT_SIZE_BYTES;
+  const maxSizeBytes = options.maxSizeBytes ?? resolveCheckpointMaxSizeBytes(options.domainId);
   const jsonPayload = JSON.stringify(checkpointData);
   const uncompressedBuffer = Buffer.from(jsonPayload, "utf8");
   const originalSizeBytes = uncompressedBuffer.length;
@@ -180,6 +182,20 @@ export async function createCheckpointEnvelope<T = unknown>(
       ...(options.namespaceId != null && options.namespaceId.trim().length > 0 ? { namespaceId: options.namespaceId.trim() } : {}),
     },
   };
+}
+
+function resolveCheckpointMaxSizeBytes(domainId?: string): number {
+  if (domainId == null || domainId.trim().length === 0) {
+    return DEFAULT_MAX_CHECKPOINT_SIZE_BYTES;
+  }
+  try {
+    const baseline = getVerticalDomainBaseline(domainId.trim());
+    return baseline.riskProfile.defaultRiskLevel === "critical"
+      ? DEFAULT_CRITICAL_DOMAIN_MAX_CHECKPOINT_SIZE_BYTES
+      : DEFAULT_MAX_CHECKPOINT_SIZE_BYTES;
+  } catch {
+    return DEFAULT_MAX_CHECKPOINT_SIZE_BYTES;
+  }
 }
 
 /**

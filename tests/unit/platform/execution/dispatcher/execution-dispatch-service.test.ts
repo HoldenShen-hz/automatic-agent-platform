@@ -575,6 +575,35 @@ test("dispatchNext accepts preferredWorkerId option", () => {
   assert.equal(result.outcome, "no_ticket");
 });
 
+test("dispatchNext prioritizes starved executions before normal queue ordering", () => {
+  const ticketA = createMockTicket("ticket-a", "exec-a", "task-a", "normal");
+  const ticketB = createMockTicket("ticket-b", "exec-b", "task-b", "normal");
+  const worker = createMockWorker("worker-1", { availableSlots: 2 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [ticketA, ticketB];
+  (store.worker as any).listWorkerSnapshots = () => [workerToSnapshot(worker)];
+  (store.worker as any).claimExecutionTicket = () => {};
+  (store.worker as any).upsertAgentExecutionRecord = () => {};
+  (store.worker as any).getAgentExecutionRecord = () => null;
+  (store.dispatch as any).getExecution = (executionId: string) => createMockExecution(executionId, executionId === "exec-a" ? "task-a" : "task-b");
+  (store.task as any).getTask = (taskId: string) => createMockTask(taskId);
+  (store.worker as any).insertExecutionLease = () => {};
+  (store.worker as any).getLatestExecutionLease = () => null;
+  (store.worker as any).getExecutionLease = () => null;
+  (store.worker as any).getWorker = () => workerToSnapshot(worker);
+
+  const service = new ExecutionDispatchService(createMockDb(), store);
+
+  const result = service.dispatchNext({
+    leaseTtlMs: 60000,
+    starvedExecutionIds: ["exec-b"],
+  });
+
+  assert.equal(result.outcome, "dispatched");
+  assert.equal(result.ticket?.executionId, "exec-b");
+});
+
 // ---------------------------------------------------------------------------
 // dispatchNext returns no_worker when all workers filtered
 // ---------------------------------------------------------------------------

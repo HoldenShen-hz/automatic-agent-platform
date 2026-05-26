@@ -117,6 +117,24 @@ describe("CheckpointGCService", () => {
       assert.ok(candidate.sizeBytes > 0);
       assert.ok(candidate.reason.includes("expired"));
     });
+
+    it("should identify orphaned checkpoints when execution no longer exists", () => {
+      const executionPath = join(testRootDir, "exec-missing");
+      mkdirSync(executionPath, { recursive: true });
+      const checkpointPath = join(executionPath, "cp-orphan.checkpoint.json");
+      writeFileSync(checkpointPath, JSON.stringify({ checkpointId: "cp-orphan" }), "utf8");
+
+      const orphanAwareService = new CheckpointGCService(testRootDir, undefined, {
+        executionExists: (executionId) => executionId !== "exec-missing",
+      });
+
+      const candidates = orphanAwareService.scanForGCCandidates();
+      const orphan = candidates.find((candidate) => candidate.checkpointRef.checkpointId === "cp-orphan");
+
+      assert.ok(orphan);
+      assert.equal(orphan?.isOrphaned, true);
+      assert.equal(orphan?.reason, "orphaned_execution_checkpoint");
+    });
   });
 
   describe("runGC", () => {

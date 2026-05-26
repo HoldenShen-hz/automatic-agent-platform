@@ -20,6 +20,7 @@ export interface DispatchExecutionOptions {
   preferredWorkerId?: string | null;
   leaseTtlMs: number;
   includeDegraded?: boolean;
+  starvedExecutionIds?: readonly string[] | null;
   occurredAt?: string;
 }
 

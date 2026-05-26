@@ -1,6 +1,11 @@
 import type { SQLInputValue } from "node:sqlite";
 import { HTTP_STATUS_GATEWAY_TIMEOUT } from "../../contracts/constants/network.js";
 import { SECONDS_PER_HOUR } from "../../contracts/constants/time.js";
+import {
+  DEFAULT_BACKOFF_BASE_MS,
+  DEFAULT_BACKOFF_MAX_MS,
+  DEFAULT_EXPONENTIAL_BACKOFF_MULTIPLIER,
+} from "../../shared/reliability/reliability-constants.js";
 
 export interface WebhookSignatureConfig {
   secret: string;
@@ -145,9 +150,9 @@ CREATE INDEX IF NOT EXISTS idx_gateway_rate_limits_channel_window ON gateway_rat
 
 export const DEFAULT_DELIVERY_CONFIG: DeliveryGuaranteeConfig = {
   maxRetries: 5,
-  initialBackoffMs: 1000,
-  maxBackoffMs: 60000,
-  backoffMultiplier: 2,
+  initialBackoffMs: DEFAULT_BACKOFF_BASE_MS,
+  maxBackoffMs: DEFAULT_BACKOFF_MAX_MS,
+  backoffMultiplier: DEFAULT_EXPONENTIAL_BACKOFF_MULTIPLIER,
   timeoutMs: 30000,
   retryableStatuses: [408, 429, 500, 502, 503, HTTP_STATUS_GATEWAY_TIMEOUT],
 };

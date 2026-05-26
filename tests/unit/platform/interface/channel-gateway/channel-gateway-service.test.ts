@@ -6,6 +6,7 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-s
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { ChannelGatewayDeliveryService, CHANNEL_DELIVERY_DDL } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
 import { ChannelGatewayService, GatewayRateLimitError } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
+import { DEFAULT_DELIVERY_CONFIG } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 import { GatewayTargetDirectoryService } from "../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
@@ -336,6 +337,19 @@ test("channel gateway service times out outbound provider calls", async () => {
         text: "This should time out.",
       }),
       /gateway\.webhook_timeout/,
+    );
+  } finally {
+    harness.close();
+  }
+});
+
+test("channel gateway service derives default request timeout from delivery config", () => {
+  const harness = createHarness();
+  try {
+    const service = harness.createService();
+    assert.equal(
+      (service as unknown as { requestTimeoutMs: number }).requestTimeoutMs,
+      DEFAULT_DELIVERY_CONFIG.timeoutMs,
     );
   } finally {
     harness.close();

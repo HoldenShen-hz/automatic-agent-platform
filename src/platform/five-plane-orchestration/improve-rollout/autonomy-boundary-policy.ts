@@ -13,6 +13,10 @@ export interface AutonomyBoundaryDecision {
   reasonCode: string;
 }
 
+export interface AutonomyBoundaryContext {
+  readonly actionMode?: "auto_execute" | "suggest" | "silent_record";
+}
+
 const AUTO_ALLOWED_TARGETS = new Set<AutonomyTarget>([
   "routing_policy",
   "planning_policy",
@@ -21,7 +25,11 @@ const AUTO_ALLOWED_TARGETS = new Set<AutonomyTarget>([
 ]);
 
 export class AutonomyBoundaryPolicy {
-  public decide(target: AutonomyTarget, learningObjects: readonly LearningObject[]): AutonomyBoundaryDecision {
+  public decide(
+    target: AutonomyTarget,
+    learningObjects: readonly LearningObject[],
+    context: AutonomyBoundaryContext = {},
+  ): AutonomyBoundaryDecision {
     if (!AUTO_ALLOWED_TARGETS.has(target)) {
       return {
         allowed: false,
@@ -37,6 +45,17 @@ export class AutonomyBoundaryPolicy {
     const allEvidenceBacked = learningObjects.every(
       (item) => item.evidenceRefs.length > 0 && (item.promotionStatus === "validated" || item.promotionStatus === "promoted"),
     );
+    if (context.actionMode === "auto_execute") {
+      const autoExecuteEvidenceSatisfied = learningObjects.every(
+        (item) => item.evidenceRefs.length >= 2 && item.promotionStatus === "promoted",
+      );
+      return {
+        allowed: autoExecuteEvidenceSatisfied,
+        reasonCode: autoExecuteEvidenceSatisfied
+          ? "improvement.allowed"
+          : "improvement.auto_execute_requires_promoted_evidence",
+      };
+    }
     return {
       allowed: allEvidenceBacked,
       reasonCode: allEvidenceBacked ? "improvement.allowed" : "improvement.learning_object_not_validated",

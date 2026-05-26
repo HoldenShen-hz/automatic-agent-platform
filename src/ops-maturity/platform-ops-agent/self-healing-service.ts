@@ -1,9 +1,12 @@
-import { nowIso } from "../../platform/contracts/types/ids.js";
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 export interface SelfHealingAction {
   readonly actionId: string;
   readonly targetComponent: string;
   readonly operation: "restart" | "throttle" | "failover" | "rollback";
+  readonly executionId?: string;
+  readonly harnessRunId?: string;
   readonly runbookRef?: string;
   readonly approvalRef?: string;
   readonly reasonCode?: string;
@@ -48,6 +51,47 @@ export interface ExecutionGuardDecision {
 
 export interface ExecutionGuard {
   canPerformHealing(action: SelfHealingAction): ExecutionGuardDecision;
+}
+
+export interface SelfHealingEvent {
+  readonly eventType:
+    | "ops_maturity.self_healing.succeeded"
+    | "ops_maturity.self_healing.failed"
+    | "ops_maturity.self_healing.cooldown_blocked";
+  readonly actionId: string;
+  readonly targetComponent: string;
+  readonly operation: SelfHealingAction["operation"];
+  readonly executedAt: string;
+  readonly healed: boolean;
+  readonly executionId: string | null;
+  readonly harnessRunId: string | null;
+  readonly reasonCode: string | null;
+}
+
+export interface SelfHealingEventSink {
+  emit(event: SelfHealingEvent): void;
+}
+
+export function createSelfHealingEventStoreSink(
+  store: Pick<AuthoritativeTaskStore, "event">,
+): SelfHealingEventSink {
+  return {
+    emit(event): void {
+      if (event.executionId == null) {
+        return;
+      }
+      store.event.insertEvent({
+        id: newId("evt"),
+        taskId: event.harnessRunId ?? event.executionId,
+        executionId: event.executionId,
+        eventType: event.eventType,
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify(event),
+        traceId: event.actionId,
+        createdAt: event.executedAt,
+      });
+    },
+  };
 }
 
 interface HealingOperationProfile {
@@ -135,6 +179,7 @@ export class SelfHealingService {
   public constructor(
     policy?: Partial<HealingPolicy>,
     private readonly executionGuard: ExecutionGuard | null = null,
+    private readonly eventSink: SelfHealingEventSink | null = null,
   ) {
     this.policy = { ...DEFAULT_HEALING_POLICY, ...policy };
   }
@@ -161,12 +206,14 @@ export class SelfHealingService {
     if (lastAttempt) {
       const timeSinceLastAttempt = Date.now() - new Date(lastAttempt.executedAt).getTime();
       if (timeSinceLastAttempt < this.computeCooldownMs(consecutiveFailures)) {
-        return this.recordFailedAttempt(
+        const receipt = this.recordFailedAttempt(
           action,
           executedAt,
           previousState,
           "Healing cooldown is active after repeated failures; operator intervention is required before retry.",
         );
+        this.emitEvent("ops_maturity.self_healing.cooldown_blocked", action, receipt, executedAt);
+        return receipt;
       }
     }
 
@@ -236,6 +283,7 @@ export class SelfHealingService {
 
     this.healingHistory.push(receipt);
     this.evictOldHistory();
+    this.emitEvent(receipt.healed ? "ops_maturity.self_healing.succeeded" : "ops_maturity.self_healing.failed", action, receipt, executedAt);
 
     return receipt;
   }
@@ -294,6 +342,37 @@ export class SelfHealingService {
     };
   }
 
+  public getCooldownStatus(componentId: string, observedAt = Date.now()): {
+    readonly inCooldown: boolean;
+    readonly remainingMs: number;
+  } {
+    const health = this.componentHealth.get(componentId);
+    const lastAttempt = this.healingHistory.find((entry) => entry.targetComponent === componentId);
+    if (health == null || lastAttempt == null) {
+      return { inCooldown: false, remainingMs: 0 };
+    }
+    const cooldownMs = this.computeCooldownMs(health.consecutiveFailures);
+    const expiresAt = new Date(lastAttempt.executedAt).getTime() + cooldownMs;
+    const remainingMs = Math.max(0, expiresAt - observedAt);
+    return {
+      inCooldown: remainingMs > 0,
+      remainingMs,
+    };
+  }
+
+  public shouldDeferExecutionRetry(componentId: string, observedAt = Date.now()): {
+    readonly defer: boolean;
+    readonly reasonCode: string | null;
+    readonly remainingMs: number;
+  } {
+    const cooldown = this.getCooldownStatus(componentId, observedAt);
+    return {
+      defer: cooldown.inCooldown,
+      reasonCode: cooldown.inCooldown ? "ops_maturity.self_healing.cooldown_active" : null,
+      remainingMs: cooldown.remainingMs,
+    };
+  }
+
   private recordFailedAttempt(
     action: SelfHealingAction,
     executedAt: string,
@@ -325,7 +404,27 @@ export class SelfHealingService {
     };
     this.healingHistory.push(receipt);
     this.evictOldHistory();
+    this.emitEvent("ops_maturity.self_healing.failed", action, receipt, executedAt);
     return receipt;
+  }
+
+  private emitEvent(
+    eventType: SelfHealingEvent["eventType"],
+    action: SelfHealingAction,
+    receipt: SelfHealingReceipt,
+    executedAt: string,
+  ): void {
+    this.eventSink?.emit({
+      eventType,
+      actionId: action.actionId,
+      targetComponent: action.targetComponent,
+      operation: action.operation,
+      executedAt,
+      healed: receipt.healed,
+      executionId: action.executionId ?? null,
+      harnessRunId: action.harnessRunId ?? null,
+      reasonCode: action.reasonCode ?? null,
+    });
   }
 
   private computeCooldownMs(consecutiveFailures: number): number {
