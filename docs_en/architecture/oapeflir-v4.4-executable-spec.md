@@ -13,11 +13,11 @@
 
 - [0. v4.4 Core Conclusions](#0-v44-core-conclusions)
 - [1. Design Goals](#1-design-goals)
-- [2. OAPEFLIR Eight-Phase Definition](#2-oapeflir-eight-phase-definition)
+- [2. OAPEFLIR Eight-Stage Definition](#2-oapeflir-eight-stage-definition)
 - [3. Overall Runtime Architecture](#3-overall-runtime-architecture)
 - [4. Core Runtime Entities](#4-core-runtime-entities)
 - [5. NodeRun State Machine](#5-noderun-state-machine)
-- [6. Plan Must Be a Graph](#6-plan-must-be-a-graph)
+- [6. Plan Must Be Graph](#6-plan-must-be-graph)
 - [7. PlanGraph Contract](#7-plangraph-contract)
 - [8. Graph Normalization](#8-graph-normalization)
 - [9. Graph Validation](#9-graph-validation)
@@ -52,27 +52,27 @@
 - [38. Runtime Test Matrix](#38-runtime-test-matrix)
 - [39. Implementation Directory Recommendations](#39-implementation-directory-recommendations)
 - [40. v4.4 Minimum Implementation Roadmap](#40-v44-minimum-implementation-roadmap)
-- [41. v4.4 ADR Freeze List](#41-v44-must-freeze-adrs)
+- [41. v4.4 ADR Freezes Required](#41-v44-adr-freezes-required)
 - [42. Final Judgment](#42-final-judgment)
 
 ---
 
 # 0. v4.4 Core Conclusions
 
-The core purpose of OAPEFLIR v4.4 is:
+The core positioning of OAPEFLIR v4.4 is:
 
-> **Express the Agent's "Observe, Assess, Plan, Execute, Feedback, Learn, Improve, Release" as a set of controlled cognitive/governance semantics to explain and constrain the `HarnessRuntime` main chain, rather than defining a second execution runtime.**
+> **Express the Agent's "observe, assess, plan, execute, feedback, learn, improve, release" as a set of controlled cognitive/governance semantics to explain and constrain the `HarnessRuntime` main chain, rather than defining a second execution runtime.**
 
-v4.4 no longer only describes "how the Agent should think", but explicitly defines:
+v4.4 no longer only describes "how the Agent should think", but explicitly states:
 
 ```text
-Which state transitions must first be committed as truth by HarnessRuntime / RuntimeStateMachine
+Which state transitions must first write truth via HarnessRuntime / RuntimeStateMachine
 Which events and evidence must be interpreted by OAPEFLIR as closed-loop views
-Which graph execution, budget, side effects, pause, retry, human takeover rules
-must be defined by the main architecture and canonical contracts first, with OAPEFLIR only able to reference and explain them
+Which graph execution, budget, side effect, pause, retry, human takeover rules
+must be defined by the main architecture and canonical contracts first; OAPEFLIR can only reference and explain
 ```
 
-One sentence summary:
+One-sentence summary:
 
 ```text
 OAPEFLIR v4.4 = Controlled Cognitive/Governance Semantics over HarnessRuntime
@@ -82,17 +82,17 @@ OAPEFLIR v4.4 = Controlled Cognitive/Governance Semantics over HarnessRuntime
 
 # 1. Design Goals
 
-## 1.1 Overall Goal
+## 1.1 Overall Goals
 
-Build an Agent platform runtime kernel that can run stably for extended periods, solve complex real problems, and deliver productivity value.
+Build an Agent platform runtime kernel that can run stably for the long term, solve complex real problems, and have productive value.
 
 It must satisfy:
 
 | Goal | Description |
 |---|---|
-| Stable | Recoverable after Worker crash, LLM failure, tool failure, external system exception |
+| Stable | Recoverable after worker crash, LLM failure, tool failure, external system exception |
 | Reliable | Closed state machine, traceable events, confirmable side effects |
-| Intelligent | Plan is a Graph, can be replanned, evaluated, learned from |
+| Intelligent | Plan is Graph, can be replanned, assessed, learned |
 | Controllable | Risk, budget, tools, permissions, context, output all constrained |
 | Auditable | Every decision, tool call, human approval, side effect has evidence chain |
 | Recoverable | Supports checkpoint, pause, resume, replay, redrive, repair |
@@ -102,9 +102,9 @@ It must satisfy:
 
 ---
 
-# 2. OAPEFLIR Eight-Phase Definition
+# 2. OAPEFLIR Eight-Stage Definition
 
-OAPEFLIR maintains eight phases, but v4.4 explicitly defines the engineering boundary for each phase.
+OAPEFLIR maintains eight stages, but v4.4 clarifies each stage's engineering boundary.
 
 ```text
 Observe
@@ -117,18 +117,18 @@ Observe
   → Release
 ```
 
-## 2.1 Phase Responsibility Summary
+## 2.1 Stage Responsibility Summary
 
-| Phase | Responsibility | Output | Can Directly Produce Side Effects |
+| Stage | Responsibility | Output | Can Directly Produce Side Effects |
 |---|---|---|---|
 | Observe | Observe inputs, events, context, goals | ObservationBundle | No |
-| Assess | Risk, permissions, feasibility, budget, strategy assessment | AssessmentBundle | No |
+| Assess | Risk, permission, feasibility, budget, policy assessment | AssessmentBundle | No |
 | Plan | Generate executable PlanGraph | PlanGraphBundle | No |
-| Execute | Consume node execution facts already advanced by `HarnessRuntime`, and generate stage views | `NodeRun` / `NodeAttemptReceipt` / `oapeflir.view.*` | No (side effects still controlled and submitted by Harness main chain) |
-| Feedback | Feedback on execution results, deviations, quality, risk | FeedbackEnvelope | No |
-| Learn | Extract candidate experiences from feedback | LearningCandidate | No |
+| Execute | Consume node execution facts advanced by `HarnessRuntime` and generate stage view | `NodeRun` / `NodeAttemptReceipt` / `oapeflir.view.*` | No (side effects still controlled submitted by Harness main chain) |
+| Feedback | Feedback on execution results, deviation, quality, risk | FeedbackEnvelope | No |
+| Learn | Extract learning candidates from feedback | LearningCandidate | No |
 | Improve | Generate Prompt / Policy / Tool / Domain improvement candidates | ImprovementChangeSet | No |
-| Release | Evaluate, approve, canary, publish, rollback | ReleaseRecord | Yes, but limited to configuration publishing |
+| Release | Evaluate, approve, canary, release, rollback | ReleaseRecord | Yes, but only config release |
 
 ---
 
@@ -150,7 +150,7 @@ RequestEnvelope
 │             ▼                ▼                ▼         │
 │       Tool / LLM         HITL Wait        Subgraph       │
 │             │                │                │          │
-│             ▼                ▼                ▼          │
+│             ▼                ▼                ▼         │
 │       SideEffect        HumanDecision     ChildRun       │
 │       Manager              │                │            │
 │             └──────────────┼────────────────┘            │
@@ -176,9 +176,9 @@ RequestEnvelope
 
 # 4. Core Runtime Entities
 
-## 4.1 HarnessRun is the Only Authoritative Run
+## 4.1 HarnessRun Is the Only Authoritative Run
 
-`HarnessRun` is the only authoritative entity for a complete run; this spec no longer treats `OapeflirRun` as an executable truth object. Old `OapeflirRun` is only allowed to appear as a migration alias or explainability projection.
+`HarnessRun` is the only authoritative entity for a complete run; this spec no longer treats `OapeflirRun` as an executable truth object. Old `OapeflirRun` is only allowed as a migration alias or explainability projection.
 
 ## 4.2 OapeflirTraceProjection
 
@@ -202,22 +202,22 @@ type OapeflirTraceProjection = {
 };
 ```
 
-## 4.3 State Authority Boundaries
+## 4.3 State Authority Boundary
 
 ```text
-1. HarnessRun.status is the only executable Run state source.
-2. OAPEFLIR stages only express stage projections, and do not own run status / lease / retry counter / budget state.
+1. HarnessRun.status is the only executable Run status source.
+2. OAPEFLIR stages only express stage projection, not owning run status / lease / retry counter / budget state.
 3. Any real state transition must go through RuntimeStateMachine.transition(command).
-4. replay / redrive / repair can only append new Harness / Node / Attempt / Evidence records, and must not overwrite old truth.
+4. replay / redrive / repair must only append new Harness / Node / Attempt / Evidence records, not overwrite old truth.
 ```
 
 ---
 
-# 5. NodeRun Lifecycle Projection (References Canonical Contract)
+# 5. NodeRun Lifecycle Projection (Reference to Canonical Contract)
 
 ## 5.1 NodeRun
 
-> This section only references the canonical shape from `node-run-attempt-receipt-contract.md` as a migration input summary; the true state set and legal transitions authority for NodeRun are not defined within the OAPEFLIR spec.
+> This section only references the canonical shape of `node-run-attempt-receipt-contract.md` as migration input summary; the true state set and legal transitions authority for NodeRun are not defined within OAPEFLIR spec.
 
 ```ts
 type NodeRun = {
@@ -294,10 +294,10 @@ retry_wait
 
 ```text
 1. `succeeded / failed / skipped / cancelled / dependency_failed / policy_blocked / aborted` are terminal states and must not transition out.
-2. Retry can only be expressed by appending a new attemptId, and must not overwrite the original failure record.
-3. After `awaiting_hitl` resumes, it must return to the active execution chain, and must not disguise as a normal `blocked`.
-4. `reconciling` only indicates the side effect/external state confirmation phase, and must not be written as `compensating / compensated` — node states owned by OAPEFLIR.
-5. Redrive must preserve lineage.
+2. Retry can only be expressed by appending a new attemptId, not overwriting the original failed record.
+3. `awaiting_hitl` after recovery must return to active execution chain, not disguised as ordinary `blocked`.
+4. `reconciling` only indicates side effect / external state confirmation phase, not written as `compensating / compensated` node states owned by OAPEFLIR.
+5. redrive must preserve lineage.
 ```
 
 ## 5.5 AttemptLineage
@@ -323,15 +323,15 @@ type AttemptLineage = {
 
 ---
 
-# 6. Plan Must Be a Graph
+# 6. Plan Must Be Graph
 
-## 6.1 Basic Principle
+## 6.1 Basic Principles
 
-v4.4 explicitly stipulates:
+v4.4 explicitly states:
 
-> **Plan is not allowed to be simple linear steps. Plan must be a PlanGraph.**
+> **Plan is not allowed to be simple linear steps. Plan must be PlanGraph.**
 
-Reason: Complex real problems typically include:
+Reason: Complex real problems usually contain:
 
 ```text
 Parallel tasks
@@ -340,8 +340,8 @@ Human approval
 Subgraph delegation
 Failure compensation
 Rollback paths
-External waits
-Replanning patches
+External wait
+Replan patch
 join / merge
 ```
 
@@ -481,7 +481,7 @@ type PlanEdge = {
 
 # 8. Graph Normalization
 
-Draft graphs generated by LLM or humans must not be executed directly; they must undergo normalization.
+Draft graphs generated by LLM or humans must not be executed directly and must go through normalization.
 
 ## 8.1 Normalization Process
 
@@ -527,11 +527,11 @@ type GraphNormalizationReport = {
 1. Must have at least one entry node.
 2. Must have at least one terminal node.
 3. No undeclared node types allowed.
-4. No orphan nodes allowed.
+4. No orphaned nodes allowed.
 5. No unbounded loops allowed.
 6. No wait / human_gate without timeout allowed.
-7. No high risk node lacking verification allowed.
-8. No irreversible side effect lacking confirmation / reconciliation allowed.
+7. No high risk node without verification allowed.
+8. No irreversible side effect without confirmation / reconciliation allowed.
 9. No join waiting for branches that will never trigger allowed.
 10. No cross-permission data flow allowed.
 ```
@@ -559,11 +559,11 @@ type GraphValidationReport = {
 ## 10.1 Risk Propagation Rules
 
 ```text
-1. If an upstream node reads restricted data, downstream consumer nodes have risk at least medium.
-2. If a node produces irreversible side effect, downstream join / terminal must check confirmation.
-3. If a branch contains external write, the entire subgraph risk is not lower than high.
-4. If tool output taint = potential_prompt_injection, downstream LLM nodes must isolate context.
-5. If any node requires human_gate, subsequent side_effect_commit must not bypass human approval scope.
+1. If upstream node reads restricted data, downstream consumer node risk is at least medium.
+2. If node produces irreversible side effect, downstream join / terminal must check confirmation.
+3. If branch contains external write, entire subgraph risk is not lower than high.
+4. If tool output taint = potential_prompt_injection, downstream LLM node must isolate context.
+5. If any node requires human_gate, subsequent side_effect_commit cannot bypass human approval scope.
 ```
 
 ## 10.2 GraphRiskPropagationReport
@@ -604,7 +604,7 @@ Hard rules:
 
 ```text
 1. If worst-path budget exceeds limit, PlanGraph must not enter ready state.
-2. If highest risk path lacks HITL / verification, PlanGraph must not execute.
+2. If highest-risk path lacks HITL / verification, PlanGraph must not execute.
 3. If irreversible side effect path lacks confirmation, reconciliation must be inserted.
 ```
 
@@ -612,7 +612,7 @@ Hard rules:
 
 # 12. Graph Scheduler Deterministic Scheduling
 
-Graph Scheduler belongs to the P4 execution responsibility of `HarnessRuntime`; OAPEFLIR only consumes scheduling facts and generates scheduler rationale / view.
+Graph Scheduler belongs to P4 execution responsibilities of `HarnessRuntime`; OAPEFLIR only consumes scheduling facts and generates scheduler rationale / view.
 
 ## 12.1 ReadyNodeSchedulingPolicy
 
@@ -645,7 +645,7 @@ type ReadyNodeSchedulingPolicy = {
 
 ```text
 1. Graph Scheduler must be deterministic.
-2. Same graph + same runtime seed + same event history must produce identical scheduling order.
+2. Same graph + same runtime seed + same event history must yield same scheduling order.
 3. Parallel nodes must also be stably sorted.
 4. Replay must not reselect scheduling order.
 5. Scheduling decisions must be recorded as `platform.scheduler.decision_recorded` events.
@@ -713,9 +713,9 @@ type GraphPatchCompatibilityReport = {
 Hard rules:
 
 ```text
-1. Completed nodes must not be deleted, only marked as superseded.
-2. Active nodes must not be replaced unless first paused.
-3. After GraphPatch, old checkpoints must be mappable to new graph.
+1. Completed nodes cannot be deleted, only marked as superseded.
+2. Running nodes cannot be replaced unless first paused.
+3. Old checkpoints after GraphPatch must be mappable to new graph.
 4. Join semantic changes must trigger human review.
 ```
 
@@ -793,20 +793,20 @@ type OapeflirProjectionEventType =
 Hard rules:
 
 ```text
-1. Truth projectors can only consume platform.* facts.
-2. OAPEFLIR events must only use `oapeflir.view.*` / `oapeflir.rationale.*`, and must not disguise as `run.*` / `node.*` / `side_effect.*` truth events.
-3. Projection events must not反向 drive HarnessRun / NodeRun / Budget / SideEffect truth.
+1. Truth projector can only consume platform.* facts.
+2. OAPEFLIR events can only use `oapeflir.view.*` / `oapeflir.rationale.*`, not disguised as `run.*` / `node.*` / `side_effect.*` truth events.
+3. Projection events must not reverse-drive HarnessRun / NodeRun / Budget / SideEffect truth.
 ```
 
 ## 14.3 Event Hard Rules
 
 ```text
-1. All state changes must be event-driven.
-2. Event append and truth state update must be in the same transaction.
-3. Event sequence is monotonically increasing within a run.
+1. All state changes must be driven by Event.
+2. Event append and truth state update must be in same transaction.
+3. Event sequence monotonically increases within run.
 4. Event payload must have schema version.
-5. Events are not allowed to be physically deleted.
-6. Projections can only be rebuilt from Events, and must not反写 truth.
+5. Event is not allowed physical deletion.
+6. Projection can only be rebuilt from Event, not reverse-written to truth.
 7. Replay must comply with replayBehavior.
 ```
 
@@ -814,7 +814,7 @@ Hard rules:
 
 # 15. Budget Ledger
 
-Budget truth belongs to P5/Budget service; HarnessRuntime can only interact with it through `BudgetReservation` / `BudgetSettlement`. OAPEFLIR does not own independent budget state.
+Budget truth belongs to P5/Budget service; HarnessRuntime can only interact with it via `BudgetReservation` / `BudgetSettlement`. OAPEFLIR does not own independent budget state.
 
 ## 15.1 BudgetLedger
 
@@ -874,7 +874,7 @@ type BudgetReservation = {
 3. Budget must be reserved before SideEffect commit.
 4. Evaluation / Judge calls must also be charged.
 5. On call failure, consume / release according to strategy.
-6. Budget exhausted takes priority over retry / replan.
+6. Budget exhausted priority is higher than retry / replan.
 7. Replan must redo worst-path budget analysis.
 ```
 
@@ -882,7 +882,7 @@ type BudgetReservation = {
 
 # 16. SideEffect Manager
 
-SideEffect is controlled and advanced by HarnessRuntime in the P4 main chain; OAPEFLIR can only consume side-effect facts and generate explanatory projections, and does not own independent side effect commit authority.
+SideEffect is controlled advanced by HarnessRuntime in P4 main chain; OAPEFLIR can only consume side-effect fact and generate explanatory projection, not owning independent side effect commit authority.
 
 ## 16.1 SideEffectRecord
 
@@ -1021,7 +1021,7 @@ type ReversibilityProfile = {
 };
 ```
 
-## 16.6 SideEffect Commit Process
+## 16.6 SideEffect Submission Process
 
 ```text
 Executor Output
@@ -1041,9 +1041,9 @@ Hard rules:
 1. Tool execution success does not equal side effect success.
 2. SideEffect must first be proposed, then approved, then committed.
 3. Irreversible side effect must have confirmationMethod.
-4. Ambiguous must not automatically become succeeded.
-5. High / critical side effect must support reconciliation.
-6. Compensation must not delete original side effect records.
+4. ambiguous cannot automatically become succeeded.
+5. high / critical side effect must support reconciliation.
+6. compensation must not delete original side effect record.
 ```
 
 ---
@@ -1090,10 +1090,10 @@ type ReconciliationRecord = {
 ## 17.2 Reconciliation Hard Rules
 
 ```text
-1. Ambiguous must not automatically become confirmed.
+1. ambiguous cannot automatically become confirmed.
 2. Irreversible side effect ambiguous must be handled manually.
 3. Reconciliation timeout must escalate incident.
-4. Reconciliation result must write back to SideEffectRecord.
+4. Reconciliation result must back-write SideEffectRecord.
 5. manual_resolution must record HumanResponsibilityRecord.
 ```
 
@@ -1158,9 +1158,9 @@ type ContextItemRef = {
 ```text
 1. Planner / Generator / Evaluator must use different ContextAssemblyContract.
 2. Context must be hashable and replayable.
-3. external_untrusted can only enter user/data zones, and must not enter system/developer zones.
+3. external_untrusted can only enter user/data zone, not system/developer zone.
 4. Redacted fields must not leak through summary.
-5. Restricted data must not enter unauthorized subgraph / subagent.
+5. restricted data must not enter unauthorized subgraph / subagent.
 ```
 
 ---
@@ -1200,10 +1200,10 @@ type PromptExecutionContract = {
 
 ```text
 1. Planner / Generator / Evaluator Prompt must be independently versioned.
-2. Evaluator Prompt must not be shared with Generator Prompt.
+2. Evaluator Prompt must not share with Generator Prompt.
 3. Judge Prompt must not access holdout standard answers.
 4. Planner Prompt must not receive forbidden_for_planning content.
-5. Prompt changes must pass Evaluation Gate.
+5. Prompt changes must go through Evaluation Gate.
 ```
 
 ---
@@ -1268,7 +1268,7 @@ Hard rules:
 ```text
 1. Replay defaults to reusing recorded LLM output (Trace Replay).
 2. Only isolated simulation / sandbox mode allows `isolated_reexecution_replay`, and results must not overwrite original truth/evidence.
-3. All non-deterministic inputs must be recorded: time, random numbers, environment variables, config versions.
+3. All non-deterministic inputs must be recorded: time, random numbers, environment variables, config version.
 4. Replay must not produce real side effects.
 ```
 
@@ -1295,8 +1295,8 @@ type ToolOutputTaint =
 ```text
 1. external_untrusted must have boundary isolation before entering LLM.
 2. potential_prompt_injection must not enter planner system prompt.
-3. secret_bearing must not be written to memory / knowledge.
-4. pii_bearing must be processed according to data policy.
+3. secret_bearing must not write to memory / knowledge.
+4. pii_bearing must be handled according to data policy.
 5. restricted must not propagate across tenant / domain.
 ```
 
@@ -1337,28 +1337,28 @@ type MemoryWriteRequest = {
 ## 22.2 Memory Write Hard Rules
 
 ```text
-1. Tool output must not directly write to `long_term` or `shared_knowledge`.
-2. potential_prompt_injection must not write to `long_term` / `shared_knowledge`.
-3. Restricted data must not write to `shared_knowledge`.
-4. Memory write must pass before_memory_write guardrail.
-5. Shared memory promotion must have audit record.
+1. Tool output must not directly write `long_term` or `shared_knowledge`.
+2. potential_prompt_injection must not write `long_term` / `shared_knowledge`.
+3. restricted data must not write `shared_knowledge`.
+4. Memory write must go through before_memory_write guardrail.
+5. shared memory promotion must have audit record.
 ```
 
 ---
 
 # 23. Guardrails Five-Layer Execution Model
 
-The five-layer Guardrail is enforced by HarnessRuntime execution chain and P2 control plane together; OAPEFLIR only records guardrail view / rationale, and does not own independent guardrail authority.
+The five-layer Guardrail is enforced by HarnessRuntime execution chain and P2 control plane together; OAPEFLIR only records guardrail view / rationale and does not own independent guardrail authority.
 
 ## 23.1 Five-Layer Guardrails
 
 | Layer | Execution Timing | Main Checks |
 |---|---|---|
-| Input Guardrail | After Request enters | Injection, privilege escalation, format, sensitive requests |
+| Input Guardrail | After Request enters | Injection, permission override, format, sensitive requests |
 | Planning Guardrail | After PlanGraph generated | Forbidden graph structure, unauthorized tools, dangerous paths |
-| Tool Guardrail | Before/after Tool calls | Input security, output taint, side effect risk |
-| Memory Guardrail | During Memory read/write | Cross-domain leakage, long-term memory contamination |
-| Output Guardrail | Before output | Hallucination, unevidenced claims, sensitive information leakage |
+| Tool Guardrail | Before/after Tool call | Input safety, output taint, side effect risk |
+| Memory Guardrail | During Memory read/write | Cross-domain leakage, polluting long-term memory |
+| Output Guardrail | Before output | Hallucination, unsupported claims, sensitive info leakage |
 
 ## 23.2 GuardrailHookResult
 
@@ -1394,7 +1394,7 @@ type GuardrailHookResult = {
 Hard rules:
 
 ```text
-1. Critical guardrail block takes priority over evaluator accept.
+1. critical guardrail block priority is higher than evaluator accept.
 2. LLM-as-Judge must not override deterministic guardrail failure.
 3. Guardrail rewrite must record original input hash.
 ```
@@ -1425,7 +1425,7 @@ Hard rules:
 
 ```text
 1. DecisionEngine can only consume DecisionInputBundle.
-2. DecisionEngine must not directly read scattered service state.
+2. DecisionEngine is not allowed to directly read scattered service state.
 3. DecisionInputBundle must be frozen before generating decision.
 4. Frozen bundle must be hashed and written to evidence.
 ```
@@ -1465,9 +1465,9 @@ From high to low:
 
 ## 25.1 Three Distinctions
 
-| Concept | Meaning | Example |
+| Concept | Meaning | Examples |
 |---|---|---|
-| RuntimeProfile | Platform capability tier (injected by Harness/platform governance, not owned by OAPEFLIR) | mvp / hardening / enterprise |
+| RuntimeProfile | Platform capability tier (injected by Harness / platform governance, not owned by OAPEFLIR) | mvp / hardening / enterprise |
 | RuntimeMode | Current runtime protection mode | full_auto / read_only / manual_only |
 | AutonomyMode | Agent autonomy level | suggestion / supervised / semi_auto / full_auto |
 
@@ -1501,7 +1501,7 @@ effectiveAutonomy =
 Hard rules:
 
 ```text
-1. RuntimeMode can lower AutonomyMode, but must not raise it.
+1. RuntimeMode can lower AutonomyMode but must not raise it.
 2. RiskLevel high and above must limit autonomy.
 3. incident_mode prohibits new side effects.
 ```
@@ -1603,8 +1603,8 @@ Hard rules:
 
 ```text
 1. Human approve only approves current scope.
-2. Human override policy must have higher authority.
-3. After manual_takeover, Agent must not continue automatically submitting side effects unless resume explicitly allows.
+2. Human override policy requires higher permission.
+3. After manual_takeover, Agent must not continue auto-submitting side effects unless resume explicitly allows.
 4. All HITL operations must write audit.
 ```
 
@@ -1648,10 +1648,10 @@ type FinalOutputContract = {
 Hard rules:
 
 ```text
-1. Critical domain output must include limitations description.
-2. Low confidence output must not be presented in definitive tone.
-3. High-risk advice without evidence must not be output as executable instructions.
-4. User-visible output must pass before_output guardrail.
+1. Critical domain output must include limitations explanation.
+2. Low-confidence output must not be presented in deterministic tone.
+3. High-risk recommendations without evidence must not be output as executable instructions.
+4. User-visible output must go through before_output guardrail.
 ```
 
 ---
@@ -1665,13 +1665,13 @@ Given `sideEffectId`, must be able to query:
 ```text
 Who triggered it
 What observations were used
-What assessments were passed
-Which PlanNode made the decision
+What assessments were made
+Which PlanNode decided
 What tools / models were called
 What verifications passed
-What evaluations supported it
-Who approved it
-What is the final external confirmation
+What evaluations supported
+Who approved
+What the final external confirmation is
 Whether reconciliation / compensation occurred
 ```
 
@@ -1719,10 +1719,10 @@ type RunVersionLock = {
 Hard rules:
 
 ```text
-1. Long-running runs must record version lock.
-2. High / critical runs default to lock_for_entire_run.
-3. Policy hot updates must not silently change resume semantics for paused runs.
-4. If version incompatible on resume, must go through ResumeCompatibilityPolicy.
+1. Long-running run must record version lock.
+2. high / critical run defaults to lock_for_entire_run.
+3. Policy hot update must not silently change resume semantics of paused run.
+4. During resume, if version incompatible, must go through ResumeCompatibilityPolicy.
 ```
 
 ---
@@ -1762,10 +1762,10 @@ type EffectivePolicySnapshot = {
 Hard rules:
 
 ```text
-1. Priority only allows four levels `platform < tenant < domain < task` to stack; must not introduce additional runtime priority axes to bypass ConstraintPack.
-2. Emergency Directive has highest priority, but still takes effect through formal directive and snapshot recording.
-3. Lower-level config can only tighten, not relax, upper-level security constraints.
-4. All final effective config must generate EffectivePolicySnapshot.
+1. Priority only allows `platform < tenant < domain < task` four-level stacking; must not introduce additional runtime priority axis to bypass ConstraintPack.
+2. Emergency Directive has highest priority but still takes effect through formal directive and snapshot record.
+3. Lower-level configuration can only tighten, not relax upper-level security constraints.
+4. All final effective configurations must generate EffectivePolicySnapshot.
 ```
 
 ---
@@ -1842,10 +1842,10 @@ type LearningCandidate = {
 Hard rules:
 
 ```text
-1. LearningCandidate must not contain holdout eval cases.
-2. Incident regression cases can enter incident_regression, and must not enter prompt few-shot.
+1. LearningCandidate must not contain holdout eval case.
+2. Incident regression case can enter incident_regression but not prompt few-shot.
 3. Policy Learning must not go online automatically.
-4. Prompt Learning must pass Evaluation Gate.
+4. Prompt Learning must go through Evaluation Gate.
 5. Domain Learning must be reviewed by domain_owner.
 ```
 
@@ -1885,7 +1885,7 @@ type EvaluationGate = {
 };
 ```
 
-## 32.2 Default Release Gates
+## 32.2 Default Release Gate
 
 ```text
 critical_case_pass_rate == 100%
@@ -1900,11 +1900,11 @@ human_override_rate must not significantly increase
 ## 32.3 Evaluation Hard Rules
 
 ```text
-1. LLM-as-Judge must not override deterministic failure.
-2. Evaluation focuses on outcomes, not transcripts.
+1. LLM-as-Judge cannot override deterministic failure.
+2. Evaluation focuses on outcome, not transcript.
 3. Pre-release evaluation must run in isolated environment.
-4. Online canary must compare against stable baseline.
-5. Failed cases must enter regression set.
+4. Online canary must compare with stable baseline.
+5. Failed samples must enter regression set.
 ```
 
 ---
@@ -1932,7 +1932,7 @@ Hard rules:
 1. Learn / Improve must not directly change online behavior.
 2. Release must pass EvaluationGate.
 3. Prompt / Policy / Tool / Domain Descriptor release all require versioning.
-4. Rollback must be able to restore previous stable version.
+4. Rollback must be able to recover previous stable version.
 ```
 
 ---
@@ -2017,7 +2017,7 @@ type OapeflirError = {
 # 37. Runtime Capability Matrix
 
 | Capability | Core | Durable | Governed | Enterprise | Learning |
-|---|---:|---:|---:|---:|---:|
+|---|---|---|---|---|---|
 | PlanGraph | Yes | Yes | Yes | Yes | Yes |
 | Event Registry | Yes | Yes | Yes | Yes | Yes |
 | Deterministic Scheduler | Yes | Yes | Yes | Yes | Yes |
@@ -2155,7 +2155,7 @@ src/platform/oapeflir/
 
 ## Ring 1: MVP
 
-Deliver:
+Deliverables:
 
 ```text
 Run State Machine
@@ -2164,7 +2164,7 @@ Event Registry
 PlanGraph
 Graph Validator
 Deterministic Scheduler
-Budget Ledger basic version
+Budget Ledger Basic Version
 ```
 
 Acceptance:
@@ -2179,13 +2179,13 @@ Can deterministically replay scheduling order
 
 ## Ring 2: Hardening
 
-Deliver:
+Deliverables:
 
 ```text
 SideEffect Manager
 SideEffect Delivery Contract
 Reconciliation State Machine
-Guardrails Five-Layer basic version
+Guardrails Five-Layer Basic Version
 DecisionInputBundle
 Decision Engine
 ```
@@ -2195,12 +2195,12 @@ Acceptance:
 ```text
 High-risk side effects can be blocked
 ambiguous can enter reconciliation
-policy / guardrail / evaluator conflicts can be arbitrated
+policy / guardrail / evaluator conflicts can be adjudicated
 ```
 
-## Ring 2 Extended: Durable + HITL
+## Ring 2 Extension: Durable + HITL
 
-Deliver:
+Deliverables:
 
 ```text
 Checkpoint
@@ -2214,14 +2214,14 @@ RunVersionLock
 Acceptance:
 
 ```text
-Humans can inspect / patch / approve / resume
-Worker crash后可恢复
+Human can inspect / patch / approve / resume
+Can recover after worker crash
 Long-running run version lock takes effect
 ```
 
 ## Ring 3: Enterprise / Learning
 
-Deliver:
+Deliverables:
 
 ```text
 Evaluation Harness
@@ -2234,14 +2234,14 @@ Canary / Rollback
 Acceptance:
 
 ```text
-Prompt / Policy improvements cannot go directly online
+Prompt / Policy improvements cannot go online directly
 Release must pass eval gate
 Contaminated learning candidates will be blocked
 ```
 
 ---
 
-# 41. v4.4 Must-Freeze ADRs
+# 41. v4.4 ADR Freezes Required
 
 ```text
 ADR-OAPEFLIR-Plan-Is-Graph
@@ -2268,45 +2268,45 @@ ADR-OAPEFLIR-Replay-Never-Produces-Real-SideEffect
 
 # 42. Final Judgment
 
-The key convergence of OAPEFLIR v4.4 compared with early independent runtime drafts is:
+The key convergence of OAPEFLIR v4.4 compared to early independent runtime drafts is:
 
 | Dimension | v4.3 | v4.4 |
 |---|---|---|
-| Role positioning | Once mixed independent runtime draft | Explicitly retreated to cognitive/governance semantics above HarnessRuntime |
-| Plan | Could be misread as OAPEFLIR's own execution graph | Acts as `PlanGraphBundle` semantic input used by `HarnessRuntime` |
-| Event | Truth / projection boundary mixed | Clearly distinguishes `platform.*` facts from `oapeflir.view.*` / `oapeflir.rationale.*` projections |
-| State machine | May overlap with runtime truth | Only describes controlled semantics aligned with `HarnessRun / NodeRun`, and no longer establishes its own truth state machine |
-| SideEffect / Budget / HITL | Once written as OAPEFLIR's own capabilities | Clearly reverted to Harness/P2/P5 main chain; OAPEFLIR only interprets and projects |
-| Replay / Context / Prompt | Design intent exists | Continues to retain, but as migration input for canonical contracts rather than independent runtime specification |
-| Implementation value | Easily misread as direct coding baseline | Suitable as migration design input and semantic supplement, and not independently serves as authoritative implementation baseline |
+| Role Positioning | Once mixed into independent runtime draft | Clearly retreated to cognitive/governance semantics above HarnessRuntime |
+| Plan | Could be misread as OAPEFLIR's own execution graph | As `HarnessRuntime`'s `PlanGraphBundle` semantic input |
+| Event | truth / projection boundary mixed | Clearly distinguished `platform.*` facts and `oapeflir.view.*` / `oapeflir.rationale.*` projections |
+| State Machine | Could overlap with runtime truth | Only describes controlled semantics aligned with `HarnessRun / NodeRun`, no longer self-establishing truth state machine |
+| SideEffect / Budget / HITL | Once written as OAPEFLIR's own capabilities | Clearly回收至Harness/P2/P5 main chain, OAPEFLIR only explains and projects |
+| Replay / Context / Prompt | Design intent exists | Continued to retain, but as migration input for canonical contracts, not independent runtime specification |
+| Implementation Value | Easily misread as direct coding baseline | Suitable as migration design input and semantic supplement, not independently authoritative implementation baseline |
 
 Final conclusion:
 
-> **OAPEFLIR v4.4 can only be used as cognitive/governance semantics and migration design input, and cannot independently serve as the authoritative Runtime baseline for an enterprise Agent platform.**
+> **OAPEFLIR v4.4 can only be used as cognitive/governance semantics and migration design input, and cannot alone serve as the authoritative Runtime baseline for enterprise-class Agent platform.**
 
-It is no longer an "Agent flowchart", but rather:
+It is no longer "Agent flowchart", but:
 
 ```text
-A set of cognitive/governance semantic supplementary specifications and migration inputs
-that converge PlanGraph, Event, Replay, Guardrail, HITL, Learning and other design intents
-to the boundary above the `HarnessRuntime` main chain.
+A cognitive/governance semantic supplement specification and migration input
+that converges PlanGraph, Event, Replay, Guardrail, HITL, Learning and other design intents
+to the boundary above the HarnessRuntime main chain.
 ```
 
-The next step after v4.4 should not be to continue expanding this document into a second runtime, but rather to enter:
+The next step after v4.4 should not expand this document into a second runtime, but should enter:
 
 ```text
 OAPEFLIR v4.4 Implementation Addendum
 ```
 
-Focus on supplementing:
+Key supplements:
 
 ```text
 Database table structures
-Zod Schemas
-TypeScript interfaces
+Zod Schema
+TypeScript interface
 State transition test cases
 Graph Scheduler algorithm pseudocode
-SideEffect Adapter contracts
+SideEffect Adapter contract
 Reconciliation Worker design
 Replay Engine design
 Evaluation Gate Runner
@@ -2316,46 +2316,46 @@ CI Test Matrix
 
 ## v4.3 Canonical Compatibility Override
 
-This section fixes OAPEFLIR spec deviations F-1 through F-25 from `platform-architecture-implementation-consistency-audit.md`. The root cause is that during a document merge, this spec simultaneously retained "old independent OAPEFLIR runtime draft" and "supplementary Harness convergence paragraphs", causing the first half to continue treating OAPEFLIR as execution authority while the second half declared Harness as execution authority — internally contradictory within the document itself.
+This section fixes F-1 to F-25 OAPEFLIR spec deviations in `platform-architecture-implementation-consistency-audit.md`. The root cause is that during a document merge, this spec simultaneously retained "old independent OAPEFLIR runtime draft" and "later-added Harness convergence paragraphs", causing the first half to continue treating OAPEFLIR as execution authority while the second half declared Harness as execution authority, making the document body internally contradictory.
 
-Direct fixes after this revision:
+Direct fixes after this body revision:
 
 - `§0 / §2 / §3 / §42`: OAPEFLIR reverted to controlled cognitive/governance semantics, `HarnessRuntime` is the only execution entry.
-- `§4`: Deleted treating `OapeflirRun` as an authoritative run entity, changed to `HarnessRun` truth + `OapeflirTraceProjection` projection.
+- `§4`: Deleted treating `OapeflirRun` as authoritative run entity, changed to `HarnessRun` truth + `OapeflirTraceProjection` projection.
 - `§5`: `NodeRun` fields and state machine converged to Harness/RuntimeStateMachine authoritative semantics, no longer using `compensating / compensated` as node states.
-- `§7`: `PlanNode.type` changed to `kind`, `generatedBy` deleted `repair_worker`.
+- `§7`: `PlanNode.type` changed to `kind`, deleted `repair_worker` from `generatedBy`.
 - `§14`: Event hierarchy changed to `platform.*` facts and `oapeflir.view.* / oapeflir.rationale.*` projections.
-- `§15 / §16 / §23 / §25 / §26 / §30`: Budget, side effects, guardrails, runtime profile, HITL, policy priority all explicitly converged to Harness/P2/P5 formal boundaries.
-- `§19 / §20 / §22 / §24`: Prompt role, replay method, memory scope, decision bundle converged to current canonical contracts.
-- `§34 / §35 / §39 / §40`: Error codes, metrics, implementation directories, rollout roadmap changed to `PLATFORM.*`, `harness.*`, Harness-centric directories and `Ring 1/2/3`.
+- `§15 / §16 / §23 / §25 / §26 / §30`: Budget, side effect, guardrail, runtime profile, HITL, policy priority all explicitly converged to Harness/P2/P5 formal boundaries.
+- `§19 / §20 / §22 / §24`: Prompt role, replay method, memory scope, decision bundle converged to current canonical contract.
+- `§34 / §35 / §39 / §40`: Error codes, metrics, implementation directories, implementation roadmap changed to `PLATFORM.*`, `harness.*`, Harness-centered directories, and `Ring 1/2/3`.
 
 Supplementary note: HarnessRuntime is the only execution entry.
-Supplementary note: OAPEFLIR only produces `oapeflir.view.*` and `oapeflir.rationale.*` projection/explanation events, and does not produce execution truth.
+Supplementary note: OAPEFLIR only produces `oapeflir.view.*` and `oapeflir.rationale.*` projection/explanation events, not execution truth.
 
 Item-by-item audit closure:
 
-- F-1: Deleted "OAPEFLIR runtime directly drives execution" narrative, unified that `HarnessRuntime` is the only execution entry.
-- F-2: Deleted treating `OapeflirRun` as execution truth, unified to `HarnessRun` truth.
-- F-3: OAPEFLIR's own positioning changed to cognitive/planning/evaluation loop, not execution state machine.
-- F-4: Execution completion, failure, compensation and other terminal states reverted to `HarnessRun` / `NodeRun` / `NodeAttemptReceipt`.
+- F-1: Deleted "OAPEFLIR runtime directly drives execution" narrative, unified to `HarnessRuntime` as the only execution entry.
+- F-2: Deleted treating `OapeflirRun` as run truth, unified to `HarnessRun` truth.
+- F-3: Repositioned OAPEFLIR itself as cognitive/planning/evaluation cycle, not execution state machine.
+- F-4: Execution completion, failure, compensation and other terminal states returned to `HarnessRun` / `NodeRun` / `NodeAttemptReceipt`.
 - F-5: Node authoritative state converged to canonical `NodeRun.status`, removed `compensating / compensated`.
-- F-6: Orchestration output changed to `PlanGraphBundle` / graph patch, rather than OAPEFLIR's private mutable execution graph.
+- F-6: Orchestration output changed to `PlanGraphBundle` / graph patch, not OAPEFLIR's private mutable execution graph.
 - F-7: `PlanNode.type` converged to `kind`, avoiding old spec and current code field drift.
 - F-8: Deleted `generatedBy=repair_worker` old execution coupling source, retained current generation source semantics.
 - F-9: Budget reservation placed back in Harness / billing / state-evidence authoritative chain.
 - F-10: Side effect receipt / reconcile placed back in execution plane and state-evidence plane.
-- F-11: Guardrail block / allow / escalate final arbitration boundary placed back in P2/P3/P5.
-- F-12: Runtime profile constraint converged to Harness runtime profile, rather than OAPEFLIR's private profile.
+- F-11: Guardrail block / allow / escalate final adjudication boundary placed back in P2/P3/P5.
+- F-12: Runtime profile constraint converged to Harness runtime profile, not OAPEFLIR's private profile.
 - F-13: HITL / approval timeout / escalation unified to current approval-and-hitl contract.
-- F-14: Prompt role and system / user / tool semantics unified to model gateway / prompt engine.
-- F-15: Replay semantics changed to based on factual events and projection rebuild, rather than OAPEFLIR replaying execution itself.
+- F-14: Prompt role and system / user / tool semantics changed to align with model gateway / prompt engine.
+- F-15: Replay semantics changed to based on factual events and projection rebuild, not OAPEFLIR self-replaying execution.
 - F-16: Memory scope bound back to canonical memory / knowledge boundary contract.
 - F-17: Decision bundle, evidence refs, rationale refs changed to current evidence object model.
 - F-18: Event hierarchy changed to `platform.*` facts and `oapeflir.view.*` / `oapeflir.rationale.*` projections.
-- F-19: Explicitly OAPEFLIR does not write execution truth, and does not directly publish task / workflow / execution terminal facts.
+- F-19: Explicitly stated OAPEFLIR does not write execution truth, does not directly publish task / workflow / execution terminal facts.
 - F-20: Error code prefix unified to `PLATFORM.*` / `HARNESS.*` authoritative naming, removed spec-private enumeration.
 - F-21: Metrics / observability metric prefix unified to `harness.*` and platform observability naming.
-- F-22: Implementation directories pointed to current actual code locations in Harness / orchestration / contracts.
+- F-22: Implementation directories pointing to Harness / orchestration / contracts current real code locations.
 - F-23: Rollout / remediation roadmap converged to `Ring 1 / Ring 2 / Ring 3`.
-- F-24: Explicitly the boundary between OAPEFLIR and execution plane is "generate proposals / projections / rationale", not "direct execution".
-- F-25: Explicitly any legacy OAPEFLIR execution description in this spec can only serve as historical compatibility background, and no longer serves as implementation basis.
+- F-24: Explicitly stated OAPEFLIR and execution plane boundary is "generate proposal / project / rationale", not "directly execute".
+- F-25: Explicitly stated any legacy OAPEFLIR execution description in this spec is only for historical compatible background, no longer used as implementation basis.

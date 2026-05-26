@@ -1,9 +1,9 @@
 # Automatic Agent Platform — 模块框架图集
 
-> **版本**: v1.4
+> **版本**: v1.5
 > **日期**: 2026-05-26
 > **配套文档**: `00-platform-architecture.md` v2.7 · `01-code-structure.md` · `02-code-architecture-reference.md`
-> **说明**: 本文档以 ASCII 框架图形式呈现系统全景及各层/各模块的内部结构与交互关系；v1.4 已同步最近接口层、联邦治理、Mission/UI 契约与运行时支撑结构的回写。
+> **说明**: 本文档以 ASCII 框架图形式呈现系统全景及各层/各模块的内部结构与交互关系；v1.5 已同步最近接口层、联邦治理、Mission/UI 契约，以及执行/状态证据 facade 层的回写。
 
 ### 图类型约定
 
@@ -31,13 +31,14 @@
 
 ### 统计口径声明
 
-> 本文档历史图中仍保留部分规划口径；v1.4 新增或改写的统计为 **2026-05-26 当前工作区结构快照**。精确文件数应以后续结构盘点脚本为准。
+> 本文档历史图中仍保留部分规划口径；v1.5 新增或改写的统计为 **2026-05-26 当前工作区结构快照**。精确文件数应以后续结构盘点脚本为准。
 
 ### 本轮图示同步重点（2026-05-26）
 
 1. P1 已从“只有 admin/internal 查询”继续收敛为“公共 Layer C `/v1/*` 查询面 + admin/internal 管理面并存”。
 2. `scale-ecosystem/federation/` 已按持久化治理能力看待，不再按纯内存规格图理解。
 3. `ui/` 的 Electron bridge 已进入正式兼容契约，不再只是壳层占位。
+4. P3/P4/P5 已补入 `full-trajectory-evaluator`、`tool-gateway`、`sandbox-provider`、`memory-gateway`、`receipts`、`shared/reliability` 等实装模块口径。
 
 ---
 
@@ -333,7 +334,7 @@ platform/five-plane-control-plane/
 | `oapeflir/` | 认知循环 | "怎么循环执行与学习"（8 阶段受控内核） |
 | `harness/` | 可恢复执行循环 | "如何多迭代、可恢复、可审计地运行 Plan/Work/Eval" |
 | `agent-delegation/` | Agent 协作协议 | "如何委派、接收、接管、汇报证据" |
-| `evaluator/` | 评估与验收 | "结果是否达标，是否进入反馈/学习" |
+| `evaluator/` | 评估与验收 | "结果是否达标，是否进入反馈/学习"（含 trajectory-level evaluator） |
 | `observer/` | 观测聚合 | "运行时事实如何进入 timeline/report" |
 | `hitl/` | 人机协作 | "需要人参与的控制节点"（审批/接管/解释） |
 | `replan/` | 重规划 | "上下文变化后怎么调整" |
@@ -367,12 +368,13 @@ platform/five-plane-orchestration/
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────────┐      │
 │  │ evaluator/   │  │ observer/    │  │ agent-delegation/            │      │
 │  │ 质量评估     │  │ timeline     │  │ ACP message · evidence · audit│      │
+│  │ traj-eval    │  │ report       │  │ takeover · handoff           │      │
 │  └──────────────┘  └──────────────┘  └──────────────────────────────┘      │
 │                                                                              │
 │  ┌──────────────┐                                                           │
 │  │    hitl/     │  编排流:                                                  │
 │  │  "需人参与"  │  control-directive ──▶ routing ──▶ planner ──▶ harness    │
-│  └──────────────┘  ──▶ oapeflir/evaluator ──▶ execution-plan ──▶ P4         │
+│  └──────────────┘  ──▶ oapeflir/evaluator(full-trajectory) ──▶ P4           │
 │                     异常 ──▶ escalation / replan                             │
 │                     需人工 ──▶ hitl ──▶ P1 推送                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -384,27 +386,30 @@ platform/five-plane-orchestration/
 
 > P4 是模块数量最多的平面，以下用三种不同类型的图分别展示。
 
-### §六.1 P4 Bounded Context 框架图
+### §六.1 P4 顶层模块分组图
 
-> **图类型: 结构图** — 表达 P4 内 14 个 BC 级模块的归属与分组。不表达运行时调用顺序。
+> **图类型: 结构图** — 表达 P4 当前顶层模块的能力分组。不表达运行时调用顺序。
 
 ```text
 platform/five-plane-execution/
 ┌─────────────────────────────────────────────────────────────────────┐
 │  ┌────── 调度与 Worker ──────────────────────────────────────┐      │
-│  │  dispatcher/  │  lease/  │  worker-pool/                   │      │
+│  │  dispatcher/  │  lease/  │  worker-pool/  │ queue-metrics/ │      │
 │  └───────────────────────────────────────────────────────────┘      │
 │  ┌────── 执行引擎 ──────────────────────────────────────────┐      │
-│  │  execution-engine/  │  state-transition/                   │      │
+│  │  execution-engine/ │ state-transition/ │ oapeflir/         │      │
+│  │  hibernation/                                             │      │
 │  └───────────────────────────────────────────────────────────┘      │
-│  ┌────── 可靠性 ────────────────────────────────────────────┐      │
+│  ┌────── 可靠性与恢复 ──────────────────────────────────────┐      │
 │  │  ha/  │  hot-upgrade/  │  recovery/                       │      │
 │  └───────────────────────────────────────────────────────────┘      │
-│  ┌────── 工具与插件 ────────────────────────────────────────┐      │
-│  │  tool-executor/  │  plugin-executor/                       │      │
+│  ┌────── 工具、安全执行与插件 ───────────────────────────────┐      │
+│  │  tool-gateway/ │ tool-executor/ │ sandbox-provider/       │      │
+│  │  plugin-executor/                                         │      │
 │  └───────────────────────────────────────────────────────────┘      │
 │  ┌────── 基础设施 ──────────────────────────────────────────┐      │
-│  │  distributed-lock/  │  queue/  │  resource/  │  startup/  │      │
+│  │  distributed-lock/ │ queue/ │ resource/ │ startup/        │      │
+│  │  shared/                                                  │      │
 │  └───────────────────────────────────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -426,17 +431,19 @@ lease ──────── 分配执行租约
 worker-pool ── 选择目标 Worker + handshake
     │
     ▼
-execution-engine ── agent-executor → model-call → tool/plugin 调用
+execution-engine ── agent-executor → model-call → tool-gateway
     │                   │
     │                   ├── loop-detect (死循环检测)
     │                   ├── effect-buffer (副作用缓冲)
-    │                   └── context-compact (上下文压缩)
+    │                   ├── context-compact (上下文压缩)
+    │                   └── sandbox-provider → tool/plugin 调用
     │
     ▼
 state-transition ── 状态机驱动状态变更
     │
     ▼
 P5 ◀── state-command (持久化)
+P5 ◀── receipt/outbox/side-effect-ledger (耐久副作用证据)
 P3 ◀── execution-receipt (回执)
 
 异常路径:
@@ -445,26 +452,37 @@ P3 ◀── execution-receipt (回执)
     version-change ──▶ hot-upgrade ──▶ graceful-migrate
 ```
 
-### §六.3 P4 工具调用安全图
+### §六.3 P4 工具调用安全与耐久副作用图
 
-> **图类型: 数据流图** — 表达工具调用链路中的安全控制点。不表达模块归属。
+> **图类型: 数据流图** — 表达工具调用链路中的安全控制点与耐久副作用写入。不表达模块归属。
 
 ```text
 execution-engine
     │
     ▼
+tool-gateway
+    ├── prepare/verify/commit/compensate ── 工具副作用门面
+    ├── receipt shadow write ────────────── 回执影子写入
+    └── durable outbox ─────────────────── 耐久发布
+
+sandbox-provider
+    ├── sandbox-layer resolve ── local/container/browser/microvm/remote
+    └── capability/session bind ── 工具能力与会话约束
+
 tool-executor
-    ├── command-security ──── 命令安全校验
-    ├── tool-contract-validator ── 契约合规检查
-    ├── tool-path-scope ──── 路径作用域限制
+    ├── command-security ─────── 命令安全校验
+    ├── tool-contract-validator ─ 契约合规检查
+    ├── tool-path-scope ──────── 路径作用域限制
     ├── tool-output-sanitizer ── 输出消毒
-    ├── mcp-tool-guard ──── MCP 协议守卫
-    └── role-tool-exposure ── 角色工具可见性
+    ├── mcp-tool-guard ──────── MCP 协议守卫
+    └── role-tool-exposure ──── 角色工具可见性
 
 plugin-executor
-    ├── runtime-sandbox ──── 沙箱隔离执行
-    ├── plugin-host ──── 子进程宿主
-    └── plugin-protocol ──── 通信协议守卫
+    ├── runtime-sandbox ─────── 沙箱隔离执行
+    ├── plugin-host ─────────── 子进程宿主
+    └── plugin-protocol ─────── 通信协议守卫
+
+tool-gateway ──▶ P5 receipts/outbox/side-effect-ledger
 ```
 
 ---
@@ -514,8 +532,10 @@ platform/five-plane-state-evidence/
 │  ┌─────────────────────────────────┐                                        │
 │  │  BC7 Memory & Artifacts (~10)   │                                        │
 │  │  memory · artifacts              │                                        │
+│  │  memory-gateway                  │                                        │
 │  │  ─────────────────────────────  │                                        │
 │  │  记忆 CRUD + 质量管理 ·         │                                        │
+│  │  proposal/projection facade ·   │                                        │
 │  │  制品存储 · 版本管理             │                                        │
 │  └─────────────────────────────────┘                                        │
 │                                                                              │
@@ -543,9 +563,12 @@ platform/five-plane-state-evidence/
 │  │  when        │  │  chain       │  │  step-ckpt   │  │  event       │    │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
 │  ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐                  │
-│  │   outbox/    │  │side-effect-ledger│  │ compaction/  │                  │
-│  │ 可靠发布     │  │ 外部副作用台账    │  │ 历史/上下文压缩│                  │
+│  │   outbox/    │  │side-effect-ledger│  │  receipts/   │                  │
+│  │ 可靠发布     │  │ 外部副作用台账    │  │ 标准回执链    │                  │
 │  └──────────────┘  └──────────────────┘  └──────────────┘                  │
+│  ┌──────────────┐                                                           │
+│  │ compaction/  │  历史/上下文压缩                                          │
+│  └──────────────┘                                                           │
 │                                                                              │
 │  ──────────────────── 基础设施层 ────────────────────                        │
 │  storage-backend-factory · migration-runner · async-repo-registry           │
@@ -570,7 +593,8 @@ platform/five-plane-state-evidence/
         │ Derived  │      │ Evidence │        │ 上层系统 │
         │projection│      │audit/ckpt│        │L4-L7 订阅│
         │knowledge │      │artifacts │        │事件消费  │
-        │reconcile │      │side-effect│       │          │
+        │reconcile │      │receipt   │        │          │
+        │memory-gw │      │side-effect│       │          │
         └──────────┘      └──────────┘        └──────────┘
 ```
 
@@ -1447,12 +1471,12 @@ agent-loop ───────────────────────
 planning ──────────────────────────▶ platform/five-plane-orchestration/planner (P3)
 orchestration ─────────────────────▶ platform/five-plane-orchestration/routing (P3)
 providers ─────────────────────────▶ platform/model-gateway/
-tools ─────────────────────────────▶ platform/five-plane-execution/tool-executor/
+tools ─────────────────────────────▶ platform/five-plane-execution/tool-gateway/ + tool-executor/
 workflow ──────────────────────────▶ platform/five-plane-orchestration/oapeflir/workflow/
 artifacts ─────────────────────────▶ platform/five-plane-state-evidence/artifacts (P5 BC7)
 feedback ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
 learning ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
-evaluation ────────────────────────▶ platform/prompt-engine/eval/ (L7)
+evaluation ────────────────────────▶ platform/five-plane-orchestration/evaluator/ + prompt-engine/eval/
 
 domain-registry ───────────────────▶ domains/registry (L3)
 divisions ─────────────────────────▶ domains/governance (L3)
@@ -1477,7 +1501,7 @@ observability ─────────────────────▶
 ops ───────────────────────────────▶ ops-maturity/platform-ops-agent (L7)
 stability ─────────────────────────▶ ops-maturity/stability (L7, 新建 wrapper)
 evolution ─────────────────────────▶ ops-maturity/evolution (L7)
-reliability ───────────────────────▶ ops-maturity/reliability (L7)
+reliability ───────────────────────▶ platform/shared/reliability (L1-2 shared)
 
 cli ───────────────────────────────▶ sdk/cli (跨层)
 ```

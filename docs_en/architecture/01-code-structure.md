@@ -5,7 +5,7 @@
 > **Related Document**: "Enterprise Agent Platform Overall Technical Architecture Design Document" v2.7 §35 Recommended Code Directory
 > **Related Document**: "Old System → New Platform Migration Assessment Document" v1.1
 > **Design Date**: 2026-04-19
-> **Last Updated**: 2026-05-18 (third round structure review, supplemented with UI Monorepo, Mission/Yono, test specialty directories, src/testing/benchmarks and current code statistics)
+> **Last Updated**: 2026-05-26 (synced P1 public interface, federation governance persistence, event reliability, and Electron/UI contract fixes)
 
 ---
 
@@ -32,6 +32,18 @@ This review is based on actual directory measurements in the current workspace, 
 | Test structure | `tests/unit`, `integration`, `e2e`, `golden`, `performance`, `invariants`, `leaks` etc. all exist | Update test directory description, supplement invariants/leaks |
 | Runtime configuration and deployment | `config/`, `deploy/` cover environments, domains, risk, security, Helm, Terraform, Prometheus, Chaos, runbooks | Supplement in top-level overview and ops directory descriptions |
 | Documentation risk | Large amount of statistics may become outdated as code changes rapidly | Change statistics table to "structure snapshot", require subsequent script generation |
+
+### 1.2 Recent Structure Sync (2026-05-26)
+
+This round did not change the seven-layer main skeleton, but the latest batch of code closures has affected the formal口径 for "how the structure should be understood":
+
+| Sync Topic | Current Code Facts | Documentation口径 |
+| ------ | ------------ | -------- |
+| P1 Public Query Interface | `dashboard-routes.ts` has supplemented `/v1/workers`, `/v1/queues`, `/v1/agents`, `/v1/dashboard/metrics`, `/v1/explanations`, `/v1/meta/contract-version` | UI/HTTP public queries default to reading Layer C `/v1/*`, no longer treating `/admin/*` as public data plane |
+| P1 Pack / Knowledge / Builder Public Interface | `pack-routes.ts`, `plane-routes.ts`, `task-routes.ts` have supplemented `/v1/marketplace`, `/v1/knowledge`, `/v1/packs/:packId/versions`, `/v1/workflows/builder` | `platform/five-plane-interface/api/http-server/` is the current authoritative public export surface |
+| Federation Governance Persistence | `scale-ecosystem/federation/` under `federation-audit.ts`, `trust-relationship.ts` already have persistence/recovery/archive/strategy enforce | Federation is no longer "pure spec commitment" but a runtime capability with database backing |
+| Event Reliability | `durable-event-bus-async.ts` has fixed async failure swallowing errors | P5 event main chain continues to prioritize reliable delivery and failure visibility |
+| Electron Platform Bridge | `ui/apps/electron-win/src/preload.ts` and `ui/packages/shared/platform/` have unified bridge compatibility layer | `ui/` desktop shell layer has formal bridge compatibility contract, not just smoke shell |
 
 ---
 
