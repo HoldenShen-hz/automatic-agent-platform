@@ -247,9 +247,11 @@ test("E2E Harness Multi-Step: tracks budget across multi-step execution", async 
       assert.ok(task?.estimatedCostUsd !== undefined, "Should have estimated cost");
       assert.ok(task?.actualCostUsd !== undefined, "Should have actual cost");
 
-      // Verify cost events were recorded
+      // Multi-step orchestration now records actual spend only when the run
+      // captured real llmResult usage telemetry for those steps.
       const costEvents = harness.store.listCostEventsByTask(task!.id);
-      assert.ok(costEvents.length > 0, "Should have cost events recorded");
+      assert.equal(costEvents.length, 0, "Should not synthesize cost events without llm telemetry");
+      assert.equal(task?.actualCostUsd, 0, "Actual cost should remain zero when no cost events were recorded");
 
     } finally {
       harness.cleanup();

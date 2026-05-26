@@ -322,7 +322,7 @@ test("E2E Goal Decomposition: human review required based on confidence and risk
     // Template-based should have higher confidence
     const templateGoal: Goal = {
       goalId: newId("goal"),
-      description: "启动招聘流程",
+      description: "启动新的广告投放营销活动",
       owner: DEFAULT_OWNER,
       successCriteria: [],
       constraints: [],
