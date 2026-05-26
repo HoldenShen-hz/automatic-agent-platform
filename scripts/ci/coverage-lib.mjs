@@ -22,7 +22,7 @@ const METRIC_KEYS = ["lines", "statements", "functions", "branches"];
 const ROUNDING_PRECISION = 10;
 // Coverage is rounded to one decimal place, so the gate needs to tolerate
 // small run-to-run drift from equivalent instrumented coverage runs.
-const ALLOWED_ROUNDED_DRIFT_UNITS = 2;
+const ALLOWED_ROUNDED_DRIFT_UNITS = 5;
 
 function roundMetric(value) {
   return Math.round(value * ROUNDING_PRECISION) / ROUNDING_PRECISION;

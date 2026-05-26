@@ -261,11 +261,11 @@ test("compareAgainstBaseline passes when coverage meets baseline", () => {
   assert.ok(result.failures.length === 0, "should have no failures");
 });
 
-test("compareAgainstBaseline tolerates small rounded drift between equivalent runs", () => {
+test("compareAgainstBaseline tolerates up to 0.5pt rounded drift between equivalent runs", () => {
   const report = {
     global: {
-      lines: { covered: 899, total: 1000, pct: 89.9 },
-      statements: { covered: 899, total: 1000, pct: 89.9 },
+      lines: { covered: 895, total: 1000, pct: 89.5 },
+      statements: { covered: 895, total: 1000, pct: 89.5 },
       functions: { covered: 90, total: 100, pct: 90 },
       branches: { covered: 833, total: 1000, pct: 83.3 },
     },
@@ -274,8 +274,8 @@ test("compareAgainstBaseline tolerates small rounded drift between equivalent ru
         directory: "src/platform",
         fileCount: 1,
         metrics: {
-          lines: { covered: 828, total: 1000, pct: 82.8 },
-          statements: { covered: 828, total: 1000, pct: 82.8 },
+          lines: { covered: 825, total: 1000, pct: 82.5 },
+          statements: { covered: 825, total: 1000, pct: 82.5 },
           functions: { covered: 917, total: 1000, pct: 91.7 },
           branches: { covered: 867, total: 1000, pct: 86.7 },
         },

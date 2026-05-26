@@ -243,7 +243,11 @@ class RedisQueueClient {
   private readonly prefix: string;
 
   constructor(config: RedisQueueConfig) {
-    this.host = config.host ?? "localhost";
+    const clientOptions = buildRedisClientOptions(config, {
+      maxRetriesPerRequest: config.maxRetriesPerRequest ?? 1,
+      connectTimeout: config.connectTimeout ?? 500,
+    });
+    this.host = config.host?.trim() ?? "";
     this.port = config.port ?? 6379;
     this.password = config.password;
     this.db = config.db ?? 0;
@@ -260,10 +264,7 @@ class RedisQueueClient {
     } else {
       const require = createRequire(import.meta.url);
       const RedisCtor = require("ioredis") as new (options: Record<string, unknown>) => RedisLike;
-      this.redis = new RedisCtor(buildRedisClientOptions(config, {
-        maxRetriesPerRequest: config.maxRetriesPerRequest ?? 1,
-        connectTimeout: config.connectTimeout ?? 500,
-      }));
+      this.redis = new RedisCtor(clientOptions);
     }
     this.redis.on("error", (err) => {
       runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "redis-queue-adapter" }, 1);

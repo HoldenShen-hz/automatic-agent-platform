@@ -122,7 +122,7 @@ test("RedisQueueAdapter in-memory client covers default config and empty-store b
   process.env.NODE_ENV = "test";
 
   try {
-    const adapter = new RedisQueueAdapter({} as never);
+    const adapter = new RedisQueueAdapter({ host: "localhost" });
     assert.equal(await adapter.getJobAsync("missing-job"), null);
     assert.deepEqual(await adapter.listQueuesAsync(), []);
     assert.deepEqual(await adapter.statsAsync("missing-queue"), {
