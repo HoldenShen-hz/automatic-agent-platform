@@ -361,7 +361,7 @@ export class ChannelGatewayService {
 
     for (const queuedMessage of queuedMessages) {
       // Validate payload can be reconstructed
-      const trackedPayload = readTrackedDeliveryPayload(queuedMessage.payload);
+      const trackedPayload = readTrackedDeliveryPayload(queuedMessage.payload ?? {});
       if (trackedPayload == null) {
         const resolution = deliveryService.recordDeliveryFailure(queuedMessage.messageId, {
           retryable: false,

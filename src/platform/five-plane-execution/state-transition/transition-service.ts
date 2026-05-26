@@ -454,8 +454,8 @@ class TaskTerminalTransitionService {
     }
 
     const repositoryWithOutput = this.repository as RuntimeLifecycleRepository & {
-      updateTaskOutputCas?: (taskId: string, expectedUpdatedAt: string, expectedStatus: TaskStatus, outputJson: string, updatedAt: string) => number;
-      updateTaskOutput?: (taskId: string, outputJson: string, updatedAt: string) => void;
+      updateTaskOutputCas?: (taskId: string, expectedUpdatedAt: string, expectedStatus: TaskStatus, outputJson: string | null, updatedAt: string) => number;
+      updateTaskOutput?: (taskId: string, outputJson: string | null, updatedAt: string) => void;
     };
     if (repositoryWithOutput.updateTaskOutputCas) {
       const outputAffected = repositoryWithOutput.updateTaskOutputCas(

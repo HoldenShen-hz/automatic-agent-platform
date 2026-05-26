@@ -74,8 +74,8 @@ describe("contracts/prompt-bundle", () => {
         compatibilityMatrix: validCompatibilityMatrix,
       });
 
-      // v1 should normalize to 10
-      assert.strictEqual(bundle.version, 10);
+      // v1 should normalize to 100 (major.0.0)
+      assert.strictEqual(bundle.version, 100);
     });
 
     it("should normalize full semver version to integer", () => {

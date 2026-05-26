@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ValidationError, WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import {
@@ -133,19 +133,21 @@ test("settle finalizes reservation, updates ledger, and clears active tracking",
   assert.equal(allocator.getActiveReservations().length, 0);
 });
 
-test("settle rejects actual amounts larger than the reservation", async () => {
+test("settle marks overspend when actual amounts exceed the reservation", async () => {
   const allocator = new BudgetAllocator();
   const { reserved } = reserveOnce(allocator, 100);
 
-  await assert.rejects(
-    async () => Promise.resolve(allocator.settle({
-      ledger: reserved.ledger,
-      reservation: reserved.reservation,
-      actualAmount: 101,
-      context: createContext(),
-    })),
-    (error: unknown) => error instanceof WorkflowStateError && error.code === "budget_settlement.actual_amount_exceeds_reservation",
-  );
+  const settled = await Promise.resolve(allocator.settle({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    actualAmount: 101,
+    context: createContext(),
+  }));
+
+  assert.equal(settled.overspendDetected, true);
+  assert.equal(settled.overspendAmount, 1);
+  assert.equal(settled.ledger.settledAmount, 101);
+  assert.equal(settled.ledger.releasedAmount, 0);
 });
 
 test("release converts an unused reservation into released budget", async () => {

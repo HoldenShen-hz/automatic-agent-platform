@@ -596,17 +596,17 @@ export const skillExecutionCoreMethods = {
   validateSkillDefinition(this: SkillExecutionService, skill: SkillDefinition): void {
     const declaredTools = new Set(skill.requiredTools);
     for (const toolName of skill.requiredTools) {
-      if (this.toolMetadataResolver(toolName) == null) {
-        throw new ValidationError(`skill.definition_unknown_tool:${toolName}`, `skill.definition_unknown_tool:${toolName}`, {
-          source: "tool",
-          details: { toolName },
-        });
-      }
       const mcpIssue = validateMcpToolDefinition(toolName);
       if (mcpIssue) {
         throw new ValidationError(`skill.mcp_tool_${mcpIssue.code}:${toolName}`, `skill.mcp_tool_${mcpIssue.code}:${toolName}`, {
           source: "tool",
           details: { toolName, issueCode: mcpIssue.code },
+        });
+      }
+      if (this.toolMetadataResolver(toolName) == null) {
+        throw new ValidationError(`skill.definition_unknown_tool:${toolName}`, `skill.definition_unknown_tool:${toolName}`, {
+          source: "tool",
+          details: { toolName },
         });
       }
     }

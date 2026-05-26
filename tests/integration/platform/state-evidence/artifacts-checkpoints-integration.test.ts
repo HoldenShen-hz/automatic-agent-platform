@@ -14,6 +14,7 @@ import { createIntegrationContext } from "../../../helpers/integration-context.j
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import {
+  CheckpointSizeExceededError,
   createCheckpointEnvelope,
   unpackCheckpointEnvelope,
   getEnvelopeCompressionRatio,
@@ -227,7 +228,7 @@ test("integration: checkpoint size limit is enforced", async () => {
 
     await assert.rejects(
       async () => createCheckpointEnvelope(largeData, "workflow_step_checkpoint.v1", { maxSizeBytes: 10 * 1024 * 1024 }),
-      (err: Error) => err.message.includes("exceeds maximum allowed"),
+      (err: unknown) => err instanceof CheckpointSizeExceededError && err.maxSizeBytes === 10 * 1024 * 1024,
       "Should reject checkpoint exceeding size limit",
     );
   } finally {

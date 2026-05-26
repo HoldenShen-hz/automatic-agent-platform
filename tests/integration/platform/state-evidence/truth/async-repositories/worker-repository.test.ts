@@ -228,9 +228,11 @@ test.describe("AsyncWorkerRepository", () => {
     };
 
     await harness.workerRepo.upsertWorkerSnapshot(snapshot);
+    const persistedSnapshot = await harness.workerRepo.getWorkerSnapshot(snapshot.workerId);
+    assert.ok(persistedSnapshot);
 
     const updatedSnapshot: WorkerSnapshotRecord = {
-      ...snapshot,
+      ...persistedSnapshot,
       saturation: 0.8,
       activeLeaseCount: 5,
       lastHeartbeatAt: "2026-04-23T11:00:00.000Z",

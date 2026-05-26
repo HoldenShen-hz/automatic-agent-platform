@@ -227,11 +227,7 @@ function verifySignature(input: {
   replayCache: Map<string, SignedRequestReplayCacheEntry>;
 }): boolean {
   if (input.endpoint.algorithm === "none") {
-    throw new ValidationError(
-      "webhook.signature_algorithm_invalid",
-      "webhook.signature_algorithm_invalid: Unsigned webhook endpoints are not accepted for inbound delivery.",
-      { details: { endpointId: input.endpoint.endpointId } },
-    );
+    return false;
   }
   const signingSecret = input.endpoint.signingSecret?.trim();
   if (signingSecret == null || signingSecret.length === 0) {

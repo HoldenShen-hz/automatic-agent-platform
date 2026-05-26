@@ -112,9 +112,10 @@ test("source slot is retired (draining) after shift completes", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
+  service.updateHealth(green.id, 0.95);
 
   // Complete the shift
   for (let i = 0; i < shift.totalSteps; i++) {
@@ -134,9 +135,10 @@ test("target slot is active with 100% traffic after shift completes", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const greenSlot = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
+  service.updateHealth(greenSlot.id, 0.95);
 
   // Complete the shift
   for (let i = 0; i < shift.totalSteps; i++) {
@@ -174,9 +176,10 @@ test("target slot has 0% traffic after rollback", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
+  service.updateHealth(green.id, 0.95);
 
   // Advance a few steps
   service.advanceShift(shift.id);
@@ -256,9 +259,10 @@ test("traffic weights always sum to 100 during active shift", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
+  service.updateHealth(green.id, 0.95);
 
   // Check throughout shift progression
   for (let i = 0; i < shift.totalSteps; i++) {
@@ -278,20 +282,21 @@ test("after rollback traffic weights return to 100/0 split", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
+  service.updateHealth(green.id, 0.95);
   service.advanceShift(shift.id);
   service.advanceShift(shift.id);
   service.rollbackShift(shift.id, "manual", "Rollback");
 
   const blue = service.getActiveSlot("blue");
-  const green = service.getActiveSlot("green");
+  const activeGreen = service.getActiveSlot("green");
 
   assert.ok(blue !== null);
-  assert.ok(green !== null);
+  assert.ok(activeGreen !== null);
   assert.equal(blue.trafficWeight, 100);
-  assert.equal(green.trafficWeight, 0);
+  assert.equal(activeGreen.trafficWeight, 0);
 });
 
 // ---------------------------------------------------------------------------

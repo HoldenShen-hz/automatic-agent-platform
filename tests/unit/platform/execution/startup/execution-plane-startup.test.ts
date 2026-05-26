@@ -39,7 +39,7 @@ test("execution-plane-startup - startup capability baseline exists", () => {
   assert.equal(startupBaseline.capabilityId, "startup");
   assert.ok(startupBaseline.entryModule.includes("startup"));
   assert.ok(startupBaseline.description.length > 0);
-  assert.ok(startupBaseline.baselineServices.includes("StartupPreflightService"));
+  assert.ok(startupBaseline.baselineServices.includes("StartupConsistencyChecker"));
 });
 
 test("execution-plane-startup - startup is listed in all capability baselines", () => {
@@ -172,13 +172,13 @@ test("execution-plane-startup - EXECUTION_CAPABILITY_BASELINES contains startup"
   );
 
   assert.ok(startupBaseline !== undefined);
-  assert.equal(startupBaseline?.baselineServices[0], "StartupPreflightService");
+  assert.equal(startupBaseline?.baselineServices[0], "StartupConsistencyChecker");
 });
 
 test("execution-plane-startup - startup baselineServices contains expected services", () => {
   const startupBaseline = resolveExecutionCapabilityBaseline("startup");
 
-  assert.ok(startupBaseline.baselineServices.includes("StartupPreflightService"));
+  assert.ok(startupBaseline.baselineServices.includes("StartupConsistencyChecker"));
 });
 
 test("execution-plane-startup - each baseline has required fields", () => {

@@ -13,6 +13,8 @@
  * @see Execution Dispatch Service: execution-dispatch-service.ts
  */
 
+import { computeCanonicalLoadScore } from "../../shared/load-score.js";
+
 /** Maximum recommended share of active leases a single worker should handle (60%). */
 export const MAX_RECOMMENDED_STICKY_SHARE = 0.6;
 
@@ -77,14 +79,13 @@ export function computeEffectiveActiveLeaseCount(signal: WorkerLoadSignal): numb
  * Higher scores indicate heavier load.
  */
 export function computeWorkerLoadScore(signal: WorkerLoadSignal): number {
-  const concurrency = Math.max(signal.maxConcurrency, 1);
-  const effectiveActiveLeaseCount = computeEffectiveActiveLeaseCount(signal);
-  const activeLeaseRatio = effectiveActiveLeaseCount / concurrency;
-  const saturationPenalty = signal.saturation ?? activeLeaseRatio;
-  const backlogPenalty = Math.min(signal.toolBacklogCount / concurrency, 4) * 0.1;
-  const cpuPenalty = signal.cpuPct == null ? 0 : Math.min(Math.max(signal.cpuPct, 0), 100) / 100 * 0.2;
-
-  return Math.max(activeLeaseRatio, saturationPenalty) + backlogPenalty + cpuPenalty;
+  return computeCanonicalLoadScore({
+    activeCount: computeEffectiveActiveLeaseCount(signal),
+    maxConcurrency: signal.maxConcurrency,
+    saturation: signal.saturation,
+    backlogCount: signal.toolBacklogCount,
+    cpuPct: signal.cpuPct,
+  });
 }
 
 /**

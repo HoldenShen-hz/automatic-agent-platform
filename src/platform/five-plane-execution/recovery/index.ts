@@ -24,4 +24,11 @@ export * from "./stalled-execution-detector.js";
 export * from "./stalled-execution-escalation-service.js";
 export * from "./resume-compatibility-check.js";
 export * from "./replay-boundary-guard.js";
-export * from "./validation-repair-loop.js";
+export {
+  ValidationRepairLoopService,
+  type RepairEvidencePackage,
+  type ValidationFailureRecord,
+  type ValidationLoopInput,
+  type ValidationLoopStage,
+  type ValidationDecision as ValidationLoopDecision,
+} from "./validation-repair-loop.js";

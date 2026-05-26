@@ -132,13 +132,14 @@ test("starting new shift while previous is in_progress updates existing shift", 
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   // Start first shift
   const shift1 = service.startCanaryShift("blue", "green");
   assert.equal(shift1.status, "in_progress");
 
   // Advance it a bit
+  service.updateHealth(green.id, 0.95);
   const advanced = service.advanceShift(shift1.id);
   assert.ok(advanced !== null);
   assert.equal(advanced.currentStep, 1);
@@ -399,12 +400,13 @@ test("shift completes correctly when currentStep reaches end of steps array", ()
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
   assert.equal(shift.totalSteps, 11); // Default: [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 100]
 
   // Advance through all steps
+  service.updateHealth(green.id, 0.95);
   for (let i = 0; i < 11; i++) {
     const result = service.advanceShift(shift.id);
     assert.ok(result !== null);

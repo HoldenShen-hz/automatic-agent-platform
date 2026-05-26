@@ -802,6 +802,12 @@ export class TrafficRoutingService {
   }
 
   private ensureTrafficShiftVersionColumns(): void {
+    const trafficShiftsTable = this.db.connection
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get("traffic_shifts") as RawRow | undefined;
+    if (trafficShiftsTable == null) {
+      return;
+    }
     const statements = [
       "ALTER TABLE traffic_shifts ADD COLUMN from_version TEXT NULL",
       "ALTER TABLE traffic_shifts ADD COLUMN to_version TEXT NULL",

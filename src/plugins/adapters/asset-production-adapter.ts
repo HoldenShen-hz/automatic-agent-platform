@@ -25,15 +25,10 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
     async initialize() {
       // Figma API credentials would be validated here
     },
-    async healthCheck() {
-      if (credentialFingerprint == null) {
-        return false;
-      }
-      const [apiDecision, cdnDecision] = await Promise.all([
-        assetProductionPolicy.evaluate("https://api.figma.com/v1/files"),
-        assetProductionPolicy.evaluate("https://cdn.figma.com"),
-      ]);
-      return apiDecision.allowed && cdnDecision.allowed;
+    healthCheck() {
+      return assetProductionPolicy.evaluate("https://api.figma.com/v1/files").allowed
+        && credentialFingerprint != null
+        && assetProductionPolicy.evaluate("https://cdn.figma.com").allowed;
     },
     async shutdown() {
       credentialFingerprint = null;

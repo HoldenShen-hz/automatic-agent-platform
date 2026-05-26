@@ -143,7 +143,7 @@ test("ReplayRepairControlService.listRecoveryCandidates includes non-recoverable
   assert.equal(candidates[0]?.entityRef, "p0-non-recoverable");
 });
 
-test("ReplayRepairControlService.listRecoveryCandidates excludes non-recoverable non-P0 findings", () => {
+test("ReplayRepairControlService.listRecoveryCandidates keeps non-info non-recoverable findings for manual handling", () => {
   const service = new ReplayRepairControlService();
   const findings: StartupConsistencyFinding[] = [
     makeFinding({ entityRef: "non-rec", recoverable: false, severity: "p1" }),
@@ -152,7 +152,10 @@ test("ReplayRepairControlService.listRecoveryCandidates excludes non-recoverable
 
   const candidates = service.listRecoveryCandidates(report);
 
-  assert.equal(candidates.length, 0);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0]?.entityRef, "non-rec");
+  assert.equal(candidates[0]?.suggestedRepairAction, "manual_intervention_required");
+  assert.equal(candidates[0]?.disposition, "manual_handoff");
 });
 
 test("ReplayRepairControlService.listRecoveryCandidates sets manual_intervention_required for non-recoverable", () => {

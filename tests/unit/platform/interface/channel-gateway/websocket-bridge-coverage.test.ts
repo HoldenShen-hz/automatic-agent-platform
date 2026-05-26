@@ -126,6 +126,32 @@ networkPathTest("WebSocketBridge ignores JWT passed via query string and still r
   });
 });
 
+networkPathTest("WebSocketBridge ignores invalid taskId resume parameter from query string", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const ws = new WebSocket(
+        `http://127.0.0.1:${address.port}/ws/v1/stream?taskId=<script>&lastEventId=evt-1`,
+        "test-token",
+      );
+
+      ws.on("open", () => {
+        assert.equal(bridge.getClientCount(), 1);
+        ws.close();
+        bridge.close().then(() => {
+          server.close();
+          resolve();
+        });
+      });
+
+      ws.on("error", reject);
+    });
+  });
+});
+
 networkPathTest("WebSocketBridge handles ping/pong", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
@@ -963,7 +989,7 @@ test("WebSocketBridge rejects application payloads larger than the configured li
 
     assert.equal(messages.length, 1);
     assert.equal(messages[0]?.type, "error");
-    assert.equal((messages[0] as Extract<WebSocketMessageType, { type: "error" }>)?.code, "api.message_too_large");
+    assert.equal((messages[0] as Extract<WebSocketMessageType, { type: "error" }>)?.code, "api.payload_too_large");
   } finally {
     void bridge.close();
     server.close();

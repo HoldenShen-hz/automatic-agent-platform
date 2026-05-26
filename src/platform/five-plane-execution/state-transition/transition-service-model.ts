@@ -111,7 +111,7 @@ export type TaskTerminalTransitionInput = {
   currentSessionStatus: SessionStatus;
   currentExecutionStatus: ExecutionStatus;
   terminalStatus: TaskTerminalStatus;
-  taskOutputJson: string;
+  taskOutputJson: string | null;
   outputsJson: string;
   context: TransitionAuditContext;
   expectedTaskUpdatedAt?: string;

@@ -37,6 +37,12 @@ import type {
 const DEFAULT_WARNING_THRESHOLD = 0.8; // 80% of limit triggers warning
 const DEFAULT_CRITICAL_THRESHOLD = 0.95; // 95% of limit triggers critical alert
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const MAX_ALERT_DEDUP_KEYS = 512;
+
+interface AlertDedupEntry {
+  readonly lastTriggeredAt: string;
+  readonly lastAlertLevel: CostAlertLevel;
+}
 
 // ---------------------------------------------------------------------------
 // Cost Alert Service
@@ -56,7 +62,7 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
  */
 export class CostAlertService extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly accumulators: Map<string, CostAccumulator> = new Map();
-  private readonly lastAlertByKey: Map<string, string> = new Map();
+  private readonly lastAlertByKey: Map<string, AlertDedupEntry> = new Map();
   private config: CostAlertConfig;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_ACCUMULATORS = 500;
@@ -514,12 +520,23 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     stepId: string | null;
     actions: CostAlertAction[];
   }): void {
-    if (!this.shouldEmitAlert(input.scope, input.scopeId, input.alertLevel, input.periodStart)) {
+    const correlationId = this.buildAlertCorrelationId(input);
+    if (!this.shouldEmitAlert({
+      scope: input.scope,
+      scopeId: input.scopeId,
+      alertLevel: input.alertLevel,
+      periodStart: input.periodStart,
+      correlationId,
+      executionId: input.executionId,
+      taskId: input.taskId,
+      stepId: input.stepId,
+    })) {
       return;
     }
     const event: CostThresholdExceededEvent = {
       eventType: "cost:limit_reached",
       eventTier: this.getEventTier(input.alertLevel),
+      correlationId,
       scope: input.scope,
       scopeId: input.scopeId,
       alertLevel: input.alertLevel,
@@ -655,22 +672,106 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
   }
 
   private shouldEmitAlert(
-    scope: BudgetScope,
-    scopeId: string,
-    alertLevel: CostAlertLevel,
-    periodStart: string,
+    input: {
+      readonly scope: BudgetScope;
+      readonly scopeId: string;
+      readonly alertLevel: CostAlertLevel;
+      readonly periodStart: string;
+      readonly correlationId: string;
+      readonly executionId: string | null;
+      readonly taskId: string | null;
+      readonly stepId: string | null;
+    },
   ): boolean {
-    const alertKey = `${scope}:${scopeId}:${alertLevel}`;
-    const lastTriggeredAt = this.lastAlertByKey.get(alertKey);
+    if (this.hasOpenAlertForSubject(input.executionId, input.taskId, input.stepId)) {
+      return false;
+    }
+    const alertKey = `${input.scope}:${input.scopeId}:${input.correlationId}`;
+    const lastTriggered = this.lastAlertByKey.get(alertKey);
     const now = Date.now();
-    if (lastTriggeredAt != null) {
-      const lastMs = new Date(lastTriggeredAt).getTime();
-      const periodMs = new Date(periodStart).getTime();
-      if (lastMs >= periodMs && now - lastMs < this.config.minAlertIntervalMs) {
+    if (lastTriggered != null) {
+      const lastMs = new Date(lastTriggered.lastTriggeredAt).getTime();
+      const periodMs = new Date(input.periodStart).getTime();
+      const isEscalation = this.alertLevelRank(input.alertLevel) > this.alertLevelRank(lastTriggered.lastAlertLevel);
+      if (lastMs >= periodMs && now - lastMs < this.config.minAlertIntervalMs && !isEscalation) {
         return false;
       }
+      this.lastAlertByKey.delete(alertKey);
     }
-    this.lastAlertByKey.set(alertKey, new Date(now).toISOString());
+    this.lastAlertByKey.set(alertKey, {
+      lastTriggeredAt: new Date(now).toISOString(),
+      lastAlertLevel: input.alertLevel,
+    });
+    this.evictAlertDedupeEntries(now);
     return true;
+  }
+
+  private buildAlertCorrelationId(input: {
+    readonly scope: BudgetScope;
+    readonly scopeId: string;
+    readonly periodStart: string;
+    readonly tenantId: string | null;
+    readonly taskId: string | null;
+    readonly executionId: string | null;
+    readonly stepId: string | null;
+  }): string {
+    const subjectRef = input.executionId ?? input.taskId ?? input.stepId ?? input.tenantId ?? input.scopeId;
+    const digest = createHash("sha256")
+      .update(`${input.scope}:${input.scopeId}:${subjectRef}:${input.periodStart}`)
+      .digest("hex")
+      .slice(0, 12);
+    return `cost_alert:${input.scope}:${input.scopeId}:${digest}`;
+  }
+
+  private alertLevelRank(level: CostAlertLevel): number {
+    switch (level) {
+      case "warning":
+        return 1;
+      case "critical":
+        return 2;
+      case "exceeded":
+        return 3;
+      default:
+        return 0;
+    }
+  }
+
+  private evictAlertDedupeEntries(now: number): void {
+    const expiryThreshold = now - Math.max(this.config.minAlertIntervalMs, this.ACCUMULATOR_TTL_MS);
+    for (const [key, value] of this.lastAlertByKey) {
+      if (new Date(value.lastTriggeredAt).getTime() < expiryThreshold) {
+        this.lastAlertByKey.delete(key);
+      }
+    }
+    while (this.lastAlertByKey.size > MAX_ALERT_DEDUP_KEYS) {
+      const oldestKey = this.lastAlertByKey.keys().next().value;
+      if (oldestKey == null) {
+        return;
+      }
+      this.lastAlertByKey.delete(oldestKey);
+    }
+  }
+
+  private hasOpenAlertForSubject(
+    executionId: string | null,
+    taskId: string | null,
+    stepId: string | null,
+  ): boolean {
+    const hints = [executionId, taskId, stepId].filter((value): value is string => value != null && value.trim() !== "");
+    if (hints.length === 0) {
+      return false;
+    }
+    try {
+      const rows = this.db.connection
+        .prepare(`SELECT title, detail FROM alert_events WHERE status IN ('firing', 'acknowledged') ORDER BY fired_at DESC LIMIT 200`)
+        .all() as Array<{ title?: unknown; detail?: unknown }>;
+      return rows.some((row) => {
+        const title = typeof row.title === "string" ? row.title : "";
+        const detail = typeof row.detail === "string" ? row.detail : "";
+        return hints.some((hint) => title.includes(hint) || detail.includes(hint));
+      });
+    } catch {
+      return false;
+    }
   }
 }

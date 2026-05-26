@@ -169,6 +169,17 @@ test.describe("WorkflowDebuggerService", () => {
       assert.equal(result.length, 1);
       assert.equal(result[0]?.breakpointId, "bp-1");
     });
+
+    test("getActiveBreakpoints returns the normalized active breakpoints for a workflow scope", () => {
+      const service = new WorkflowDebuggerService();
+      service.registerBreakpoint(createProdActor(), "staging", createBreakpoint("bp-active", "wf-active", "deploy"));
+
+      const result = service.getActiveBreakpoints("wf-active");
+
+      assert.equal(result.length, 1);
+      assert.equal(result[0]?.planGraphId, "wf-active");
+      assert.equal(result[0]?.nodeRunSelector, "deploy");
+    });
   });
 
   test.describe("evaluateTrace", () => {

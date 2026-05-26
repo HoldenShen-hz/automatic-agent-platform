@@ -3,9 +3,18 @@ import test from "node:test";
 
 import type { CostAlertConfig, BudgetPolicy, BudgetScope } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
-const mockDb = {
-  transaction: <T>(fn: () => T): T => fn(),
-} as any;
+function createMockDb(openAlertRows: Array<{ title: string; detail: string }> = []) {
+  return {
+    transaction: <T>(fn: () => T): T => fn(),
+    connection: {
+      prepare: () => ({
+        all: () => openAlertRows,
+      }),
+    },
+  } as any;
+}
+
+const mockDb = createMockDb();
 
 const mockStore = {
   event: {
@@ -272,6 +281,62 @@ test("CostAlertService handles infinity limit", () => {
 
   assert.equal(result.allowed, true);
   assert.equal(result.thresholdRatio, 0);
+});
+
+test("CostAlertService reuses a correlation ID across severity escalation for the same spike", () => {
+  const policy = createPolicy("tenant", "tenant-1", 100);
+  const service = new CostAlertService(createMockDb(), mockStore, {
+    enabled: true,
+    minAlertIntervalMs: 60_000,
+    tenantBudgetPolicies: { "tenant-1": policy },
+  });
+  const events: Array<{ correlationId: string; alertLevel: string }> = [];
+
+  service.on("cost:limit_reached", (event: any) => {
+    events.push({ correlationId: event.correlationId, alertLevel: event.alertLevel });
+  });
+
+  service.recordCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    actualCostUsd: 85,
+    tenantId: "tenant-1",
+    executionId: "exec-cost-1",
+  });
+  service.recordCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    actualCostUsd: 12,
+    tenantId: "tenant-1",
+    executionId: "exec-cost-1",
+  });
+
+  assert.equal(events.length, 2);
+  assert.equal(events[0]!.alertLevel, "warning");
+  assert.equal(events[1]!.alertLevel, "critical");
+  assert.equal(events[0]!.correlationId, events[1]!.correlationId);
+});
+
+test("CostAlertService suppresses duplicate cost alerts when an open alert already references the same execution", () => {
+  const policy = createPolicy("tenant", "tenant-1", 100);
+  const service = new CostAlertService(createMockDb([
+    { title: "Budget alert", detail: "execution exec-cost-2 already paging" },
+  ]), mockStore, {
+    enabled: true,
+    tenantBudgetPolicies: { "tenant-1": policy },
+  });
+  const events: unknown[] = [];
+
+  service.on("cost:limit_reached", (event: unknown) => events.push(event));
+  service.recordCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    actualCostUsd: 120,
+    tenantId: "tenant-1",
+    executionId: "exec-cost-2",
+  });
+
+  assert.equal(events.length, 0);
 });
 
 test("CostAlertService records with provider and model metadata", () => {

@@ -304,7 +304,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           const result = deps.intakeAdmissionService.admit({
             tenantId: effectiveTenantId,
             principal: { principalId: principal.actorId, type: "human", tenantId: effectiveTenantId, roles: principal.roles ?? [], authorizationLevel: principal.roles?.includes("admin") ? "admin" : principal.roles?.includes("operator") ? "operator" : "viewer" },
-            source: (payload.source ?? "ui") as TaskInputSource,
+            source: mapCreateTaskSourceToInputSource(payload.source),
             domainId: payload.divisionId ?? "",
             goal: payload.title,
             inputs: payload.inputJson ?? "{}",
@@ -313,6 +313,26 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] },
             idempotencyKey: ctx.request.headers["idempotency-key"] ?? `task:${newId("idempotency")}`,
             traceId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
+          });
+          deps.taskStore.task.insertTask({
+            id: taskId,
+            parentId: payload.parentId ?? null,
+            rootId: taskId,
+            divisionId: payload.divisionId ?? null,
+            tenantId,
+            title: payload.title,
+            status: "queued",
+            source: payload.source ?? "user",
+            priority: payload.priority ?? "normal",
+            inputJson: payload.inputJson ?? "{}",
+            normalizedInputJson: JSON.stringify(result.taskDraft.normalizedIntent ?? null),
+            outputJson: null,
+            estimatedCostUsd: result.requestEnvelope.budgetIntent.amount,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: result.harnessRun.createdAt,
+            updatedAt: result.harnessRun.updatedAt,
+            completedAt: null,
           });
           for (const event of result.events) {
             deps.taskStore.event.insertEvent({
@@ -551,6 +571,18 @@ function priorityToRiskClass(priority: ReturnType<typeof parseCreateTaskPayload>
       return "medium";
     default:
       return "low";
+  }
+}
+
+function mapCreateTaskSourceToInputSource(source: "user" | "perception" | "system" | undefined): TaskInputSource {
+  switch (source) {
+    case "perception":
+      return "external_event";
+    case "system":
+      return "scheduler";
+    case "user":
+    default:
+      return "ui";
   }
 }
 

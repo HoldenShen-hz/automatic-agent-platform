@@ -38,6 +38,7 @@ import type { ContextCompactionResult, ContextCompactionService } from "../../..
 import type { MultiStepToolExecutionInput } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
 import type { AdmissionDecision } from "../../../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
 import type { RoleToolExposureService } from "../../../../../src/platform/five-plane-execution/tool-executor/role-tool-exposure-service.js";
+import { WorkflowDebuggerService } from "../../../../../src/ops-maturity/workflow-debugger/index.js";
 import {
   executeStepLoop,
   type StepSupervisorContext,
@@ -390,6 +391,45 @@ test("executeStepLoop skips step when hard dependency failed", async () => {
 
   assert.equal(result.skippedStepIds.has("step_2"), true, "step_2 should be skipped");
   assert.equal(result.stepOutputs.some(o => o.stepId === "step_2" && o.status === "skipped"), true, "step_2 output should be skipped");
+});
+
+test("executeStepLoop pauses before execution when a debugger pause breakpoint matches the next step", async () => {
+  const debuggerService = new WorkflowDebuggerService();
+  debuggerService.registerBreakpoint(
+    { actorId: "debugger-1", allowedRuntime: "replay_sandbox" },
+    "staging",
+    {
+      breakpointId: "bp-pause-step-1",
+      planGraphId: "graph-1",
+      stepSelector: "step_1",
+      condition: "always",
+      action: "pause",
+    },
+  );
+  const events: Array<{ eventType?: string; payloadJson?: string | null }> = [];
+  const deps = createMockExecutionDeps({
+    store: {
+      ...createMockTaskStore(),
+      event: {
+        insertEvent: (event: { eventType?: string; payloadJson?: string | null }) => {
+          events.push(event);
+          return {};
+        },
+        listEvents: (_taskId: string) => [],
+      },
+    } as unknown as AuthoritativeTaskStore,
+  });
+  const ctx = createMockStepSupervisorContext({
+    planGraphId: "graph-1",
+    workflowDebugger: debuggerService,
+  });
+
+  const result = await executeStepLoop(ctx, deps);
+
+  assert.equal(result.blockedForDecision, true);
+  assert.equal(result.stepCompleted, false);
+  assert.equal(result.stepOutputs.length, 0);
+  assert.equal(events.some((event) => event.eventType === "workflow:paused_for_breakpoint"), true);
 });
 
 test("executeStepLoop skips step when hard dependency was skipped", async () => {

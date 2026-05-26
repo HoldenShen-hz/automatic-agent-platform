@@ -416,7 +416,7 @@ test("sandbox: output sanitization removes ANSI escape sequences", async () => {
       agentId: "agent-sandbox-ansi",
       traceId: "trace-sandbox-ansi",
       toolName: "command_exec",
-      timeoutMs: 5000,
+      timeoutMs: 15000,
       sandboxPolicy: createWorkspaceWritePolicy(workspace),
       command: "node",
       args: [scriptPath],

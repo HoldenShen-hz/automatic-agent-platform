@@ -114,7 +114,7 @@ export class AsyncTaskRepository {
     );
   }
 
-  public async updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): Promise<void> {
+  public async updateTaskOutput(taskId: string, outputJson: string | null, updatedAt: string): Promise<void> {
     await asyncExecute(this.conn, `UPDATE tasks SET output_json = $1, updated_at = $2 WHERE id = $3`, outputJson, updatedAt, taskId);
   }
 

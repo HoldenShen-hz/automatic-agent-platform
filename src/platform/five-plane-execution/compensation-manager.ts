@@ -236,6 +236,12 @@ export class CompensationManager {
         const success = this.executeCompensationStep(step, context);
         if (!success) {
           finalStatus = "failed";
+          const nodeRunId = resolveCompensationNodeRunId(step);
+          evidenceRefs.push({
+            artifactId: nodeRunId,
+            uri: `compensation://${plan.compensationId}/${nodeRunId}/failed?stepType=${encodeURIComponent(step.stepType)}&targetRef=${encodeURIComponent(step.targetRef)}`,
+            kind: "compensation_error",
+          });
           break;
         }
         const nodeRunId = resolveCompensationNodeRunId(step);

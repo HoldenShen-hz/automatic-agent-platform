@@ -81,6 +81,10 @@ export class WorkflowDebuggerService {
     return [...(this.breakpoints.get(workflowId) ?? [])];
   }
 
+  public getActiveBreakpoints(workflowId: string): DebugBreakpointDefinition[] {
+    return this.listBreakpoints(workflowId);
+  }
+
   public evaluateTrace(frames: readonly WorkflowTraceFrame[]): BreakpointHit[] {
     if (frames.length === 0) {
       return [];

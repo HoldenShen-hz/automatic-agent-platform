@@ -12,9 +12,9 @@ test("incident-control barrel keeps post-mortem generation on IncidentResolver",
   assert.equal(typeof mod.IncidentResolver.prototype.generatePostMortem, "function");
 });
 
-test("doctor types stay on doctor-service module instead of incident barrel", async () => {
+test("incident-control barrel re-exports doctor helpers", async () => {
   const mod = await import("../../../../../src/platform/five-plane-control-plane/incident-control/index.js");
-  assert.equal("summarizeDoctorChecks" in mod, false);
+  assert.equal(typeof mod.summarizeDoctorChecks, "function");
 });
 
 test("doctor-service keeps doctor exports", async () => {

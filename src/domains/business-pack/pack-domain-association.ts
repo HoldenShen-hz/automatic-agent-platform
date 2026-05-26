@@ -10,6 +10,11 @@
  */
 
 import { ValidationError } from "../../platform/contracts/errors.js";
+import type { NormalizedBusinessPackManifest } from "./business-pack-manifest.js";
+import {
+  assertPackCompatibleWithDomain,
+  type DomainPackCompatibilityDomain,
+} from "./pack-domain-compatibility.js";
 
 // ============================================================================
 // Association Types
@@ -34,6 +39,11 @@ export interface DomainPackInfo {
   primaryPackId: string | null;
 }
 
+export interface PackDomainAssociationServiceOptions {
+  readonly domainResolver?: ((domainId: string) => DomainPackCompatibilityDomain | null) | null;
+  readonly packResolver?: ((packId: string) => NormalizedBusinessPackManifest | null) | null;
+}
+
 // ============================================================================
 // Domain Association Service
 // ============================================================================
@@ -51,12 +61,21 @@ export class PackDomainAssociationService {
   private readonly packToDomain = new Map<string, string>();
   private readonly domainToPacks = new Map<string, Set<string>>();
   private readonly primaryPacks = new Map<string, string>();
+  private readonly domainResolver: ((domainId: string) => DomainPackCompatibilityDomain | null) | null;
+  private readonly packResolver: ((packId: string) => NormalizedBusinessPackManifest | null) | null;
+
+  public constructor(options: PackDomainAssociationServiceOptions = {}) {
+    this.domainResolver = options.domainResolver ?? null;
+    this.packResolver = options.packResolver ?? null;
+  }
 
   /**
    * Associates a pack with a domain.
    * If isPrimary is true, this pack becomes the primary pack for the domain.
    */
   public associatePackWithDomain(packId: string, domainId: string, isPrimary = false): void {
+    this.assertAssociationCompatibility(packId, domainId);
+
     // Remove existing association if pack was linked to different domain
     const existingDomain = this.packToDomain.get(packId);
     if (existingDomain && existingDomain !== domainId) {
@@ -207,5 +226,31 @@ export class PackDomainAssociationService {
       category: "validation",
       source: "internal",
     });
+  }
+
+  private assertAssociationCompatibility(packId: string, domainId: string): void {
+    const domain = this.domainResolver?.(domainId) ?? null;
+    if (this.domainResolver != null && domain == null) {
+      throw this.validationError(
+        "pack_domain.domain_not_found",
+        `pack_domain.domain_not_found: Domain ${domainId} is not registered.`,
+      );
+    }
+    const pack = this.packResolver?.(packId) ?? null;
+    if (this.packResolver != null && pack == null) {
+      throw this.validationError(
+        "pack_domain.pack_not_found",
+        `pack_domain.pack_not_found: Pack ${packId} is not registered.`,
+      );
+    }
+    if (pack != null && pack.domainId !== domainId) {
+      throw this.validationError(
+        "pack_domain.domain_mismatch",
+        `pack_domain.domain_mismatch: Pack ${packId} declares domain ${pack.domainId}, not ${domainId}.`,
+      );
+    }
+    if (pack != null && domain != null) {
+      assertPackCompatibleWithDomain(pack, domain);
+    }
   }
 }

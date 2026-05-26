@@ -116,6 +116,16 @@
 | [110](./110-runtime-state-machine-authority.md) | Runtime State Machine Authority | Accepted | 2026-04-27 |
 | [111](./111-platform-fact-vs-oapeflir-view-events.md) | Platform Fact vs OAPEFLIR View Events | Accepted | 2026-04-27 |
 | [112](./112-mvp-ring-implementation-boundary.md) | MVP Ring Implementation Boundary | Accepted | 2026-04-27 |
+| [113](./113-session-tenant-resolution-and-principal-scope.md) | Session Tenant Resolution And Principal Scope | Accepted | 2026-05-25 |
+| [114](./114-http-auth-precedence-and-service-delegation.md) | HTTP Auth Precedence And Service Delegation | Accepted | 2026-05-25 |
+| [115](./115-self-healing-simulation-boundary.md) | Self Healing Simulation Boundary | Accepted | 2026-05-25 |
+| [116](./116-interface-rate-limit-key-design.md) | Interface Rate Limit Key Design | Accepted | 2026-05-25 |
+| [117](./117-cost-event-wal-recovery.md) | Cost Event WAL Recovery | Accepted | 2026-05-25 |
+| [118](./118-panic-allowlist-governance.md) | Panic Allowlist Governance | Accepted | 2026-05-25 |
+| [119](./119-pack-domain-lifecycle-coordination.md) | Pack Domain Lifecycle Coordination | Accepted | 2026-05-25 |
+| [120](./120-ui-sdk-client-transport-boundary.md) | UI and SDK Client Transport Boundary | Accepted | 2026-05-25 |
+| [121](./121-timeout-and-worker-liveness-hierarchy.md) | Timeout and Worker Liveness Hierarchy | Accepted | 2026-05-25 |
+| [122](./122-domain-evidence-and-session-boundary.md) | Domain Evidence and Session Replay Boundary | Accepted | 2026-05-25 |
 
 ## Status Description
 
@@ -130,8 +140,8 @@
 - Historical directory simultaneously retains `003-memory-six-layers.md` and `003-memory-seven-layers.md`; where `seven-layers` is retained only as historical alias / jump page, and canonical content uses `003-memory-six-layers.md` as the standard.
 - Plugin SPI ADR has been unified and converged to `071-plugin-spi-framework.md`; the old `066-plugin-spi-framework.md` duplicate copy has been removed, and all references are unified to ADR-071.
 - Newly added `091-108` are used to承接 Harness eight pillars and domain governance supplement items.
-- Newly added `109-112` are v4.3 Contract Freeze implementation entry points: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, and MVP / Hardening / Enterprise three-ring boundary.
-- `109-112` constrain old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming through freeze / authority / event namespace / ring boundary; historical ADR text is retained and not directly rewritten.
+- Newly added `109-122` are the v4.3 Contract Freeze and follow-on implementation clarification entry points: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, MVP / Hardening / Enterprise three-ring boundary, plus the canonical rules for tenant scope, auth precedence, self-healing boundary, interface rate-limit keys, WAL recovery, panic allowlists, pack-domain lifecycle, client transport, timeout hierarchy, and evidence boundaries.
+- `109-122` constrain old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming, tenant resolution, and cross-layer boundary semantics through freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary rules; historical ADR text is retained and not directly rewritten.
 
 ## Creating New ADR
 

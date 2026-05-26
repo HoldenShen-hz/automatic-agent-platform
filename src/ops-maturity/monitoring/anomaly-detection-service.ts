@@ -55,6 +55,7 @@ export class AnomalyDetectionService {
   private readonly thresholds: readonly SloThreshold[];
   private readonly metricBuffer = new Map<string, MetricDatapoint[]>();
   private readonly maxBufferEntries = 500;
+  private readonly maxPointsPerMetric = 120;
   private cleanupAt = 0;
 
   public constructor(thresholds?: readonly SloThreshold[]) {
@@ -63,8 +64,13 @@ export class AnomalyDetectionService {
 
   public ingestMetric(name: string, value: number, timestamp?: string): void {
     const key = name;
+    const datapoint = { timestamp: timestamp ?? nowIso(), value };
     const existing = this.metricBuffer.get(key) ?? [];
-    this.metricBuffer.set(key, [...existing, { timestamp: timestamp ?? nowIso(), value }]);
+    const next = [...existing, datapoint];
+    if (next.length > this.maxPointsPerMetric) {
+      next.splice(0, next.length - this.maxPointsPerMetric);
+    }
+    this.metricBuffer.set(key, next);
     this.evictExpired();
   }
 
@@ -72,6 +78,18 @@ export class AnomalyDetectionService {
     const now = Date.now();
     if (now - this.cleanupAt < 30000) return;
     this.cleanupAt = now;
+    for (const [metricName, buffer] of this.metricBuffer) {
+      const threshold = this.thresholds.find((item) => item.metricName === metricName);
+      const retentionMinutes = threshold?.windowSizeMinutes ?? 60;
+      const trimmed = this.getRecentWindow(buffer, retentionMinutes * 2);
+      if (trimmed.length === 0) {
+        this.metricBuffer.delete(metricName);
+        continue;
+      }
+      if (trimmed.length !== buffer.length) {
+        this.metricBuffer.set(metricName, trimmed.slice(-this.maxPointsPerMetric));
+      }
+    }
     if (this.metricBuffer.size <= this.maxBufferEntries) return;
     const keys = Array.from(this.metricBuffer.keys());
     const toRemove = keys.slice(0, Math.floor(this.maxBufferEntries * 0.2));

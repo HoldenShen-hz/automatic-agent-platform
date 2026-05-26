@@ -195,7 +195,7 @@ export class TaskRepository {
    * Only updates if the current output matches expected output.
    * @returns Number of rows affected (1 if successful, 0 if CAS failed)
    */
-  public updateTaskOutputCas(taskId: string, outputJson: string, updatedAt: string, expectedOutputJson: string): number {
+  public updateTaskOutputCas(taskId: string, outputJson: string | null, updatedAt: string, expectedOutputJson: string | null): number {
     return execute(
       this.conn,
       `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ? AND output_json = ?`,
@@ -209,7 +209,7 @@ export class TaskRepository {
   /**
    * Update task output (without optimistic locking).
    */
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
+  public updateTaskOutput(taskId: string, outputJson: string | null, updatedAt: string): void {
     execute(this.conn, `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ?`, outputJson, updatedAt, taskId);
   }
 

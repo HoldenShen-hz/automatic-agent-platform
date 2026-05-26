@@ -503,6 +503,7 @@ export function buildStructuredMemoryContentFromCliEnv(
     recentHistory: config.recentHistory ?? [],
     longTermBackground: config.longTermBackground ?? [],
     facts: config.facts ?? [],
+    metadata: {},
   };
 }
 

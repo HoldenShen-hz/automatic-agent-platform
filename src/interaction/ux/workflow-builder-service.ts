@@ -719,9 +719,12 @@ export class WorkflowBuilderService {
       ...builder.validation.messages,
       ...validationMessages.filter((message) => !builder.validation.messages.includes(message)),
     ];
-    builder.validation = {
-      valid: builderValidationMessages.length === 0,
-      messages: builderValidationMessages,
+    const reviewedBuilder = {
+      ...builder,
+      validation: {
+        valid: builderValidationMessages.length === 0,
+        messages: builderValidationMessages,
+      },
     };
     const worstPathAnalysis = analyzeWorstPath(
       normalizedGraph.planGraphBundle.graph.nodes,
@@ -738,7 +741,7 @@ export class WorkflowBuilderService {
     return {
       session: request.session,
       template,
-      builder,
+      builder: reviewedBuilder,
       nextStepAllowed,
       saveReview,
     };

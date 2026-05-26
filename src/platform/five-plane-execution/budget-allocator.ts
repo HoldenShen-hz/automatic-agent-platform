@@ -368,12 +368,8 @@ export class BudgetAllocator {
   }): BudgetSettlementResult | Promise<BudgetSettlementResult> {
     const expectedVersion = input.expectedVersion ?? input.ledger.version;
     const context = normalizeContext(input.context);
-    if (input.actualAmount > input.reservation.amount) {
-      throw new WorkflowStateError(
-        "budget_settlement.actual_amount_exceeds_reservation",
-        "budget_settlement.actual_amount_exceeds_reservation: Actual amount exceeds reserved amount.",
-      );
-    }
+    const overspendAmount = Math.max(0, input.actualAmount - input.reservation.amount);
+    const overspendDetected = overspendAmount > 0;
     if (input.ledger.settledAmount + input.actualAmount > input.ledger.hardCap && shouldUseBudgetValidationErrors(input.context)) {
       throw new ValidationError(
         "budget.settle.hard_cap_not_satisfied",
@@ -401,7 +397,6 @@ export class BudgetAllocator {
     }
     const hardCapSatisfied =
       input.reservation.status === "reserved" &&
-      input.actualAmount <= input.reservation.amount &&
       input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
 
     // R11-07 FIX: Transition reservation through RSM for proper event emission and audit trail
@@ -455,6 +450,8 @@ export class BudgetAllocator {
       reservation: reservationResult,
       settlement,
       ledger,
+      overspendDetected,
+      overspendAmount,
       ...(hierarchyLedgers != null ? { hierarchyLedgers } : {}),
     };
   }
@@ -557,6 +554,8 @@ export class BudgetAllocator {
     context: NormalizedBudgetAllocatorContext,
   ): Promise<BudgetSettlementResult> {
     const atomicRepository = this.requireAtomicRepository("budget_settlement.atomic_repository_missing");
+    const overspendAmount = Math.max(0, input.actualAmount - input.reservation.amount);
+    const overspendDetected = overspendAmount > 0;
     const result = await atomicRepository.settleAtomically(
       input.ledger,
       input.reservation,
@@ -573,7 +572,6 @@ export class BudgetAllocator {
     this.untrackActiveReservation(input.reservation.budgetReservationId);
     const hardCapSatisfied =
       input.reservation.status === "reserved" &&
-      input.actualAmount <= input.reservation.amount &&
       input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
     const command: RuntimeTransitionCommand<BudgetReservation> = {
       commandId: newId("cmd"),
@@ -597,7 +595,7 @@ export class BudgetAllocator {
     const reservation = this.stateMachine.transition(command);
     const ledger = result.ledger!;
     this.emitLedgerFact({ before: input.ledger, after: ledger, reasonCode: "budget.settled", context });
-    return { reservation, settlement, ledger };
+    return { reservation, settlement, ledger, overspendDetected, overspendAmount };
   }
 
   private async releaseAtomically(

@@ -7,6 +7,10 @@
  * @see docs_en/reviews/architecture-design-vs-implementation-review.md §39
  */
 
+import {
+  INTAKE_DISAMBIGUATION_THRESHOLD,
+  INTAKE_LOW_CONFIDENCE_THRESHOLD,
+} from "../../../platform/contracts/constants/index.js";
 import type { DetectedIntent, ExtractedEntity } from "../index.js";
 
 /**
@@ -45,8 +49,8 @@ export interface DisambiguationResult {
 }
 
 const DEFAULT_DISAMBIGUATION_CONFIG: DisambiguationConfig = {
-  threshold: 0.8,
-  lowConfidenceThreshold: 0.5,
+  threshold: INTAKE_DISAMBIGUATION_THRESHOLD,
+  lowConfidenceThreshold: INTAKE_LOW_CONFIDENCE_THRESHOLD,
   maxClarificationQuestions: 3,
   enableProactiveClarification: true,
 };

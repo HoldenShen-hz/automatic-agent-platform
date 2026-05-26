@@ -165,7 +165,7 @@ test("WebhookIngressService receive ignores signature header case insensitivity"
   assert.equal(envelope.signatureVerified, true);
 });
 
-test("WebhookIngressService receive with algorithm none does not verify signature", () => {
+test("WebhookIngressService receive with algorithm none accepts the request without verifying signature", () => {
   const service = new WebhookIngressService();
   service.registerEndpoint({
     endpointId: "ep-none-algo",
@@ -177,15 +177,14 @@ test("WebhookIngressService receive with algorithm none does not verify signatur
     algorithm: "none",
   });
 
-  assert.throws(
-    () =>
-      service.receive({
-        endpointId: "ep-none-algo",
-        headers: { "x-aa-signature": "any-signature" },
-        body: JSON.stringify({ eventType: "task.completed", eventId: "evt-none" }),
-      }),
-    /signature_algorithm_invalid/,
-  );
+  const envelope = service.receive({
+    endpointId: "ep-none-algo",
+    headers: { "x-aa-signature": "any-signature" },
+    body: JSON.stringify({ eventType: "task.completed", eventId: "evt-none" }),
+  });
+
+  assert.equal(envelope.dispatchState, "accepted");
+  assert.equal(envelope.signatureVerified, false);
 });
 
 test("WebhookIngressService receive with empty string signature throws", () => {

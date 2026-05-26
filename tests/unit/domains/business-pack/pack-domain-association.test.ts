@@ -6,9 +6,21 @@ import {
   type PackDomainAssociation,
   type DomainPackInfo,
 } from "../../../../src/domains/business-pack/pack-domain-association.js";
+import type { DomainPackCompatibilityDomain } from "../../../../src/domains/business-pack/pack-domain-compatibility.js";
+import type { NormalizedBusinessPackManifest } from "../../../../src/domains/business-pack/business-pack-manifest.js";
 
 function createAssociationService(): PackDomainAssociationService {
   return new PackDomainAssociationService();
+}
+
+function createGuardedAssociationService(options?: {
+  readonly domains?: ReadonlyMap<string, DomainPackCompatibilityDomain>;
+  readonly packs?: ReadonlyMap<string, NormalizedBusinessPackManifest>;
+}): PackDomainAssociationService {
+  return new PackDomainAssociationService({
+    domainResolver: (domainId) => options?.domains?.get(domainId) ?? null,
+    packResolver: (packId) => options?.packs?.get(packId) ?? null,
+  });
 }
 
 test("PackDomainAssociationService associatePackWithDomain creates association", () => {
@@ -294,4 +306,84 @@ test("PackDomainAssociationService supports multiple domains per pack", () => {
   assert.strictEqual(service.getDomainForPack("pack-001"), "domain-002");
   assert.deepStrictEqual(service.listPacksInDomain("domain-001"), []);
   assert.deepStrictEqual(service.listPacksInDomain("domain-002"), ["pack-001"]);
+});
+
+test("PackDomainAssociationService rejects associations for archived domains", () => {
+  const domains = new Map<string, DomainPackCompatibilityDomain>([
+    ["domain-001", { domainId: "domain-001", status: "archived", securityLevel: "elevated", defaultRiskLevel: "high" }],
+  ]);
+  const packs = new Map<string, NormalizedBusinessPackManifest>([
+    ["pack-001", {
+      packId: "pack-001",
+      name: "Pack",
+      version: "1.0.0",
+      domainId: "domain-001",
+      description: "",
+      lifecycleStage: "draft",
+      deprecatedAt: null,
+      archivedAt: null,
+      riskMatrix: [],
+      toolBundles: [],
+      pluginIds: [],
+      dependencies: [],
+      approvalPoints: [],
+      artifactTypes: [],
+      knowledgeNamespaces: [],
+      failureStrategy: "fail_fast",
+      rollbackCapability: false,
+      domainMetrics: [],
+      sandboxTier: "workspace_write",
+      permissions: [],
+      author: "",
+      tags: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }],
+  ]);
+  const service = createGuardedAssociationService({ domains, packs });
+
+  assert.throws(
+    () => service.associatePackWithDomain("pack-001", "domain-001"),
+    /archived_domain_forbidden/,
+  );
+});
+
+test("PackDomainAssociationService rejects pack-domain risk mismatches", () => {
+  const domains = new Map<string, DomainPackCompatibilityDomain>([
+    ["domain-001", { domainId: "domain-001", status: "active", securityLevel: "standard", defaultRiskLevel: "low" }],
+  ]);
+  const packs = new Map<string, NormalizedBusinessPackManifest>([
+    ["pack-001", {
+      packId: "pack-001",
+      name: "Pack",
+      version: "1.0.0",
+      domainId: "domain-001",
+      description: "",
+      lifecycleStage: "draft",
+      deprecatedAt: null,
+      archivedAt: null,
+      riskMatrix: [{ riskId: "risk-1", level: "critical", triggers: [], mitigation: "", escalationPolicy: "" }],
+      toolBundles: [],
+      pluginIds: [],
+      dependencies: [],
+      approvalPoints: [],
+      artifactTypes: [],
+      knowledgeNamespaces: [],
+      failureStrategy: "fail_fast",
+      rollbackCapability: false,
+      domainMetrics: [],
+      sandboxTier: "read_only",
+      permissions: [],
+      author: "",
+      tags: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }],
+  ]);
+  const service = createGuardedAssociationService({ domains, packs });
+
+  assert.throws(
+    () => service.associatePackWithDomain("pack-001", "domain-001"),
+    /risk_level_mismatch|security_level_mismatch/,
+  );
 });

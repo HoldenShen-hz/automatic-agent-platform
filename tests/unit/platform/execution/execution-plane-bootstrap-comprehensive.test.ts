@@ -158,7 +158,7 @@ test("listExecutionCapabilityBaselines returns recovery capability", () => {
   const baselines = listExecutionCapabilityBaselines();
   const recovery = baselines.find((b) => b.capabilityId === "recovery");
   assert.ok(recovery);
-  assert.ok(recovery!.baselineServices.includes("RecoveryService"));
+  assert.ok(recovery!.baselineServices.includes("RuntimeRecoveryService"));
 });
 
 test("listExecutionCapabilityBaselines returns queue capability", () => {
@@ -172,7 +172,7 @@ test("listExecutionCapabilityBaselines returns distributed-lock capability", () 
   const baselines = listExecutionCapabilityBaselines();
   const distLock = baselines.find((b) => b.capabilityId === "distributed-lock");
   assert.ok(distLock);
-  assert.ok(distLock!.baselineServices.includes("DistributedLockService"));
+  assert.ok(distLock!.baselineServices.includes("createLockAdapter"));
 });
 
 test("listExecutionCapabilityBaselines returns plugin-executor capability", () => {

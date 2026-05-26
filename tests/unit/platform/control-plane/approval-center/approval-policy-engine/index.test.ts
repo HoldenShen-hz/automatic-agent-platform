@@ -29,9 +29,9 @@ test("ApprovalPolicyEngine evaluates default policy for destructive action", () 
 
   const result = engine.evaluate(context);
 
-  assert.equal(result.requiresApproval, false);
-  assert.equal(result.deny, true);
-  assert.ok(result.matchedRuleIds.includes("critical-action-deny"));
+  assert.equal(result.requiresApproval, true);
+  assert.equal(result.deny, false);
+  assert.ok(result.matchedRuleIds.includes("destructive-high-risk"));
 });
 
 test("ApprovalPolicyEngine denies critical destructive in auto mode", () => {

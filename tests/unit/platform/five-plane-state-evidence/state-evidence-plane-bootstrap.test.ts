@@ -76,21 +76,21 @@ test("buildStateEvidencePlaneBootstrap catalog contains events capability", () =
   const bootstrap = buildStateEvidencePlaneBootstrap();
   const events = bootstrap.catalog.find((c) => c.capabilityId === "events");
   assert.ok(events, "events capability should be in catalog");
-  assert.ok(events.baselineServices.includes("TypedEventPublisher"));
+  assert.ok(events.baselineServices.includes("TypedEventBusPublisher"));
 });
 
 test("buildStateEvidencePlaneBootstrap catalog contains memory capability", () => {
   const bootstrap = buildStateEvidencePlaneBootstrap();
   const memory = bootstrap.catalog.find((c) => c.capabilityId === "memory");
   assert.ok(memory, "memory capability should be in catalog");
-  assert.ok(memory.baselineServices.includes("MemoryStoreService"));
+  assert.ok(memory.baselineServices.includes("MemoryService"));
 });
 
 test("buildStateEvidencePlaneBootstrap catalog contains checkpoints capability", () => {
   const bootstrap = buildStateEvidencePlaneBootstrap();
   const checkpoints = bootstrap.catalog.find((c) => c.capabilityId === "checkpoints");
   assert.ok(checkpoints, "checkpoints capability should be in catalog");
-  assert.ok(checkpoints.baselineServices.includes("CheckpointStoreService"));
+  assert.ok(checkpoints.baselineServices.includes("wrapWorkflowStepCheckpoint"));
 });
 
 test("bootstrap registeredServiceIds contains catalog service id first", () => {

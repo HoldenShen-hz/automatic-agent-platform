@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
@@ -33,10 +34,20 @@ const ALL_BASELINES = [
   ...SCALE_CAPABILITY_BASELINES,
 ];
 
+function resolveBaselineEntryModule(entryModule: string): string {
+  if (entryModule.startsWith("src/") && entryModule.endsWith(".ts")) {
+    const distCandidate = resolve(`dist/${entryModule.slice(0, -3)}.js`);
+    if (existsSync(distCandidate)) {
+      return distCandidate;
+    }
+  }
+  return resolve(entryModule);
+}
+
 test("baseline services are exported from their entry modules", async () => {
   const missingExports: string[] = [];
   for (const baseline of ALL_BASELINES) {
-    const entryModuleUrl = pathToFileURL(resolve(baseline.entryModule)).href;
+    const entryModuleUrl = pathToFileURL(resolveBaselineEntryModule(baseline.entryModule)).href;
     const entryModule = (await import(entryModuleUrl)) as Record<string, unknown>;
     for (const serviceName of baseline.baselineServices) {
       if (!(serviceName in entryModule)) {

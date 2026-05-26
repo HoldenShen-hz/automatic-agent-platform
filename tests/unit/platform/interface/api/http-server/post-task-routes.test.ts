@@ -218,14 +218,14 @@ test("POST /api/v1/tasks inserts task into task store", async () => {
   assert.ok(insertedTask.createdAt != null, "Expected createdAt timestamp");
 });
 
-test("POST /api/v1/tasks with intakeAdmissionService does not double-write task records", async () => {
-  let insertedTask = false;
+test("POST /api/v1/tasks with intakeAdmissionService persists task record before emitted events", async () => {
+  const writeOrder: string[] = [];
   let insertedEvents = 0;
   let admitted = false;
   const mockTaskStore = {
     task: {
       insertTask: () => {
-        insertedTask = true;
+        writeOrder.push("task");
       },
       getTask: () => null,
       updateTaskInput: () => {},
@@ -234,6 +234,7 @@ test("POST /api/v1/tasks with intakeAdmissionService does not double-write task 
     },
     event: {
       insertEvent: () => {
+        writeOrder.push("event");
         insertedEvents += 1;
       },
     },
@@ -242,11 +243,23 @@ test("POST /api/v1/tasks with intakeAdmissionService does not double-write task 
     admit: () => {
       admitted = true;
       return {
-        taskDraft: { taskDraftId: "draft-1" },
+        taskDraft: {
+          taskDraftId: "draft-1",
+          normalizedIntent: { title: "Intake Task" },
+        },
         confirmedTaskSpec: { confirmedTaskSpecId: "ctspec-1" },
-        requestEnvelope: { requestId: "req-1", requestHash: "hash-1", constraintPackRef: "policy://default" },
+        requestEnvelope: {
+          requestId: "req-1",
+          requestHash: "hash-1",
+          constraintPackRef: "policy://default",
+          budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] },
+        },
         runVersionLock: { runVersionLockId: "lock-1" },
-        harnessRun: { harnessRunId: "hrun-1" },
+        harnessRun: {
+          harnessRunId: "hrun-1",
+          createdAt: "2026-04-28T00:00:00.000Z",
+          updatedAt: "2026-04-28T00:00:00.000Z",
+        },
         events: [{
           eventId: "event-1",
           eventType: "platform.intake.admitted",
@@ -282,7 +295,7 @@ test("POST /api/v1/tasks with intakeAdmissionService does not double-write task 
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 201);
   assert.equal(admitted, true);
-  assert.equal(insertedTask, false);
+  assert.deepEqual(writeOrder, ["task", "event"]);
   assert.equal(insertedEvents, 1);
 });
 

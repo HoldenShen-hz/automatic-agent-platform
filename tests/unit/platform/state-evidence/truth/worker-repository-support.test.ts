@@ -93,7 +93,7 @@ describe("executeWorkerSnapshotUpsert", () => {
 
     const call = mockExecute.mock.calls[0];
     // The where clause should include the expected version
-    assert.ok(call.arguments[0].includes("$36 IS NULL OR worker_snapshots.version = $36"));
+    assert.ok(call.arguments[0].includes("$36 IS NULL OR worker_snapshots.version = $37"));
   });
 
   it("should throw error when version conflict detected (0 rows affected)", async () => {
@@ -127,12 +127,12 @@ describe("executeWorkerSnapshotUpsert", () => {
     assert.ok(call.arguments[4] === "standard");
   });
 
-  it("should pass all 37 parameters to execute", async () => {
+  it("should pass all 38 arguments to execute", async () => {
     await executeWorkerSnapshotUpsert(mockConnection, baseSnapshot);
 
     const call = mockExecute.mock.calls[0];
-    // Should have 37 parameters (SQL string + worker_id + 34 columns + version check + version insert)
-    assert.strictEqual(call.arguments.length, 37);
+    // SQL string + 37 bound params, including the duplicated expectedVersion for the WHERE clause.
+    assert.strictEqual(call.arguments.length, 38);
   });
 
   it("should set insertedVersion to 1 when version is undefined or 0", async () => {

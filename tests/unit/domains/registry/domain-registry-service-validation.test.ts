@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
 import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
+import type { NormalizedBusinessPackManifest } from "../../../../src/domains/business-pack/business-pack-manifest.js";
 
 function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
@@ -420,5 +421,117 @@ test("DomainRegistryService validate throws for unknown domain", () => {
   assert.throws(
     () => service.validate("nonexistent"),
     /domain_not_found/,
+  );
+});
+
+test("DomainRegistryService buildCapabilityEntry includes strongest associated pack sandbox tier", () => {
+  const pack: NormalizedBusinessPackManifest = {
+    packId: "pack-001",
+    name: "Pack",
+    version: "1.0.0",
+    domainId: "sandbox_domain",
+    description: "",
+    lifecycleStage: "published",
+    deprecatedAt: null,
+    archivedAt: null,
+    riskMatrix: [{ riskId: "risk-1", level: "high", triggers: [], mitigation: "", escalationPolicy: "" }],
+    toolBundles: [],
+    pluginIds: [],
+    dependencies: [],
+    approvalPoints: [],
+    artifactTypes: [],
+    knowledgeNamespaces: [],
+    failureStrategy: "fail_fast",
+    rollbackCapability: true,
+    domainMetrics: [],
+    sandboxTier: "workspace_write",
+    permissions: [],
+    author: "",
+    tags: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const service = new DomainRegistryService({
+    packResolver: (domainId) => domainId === "sandbox_domain" ? [pack] : [],
+    domainRiskResolver: () => "high",
+  });
+  service.register(
+    makeMinimalDomain({
+      domainId: "sandbox_domain",
+      capabilities: {
+        supportedTaskTypes: [],
+        requiredTools: [],
+        optionalTools: [],
+        modelPreferences: {},
+        budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+        securityLevel: "elevated" as const,
+      },
+    }),
+  );
+
+  assert.deepEqual(service.buildCapabilityEntry("sandbox_domain"), {
+    domainId: "sandbox_domain",
+    bundleId: "sandbox_domain.default",
+    capabilityIds: [],
+    toolNames: [],
+    skillIds: [],
+    pluginIds: [],
+    knowledgeNamespaces: [],
+    defaultActivationPolicy: "registered",
+    trustTier: "elevated",
+    sandboxTier: "workspace_write",
+    highestPackRiskLevel: "high",
+  });
+});
+
+test("DomainRegistryService archive rejects domains that still have active packs", () => {
+  const pack: NormalizedBusinessPackManifest = {
+    packId: "pack-001",
+    name: "Pack",
+    version: "1.0.0",
+    domainId: "packed_domain",
+    description: "",
+    lifecycleStage: "published",
+    deprecatedAt: null,
+    archivedAt: null,
+    riskMatrix: [{ riskId: "risk-1", level: "high", triggers: [], mitigation: "", escalationPolicy: "" }],
+    toolBundles: [],
+    pluginIds: [],
+    dependencies: [],
+    approvalPoints: [],
+    artifactTypes: [],
+    knowledgeNamespaces: [],
+    failureStrategy: "fail_fast",
+    rollbackCapability: true,
+    domainMetrics: [],
+    sandboxTier: "workspace_write",
+    permissions: [],
+    author: "",
+    tags: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const service = new DomainRegistryService({
+    packResolver: (domainId) => domainId === "packed_domain" ? [pack] : [],
+    domainRiskResolver: () => "high",
+  });
+  service.register(
+    makeMinimalDomain({
+      domainId: "packed_domain",
+      status: "deprecated" as const,
+      capabilities: {
+        supportedTaskTypes: [],
+        requiredTools: [],
+        optionalTools: [],
+        modelPreferences: {},
+        budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+        securityLevel: "elevated" as const,
+      },
+    }),
+  );
+
+  assert.throws(
+    () => service.archive("packed_domain"),
+    /archived_domain_has_packs/,
   );
 });

@@ -62,11 +62,14 @@ test("replay-repair-integration: recovery candidate filtering based on severity 
 
   const candidates = service.listRecoveryCandidates(report);
 
-  assert.strictEqual(candidates.length, 2);
+  assert.strictEqual(candidates.length, 3);
+  const p2Candidate = candidates.find((c) => c.entityRef === "wf:1");
   const p1Candidate = candidates.find((c) => c.entityRef === "exec:1");
   const p0Candidate = candidates.find((c) => c.entityRef === "task:1");
+  assert.ok(p2Candidate);
   assert.ok(p1Candidate);
   assert.ok(p0Candidate);
+  assert.strictEqual(p2Candidate!.disposition, "manual_handoff");
   assert.strictEqual(p1Candidate!.disposition, "retry");
   assert.strictEqual(p0Candidate!.disposition, "manual_handoff");
 });

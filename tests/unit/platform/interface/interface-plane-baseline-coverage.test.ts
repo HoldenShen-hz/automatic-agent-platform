@@ -46,7 +46,7 @@ test("listInterfaceCapabilityBaselines includes ingress capability", () => {
   const ingress = baselines.find((b) => b.capabilityId === "ingress");
   assert.ok(ingress != null);
   assert.equal(ingress!.entryModule, "src/platform/five-plane-interface/ingress/index.ts");
-  assert.ok(ingress!.baselineServices.includes("IngressGovernanceService"));
+  assert.ok(ingress!.baselineServices.includes("DistributedRateLimiter"));
 });
 
 test("listInterfaceCapabilityBaselines includes scheduler capability", () => {

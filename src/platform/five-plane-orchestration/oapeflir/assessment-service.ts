@@ -72,6 +72,7 @@ interface WrappedAssessmentInput {
   readonly effectivePolicySnapshot?: EffectivePolicySnapshot;
   readonly effectivePolicy?: EffectivePolicySnapshot;
   readonly inheritedRiskAssessment?: { readonly level?: RiskAssessment["level"]; readonly factors?: readonly string[] };
+  readonly requiresOrchestration?: boolean;
 }
 
 function isWrappedAssessmentInput(input: TaskSituation | WrappedAssessmentInput): input is WrappedAssessmentInput {
@@ -219,7 +220,9 @@ export class AssessmentService {
     const complexityAssessment = this.scoreComplexity(situation, risk, riskFactors);
     const complexity = complexityAssessment.level;
     const approvalRequired = risk === "high" || risk === "critical";
-    const workflow = complexity === "trivial" || complexity === "simple" ? "single-step" : "multi-step";
+    const workflow = wrappedInput?.requiresOrchestration === true || !(complexity === "trivial" || complexity === "simple")
+      ? "multi-step"
+      : "single-step";
 
     // R5-6: Produce RiskAssessment as explicit output
     const riskScore = riskFactors.length > 0
@@ -264,10 +267,15 @@ export class AssessmentService {
         required: approvalRequired,
         level: approvalRequired ? (risk === "critical" ? "admin" : "user") : "none",
       },
-      executionMode: risk === "critical" ? "manual" : risk === "high" ? "supervised" : "auto",
+      executionMode: risk === "critical"
+        ? "manual"
+        : risk === "high" || wrappedInput?.requiresOrchestration === true
+          ? "supervised"
+          : "auto",
       suggestedActions: [
         ...(situation.blockers.map((blocker) => `resolve:${blocker.description}`)),
         ...(approvalRequired ? ["request_approval"] : []),
+        ...(wrappedInput?.requiresOrchestration === true ? ["require_orchestration"] : []),
         ...(complexity !== "trivial" ? ["produce_explicit_plan"] : []),
       ],
     };

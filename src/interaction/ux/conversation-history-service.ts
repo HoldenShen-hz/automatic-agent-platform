@@ -424,9 +424,7 @@ export class ConversationHistoryService {
         );
       }
     }
-    return {
-      ...restrictedSession,
-      memoryRecordId: undefined,
-    };
+    const { memoryRecordId: _memoryRecordId, ...sessionWithoutMemoryRecord } = restrictedSession;
+    return sessionWithoutMemoryRecord;
   }
 }

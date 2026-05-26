@@ -485,3 +485,39 @@ test("recordWriteback returns resource_limit_exceeded when resource ceiling guar
   assert.equal(result.accepted, false);
   assert.equal(result.reasonCode, "resource_limit_exceeded");
 });
+
+test("recordWriteback preserves null task output when neither input nor task row provides one", () => {
+  const store = createMockStore();
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({
+    task: makeTask({ outputJson: null, status: "in_progress" }),
+    workflow: makeWorkflow({ status: "running" }),
+    session: makeSession({ status: "open" }),
+    execution: makeExecution({ status: "executing" }),
+  });
+  store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
+  store.worker.getAgentExecutionRecord = () => undefined;
+  setActiveLease(store, makeLease());
+  const db = createMockDb();
+  const service = new ExecutionWorkerWritebackService(db, store);
+  let terminalInput: unknown;
+  (service as unknown as {
+    transitions: {
+      applyTaskTerminalState(input: unknown): void;
+    };
+  }).transitions = {
+    applyTaskTerminalState(input: unknown) {
+      terminalInput = input;
+    },
+  };
+
+  const result = service.recordWriteback({
+    executionId: "exec-001",
+    workerId: "worker-001",
+    leaseId: "lease-001",
+    fencingToken: 1,
+    terminalStatus: "done",
+  });
+
+  assert.equal(result.accepted, true);
+  assert.equal((terminalInput as { taskOutputJson?: string | null }).taskOutputJson, null);
+});

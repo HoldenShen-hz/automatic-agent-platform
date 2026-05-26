@@ -401,10 +401,10 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
         },
       });
       throw new CheckpointSchemaVersionMismatchError({
+        message: err.message,
         actualSchemaVersion: err.actualSchemaVersion,
         artifactId: record.artifactId,
         storagePath: record.storagePath,
-        message: `workflow_step_checkpoint.schema_version_mismatch:${record.artifactId}`,
       });
     }
     logger.log({
@@ -600,6 +600,7 @@ function normalizeWorkflowStepCheckpoint(value: unknown): WorkflowStepCheckpoint
   if (
     candidateSchemaVersion != null
     && !LEGACY_WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSIONS.has(candidateSchemaVersion)
+    && resemblesWorkflowStepCheckpointCandidate(candidate)
   ) {
     throw new CheckpointSchemaVersionMismatchError({
       actualSchemaVersion: candidateSchemaVersion,
@@ -638,6 +639,24 @@ function normalizeWorkflowStepCheckpoint(value: unknown): WorkflowStepCheckpoint
     compensationModel: candidate.compensationModel ?? null,
   };
   return isWorkflowStepCheckpoint(legacy) ? legacy : null;
+}
+
+function resemblesWorkflowStepCheckpointCandidate(candidate: Record<string, unknown>): boolean {
+  return typeof candidate.taskId === "string"
+    && typeof candidate.workflowId === "string"
+    && typeof candidate.divisionId === "string"
+    && typeof candidate.stepId === "string"
+    && typeof candidate.roleId === "string"
+    && typeof candidate.outputKey === "string"
+    && typeof candidate.status === "string"
+    && typeof candidate.producedAt === "string"
+    && candidate.output != null
+    && typeof candidate.output === "object"
+    && !Array.isArray(candidate.output)
+    && isDecisionContext(candidate.decisionContext)
+    && isResumeContext(candidate.resumeContext)
+    && isFileDiffSummary(candidate.fileDiffSummary)
+    && isArtifactRefArray(candidate.upstreamArtifactRefs);
 }
 
 function isDecisionContext(value: unknown): value is WorkflowStepCheckpointDecisionContext {

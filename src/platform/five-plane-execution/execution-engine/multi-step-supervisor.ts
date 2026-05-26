@@ -27,6 +27,7 @@ import {
 } from "../../five-plane-orchestration/oapeflir/workflow/output-schema.js";
 import type { ContextCompactionResult } from "./context-compaction-service.js";
 import { buildStepOutput } from "./multi-step-agent-round-loop.js";
+import { estimateActualLlmCallCost, type LlmModelCallResult } from "./model-call-provider-support.js";
 import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
 import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
@@ -62,7 +63,9 @@ export async function executeStepLoop(
     input,
     routing,
     plannedWorkflow,
+    planGraphId,
     toolExposureService,
+    workflowDebugger,
   } = ctx;
 
   let outputs = ctx.outputs;
@@ -77,6 +80,36 @@ export async function executeStepLoop(
   const failedStepIds = ctx.failedStepIds;
 
   for (const [index, step] of plannedWorkflow.executionSteps.entries()) {
+    const breakpointScope = planGraphId ?? plannedWorkflow.workflow.workflowId;
+    const matchedPauseBreakpoint = (workflowDebugger?.getActiveBreakpoints(breakpointScope) ?? []).find((breakpoint) => {
+      if (breakpoint.action !== "pause") {
+        return false;
+      }
+      const selector = breakpoint.nodeRunSelector ?? breakpoint.stepSelector;
+      return selector === step.stepId;
+    });
+    if (matchedPauseBreakpoint != null) {
+      blockedForDecision = true;
+      deps.db.transaction(() => {
+        deps.store.event.insertEvent({
+          id: newId("evt"),
+          taskId,
+          executionId: null,
+          eventType: "workflow:paused_for_breakpoint",
+          eventTier: "tier_1",
+          payloadJson: JSON.stringify(injectTraceContext({
+            breakpointId: matchedPauseBreakpoint.breakpointId,
+            planGraphId: breakpointScope,
+            workflowId: plannedWorkflow.workflow.workflowId,
+            stepId: step.stepId,
+            reasonCode: "workflow_debugger.pause_breakpoint_hit",
+          }, createChildTraceContext(traceContext))),
+          traceId,
+          createdAt: nowIso(),
+        });
+      });
+      break;
+    }
     const priorSummaries = stepOutputs.map((item) => item.summary ?? "").filter(Boolean);
     const toolExposure = toolExposureService.resolve({
       divisionId: step.divisionId,
@@ -360,6 +393,7 @@ export async function executeStepLoop(
         routingReason: routing.routeReason,
         tools: getMultiStepToolDefinitions(toolExposure.visibleToolNames),
       });
+      const llmResult = stepData.llmResult ?? null;
       Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
       const stepDataRecord = populateMissingRequiredWorkflowStepOutput(
         step,
@@ -560,19 +594,17 @@ export async function executeStepLoop(
       const costEventId = newId("cost");
       const costEventWAL: CostEventRecord = {
         id: costEventId,
-        taskId,
-        sessionId,
-        executionId,
-        agentId: step.agentId,
-        provider: "minimax",
-        model: "MiniMax-M2.7",
-        inputTokens: 30 + index * 10,
-        outputTokens: 12 + index * 5,
-        costUsd: 0.001 + index * 0.0005,
-        budgetScope: "task_execution",
-        providerRequestId: null,
-        pricingVersion: null,
-        createdAt: nowIso(),
+        ...buildTaskExecutionCostEvent({
+          taskId,
+          sessionId,
+          executionId,
+          agentId: step.agentId,
+          llmResult,
+          fallbackInputTokens: 30 + index * 10,
+          fallbackOutputTokens: 12 + index * 5,
+          fallbackCostUsd: 0.001 + index * 0.0005,
+          createdAt: nowIso(),
+        }),
       };
       // Pre-write cost event to WAL table before execution to ensure it's not lost on crash
       deps.store.billing.insertCostEventWAL(costEventWAL, "pending");
@@ -735,6 +767,37 @@ export async function executeStepLoop(
     stepOutputs,
     skippedStepIds,
     failedStepIds,
+  };
+}
+
+function buildTaskExecutionCostEvent(input: {
+  taskId: string;
+  sessionId: string;
+  executionId: string;
+  agentId: string | null;
+  llmResult: LlmModelCallResult | null;
+  fallbackInputTokens: number;
+  fallbackOutputTokens: number;
+  fallbackCostUsd: number;
+  createdAt: string;
+}): Omit<CostEventRecord, "id"> {
+  const promptTokens = input.llmResult?.usage.promptTokens ?? input.fallbackInputTokens;
+  const completionTokens = input.llmResult?.usage.completionTokens ?? input.fallbackOutputTokens;
+  const model = input.llmResult?.model ?? "MiniMax-M2.7";
+  return {
+    taskId: input.taskId,
+    sessionId: input.sessionId,
+    executionId: input.executionId,
+    agentId: input.agentId,
+    provider: input.llmResult?.provider ?? "minimax",
+    model,
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+    costUsd: estimateActualLlmCallCost(input.llmResult, model) ?? input.fallbackCostUsd,
+    budgetScope: "task_execution",
+    providerRequestId: input.llmResult?.id ?? null,
+    pricingVersion: null,
+    createdAt: input.createdAt,
   };
 }
 

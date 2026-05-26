@@ -140,10 +140,10 @@ test("rollout-controller baseline includes TrafficRoutingService", () => {
   assert.ok(baseline.baselineServices.includes("TrafficRoutingService"));
 });
 
-test("tenant baseline includes TenantManagementService", () => {
+test("tenant baseline includes TenantBoundaryRegistryService", () => {
   const baseline = resolveControlPlaneCapabilityBaseline("tenant");
 
-  assert.ok(baseline.baselineServices.includes("TenantManagementService"));
+  assert.ok(baseline.baselineServices.includes("TenantBoundaryRegistryService"));
 });
 
 test("audit-export baseline includes AuditExportService", () => {
@@ -164,10 +164,10 @@ test("iam baseline includes SecretManagementService", () => {
   assert.ok(baseline.baselineServices.includes("SecretManagementService"));
 });
 
-test("policy-center baseline includes PolicyRegistryService", () => {
+test("policy-center baseline includes PolicyCenterService", () => {
   const baseline = resolveControlPlaneCapabilityBaseline("policy-center");
 
-  assert.ok(baseline.baselineServices.includes("PolicyRegistryService"));
+  assert.ok(baseline.baselineServices.includes("PolicyCenterService"));
 });
 
 test("replay-repair-control baseline includes ReplayRepairControlService", () => {

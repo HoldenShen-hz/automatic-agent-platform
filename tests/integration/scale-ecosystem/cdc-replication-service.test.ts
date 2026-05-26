@@ -235,8 +235,9 @@ test("cdc replication service calculates replication lag correctly", () => {
     { id: "evt_003", sequence: 3, eventType: "task.completed", taskId: "task_1", payloadJson: "{}", createdAt: "2026-04-20T10:02:00.000Z" },
   ];
 
-  service.prepareBatch("us-east-1", "ap-northeast-1", events);
-  service.confirmBatch("us-east-1", "ap-northeast-1", service.prepareBatch("us-east-1", "ap-northeast-1", events)!);
+  const batch = service.prepareBatch("us-east-1", "ap-northeast-1", events);
+  assert.ok(batch);
+  service.confirmBatch("us-east-1", "ap-northeast-1", batch);
 
   const totalEvents = 10;
   const lag = service.getReplicationLag("us-east-1", "ap-northeast-1", totalEvents);

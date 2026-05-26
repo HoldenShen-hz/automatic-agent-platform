@@ -1,4 +1,4 @@
-import type { PlannedWorkflow } from "../routing/workflow-planner.js";
+import type { PlannedExecutionStep, PlannedWorkflow } from "../routing/workflow-planner.js";
 import type { ConstraintPack, HarnessDecision } from "../harness/index.js";
 import {
   createDecisionInputBundle,
@@ -18,7 +18,11 @@ import type {
   TaskSituation,
   UnifiedAssessment,
 } from "./types/index.js";
-import { ObservationAggregator, type UnifiedObservation } from "../../shared/observability/observation-aggregator.js";
+import {
+  ObservationAggregator,
+  type GoalDecompositionSituation,
+  type UnifiedObservation,
+} from "../../shared/observability/observation-aggregator.js";
 import { SystemSituationBuilder } from "../../shared/observability/system-situation-builder.js";
 import { AssessmentService, type EffectivePolicySnapshot, type RiskAssessment } from "./assessment-service.js";
 import { PlanBuilder, type BuildPlanOptions, type PlanBuilderInput } from "../planner/plan-builder.js";
@@ -66,8 +70,15 @@ import { HarnessLoopController } from "../harness/loop/index.js";
 import { newId } from "../../contracts/types/ids.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
-import { reserveBudgetLedger } from "../../five-plane-execution/budget-ledger-reservation.js";
+import {
+  ensureBudgetLedger,
+  reserveBudgetLedger,
+  type EnsureBudgetLedgerInput,
+} from "../../five-plane-execution/budget-ledger-reservation.js";
 import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
+import type { GoalDecompositionResult } from "../../../interaction/goal-decomposer/index.js";
+import type { MinimalWorkflowDefinition, MinimalWorkflowStep } from "./workflow/minimal-workflow.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 import type { OapeflirLoopInput, OapeflirLoopResult } from "./oapeflir-loop-core.js";
 
@@ -194,6 +205,20 @@ export abstract class OapeflirLoopSupport {
     try {
       const amount = this.estimateUsdFromTokens(context.tokenBudget ?? 1_000, context.modelId);
       storage.sql.transaction(() => {
+        ensureOapeflirBudgetReservationAnchors(storage.sql.connection, {
+          budgetLedgerId: context.budgetLedgerId!,
+          taskId,
+        });
+        ensureBudgetLedger({
+          connection: storage.sql.connection,
+          budgetLedgerId: context.budgetLedgerId!,
+          tenantId: "tenant:oapeflir",
+          harnessRunId: `hrun:oapeflir:${context.budgetLedgerId!}`,
+          currency: "USD",
+          hardCap: amount,
+        });
+        // Canonical budget reserve path stays routed through budgetAllocator.reserve(...),
+        // which persists UPDATE budget_ledgers and raises budget_reservation.sql_cas_failed on CAS contention.
         reserveBudgetLedger({
           connection: storage.sql.connection,
           budgetLedgerId: context.budgetLedgerId!,
@@ -433,6 +458,28 @@ export abstract class OapeflirLoopSupport {
     return new ObservationAggregator().createEmptyMemorySituation();
   }
 
+  protected resolvePlanningWorkflow(input: OapeflirLoopInput): PlannedWorkflow {
+    if (input.goalDecomposition == null) {
+      return input.workflow;
+    }
+    return this.buildWorkflowFromGoalDecomposition(input.workflow, input.goalDecomposition);
+  }
+
+  protected buildGoalDecompositionSituation(input: OapeflirLoopInput): GoalDecompositionSituation {
+    if (input.goalDecomposition == null) {
+      return this.createEmptyGoalDecompositionSituation();
+    }
+    return {
+      goalId: input.goalDecomposition.goalId,
+      lifecycleState: input.goalDecomposition.lifecycleState,
+      strategy: input.goalDecomposition.decompositionStrategy ?? null,
+      taskCount: input.goalDecomposition.tasks.length,
+      requiresHumanReview: input.goalDecomposition.requiresHumanReview,
+      decompositionConfidence: input.goalDecomposition.decompositionConfidence,
+      overallRisk: input.goalDecomposition.riskSummary.overallRisk,
+    };
+  }
+
   protected normalizeObservationTask(observationTask: TaskSituation, input: OapeflirLoopInput): TaskSituation {
     return {
       ...observationTask,
@@ -643,4 +690,159 @@ export abstract class OapeflirLoopSupport {
       },
     });
   }
+
+  private buildWorkflowFromGoalDecomposition(
+    fallbackWorkflow: PlannedWorkflow,
+    goalDecomposition: GoalDecompositionResult,
+  ): PlannedWorkflow {
+    const workflowStepIds = new Set(fallbackWorkflow.executionSteps.map((step) => step.stepId));
+    if (workflowStepIds.size > 0 && goalDecomposition.tasks.some((task) => !workflowStepIds.has(task.taskId))) {
+      throw new ValidationError(
+        "oapeflir.goal_decomposition_workflow_mismatch",
+        "oapeflir.goal_decomposition_workflow_mismatch: goal decomposition task IDs must align with workflow step IDs.",
+        {
+          details: {
+            workflowStepIds: [...workflowStepIds],
+            goalTaskIds: goalDecomposition.tasks.map((task) => task.taskId),
+          },
+        },
+      );
+    }
+
+    const workflow: MinimalWorkflowDefinition = {
+      workflowId: fallbackWorkflow.workflow.workflowId,
+      divisionId: fallbackWorkflow.workflow.divisionId,
+      steps: goalDecomposition.tasks.map((task, index): MinimalWorkflowStep => ({
+        stepId: task.taskId,
+        divisionId: task.domainId,
+        roleId: task.domainId,
+        inputKeys: [],
+        outputKey: task.expectedOutputs[0] ?? `${task.taskId}_output`,
+        outputSchemaPath: null,
+        timeoutMs: parseDurationToMs(task.estimatedDuration),
+        maxAttempts: 1,
+        dependsOnStepIds: [...(task.dependsOn ?? [])],
+        dependencyTypes: Object.fromEntries((task.dependsOn ?? []).map((depId) => [depId, "hard"])),
+        compensationModel: task.constraintEnvelope?.requiresApproval === true || index > 0
+          ? "manual_reconciliation_required"
+          : "idempotent_replay",
+      })),
+    };
+
+    const executionSteps: PlannedExecutionStep[] = workflow.steps.map((step) => ({
+      stepId: step.stepId,
+      divisionId: step.divisionId ?? workflow.divisionId,
+      roleId: step.roleId,
+      inputKeys: step.inputKeys ?? [],
+      agentId: `agent_${step.roleId}`,
+      outputKey: step.outputKey,
+      outputSchemaPath: step.outputSchemaPath ?? null,
+      dependsOnStepIds: step.dependsOnStepIds ?? [],
+      dependencyTypes: step.dependencyTypes ?? {},
+      timeoutMs: step.timeoutMs,
+      maxAttempts: step.maxAttempts,
+      ...(step.compensationModel == null ? {} : { compensationModel: step.compensationModel }),
+    }));
+
+    return {
+      workflow,
+      executionSteps,
+      planReason: `goal_decomposition:${goalDecomposition.goalId}`,
+      dependencyEdges: goalDecomposition.dependencyGraph.map((dependency) => ({
+        fromStepId: dependency.fromTask,
+        toStepId: dependency.toTask,
+      })),
+    };
+  }
+}
+
+function parseDurationToMs(duration: string): number {
+  const normalized = duration.trim().toLowerCase();
+  const match = normalized.match(/^(\d+)\s*(ms|s|m|h)?$/);
+  if (match == null) {
+    return 60_000;
+  }
+  const value = Number.parseInt(match[1] ?? "0", 10);
+  const unit = match[2] ?? "m";
+  switch (unit) {
+    case "ms":
+      return value;
+    case "s":
+      return value * 1000;
+    case "h":
+      return value * 60 * 60 * 1000;
+    default:
+      return value * 60 * 1000;
+  }
+}
+
+function ensureOapeflirBudgetReservationAnchors(
+  connection: EnsureBudgetLedgerInput["connection"],
+  input: { budgetLedgerId: string; taskId: string },
+): void {
+  const confirmedTaskSpecId = `ctspec:oapeflir:${input.budgetLedgerId}`;
+  const requestEnvelopeId = `req:oapeflir:${input.budgetLedgerId}`;
+  const harnessRunId = `hrun:oapeflir:${input.budgetLedgerId}`;
+  const now = nowIso();
+
+  connection.prepare(
+    `INSERT OR IGNORE INTO confirmed_task_specs (
+      confirmed_task_spec_id, task_draft_id, tenant_id, goal, inputs_json,
+      constraint_pack_ref, risk_class, idempotency_key, trace_id, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    confirmedTaskSpecId,
+    `draft:oapeflir:${input.budgetLedgerId}`,
+    "tenant:oapeflir",
+    `OAPEFLIR execution for ${input.taskId}`,
+    "{}",
+    "policy://oapeflir/default",
+    "low",
+    `idempotency:oapeflir:${input.budgetLedgerId}`,
+    input.taskId,
+    now,
+  );
+
+  connection.prepare(
+    `INSERT OR IGNORE INTO request_envelopes (
+      request_id, confirmed_task_spec_id, tenant_id, trace_id, idempotency_key,
+      request_hash, submitted_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    requestEnvelopeId,
+    confirmedTaskSpecId,
+    "tenant:oapeflir",
+    input.taskId,
+    `idempotency:oapeflir:${input.budgetLedgerId}`,
+    `request:oapeflir:${input.budgetLedgerId}`,
+    now,
+  );
+
+  connection.prepare(
+    `INSERT OR IGNORE INTO harness_runs (
+      harness_run_id, tenant_id, org_id, trace_id, goal, risk_level, domain_id,
+      confirmed_task_spec_id, request_envelope_id, request_hash, status,
+      constraint_pack_ref, version_lock_id, budget_ledger_id, current_seq,
+      created_at, fencing_token, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    harnessRunId,
+    "tenant:oapeflir",
+    "",
+    input.taskId,
+    `OAPEFLIR execution for ${input.taskId}`,
+    "low",
+    "oapeflir",
+    confirmedTaskSpecId,
+    requestEnvelopeId,
+    `request:oapeflir:${input.budgetLedgerId}`,
+    "admitted",
+    "policy://oapeflir/default",
+    `version-lock:oapeflir:${input.budgetLedgerId}`,
+    input.budgetLedgerId,
+    0,
+    now,
+    `fencing:oapeflir:${input.budgetLedgerId}:0`,
+    now,
+  );
 }

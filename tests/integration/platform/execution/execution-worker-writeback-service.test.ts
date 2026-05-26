@@ -10,6 +10,7 @@ import { ExecutionWorkerWritebackService } from "../../../../src/platform/five-p
 import { WorkerRegistryService } from "../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { StorageError } from "../../../../src/platform/contracts/errors.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
@@ -590,7 +591,10 @@ test("execution worker writeback service fails closed when the authoritative sto
     }).transitions;
     const originalApplyTaskTerminalState = transitionService.applyTaskTerminalState.bind(transitionService);
     transitionService.applyTaskTerminalState = (() => {
-      throw new Error("authoritative store unavailable");
+      throw new StorageError(
+        "storage.temporarily_unavailable",
+        "authoritative store unavailable",
+      );
     }) as typeof transitionService.applyTaskTerminalState;
 
     const failed = writeback.recordWriteback({

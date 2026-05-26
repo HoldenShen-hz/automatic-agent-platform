@@ -36,7 +36,7 @@ test("STATE_EVIDENCE_CAPABILITY_BASELINES contains artifacts capability", () => 
   const artifacts = STATE_EVIDENCE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "artifacts");
   assert.ok(artifacts, "artifacts capability should exist");
   assert.equal(artifacts.entryModule, "src/platform/five-plane-state-evidence/artifacts/index.ts");
-  assert.ok(artifacts.baselineServices.includes("ArtifactStoreService"));
+  assert.ok(artifacts.baselineServices.includes("ArtifactStore"));
 });
 
 test("STATE_EVIDENCE_CAPABILITY_BASELINES contains audit capability", () => {
@@ -50,28 +50,28 @@ test("STATE_EVIDENCE_CAPABILITY_BASELINES contains checkpoints capability", () =
   const checkpoints = STATE_EVIDENCE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "checkpoints");
   assert.ok(checkpoints, "checkpoints capability should exist");
   assert.equal(checkpoints.entryModule, "src/platform/five-plane-state-evidence/checkpoints/index.ts");
-  assert.ok(checkpoints.baselineServices.includes("CheckpointStoreService"));
+  assert.ok(checkpoints.baselineServices.includes("wrapWorkflowStepCheckpoint"));
 });
 
 test("STATE_EVIDENCE_CAPABILITY_BASELINES contains dlq capability", () => {
   const dlq = STATE_EVIDENCE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "dlq");
   assert.ok(dlq, "dlq capability should exist");
   assert.equal(dlq.entryModule, "src/platform/five-plane-state-evidence/dlq/index.ts");
-  assert.ok(dlq.baselineServices.includes("DlqService"));
+  assert.ok(dlq.baselineServices.includes("DeadLetterQueueService"));
 });
 
 test("STATE_EVIDENCE_CAPABILITY_BASELINES contains events capability", () => {
   const events = STATE_EVIDENCE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "events");
   assert.ok(events, "events capability should exist");
   assert.equal(events.entryModule, "src/platform/five-plane-state-evidence/events/index.ts");
-  assert.ok(events.baselineServices.includes("TypedEventPublisher"));
+  assert.ok(events.baselineServices.includes("TypedEventBusPublisher"));
 });
 
 test("STATE_EVIDENCE_CAPABILITY_BASELINES contains incident capability", () => {
   const incident = STATE_EVIDENCE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "incident");
   assert.ok(incident, "incident capability should exist");
   assert.equal(incident.entryModule, "src/platform/five-plane-state-evidence/incident/index.ts");
-  assert.ok(incident.baselineServices.includes("IncidentRepository"));
+  assert.ok(incident.baselineServices.includes("IncidentCaseService"));
 });
 
 test("STATE_EVIDENCE_CAPABILITY_BASELINES contains knowledge capability", () => {
@@ -85,14 +85,14 @@ test("STATE_EVIDENCE_CAPABILITY_BASELINES contains memory capability", () => {
   const memory = STATE_EVIDENCE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "memory");
   assert.ok(memory, "memory capability should exist");
   assert.equal(memory.entryModule, "src/platform/five-plane-state-evidence/memory/index.ts");
-  assert.ok(memory.baselineServices.includes("MemoryStoreService"));
+  assert.ok(memory.baselineServices.includes("MemoryService"));
 });
 
 test("STATE_EVIDENCE_CAPABILITY_BASELINES contains projections capability", () => {
   const projections = STATE_EVIDENCE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "projections");
   assert.ok(projections, "projections capability should exist");
   assert.equal(projections.entryModule, "src/platform/five-plane-state-evidence/projections/index.ts");
-  assert.ok(projections.baselineServices.includes("ProjectionRebuilder"));
+  assert.ok(projections.baselineServices.includes("ProjectionRebuildService"));
 });
 
 test("STATE_EVIDENCE_CAPABILITY_BASELINES contains truth capability", () => {

@@ -24,7 +24,7 @@ function createDelegation(overrides: Partial<{
     delegationId: overrides.delegationId ?? "delegation-1",
     grantorId: overrides.grantorId ?? "platform_team",
     granteeId: overrides.granteeId ?? "division_admin_1",
-    permissions: overrides.permissions ?? ["approve_task", "domain_onboarding"],
+    permissions: overrides.permissions ?? ["manage_approvals", "manage_domains"],
     orgNodeIds: overrides.orgNodeIds ?? [],
     domainIds: overrides.domainIds ?? [],
     status: overrides.status ?? "active",
@@ -41,7 +41,7 @@ test("Delegation and revocation saga integration", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task", "domain_onboarding"],
+      permissions: ["manage_approvals", "manage_domains"],
     }),
   ];
 
@@ -50,7 +50,7 @@ test("Delegation and revocation saga integration", () => {
   // Verify delegation works
   const resolveResult = governanceService.resolve("division_admin_1", {
     orgNodeId: "dept-1",
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(resolveResult.allowed, true);
 
@@ -77,7 +77,7 @@ test("Delegation with guardrails and revocation saga", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_budget_increase"],
+      permissions: ["manage_budgets"],
       guardrails: [
         { guardrailId: "max_budget_1000", type: "max_budget", value: 1000 },
       ],
@@ -125,13 +125,13 @@ test("Multiple delegations with cascading revocation", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task"],
+      permissions: ["manage_approvals"],
     }),
     createDelegation({
       delegationId: "delegation-2",
       grantorId: "division_admin_1",
       granteeId: "department_admin_1",
-      permissions: ["approve_task", "create_trigger"],
+      permissions: ["manage_approvals", "manage_triggers"],
     }),
   ];
 
@@ -140,13 +140,13 @@ test("Multiple delegations with cascading revocation", () => {
   // Both delegations should work
   const result1 = governanceService.resolve("division_admin_1", {
     orgNodeId: "dept-1",
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(result1.allowed, true);
 
   const result2 = governanceService.resolve("department_admin_1", {
     orgNodeId: "dept-1",
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(result2.allowed, true);
 
@@ -174,7 +174,7 @@ test("Delegation inheritance validation", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task", "modify_approval_rules"],
+      permissions: ["manage_approvals"],
     }),
   ];
 
@@ -209,7 +209,7 @@ test("Delegation with org node scope and revocation", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task"],
+      permissions: ["manage_approvals"],
       orgNodeIds: ["dept-finance", "dept-engineering"], // Limited scope
     }),
   ];
@@ -219,14 +219,14 @@ test("Delegation with org node scope and revocation", () => {
   // Within scope
   const inScopeResult = governanceService.resolve("division_admin_1", {
     orgNodeId: "dept-finance",
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(inScopeResult.allowed, true);
 
   // Out of scope
   const outOfScopeResult = governanceService.resolve("division_admin_1", {
     orgNodeId: "dept-sales",
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(outOfScopeResult.allowed, false);
 
@@ -252,7 +252,7 @@ test("Delegation with domain scope and guardrails", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "department_admin_1",
-      permissions: ["approve_task", "publish_pack"],
+      permissions: ["manage_approvals", "manage_packs"],
       domainIds: ["finance", "hr"], // Limited to finance and HR domains
       guardrails: [
         { guardrailId: "max_risk", type: "max_risk_level", value: "high" },
@@ -283,7 +283,7 @@ test("Delegation with domain scope and guardrails", () => {
   const result3 = governanceService.resolve("department_admin_1", {
     orgNodeId: "dept-1",
     domainId: "engineering", // Not in scope
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(result3.allowed, false);
 });
@@ -326,7 +326,7 @@ test("Guardrail evaluation with revocation saga compensation", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task", "approve_budget_increase"],
+      permissions: ["manage_approvals", "manage_budgets"],
       guardrails: [
         { guardrailId: "max_budget", type: "max_budget", value: 1000 },
       ],
@@ -369,7 +369,7 @@ test("Delegation with multiple guardrails", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task", "adjust_agent_autonomy"],
+      permissions: ["manage_approvals", "manage_agents"],
       guardrails: [
         { guardrailId: "max_budget", type: "max_budget", value: 1000 },
         { guardrailId: "max_risk", type: "max_risk_level", value: "high" },
@@ -411,7 +411,7 @@ test("Delegation applicable guardrails retrieval", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task"],
+      permissions: ["manage_approvals"],
       orgNodeIds: ["dept-finance"],
       domainIds: ["finance"],
       guardrails: [
@@ -422,7 +422,7 @@ test("Delegation applicable guardrails retrieval", () => {
       delegationId: "delegation-2",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task"],
+      permissions: ["manage_approvals"],
       orgNodeIds: [],
       domainIds: ["hr"],
       guardrails: [

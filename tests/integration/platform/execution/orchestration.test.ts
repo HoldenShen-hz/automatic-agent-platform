@@ -275,7 +275,8 @@ test("multi-step orchestration fail-closes permission failures without retry", a
     assert.equal(result.snapshot.task.status, "failed");
     assert.equal(result.snapshot.workflow?.status, "failed");
     assert.equal(result.snapshot.workflow?.retryCount, 0);
-    assert.equal(result.snapshot.workflow?.lastErrorCode, "auth.permission_denied");
+    assert.equal(result.snapshot.workflow?.lastErrorCode, null);
+    assert.equal(result.snapshot.execution?.lastErrorCode, "auth.permission_denied");
     assert.equal(result.snapshot.events.some((event) => event.eventType === "workflow:step_retry_scheduled"), false);
 
     const failedStep = result.snapshot.stepOutputs.find((output) => output.stepId === "draft_solution");

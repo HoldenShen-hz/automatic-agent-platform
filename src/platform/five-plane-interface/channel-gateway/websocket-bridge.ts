@@ -35,9 +35,20 @@ const DEFAULT_MAX_PENDING_ACKS_PER_CLIENT = 256;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
 const DEFAULT_IDLE_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_PAYLOAD_BYTES = 64 * 1024;
+const MAX_TASK_ID_LENGTH = 128;
+const TASK_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 // R12-07: Configurable back-pressure threshold
 const DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES = 500_000;
 const RESUME_PROTOCOL_KEYS = new Set(["taskId", "lastEventId"]);
+
+function normalizeTaskId(taskId: string | null): string | null {
+  if (taskId == null) {
+    return null;
+  }
+  return taskId.length > 0 && taskId.length <= MAX_TASK_ID_LENGTH && TASK_ID_PATTERN.test(taskId)
+    ? taskId
+    : null;
+}
 
 function detachWebSocketListeners(socket: WebSocket): void {
   if ("removeAllListeners" in socket && typeof socket.removeAllListeners === "function") {
@@ -228,7 +239,13 @@ export class WebSocketBridge {
     };
     this.clients.set(ws, client);
 
-    if (initialTaskId) {
+    if (params.taskId == null && params.lastEventId != null) {
+      logger.warn("websocket.connection_invalid_resume_params", {
+        reasonCode: "invalid_task_id",
+      });
+    }
+
+    if (initialTaskId != null) {
       this.subscribeToTask(ws, initialTaskId, initialLastEventId);
     }
 
@@ -319,7 +336,7 @@ export class WebSocketBridge {
       });
       ws.send(JSON.stringify({
         type: "error",
-        code: "api.message_too_large",
+        code: "api.payload_too_large",
         message: `Message exceeds maximum size of ${this.maxPayloadBytes} bytes`,
       } satisfies WebSocketMessageType));
       return;
@@ -532,7 +549,7 @@ export class WebSocketBridge {
       if (eqIndex < 0) continue;
       const key = part.slice(0, eqIndex);
       const value = part.slice(eqIndex + 1);
-      if (key === "taskId") result.taskId = value;
+      if (key === "taskId") result.taskId = normalizeTaskId(value);
       if (key === "lastEventId") result.lastEventId = value;
     }
 
@@ -542,7 +559,7 @@ export class WebSocketBridge {
     // Authentication always comes from the selected subprotocol, never the URL.
     if (req.url != null) {
       const url = new URL(req.url, "http://127.0.0.1");
-      result.taskId ??= url.searchParams.get("taskId");
+      result.taskId ??= normalizeTaskId(url.searchParams.get("taskId"));
       result.lastEventId ??=
         url.searchParams.get("last_event_id") ??
         url.searchParams.get("lastEventId");
@@ -778,7 +795,7 @@ export class WebSocketBridge {
 
   private sendStreamGap(
     ws: WebSocket,
-    message: Extract<WebSocketMessageType, { type: "stream_gap" }>,
+    message: Omit<Extract<WebSocketMessageType, { type: "stream_gap" }>, "type">,
   ): void {
     ws.send(JSON.stringify({
       type: "stream_gap",

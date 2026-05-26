@@ -21,6 +21,7 @@ import type { CoordinatorInstanceRecord, CoordinatorInstanceStatus } from "../..
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { computeCanonicalLoadScore } from "../shared/load-score.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -125,13 +126,18 @@ function readShards(record: CoordinatorInstanceRecord): string[] {
  * - regionBonus: Negative bonus if coordinator is in the preferred region
  */
 function computeCoordinatorScore(record: CoordinatorInstanceRecord, input: CoordinatorSelectionInput): number {
-  const capacity = Math.max(1, record.maxConcurrentDispatches);
-  const activeRatio = record.activeDispatchCount / capacity;
-  const backlogPenalty = Math.min(record.backlogCount / capacity, 4) * 0.2;
-  const cpuPenalty = record.cpuPct == null ? 0 : Math.min(Math.max(record.cpuPct, 0), 100) / 100 * 0.2;
+  const baseScore = computeCanonicalLoadScore({
+    activeCount: record.activeDispatchCount,
+    maxConcurrency: record.maxConcurrentDispatches,
+    saturation: record.activeDispatchCount / Math.max(1, record.maxConcurrentDispatches),
+    backlogCount: record.backlogCount,
+    cpuPct: record.cpuPct,
+  }, {
+    backlogWeight: 0.2,
+  });
   const queueBonus = input.queueName != null && record.queueAffinity === input.queueName ? -0.2 : 0;
   const regionBonus = input.preferredRegion != null && record.region === input.preferredRegion ? -0.15 : 0;
-  return activeRatio + backlogPenalty + cpuPenalty + queueBonus + regionBonus;
+  return baseScore + queueBonus + regionBonus;
 }
 
 export class CoordinatorLoadBalancingService {

@@ -122,7 +122,7 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 
 class GraphQLAdapterError extends AppError {
   public constructor(
-    public readonly code: string,
+    public override readonly code: string,
     message: string,
   ) {
     super(code, message, {

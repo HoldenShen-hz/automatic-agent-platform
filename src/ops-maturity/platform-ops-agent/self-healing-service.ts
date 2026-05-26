@@ -41,6 +41,15 @@ export interface HealingPolicy {
   readonly enableAutomaticRollback: boolean;
 }
 
+export interface ExecutionGuardDecision {
+  readonly allowed: boolean;
+  readonly reason: string | null;
+}
+
+export interface ExecutionGuard {
+  canPerformHealing(action: SelfHealingAction): ExecutionGuardDecision;
+}
+
 interface HealingOperationProfile {
   readonly minimumStatus: readonly ComponentHealthState["status"][];
   readonly failureBudget: number;
@@ -123,7 +132,10 @@ export class SelfHealingService {
   private readonly maxHistoryEntries = 100;
   private readonly policy: HealingPolicy;
 
-  public constructor(policy?: Partial<HealingPolicy>) {
+  public constructor(
+    policy?: Partial<HealingPolicy>,
+    private readonly executionGuard: ExecutionGuard | null = null,
+  ) {
     this.policy = { ...DEFAULT_HEALING_POLICY, ...policy };
   }
 
@@ -143,20 +155,30 @@ export class SelfHealingService {
       );
     }
 
-    if (consecutiveFailures >= this.policy.maxRetries) {
-      const lastAttempt = this.healingHistory.find(
-        (h) => h.targetComponent === action.targetComponent,
-      );
-      if (lastAttempt) {
-        const timeSinceLastAttempt = Date.now() - new Date(lastAttempt.executedAt).getTime();
-        if (timeSinceLastAttempt < this.computeCooldownMs(consecutiveFailures)) {
-          return this.recordFailedAttempt(
-            action,
-            executedAt,
-            previousState,
-            "Healing cooldown is active after repeated failures; operator intervention is required before retry.",
-          );
-        }
+    const lastAttempt = this.healingHistory.find(
+      (h) => h.targetComponent === action.targetComponent,
+    );
+    if (lastAttempt) {
+      const timeSinceLastAttempt = Date.now() - new Date(lastAttempt.executedAt).getTime();
+      if (timeSinceLastAttempt < this.computeCooldownMs(consecutiveFailures)) {
+        return this.recordFailedAttempt(
+          action,
+          executedAt,
+          previousState,
+          "Healing cooldown is active after repeated failures; operator intervention is required before retry.",
+        );
+      }
+    }
+
+    if ((action.operation === "restart" || action.operation === "failover") && this.executionGuard != null) {
+      const guardDecision = this.executionGuard.canPerformHealing(action);
+      if (!guardDecision.allowed) {
+        return this.recordFailedAttempt(
+          action,
+          executedAt,
+          previousState,
+          guardDecision.reason ?? "Healing is blocked while protected executions are in flight.",
+        );
       }
     }
 
@@ -307,7 +329,7 @@ export class SelfHealingService {
   }
 
   private computeCooldownMs(consecutiveFailures: number): number {
-    const penaltyMultiplier = Math.max(1, consecutiveFailures - this.policy.maxRetries + 1);
+    const penaltyMultiplier = Math.max(1, consecutiveFailures + 1);
     return this.policy.cooldownPeriodMs * penaltyMultiplier;
   }
 

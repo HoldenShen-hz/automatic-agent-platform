@@ -1245,7 +1245,7 @@ function createDefaultApiRateLimiter(env: NodeJS.ProcessEnv): DistributedRateLim
   return new DistributedRateLimiter({
     maxCalls,
     windowMs,
-    allowLocalFallbackInProduction: true,
+    allowLocalFallbackInProduction: env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"] === "1",
     ...(redis != null ? { redis } : {}),
   });
 }

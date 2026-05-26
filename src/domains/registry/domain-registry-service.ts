@@ -10,12 +10,20 @@ import { PluginSpiRegistry } from "./plugin-spi-registry.js";
 import { ToolBundleRegistry } from "./tool-bundle-registry.js";
 import { WorkflowRegistry } from "./workflow-registry.js";
 import type { PluginSpiType } from "./plugin-spi.js";
+import type { NormalizedBusinessPackManifest } from "../business-pack/business-pack-manifest.js";
+import {
+  assertPackCompatibleWithDomain,
+  deriveDomainRiskLevelFromSecurityLevel,
+  resolveHighestPackRiskLevel,
+} from "../business-pack/pack-domain-compatibility.js";
 
 export interface DomainRegistryServiceOptions {
   installedPluginIds?: readonly string[];
   healthyPluginIds?: readonly string[];
   pluginRegistry?: PluginSpiRegistry;
   eventPublisher?: TypedEventPublisher;
+  packResolver?: ((domainId: string) => readonly NormalizedBusinessPackManifest[]) | null;
+  domainRiskResolver?: ((domainId: string) => string | null) | null;
 }
 
 export class DomainRegistryService {
@@ -25,6 +33,8 @@ export class DomainRegistryService {
   private readonly healthyPluginIds: ReadonlySet<string>;
   private readonly pluginRegistry: PluginSpiRegistry | null;
   private readonly eventPublisher: TypedEventPublisher | null;
+  private readonly packResolver: ((domainId: string) => readonly NormalizedBusinessPackManifest[]) | null;
+  private readonly domainRiskResolver: ((domainId: string) => string | null) | null;
   private readonly workflowRegistry = new WorkflowRegistry();
   private readonly toolBundleRegistry = new ToolBundleRegistry();
   private readonly contractRegistry = new ContractRegistry();
@@ -35,6 +45,8 @@ export class DomainRegistryService {
     this.installedPluginIds = new Set(options.installedPluginIds ?? []);
     this.healthyPluginIds = new Set(options.healthyPluginIds ?? options.installedPluginIds ?? []);
     this.eventPublisher = options.eventPublisher ?? null;
+    this.packResolver = options.packResolver ?? null;
+    this.domainRiskResolver = options.domainRiskResolver ?? null;
   }
 
   public register(input: DomainDefinition, options?: { skipSmokeTest?: boolean }): DomainDefinition {
@@ -231,6 +243,18 @@ export class DomainRegistryService {
         details: { currentStatus: current.status },
       });
     }
+    const activePacks = this.listReferencedPacks(domainId).filter((pack) => pack.lifecycleStage !== "archived");
+    if (activePacks.length > 0) {
+      throw new ValidationError(
+        "domain_registry.archived_domain_has_packs",
+        `domain_registry.archived_domain_has_packs: Domain ${domainId} still has registered packs.`,
+        {
+          category: "validation",
+          source: "internal",
+          details: { domainId, packIds: activePacks.map((pack) => pack.packId) },
+        },
+      );
+    }
     const updated: DomainDefinition = { ...current, status: "archived" };
     this.registry.set(domainId, updated);
     this.eventPublisher?.publish({
@@ -320,6 +344,38 @@ export class DomainRegistryService {
 
   public buildCapabilityEntry(domainId: string) {
     const domain = this.getOrThrow(domainId);
+    const packs = this.listReferencedPacks(domainId);
+    for (const pack of packs) {
+      assertPackCompatibleWithDomain(pack, {
+        domainId: domain.domainId,
+        status: domain.status,
+        securityLevel: domain.capabilities.securityLevel,
+        defaultRiskLevel: this.resolveDomainRiskLevel(domain.domainId, domain.capabilities.securityLevel),
+      });
+    }
+    const highestPackRiskLevel = packs.reduce<"low" | "medium" | "high" | "critical" | null>((current, pack) => {
+      const next = resolveHighestPackRiskLevel(pack);
+      if (next == null) {
+        return current;
+      }
+      const order: Record<"low" | "medium" | "high" | "critical", number> = { low: 0, medium: 1, high: 2, critical: 3 };
+      if (current == null) {
+        return next;
+      }
+      return order[next] > order[current] ? next : current;
+    }, null);
+    const strongestSandboxTier = packs.reduce<NormalizedBusinessPackManifest["sandboxTier"] | null>((current, pack) => {
+      const order: Record<NormalizedBusinessPackManifest["sandboxTier"], number> = {
+        read_only: 0,
+        workspace_write: 1,
+        scoped_external_access: 2,
+        restricted_exec: 3,
+      };
+      if (current == null) {
+        return pack.sandboxTier;
+      }
+      return order[pack.sandboxTier] > order[current] ? pack.sandboxTier : current;
+    }, null);
     return {
       domainId: domain.domainId,
       bundleId: domain.toolBundles[0]?.bundleId ?? `${domain.domainId}.default`,
@@ -330,6 +386,8 @@ export class DomainRegistryService {
       knowledgeNamespaces: [...(this.knowledgeNamespacesByDomain.get(domainId) ?? new Set<string>())],
       defaultActivationPolicy: domain.status,
       trustTier: domain.capabilities.securityLevel,
+      ...(strongestSandboxTier != null ? { sandboxTier: strongestSandboxTier } : {}),
+      ...(highestPackRiskLevel != null ? { highestPackRiskLevel } : {}),
     };
   }
 
@@ -337,6 +395,10 @@ export class DomainRegistryService {
     const existing = this.knowledgeNamespacesByDomain.get(ownerDomainId) ?? new Set<string>();
     existing.add(namespace);
     this.knowledgeNamespacesByDomain.set(ownerDomainId, existing);
+  }
+
+  public getKnowledgeNamespaces(domainId: string): readonly string[] {
+    return [...(this.knowledgeNamespacesByDomain.get(domainId) ?? new Set<string>())].sort();
   }
 
   private getOrThrow(domainId: string): DomainDefinition {
@@ -414,6 +476,21 @@ export class DomainRegistryService {
       category: "validation",
       source: "internal",
     });
+  }
+
+  private listReferencedPacks(domainId: string): readonly NormalizedBusinessPackManifest[] {
+    return this.packResolver?.(domainId) ?? [];
+  }
+
+  private resolveDomainRiskLevel(
+    domainId: string,
+    securityLevel: DomainDefinition["capabilities"]["securityLevel"],
+  ): "low" | "medium" | "high" | "critical" {
+    const configured = this.domainRiskResolver?.(domainId);
+    if (configured === "low" || configured === "medium" || configured === "high" || configured === "critical") {
+      return configured;
+    }
+    return deriveDomainRiskLevelFromSecurityLevel(securityLevel);
   }
 }
 

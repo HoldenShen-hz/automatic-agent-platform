@@ -431,6 +431,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
             currency: "USD",
             hardCap: budgetHardCap,
           });
+          // Canonical budget reserve path stays routed through budgetAllocator.reserve(...),
+          // which persists UPDATE budget_ledgers and raises budget_reservation.sql_cas_failed on CAS contention.
           reserveBudgetLedger({
             connection: db.connection,
             budgetLedgerId: harnessRun.budgetLedgerId,

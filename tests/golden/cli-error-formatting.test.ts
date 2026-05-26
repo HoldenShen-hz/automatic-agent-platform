@@ -83,13 +83,17 @@ test("golden: inspect CLI missing required env var produces structured error", (
 
     // Validation errors are thrown as exceptions, not JSON
     assert.ok(
-      result.stderr.includes("invalid_env") || result.stderr.includes("ValidationError"),
+      result.stderr.includes("missing_env")
+      || result.stderr.includes("invalid_env")
+      || result.stderr.includes("ValidationError"),
       "Should have validation error in stderr",
     );
 
     assertGolden("cli-error-missing-env", {
       hasError: result.stderr.length > 0,
-      hasValidationError: result.stderr.includes("invalid_env") || result.stderr.includes("ValidationError"),
+      hasValidationError: result.stderr.includes("missing_env")
+        || result.stderr.includes("invalid_env")
+        || result.stderr.includes("ValidationError"),
       status: result.status,
     });
   } finally {
@@ -184,6 +188,7 @@ test("golden: CLI error output includes actionable information", () => {
     // - The missing environment variable name
     // - Clear error message
     const hasHelpfulError = result.stderr.includes("AA_INSPECT_KIND") ||
+                            result.stderr.includes("missing_env") ||
                             result.stderr.includes("invalid_env") ||
                             result.stderr.includes("ValidationError");
 

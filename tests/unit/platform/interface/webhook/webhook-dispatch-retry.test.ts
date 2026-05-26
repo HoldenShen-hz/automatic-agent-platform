@@ -168,7 +168,7 @@ test("WebhookOutboxDispatchService receiveAndStage with empty allowedEventTypes 
   }
 });
 
-test("WebhookOutboxDispatchService receiveAndStage with payload containing special characters", () => {
+test("WebhookOutboxDispatchService receiveAndStage rejects invalid idempotency keys with special characters", () => {
   const workspace = createTempWorkspace("aa-webhook-retry-special-");
   try {
     const db = new SqliteDatabase(`${workspace}/webhook.db`);
@@ -187,22 +187,20 @@ test("WebhookOutboxDispatchService receiveAndStage with payload containing speci
       algorithm: "none",
     });
 
-    const result = service.receiveAndStage({
-      endpointId: "special-char-ep",
-      headers: {},
-      body: JSON.stringify({
-        eventType: "test.event",
-        eventId: "special-\"quotes\"-and-emoji-🎉",
-        data: "New\nLines\tand\ttabs",
-      }),
-    });
-
-    assert.equal(result.duplicate, false);
-    assert.equal(result.persistedToOutbox, true);
+    assert.throws(() => {
+      service.receiveAndStage({
+        endpointId: "special-char-ep",
+        headers: {},
+        body: JSON.stringify({
+          eventType: "test.event",
+          eventId: "special-\"quotes\"-and-emoji-🎉",
+          data: "New\nLines\tand\ttabs",
+        }),
+      });
+    }, /webhook\.idempotency_key_invalid/);
 
     const pending = outboxRepo.listPendingEntries(10);
-    assert.equal(pending.length, 1);
-    assert.ok(pending[0]!.payloadJson.includes("New\\nLines"));
+    assert.equal(pending.length, 0);
   } finally {
     cleanupPath(workspace);
   }

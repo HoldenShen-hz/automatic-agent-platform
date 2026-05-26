@@ -505,6 +505,12 @@ test("BudgetAllocator reserve and settle with different currency preserves curre
     resourceKind: "compute",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: {
+      tenantId: "tenant-1",
+      traceId: "trace-1",
+      emittedBy: "test",
+      tierLimitCurrency: "EUR",
+    },
   });
 
   const settled = allocator.settle({
@@ -515,6 +521,7 @@ test("BudgetAllocator reserve and settle with different currency preserves curre
       tenantId: "tenant-1",
       traceId: "trace-1",
       emittedBy: "test",
+      tierLimitCurrency: "EUR",
     },
   });
 

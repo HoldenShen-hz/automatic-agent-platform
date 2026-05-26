@@ -1046,20 +1046,21 @@ test("RedisLockAdapter releaseAsync handles redis error during DEL", async () =>
   );
 });
 
-test("RedisLockAdapter close rethrows quit error", async () => {
+test("RedisLockAdapter close logs quit error and disconnects", async () => {
+  let disconnected = false;
   const mockRedis = createMockRedis({
     status: "ready",
     quit: async () => {
       throw new Error("Quit failed - connection already closed");
     },
+    disconnect: () => {
+      disconnected = true;
+    },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
-  // close() rethrows quit errors
-  await assert.rejects(
-    adapter.close(),
-    (error: unknown) => error instanceof Error && error.message === "Quit failed - connection already closed",
-  );
+  await adapter.close();
+  assert.equal(disconnected, true);
 });
 
 test("RedisLockAdapter close handles disconnect error gracefully", async () => {

@@ -19,9 +19,23 @@ function createDatabaseMock() {
     backendType: "sqlite",
     connection: {
       exec: () => {},
-      prepare: () => {
-        throw new Error("unused");
-      },
+      prepare: (sql: string) => ({
+        get: (value: string) => {
+          if (sql.includes("SELECT 1 FROM executions WHERE id = ? LIMIT 1")) {
+            return value.startsWith("exec-") ? { 1: 1 } : undefined;
+          }
+          if (sql.includes("SELECT task_id FROM executions WHERE id = ? LIMIT 1")) {
+            if (!value.startsWith("exec-")) {
+              return undefined;
+            }
+            return { task_id: value.replace(/^exec-/, "task-") };
+          }
+          if (sql.includes("SELECT 1 FROM tasks WHERE id = ? LIMIT 1")) {
+            return value.startsWith("task-") ? { 1: 1 } : undefined;
+          }
+          throw new Error(`unexpected_sql:${sql}`);
+        },
+      }),
     },
     migrate: () => {},
     getSchemaStatus: () => ({

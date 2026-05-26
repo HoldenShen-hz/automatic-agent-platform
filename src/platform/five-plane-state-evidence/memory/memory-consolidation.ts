@@ -128,6 +128,7 @@ export function buildMemoryConsolidationSummary(
           observedAt: fact.provenance.observedAt ?? provenance.observedAt,
         },
       })),
+    metadata: {},
   };
 
   // R24-29/R24-32 FIX: Build loss report documenting dropped content

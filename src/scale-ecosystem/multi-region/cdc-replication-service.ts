@@ -280,15 +280,20 @@ export class CDCReplicationService {
   ): CDCReplicationBatch | null {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
     const checkpoint = this.checkpoints.get(key);
+    const config = this.configs.get(key);
+    const queueDepth = this.replicationQueues.get(key)?.length ?? 0;
+    const maxQueueDepth = config?.maxQueueDepth ?? Number.POSITIVE_INFINITY;
 
     if (!checkpoint) {
       return null;
     }
-    if ((this.replicationQueues.get(key)?.length ?? 0) > 0) {
+    if (queueDepth >= maxQueueDepth) {
+      throw new CdcQueueBackpressureError(key, queueDepth, maxQueueDepth);
+    }
+    if (queueDepth > 0) {
       return null;
     }
 
-    const config = this.configs.get(key);
     const batchSize = config?.batchSize ?? 100;
 
     // Filter events after checkpoint. Sequence 0 is the initial checkpoint boundary.

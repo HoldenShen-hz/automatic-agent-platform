@@ -99,7 +99,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains policy-center capability", () 
   );
   assert.ok(cap, "policy-center capability should exist");
   assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/policy-center/index.ts");
-  assert.ok(cap.baselineServices.includes("PolicyRegistryService"));
+  assert.ok(cap.baselineServices.includes("PolicyCenterService"));
 });
 
 test("CONTROL_PLANE_CAPABILITY_BASELINES contains replay-repair-control capability", () => {
@@ -136,7 +136,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains tenant capability", () => {
   const cap = CONTROL_PLANE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "tenant");
   assert.ok(cap, "tenant capability should exist");
   assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/tenant/index.ts");
-  assert.ok(cap.baselineServices.includes("TenantManagementService"));
+  assert.ok(cap.baselineServices.includes("TenantBoundaryRegistryService"));
 });
 
 test("resolveControlPlaneCapabilityBaseline resolves valid capability", () => {

@@ -7,6 +7,10 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { z } from "zod";
+import {
+  INTAKE_DISAMBIGUATION_THRESHOLD,
+  INTAKE_LOW_CONFIDENCE_THRESHOLD,
+} from "../../platform/contracts/constants/index.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 
 /**
@@ -151,10 +155,8 @@ const DEFAULT_NL_GATEWAY_CONFIG: NlGatewayConfig = {
     },
   },
   disambiguation: {
-    // R23-10 FIX: §39.6 requires 0.80 threshold to trigger clarification.
-    // Previous value 0.7 allowed 0.7-0.79 to bypass clarification (zone of doubt).
-    threshold: 0.80,
-    lowConfidenceThreshold: 0.5,
+    threshold: INTAKE_DISAMBIGUATION_THRESHOLD,
+    lowConfidenceThreshold: INTAKE_LOW_CONFIDENCE_THRESHOLD,
     maxClarificationQuestions: 3,
     enableProactiveClarification: true,
   },

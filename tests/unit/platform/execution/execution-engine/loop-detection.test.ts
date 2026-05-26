@@ -33,6 +33,25 @@ test("normalizeToolInputForHash handles object", () => {
   assert.equal(result, '{"a":1,"b":2}');
 });
 
+test("normalizeToolInputForHash normalizes nested object keys", () => {
+  const left = {
+    nested: {
+      z: [" B ", { y: 2, x: 1 }],
+      a: " Value ",
+    },
+    top: true,
+  };
+  const right = {
+    top: true,
+    nested: {
+      a: "Value",
+      z: [" B ", { x: 1, y: 2 }],
+    },
+  };
+
+  assert.equal(normalizeToolInputForHash(left), normalizeToolInputForHash(right));
+});
+
 test("normalizeToolInputForHash handles number", () => {
   assert.equal(normalizeToolInputForHash(42), "42");
 });

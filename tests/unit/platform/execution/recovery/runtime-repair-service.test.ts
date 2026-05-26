@@ -1297,12 +1297,12 @@ test("RuntimeRepairService.apply rebuild_ack with tier-1 event and registered co
 
   const store = createMockStore({
     events: [
-      { id: "event-1", eventType: "task:completed", eventTier: "tier_1", payloadJson: "{}" },
+      { id: "event-1", eventType: "subtask:completed", eventTier: "tier_1", payloadJson: "{}" },
     ],
     event: {
       getEvent: (id: string) => {
         if (id === "event-1") {
-          return { id: "event-1", eventType: "task:completed", eventTier: "tier_1", payloadJson: "{}" };
+          return { id: "event-1", eventType: "subtask:completed", eventTier: "tier_1", payloadJson: "{}" };
         }
         return null;
       },
@@ -1347,6 +1347,7 @@ test("RuntimeRepairService.apply rebuild_ack with tier-1 event and registered co
   assert.equal(results[0]!.action, "rebuild_ack");
   assert.equal(results[0]!.applied, true);
   assert.ok(results[0]!.detail.includes("drained from"));
+  assert.ok(consumersAcknowledged.length > 0);
 });
 
 test("RuntimeRepairService.apply rebuild_ack does not apply when no drainage occurred", async () => {
@@ -1356,12 +1357,12 @@ test("RuntimeRepairService.apply rebuild_ack does not apply when no drainage occ
 
   const store = createMockStore({
     events: [
-      { id: "event-1", eventType: "task:completed", eventTier: "tier_1", payloadJson: "{}" },
+      { id: "event-1", eventType: "subtask:completed", eventTier: "tier_1", payloadJson: "{}" },
     ],
     event: {
       getEvent: (id: string) => {
         if (id === "event-1") {
-          return { id: "event-1", eventType: "task:completed", eventTier: "tier_1", payloadJson: "{}" };
+          return { id: "event-1", eventType: "subtask:completed", eventTier: "tier_1", payloadJson: "{}" };
         }
         return null;
       },
@@ -1425,12 +1426,12 @@ test("RuntimeRepairService.apply rebuild_ack ignores non-tier-1 events", async (
 
   const store = createMockStore({
     events: [
-      { id: "event-1", eventType: "task:completed", eventTier: "tier_2", payloadJson: "{}" },
+      { id: "event-1", eventType: "subtask:completed", eventTier: "tier_2", payloadJson: "{}" },
     ],
     event: {
       getEvent: (id: string) => {
         if (id === "event-1") {
-          return { id: "event-1", eventType: "task:completed", eventTier: "tier_2", payloadJson: "{}" };
+          return { id: "event-1", eventType: "subtask:completed", eventTier: "tier_2", payloadJson: "{}" };
         }
         return null;
       },

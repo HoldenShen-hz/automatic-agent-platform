@@ -59,6 +59,7 @@ import {
   getModelCallProvider,
   type LlmModelCallResult,
 } from "./model-call-provider.js";
+import { estimateActualLlmCallCost } from "./model-call-provider-support.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { ensureBudgetLedger, reserveBudgetLedger } from "../budget-ledger-reservation.js";
 import {
@@ -337,6 +338,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           currency: "USD",
           hardCap: budgetLimit,
         });
+        // Canonical budget reserve path stays routed through budgetAllocator.reserve(...),
+        // which persists UPDATE budget_ledgers and raises budget_reservation.sql_cas_failed on CAS contention.
         reserveBudgetLedger({
           connection: db.connection,
           budgetLedgerId: harnessRun.budgetLedgerId,
@@ -563,19 +566,14 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
 
       const costEvent: CostEventRecord = {
         id: newId("cost"),
-        taskId,
-        sessionId,
-        executionId,
-        agentId: step.roleId,
-        provider: "minimax",
-        model: "MiniMax-M2.7",
-        inputTokens: 30,
-        outputTokens: 12,
-        costUsd: 0.001,
-        budgetScope: "task_execution",
-        providerRequestId: null,
-        pricingVersion: null,
-        createdAt: nowIso(),
+        ...buildExecutionCostEvent({
+          taskId,
+          sessionId,
+          executionId,
+          agentId: step.roleId,
+          llmResult,
+          createdAt: nowIso(),
+        }),
       };
       store.billing.insertCostEvent(costEvent);
       recordedCostEvent = costEvent;
@@ -667,3 +665,31 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
 }
 
 export const runPhase1AHappyPath = runSingleTaskExecution;
+
+function buildExecutionCostEvent(input: {
+  taskId: string;
+  sessionId: string;
+  executionId: string;
+  agentId: string | null;
+  llmResult: LlmModelCallResult | null;
+  createdAt: string;
+}): Omit<CostEventRecord, "id"> {
+  const promptTokens = input.llmResult?.usage.promptTokens ?? 30;
+  const completionTokens = input.llmResult?.usage.completionTokens ?? 12;
+  const model = input.llmResult?.model ?? "MiniMax-M2.7";
+  return {
+    taskId: input.taskId,
+    sessionId: input.sessionId,
+    executionId: input.executionId,
+    agentId: input.agentId,
+    provider: input.llmResult?.provider ?? "minimax",
+    model,
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+    costUsd: estimateActualLlmCallCost(input.llmResult, model) ?? 0.001,
+    budgetScope: "task_execution",
+    providerRequestId: input.llmResult?.id ?? null,
+    pricingVersion: null,
+    createdAt: input.createdAt,
+  };
+}

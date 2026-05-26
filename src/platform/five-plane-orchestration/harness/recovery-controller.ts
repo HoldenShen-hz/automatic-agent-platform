@@ -106,7 +106,8 @@ export class RecoveryController {
   private shouldUseBackoffRecovery(run: HarnessRunRuntimeState): boolean {
     const sleepRetryAttempt = run.sleepLease?.retryAttempt ?? 0;
     const loopRetryAttempt = this.loopController?.getState().retryAttempt ?? 0;
-    return Math.max(sleepRetryAttempt, loopRetryAttempt) > 0;
+    const hasPersistedCheckpoint = this.durableService.getCheckpointRef(run.runId) != null;
+    return hasPersistedCheckpoint || Math.max(sleepRetryAttempt, loopRetryAttempt) > 0;
   }
 
   /**

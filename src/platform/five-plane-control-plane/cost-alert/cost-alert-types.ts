@@ -115,6 +115,7 @@ export type CostAlertReasonCode =
 export interface CostThresholdExceededEvent {
   eventType: "cost:limit_reached";
   eventTier: "tier_1" | "tier_2" | "tier_3";
+  correlationId?: string | null;
   scope: BudgetScope;
   scopeId: string;
   alertLevel: CostAlertLevel;

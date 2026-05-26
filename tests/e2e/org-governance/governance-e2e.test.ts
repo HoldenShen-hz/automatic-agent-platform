@@ -101,7 +101,7 @@ test("E2E: Delegation grant, usage, and revocation flow", () => {
       delegationId: "delegation-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task", "approve_budget_increase"],
+      permissions: ["manage_approvals", "manage_budgets"],
       guardrails: [
         { guardrailId: "max_budget", type: "max_budget", value: 5000 },
       ],
@@ -114,7 +114,7 @@ test("E2E: Delegation grant, usage, and revocation flow", () => {
   const resolveResult = governanceService.resolve("division_admin_1", {
     orgNodeId: "dept-finance",
 // @ts-ignore
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(resolveResult.allowed, true);
 
@@ -228,7 +228,7 @@ test("E2E: Multi-level delegation with inheritance and revocation", () => {
       delegationId: "del-platform-to-division",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task", "approve_budget_increase", "domain_onboarding"],
+      permissions: ["manage_approvals", "manage_budgets", "manage_domains"],
       guardrails: [
         { guardrailId: "max_budget", type: "max_budget", value: 10000 },
         { guardrailId: "max_risk", type: "max_risk_level", value: "high" },
@@ -239,7 +239,7 @@ test("E2E: Multi-level delegation with inheritance and revocation", () => {
       delegationId: "del-division-to-dept",
       grantorId: "division_admin_1",
       granteeId: "department_admin_1",
-      permissions: ["approve_task", "create_trigger"],
+      permissions: ["manage_approvals", "manage_triggers"],
       guardrails: [],
     }),
   ];
@@ -250,7 +250,7 @@ test("E2E: Multi-level delegation with inheritance and revocation", () => {
   const divisionResult = governanceService.resolve("division_admin_1", {
     orgNodeId: "dept-1",
 // @ts-ignore
-    permission: "approve_budget_increase",
+    permission: "manage_budgets",
   });
   assert.equal(divisionResult.allowed, true);
 
@@ -258,7 +258,7 @@ test("E2E: Multi-level delegation with inheritance and revocation", () => {
   const deptResult = governanceService.resolve("department_admin_1", {
     orgNodeId: "dept-1",
 // @ts-ignore
-    permission: "approve_task",
+    permission: "manage_approvals",
   });
   assert.equal(deptResult.allowed, true);
 
@@ -321,7 +321,7 @@ test("E2E: Full user lifecycle with SSO, SCIM, and Governance", async () => {
         delegationId: "del-1",
         grantorId: "platform_team",
         granteeId: scimUser.id,
-        permissions: ["approve_task", "create_trigger"],
+        permissions: ["manage_approvals", "manage_triggers"],
         guardrails: [],
       }),
     ];
@@ -332,7 +332,7 @@ test("E2E: Full user lifecycle with SSO, SCIM, and Governance", async () => {
     const governanceResult = governanceService.resolve(scimUser.id, {
       orgNodeId: "dept-1",
 // @ts-ignore
-      permission: "approve_task",
+      permission: "manage_approvals",
     });
     assert.equal(governanceResult.allowed, true);
 
@@ -378,7 +378,7 @@ test("E2E: Compliance policy resolution with delegation guardrails", () => {
       delegationId: "del-compliance-1",
       grantorId: "platform_team",
       granteeId: "division_admin_1",
-      permissions: ["approve_task", "approve_budget_increase"],
+      permissions: ["manage_approvals", "manage_budgets"],
       guardrails: [
         { guardrailId: "max_budget", type: "max_budget", value: 5000 },
         { guardrailId: "max_risk", type: "max_risk_level", value: "high" },

@@ -29,6 +29,7 @@ function createTestLedger(overrides?: Partial<BudgetLedger>): BudgetLedger {
     settledAmount: overrides?.settledAmount ?? 0,
     releasedAmount: overrides?.releasedAmount ?? 0,
     hardCap: overrides?.hardCap ?? 100000,
+    currency: overrides?.currency ?? "USD",
     version: overrides?.version ?? 1,
   };
 }

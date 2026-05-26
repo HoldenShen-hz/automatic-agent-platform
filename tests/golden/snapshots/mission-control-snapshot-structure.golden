@@ -2,7 +2,7 @@
   "generatedAt": "<iso-timestamp>",
   "taskBoardCount": 2,
   "pendingApprovalsCount": 0,
-  "divisionsCount": 33,
+  "divisionsCount": 32,
   "hasProductSignals": true,
   "successRate": 0,
   "avgDurationMs": null,

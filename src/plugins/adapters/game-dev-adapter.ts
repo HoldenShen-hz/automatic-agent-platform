@@ -28,12 +28,8 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
     async initialize() {
       // Unity Cloud Build credentials would be validated here
     },
-    async healthCheck() {
-      if (credentialFingerprint == null) {
-        return false;
-      }
-      const decision = await gameDevPolicy.evaluate("https://build-api.unity.com");
-      return decision.allowed;
+    healthCheck() {
+      return gameDevPolicy.evaluate("https://build-api.unity.com").allowed && credentialFingerprint != null;
     },
     async shutdown() {
       credentialFingerprint = null;

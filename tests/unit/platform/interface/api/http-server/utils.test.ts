@@ -22,6 +22,12 @@ import {
 } from "../../../../../../src/platform/five-plane-interface/api/http-server/utils.js";
 import type { ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 import { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import {
+  __dangerousResetServiceAuthStateForTests,
+  issueServiceToken,
+  registerServiceIdentity,
+  signIssuedServiceToken,
+} from "../../../../../../src/platform/five-plane-control-plane/iam/service-auth.js";
 
 function makeRequest(url: string, headers: Record<string, string | undefined> = {}): ApiRequestLike {
   return { method: "GET", url, headers, body: null };
@@ -571,4 +577,49 @@ test("requirePrincipal propagates ApiAuthError with correct status", () => {
     assert.equal(error.statusCode, 401);
     assert.ok(error.code === "api.invalid_token" || error.code === "api.auth_required");
   }
+});
+
+test("requirePrincipal authenticates service tokens before falling back to user auth", () => {
+  __dangerousResetServiceAuthStateForTests();
+  const identity = registerServiceIdentity({
+    serviceName: "task-dispatcher",
+    namespace: "execution",
+    capabilities: [],
+  });
+  const token = issueServiceToken({
+    serviceId: identity.serviceId,
+    audience: "task",
+  });
+  const request = makeRequest("/api/v1/tasks", {
+    "x-service-id": identity.serviceId,
+    "x-service-token": token.tokenId,
+    "x-service-token-signature": signIssuedServiceToken(token.tokenId),
+  });
+
+  const principal = requirePrincipal(request, null, "viewer");
+  assert.equal(principal.actorId, identity.serviceId);
+  assert.deepEqual(principal.roles, ["admin"]);
+});
+
+test("requirePrincipal rejects service tokens whose audience does not match the route", () => {
+  __dangerousResetServiceAuthStateForTests();
+  const identity = registerServiceIdentity({
+    serviceName: "gateway-bot",
+    namespace: "execution",
+    capabilities: [],
+  });
+  const token = issueServiceToken({
+    serviceId: identity.serviceId,
+    audience: "gateway",
+  });
+  const request = makeRequest("/api/v1/tasks", {
+    "x-service-id": identity.serviceId,
+    "x-service-token": token.tokenId,
+    "x-service-token-signature": signIssuedServiceToken(token.tokenId),
+  });
+
+  assert.throws(
+    () => requirePrincipal(request, null, "viewer"),
+    (error: any) => error.code === "api.service_audience_mismatch" && error.statusCode === 403,
+  );
 });

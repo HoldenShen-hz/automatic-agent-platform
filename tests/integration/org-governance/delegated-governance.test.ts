@@ -620,7 +620,7 @@ test("integration: DelegatedGovernanceService.listDelegationsForGrantee returns 
       orgNodeIds: ["division-1"],
       domainIds: [],
       derivedDelegationIds: [],
-      permissions: ["approve_task"],
+      permissions: ["manage_approvals"],
       guardrails: [],
       expiresAt: futureDate,
       revocable: true,

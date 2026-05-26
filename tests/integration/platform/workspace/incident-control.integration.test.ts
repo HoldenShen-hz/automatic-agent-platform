@@ -141,6 +141,7 @@ test("integration: IncidentDetectionRule type structure", () => {
       return availability !== null && availability < 95;
     },
     category: "availability",
+    dimensions: ["availability"],
   };
 
   assert.equal(rule.ruleId, "sev1_availability_collapse");

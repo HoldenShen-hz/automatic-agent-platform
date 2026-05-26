@@ -121,7 +121,7 @@ test("CircuitBreaker closes after halfOpenSuccessThreshold successes in half_ope
 });
 
 test("CircuitBreaker any failure in half_open returns to open", async () => {
-  const cb = new CircuitBreaker({ name: "test", failureThreshold: 1, resetTimeoutMs: 10, halfOpenSuccessThreshold: 3 });
+  const cb = new CircuitBreaker({ name: "test", failureThreshold: 1, resetTimeoutMs: 50, halfOpenSuccessThreshold: 3 });
 
   // Open then transition to half_open
   try {
@@ -132,7 +132,7 @@ test("CircuitBreaker any failure in half_open returns to open", async () => {
     // Expected
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await new Promise((resolve) => setTimeout(resolve, 60));
   assert.equal(cb.getState(), "half_open");
 
   await assert.rejects(

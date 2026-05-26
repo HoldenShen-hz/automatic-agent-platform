@@ -11,6 +11,7 @@ import {
   SelfHealingService,
   type SelfHealingAction,
   type ComponentHealthState,
+  type ExecutionGuard,
 } from "../../../../src/ops-maturity/platform-ops-agent/self-healing-service.js";
 
 function createAction(
@@ -168,7 +169,7 @@ test.describe("SelfHealingService", () => {
       assert.equal(health?.consecutiveFailures, 1);
     });
 
-    test("failover does not depend on component id length parity", () => {
+    test("immediate disruptive retries are blocked by cooldown rather than component id heuristics", () => {
       const service = new SelfHealingService();
       service.execute(createAction({
         targetComponent: "odd",
@@ -183,8 +184,8 @@ test.describe("SelfHealingService", () => {
         reasonCode: "region_capacity_exhausted",
       }));
 
-      assert.equal(receipt.healed, true);
-      assert.equal(receipt.verificationResult?.healthCheckPassed, true);
+      assert.equal(receipt.healed, false);
+      assert.match(receipt.verificationResult?.message ?? "", /cooldown/i);
     });
 
     test("repeated failures trigger stronger cooldown protection", () => {
@@ -210,6 +211,33 @@ test.describe("SelfHealingService", () => {
       assert.match(second.verificationResult?.message ?? "", /cooldown/i);
       const health = service.getComponentHealth("unknown_failover_component");
       assert.equal(health?.status, "unhealthy");
+    });
+
+    test("executionGuard blocks disruptive healing actions before restart or failover", () => {
+      const guard: ExecutionGuard = {
+        canPerformHealing: () => ({
+          allowed: false,
+          reason: "protected executions still running",
+        }),
+      };
+      const service = new SelfHealingService(undefined, guard);
+
+      const restart = service.execute(createAction({
+        targetComponent: "guarded-component",
+        actionId: "guarded-restart",
+        operation: "restart",
+      }));
+      const failover = service.execute(createAction({
+        targetComponent: "guarded-component-2",
+        actionId: "guarded-failover",
+        operation: "failover",
+        reasonCode: "region_partition",
+      }));
+
+      assert.equal(restart.healed, false);
+      assert.match(restart.verificationResult?.message ?? "", /protected executions/i);
+      assert.equal(failover.healed, false);
+      assert.match(failover.verificationResult?.message ?? "", /protected executions/i);
     });
   });
 

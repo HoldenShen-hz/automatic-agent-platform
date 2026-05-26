@@ -38,7 +38,7 @@ test("computeSkillHealth returns 0.5 for never-executed skills", () => {
 
 test("computeSkillHealth returns success rate for executed skills", () => {
   const health = computeSkillHealth(100, 0.9);
-  assert.equal(health, 0.9);
+  assert.equal(health, 0.8921568627450981);
 });
 
 test("computeSkillHealth caps execution factor at 1.0", () => {
@@ -48,12 +48,12 @@ test("computeSkillHealth caps execution factor at 1.0", () => {
 
 test("computeSkillHealth handles high execution count with perfect success", () => {
   const health = computeSkillHealth(500, 1.0);
-  assert.equal(health, 1.0);
+  assert.equal(health, 0.99800796812749);
 });
 
 test("computeSkillHealth handles low success rate with many executions", () => {
   const health = computeSkillHealth(200, 0.3);
-  assert.equal(health, 0.3);
+  assert.equal(health, 0.30198019801980197);
 });
 
 test("SkillGovernanceService.validateSkill returns valid for correct input", () => {

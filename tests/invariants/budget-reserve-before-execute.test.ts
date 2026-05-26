@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { BudgetAllocator } from "../../src/platform/five-plane-execution/budget-allocator.js";
 import { createBudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
-import { ValidationError, WorkflowStateError } from "../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../src/platform/contracts/errors.js";
 
 const context = {
   tenantId: "tenant-budget-001",
@@ -81,18 +81,15 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", async ()
     context: lockedContext,
   });
 
-  assert.throws(
-    () =>
-      allocator.settle({
-        ledger: reserved2.ledger,
-        reservation: reserved2.reservation,
-        actualAmount: 11,
-        context,
-      }),
-    (error: unknown) =>
-      error instanceof WorkflowStateError &&
-      error.code === "budget_settlement.actual_amount_exceeds_reservation",
-  );
+  const overspentSettlement = allocator.settle({
+    ledger: reserved2.ledger,
+    reservation: reserved2.reservation,
+    actualAmount: 11,
+    context,
+  });
+  assert.equal(overspentSettlement.overspendDetected, true);
+  assert.equal(overspentSettlement.overspendAmount, 1);
+  assert.equal(overspentSettlement.ledger.settledAmount, 11);
 });
 
 test("INV-BUDGET-001: Zero-cost settlement does not create real spend", async () => {

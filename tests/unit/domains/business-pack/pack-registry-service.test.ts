@@ -6,6 +6,7 @@ import {
   type PackVersion,
 } from "../../../../src/domains/business-pack/pack-registry-service.js";
 import type { BusinessPackManifest } from "../../../../src/domains/business-pack/business-pack-manifest.js";
+import type { DomainPackCompatibilityDomain } from "../../../../src/domains/business-pack/pack-domain-compatibility.js";
 
 function createTestManifest(packId: string, overrides: Partial<BusinessPackManifest> = {}): BusinessPackManifest {
   return {
@@ -63,6 +64,32 @@ describe("PackRegistryService", () => {
       assert.throws(
         () => service.registerPack("pack-001", manifest),
         /already registered/,
+      );
+    });
+
+    it("should reject packs for unknown domains when a domain resolver is configured", () => {
+      const manifest = createTestManifest("pack-001");
+      const guarded = new PackRegistryService({
+        domainResolver: () => null,
+      });
+
+      assert.throws(
+        () => guarded.registerPack("pack-001", manifest),
+        /Referenced domain/,
+      );
+    });
+
+    it("should reject packs whose sandbox tier exceeds the domain security level", () => {
+      const domains = new Map<string, DomainPackCompatibilityDomain>([
+        ["domain-001", { domainId: "domain-001", status: "active", securityLevel: "standard", defaultRiskLevel: "low" }],
+      ]);
+      const guarded = new PackRegistryService({
+        domainResolver: (domainId) => domains.get(domainId) ?? null,
+      });
+
+      assert.throws(
+        () => guarded.registerPack("pack-001", createTestManifest("pack-001", { sandboxTier: "container" })),
+        /security_level_mismatch/,
       );
     });
   });
@@ -188,6 +215,20 @@ describe("PackRegistryService", () => {
 
       const domain2 = service.findPacksByDomain("domain-002");
       assert.strictEqual(domain2.length, 1);
+    });
+
+    it("should hide packs for archived domains from lookup results", () => {
+      const domains = new Map<string, DomainPackCompatibilityDomain>([
+        ["domain-001", { domainId: "domain-001", status: "active", securityLevel: "elevated", defaultRiskLevel: "high" }],
+      ]);
+      const guarded = new PackRegistryService({
+        domainResolver: (domainId) => domains.get(domainId) ?? null,
+      });
+      guarded.registerPack("pack-001", createTestManifest("pack-001", { domainId: "domain-001" }));
+
+      domains.set("domain-001", { domainId: "domain-001", status: "archived", securityLevel: "elevated", defaultRiskLevel: "high" });
+
+      assert.deepStrictEqual(guarded.findPacksByDomain("domain-001"), []);
     });
   });
 

@@ -48,19 +48,19 @@ export class AlertRouter {
   }
 
   public getOverlayAlerts(items: readonly AttentionItem[]): AttentionItem[] {
-    return this.collectRoutes(items, false)
+    return this.collectRoutes(items, true)
       .filter((route) => route.delivery === "overlay")
       .map((route) => route.item);
   }
 
   public getPushNotifications(items: readonly AttentionItem[]): AttentionItem[] {
-    return this.collectRoutes(items, false)
+    return this.collectRoutes(items, true)
       .filter((route) => route.delivery === "push")
       .map((route) => route.item);
   }
 
   public getHapticAlerts(items: readonly AttentionItem[]): AttentionItem[] {
-    return this.collectRoutes(items, false)
+    return this.collectRoutes(items, true)
       .filter((route) => route.delivery === "haptic")
       .map((route) => route.item);
   }

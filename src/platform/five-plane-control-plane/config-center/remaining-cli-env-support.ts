@@ -774,6 +774,7 @@ export function buildStructuredMemoryContent(env: NodeJS.ProcessEnv): Structured
     recentHistory: recentHistory ?? [],
     longTermBackground: longTermBackground ?? [],
     facts: facts ?? [],
+    metadata: {},
   };
 }
 

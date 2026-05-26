@@ -345,3 +345,30 @@ test("CompensationManager: planCompensation uses externalRef or idempotencyKey f
 
   assert.ok(plan.steps[0]?.targetRef);
 });
+
+test("CompensationManager: executeCompensationSteps records evidence when step returns false", () => {
+  const manager = new CompensationManager() as CompensationManager & {
+    executeCompensationStep: (step: unknown, context: CompensationContext) => boolean;
+  };
+  manager.executeCompensationStep = () => false;
+
+  const result = manager.executeCompensationSteps({
+    compensationId: "comp-1",
+    sideEffectId: "side-effect-1",
+    harnessRunId: "run-1",
+    createdAt: "2026-05-25T00:00:00.000Z",
+    steps: [{
+      nodeRunId: "node-run-1",
+      stepType: "reverse",
+      targetRef: "external://resource-1",
+      action: "reverse_external_api",
+      estimatedImpact: "low",
+    }],
+  }, createContext());
+
+  assert.equal(result.success, false);
+  assert.equal(result.finalStatus, "failed");
+  assert.equal(result.evidenceRefs.length, 1);
+  assert.equal(result.evidenceRefs[0]?.kind, "compensation_error");
+  assert.match(result.evidenceRefs[0]?.uri ?? "", /targetRef=external%3A%2F%2Fresource-1/);
+});

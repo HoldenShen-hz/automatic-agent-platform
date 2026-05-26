@@ -18,8 +18,10 @@
  */
 
 import { pathToFileURL } from "node:url";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { withCliStorage } from "./authoritative-storage.js";
-import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { bootstrapGovernanceServices } from "./governance-bootstrap.js";
 
 export function installBrokenPipeHandler(): void {
@@ -46,6 +48,25 @@ export function installBrokenPipeHandler(): void {
  */
 export function main(): number {
   installBrokenPipeHandler();
+  const args = process.argv.slice(2);
+  if (args.includes("--help") || args.includes("-h")) {
+    process.stdout.write(`${JSON.stringify({
+      command: "doctor",
+      usage: "doctor [--help] [--version]",
+      description: "Run platform health and consistency diagnostics.",
+    }, null, 2)}\n`);
+    return CLI_EXIT_SUCCESS;
+  }
+  if (args.includes("--version")) {
+    const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as { version?: string };
+    process.stdout.write(`${packageJson.version ?? "0.0.0"}\n`);
+    return CLI_EXIT_SUCCESS;
+  }
+  const invalidFlag = args.find((arg) => arg.startsWith("-"));
+  if (invalidFlag != null) {
+    process.stderr.write(`invalid_flag:${invalidFlag}\n`);
+    return CLI_EXIT_FAILURE;
+  }
 
   const output = withCliStorage((storage) => {
     const dbPath = storage.sql.filePath;

@@ -169,19 +169,21 @@ test("RedisLockAdapter releaseAsync throws LockingError when Lua script fails", 
   );
 });
 
-test("RedisLockAdapter close() propagates error when quit() throws", async () => {
+test("RedisLockAdapter close() best-effort disconnects when quit() throws", async () => {
+  let disconnected = false;
   const mockRedis = createMockRedis({
     status: "ready",
     quit: async () => {
       throw new Error("QUIT command failed");
     },
+    disconnect: () => {
+      disconnected = true;
+    },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
-  await assert.rejects(
-    adapter.close(),
-    (err: unknown) => err instanceof Error && err.message === "QUIT command failed",
-  );
+  await adapter.close();
+  assert.equal(disconnected, true);
 });
 
 test("RedisLockAdapter listHeldAsync propagates error when scan throws", async () => {

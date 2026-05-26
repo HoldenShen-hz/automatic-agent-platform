@@ -162,13 +162,24 @@ test("AlertRouter applies cooldown per item and delivery", () => {
 });
 
 test("AlertRouter delivery filters expose routed attention items", () => {
-  const router = new AlertRouter({ now: () => 1 });
   const items = [
     makeItem({ id: "critical", priority: "critical" }),
     makeItem({ id: "normal", priority: "normal" }),
   ];
 
-  assert.equal(router.getOverlayAlerts(items as any).length, 2);
-  assert.equal(router.getPushNotifications(items as any).length, 1);
-  assert.equal(router.getHapticAlerts(items as any).length, 1);
+  assert.equal(new AlertRouter({ now: () => 1 }).getOverlayAlerts(items as any).length, 2);
+  assert.equal(new AlertRouter({ now: () => 1 }).getPushNotifications(items as any).length, 1);
+  assert.equal(new AlertRouter({ now: () => 1 }).getHapticAlerts(items as any).length, 1);
+});
+
+test("AlertRouter delivery filters respect cooldown state", () => {
+  let now = 1000;
+  const router = new AlertRouter({ now: () => now, cooldownMs: 5000 });
+  const items = [makeItem({ id: "critical", priority: "critical" })];
+
+  assert.equal(router.getOverlayAlerts(items as any).length, 1);
+  assert.equal(router.getOverlayAlerts(items as any).length, 0);
+
+  now = 7000;
+  assert.equal(router.getOverlayAlerts(items as any).length, 1);
 });

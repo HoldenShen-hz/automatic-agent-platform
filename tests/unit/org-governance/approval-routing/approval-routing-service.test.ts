@@ -566,17 +566,15 @@ test("ApprovalRoutingService audit recordId contains timestamp component", () =>
   const service = new ApprovalRoutingService({ orgNodes: nodes });
   const request: ApprovalRouteInput = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
 
-  const before = Date.now();
-  const result = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
-  const after = Date.now();
+  const routeTime = "2026-04-20T00:00:00.000Z";
+  const result = service.route(request, routeTime, routeTime);
 
   // recordId should contain a timestamp-like numeric segment
   const recordId = result.auditRecord.recordId;
   const idParts = recordId.split("_");
   // Format: approval_route_audit_{requesterId}_{orgNodeId}_{timestamp}_{uuid}
-  // timestamp should be a number >= before and <= after
   const timestampPart = parseInt(idParts[5] ?? "", 10);
-  assert.ok(timestampPart >= before && timestampPart <= after, `Timestamp ${timestampPart} should be between ${before} and ${after}`);
+  assert.equal(timestampPart, Date.parse(routeTime));
 });
 
 test("ApprovalRoutingService audit recordId contains random component for entropy", () => {

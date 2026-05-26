@@ -341,8 +341,8 @@ function normalizeVersion(version: number | string): number {
   const simpleMatch = version.match(/^v?(\d+)$/);
   if (simpleMatch) {
     const major = parseInt(simpleMatch[1]!, 10);
-    // Treat as major.0.0 -> 0*100 + 0*10 + major = major (but for deterministic ordering use 10*majors)
-    return major * 10;  // v1 -> 10, v2 -> 20, etc.
+    // Treat as major.0.0 so prompt bundle contract ordering matches PromptVersionManager.
+    return major * 100;
   }
   // Fallback: try direct numeric conversion
   const parsed = parseInt(version, 10);

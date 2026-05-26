@@ -45,6 +45,34 @@ test("SessionDualStorageService records session_created event", () => {
   }
 });
 
+test("SessionDualStorageService records resolved domainId in replay payloads", () => {
+  const rootDir = join("/tmp", `session-dual-storage-domain-test-${Date.now()}`);
+  const storage = new SessionDualStorageService({
+    jsonlRootDir: rootDir,
+    domainIdResolver: (taskId) => taskId === "task-456" ? "coding" : null,
+  });
+  try {
+    const session: SessionRecord = {
+      id: "session-domain",
+      taskId: "task-456",
+      channel: "test",
+      status: "open",
+      externalSessionId: null,
+      createdAt: "2026-04-08T00:00:00.000Z",
+      updatedAt: "2026-04-08T00:00:00.000Z",
+    };
+
+    storage.recordSessionCreated(session);
+    storage.recordSessionCompleted("session-domain", "task-456");
+
+    const events = storage.replaySessionEvents("session-domain");
+    assert.equal(events[0]?.payload.domainId, "coding");
+    assert.equal(events[1]?.payload.domainId, "coding");
+  } finally {
+    cleanup(rootDir);
+  }
+});
+
 test("SessionDualStorageService records multiple session events", () => {
   const { storage, rootDir } = createTestStorage();
   try {

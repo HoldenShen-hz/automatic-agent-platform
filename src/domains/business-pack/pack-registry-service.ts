@@ -17,6 +17,10 @@ import {
   type BusinessPackManifest,
   type NormalizedBusinessPackManifest,
 } from "./business-pack-manifest.js";
+import {
+  assertPackCompatibleWithDomain,
+  type DomainPackCompatibilityDomain,
+} from "./pack-domain-compatibility.js";
 
 // ============================================================================
 // Registry Types
@@ -55,6 +59,10 @@ export interface PackRegistryEntry {
   updatedAt: string;
 }
 
+export interface PackRegistryServiceOptions {
+  readonly domainResolver?: ((domainId: string) => DomainPackCompatibilityDomain | null) | null;
+}
+
 // ============================================================================
 // Registry Service
 // ============================================================================
@@ -71,6 +79,11 @@ export interface PackRegistryEntry {
 export class PackRegistryService {
   private readonly registry = new Map<string, PackRegistryEntry>();
   private readonly versions = new Map<string, PackVersion[]>();
+  private readonly domainResolver: ((domainId: string) => DomainPackCompatibilityDomain | null) | null;
+
+  public constructor(options: PackRegistryServiceOptions = {}) {
+    this.domainResolver = options.domainResolver ?? null;
+  }
 
   /**
    * Registers a new pack with its manifest.
@@ -85,6 +98,7 @@ export class PackRegistryService {
     }
 
     const normalizedManifest = BusinessPackManifestSchema.parse(manifest);
+    this.assertDomainCompatibility(normalizedManifest);
     const now = nowIso();
     const version: PackVersion = {
       versionId: `${packId}_v1.0.0`,
@@ -146,6 +160,10 @@ export class PackRegistryService {
     }
 
     if (filters.domainId) {
+      const domain = this.resolveDomain(filters.domainId);
+      if (domain?.status === "archived") {
+        return [];
+      }
       results = results.filter((entry) => entry.currentManifest.domainId === filters.domainId);
     }
 
@@ -204,6 +222,7 @@ export class PackRegistryService {
     }
 
     const normalizedManifest = BusinessPackManifestSchema.parse(manifest);
+    this.assertDomainCompatibility(normalizedManifest);
     const now = nowIso();
     const prevVersion = this.getLatestVersion(packId);
     const newVersionStr = prevVersion
@@ -262,5 +281,23 @@ export class PackRegistryService {
       category: "validation",
       source: "internal",
     });
+  }
+
+  private resolveDomain(domainId: string): DomainPackCompatibilityDomain | null {
+    return this.domainResolver?.(domainId) ?? null;
+  }
+
+  private assertDomainCompatibility(manifest: NormalizedBusinessPackManifest): void {
+    const domain = this.resolveDomain(manifest.domainId);
+    if (domain == null) {
+      if (this.domainResolver != null) {
+        throw this.validationError(
+          "pack_registry.domain_not_found",
+          `Referenced domain ${manifest.domainId} is not registered.`,
+        );
+      }
+      return;
+    }
+    assertPackCompatibleWithDomain(manifest, domain);
   }
 }

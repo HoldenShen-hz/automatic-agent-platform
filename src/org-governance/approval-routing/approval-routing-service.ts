@@ -165,7 +165,7 @@ export class ApprovalRoutingService {
       escalationRuleId: escalation.escalationRuleId,
       slaBreachNotificationTargetIds: escalation.slaBreachNotificationTargetIds,
       auditRecord: buildGovernanceAuditRecord({
-        recordId: newId("approval_route_audit"),
+        recordId: this.buildApprovalRouteAuditRecordId(request.requesterId, base.matchedOrgNodeId, nowIso),
         action: "approval.route",
         actorId: request.requesterId,
         orgNodeId: base.matchedOrgNodeId,
@@ -180,6 +180,12 @@ export class ApprovalRoutingService {
         occurredAt: nowIso,
       }),
     };
+  }
+
+  private buildApprovalRouteAuditRecordId(requesterId: string, orgNodeId: string, nowIsoValue: string): string {
+    const normalizedRequesterId = requesterId.trim().replace(/[^A-Za-z0-9._:-]+/g, "-");
+    const normalizedOrgNodeId = orgNodeId.trim().replace(/[^A-Za-z0-9._:-]+/g, "-");
+    return `approval_route_audit_${normalizedRequesterId}_${normalizedOrgNodeId}_${Date.parse(nowIsoValue)}_${newId("route")}`;
   }
 
   public getAmountThresholdMatrix(): readonly AmountThresholdRule[] {

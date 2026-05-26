@@ -78,6 +78,11 @@ type ValidatorInput = {
   contract?: BasicEvaluationContract;
 };
 
+type ExtendedEvaluatorPlugin = DomainValidatorPlugin & {
+  evaluate(input: ValidatorInput): Promise<EvaluatorAssessment>;
+  produceHarnessDecision(input: ValidatorInput): Promise<EvaluatorAssessment>;
+};
+
 const DEFAULT_QUALITY_SCORING_CONFIG: QualityScoringConfig = {
   completenessWeight: 0.5,
   typeAccuracyWeight: 0.5,
@@ -394,13 +399,25 @@ function evaluateWithLegacyScoring(
   };
 }
 
-function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPlugin {
+function createBasicValidatorPluginInternal(
+  pluginId: string,
+  options: {
+    includeLegacyScoring?: boolean;
+    scoringConfig?: QualityScoringConfig;
+    capabilityIds?: string[];
+  } = {},
+): DomainValidatorPlugin {
   let initialized = false;
+  const scoringConfig = options.scoringConfig ?? DEFAULT_QUALITY_SCORING_CONFIG;
+  const runLegacyEvaluation = async (input: ValidatorInput): Promise<EvaluatorAssessment> => {
+    const contract = (input.contract as BasicEvaluationContract | undefined) ?? {};
+    return evaluateWithLegacyScoring(input.machineOutput.payload ?? {}, contract, scoringConfig);
+  };
   const plugin = {
     pluginId,
     domainId: "core",
     spiType: "validator",
-    capabilityIds: ["output.validate"],
+    capabilityIds: options.capabilityIds ?? ["output.validate"],
     async initialize() {
       initialized = true;
       return undefined;
@@ -431,7 +448,18 @@ function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPl
     },
   };
 
-  return plugin as DomainValidatorPlugin;
+  if (options.includeLegacyScoring) {
+    Object.assign(plugin, {
+      async evaluate(input: ValidatorInput) {
+        return runLegacyEvaluation(input);
+      },
+      async produceHarnessDecision(input: ValidatorInput) {
+        return runLegacyEvaluation(input);
+      },
+    } satisfies Pick<ExtendedEvaluatorPlugin, "evaluate" | "produceHarnessDecision">);
+  }
+
+  return plugin as unknown as ExtendedEvaluatorPlugin;
 }
 
 export function createBasicValidatorPlugin(): DomainValidatorPlugin {
@@ -439,7 +467,10 @@ export function createBasicValidatorPlugin(): DomainValidatorPlugin {
 }
 
 export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
-  return createBasicValidatorPluginInternal("plugin.core.basic-evaluator");
+  return createBasicValidatorPluginInternal("plugin.core.basic-evaluator", {
+    includeLegacyScoring: true,
+    capabilityIds: ["output.validate"],
+  });
 }
 
 /**
@@ -448,41 +479,9 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
 export function createBasicEvaluatorPluginWithScoring(
   scoringConfig: Partial<QualityScoringConfig> = {}
 ): DomainValidatorPlugin {
-  const config = normalizeScoringConfig({ ...DEFAULT_QUALITY_SCORING_CONFIG, ...scoringConfig });
-  let initialized = false;
-
-  return {
-    pluginId: "plugin.core.basic-evaluator-with-scoring",
-    domainId: "core",
-    spiType: "validator",
+  return createBasicValidatorPluginInternal("plugin.core.basic-evaluator-with-scoring", {
+    includeLegacyScoring: true,
+    scoringConfig: normalizeScoringConfig({ ...DEFAULT_QUALITY_SCORING_CONFIG, ...scoringConfig }),
     capabilityIds: ["output.validate", "output.quality_score"],
-    async initialize() {
-      initialized = true;
-      return undefined;
-    },
-    async healthCheck() {
-      return initialized;
-    },
-    async shutdown() {
-      initialized = false;
-      return undefined;
-    },
-    async validate(input) {
-      const contract = (input.contract as BasicValidationContract | undefined) ?? {};
-      const result = validateWithQualityScoring(input.machineOutput.payload ?? {}, contract, config);
-
-      return {
-        valid: result.valid,
-        errors: result.errors,
-        suggestions: result.suggestions,
-        evaluation: {
-          qualityScore: result.qualityScore,
-          qualityThreshold: result.qualityThreshold,
-          goalDeviation: result.goalDeviation,
-          riskFindings: result.riskFindings,
-          harnessDecision: result.harnessDecision,
-        },
-      };
-    },
-  };
+  });
 }

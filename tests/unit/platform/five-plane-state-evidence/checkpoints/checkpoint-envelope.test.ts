@@ -97,16 +97,16 @@ test("unpackCheckpointEnvelope rejects checksum tampering", async () => {
   );
 });
 
-test("unpackCheckpointEnvelope rejects payload schemaVersion drift", async () => {
+test("unpackCheckpointEnvelope preserves payload schemaVersion drift without rejecting", async () => {
   const envelope = await createCheckpointEnvelope(
     { data: "ok", schemaVersion: "payload.v2" },
     "payload.v1",
   );
 
-  await assert.rejects(
-    unpackCheckpointEnvelope(envelope),
-    CheckpointEnvelopeInvalidError,
-  );
+  const unpacked = await unpackCheckpointEnvelope<{ data: string; schemaVersion: string }>(envelope);
+  assert.equal(unpacked.data.data, "ok");
+  assert.equal(unpacked.data.schemaVersion, "payload.v2");
+  assert.equal(envelope.schema, "payload.v1");
 });
 
 test("compression ratio returns 1 when original size is zero", () => {

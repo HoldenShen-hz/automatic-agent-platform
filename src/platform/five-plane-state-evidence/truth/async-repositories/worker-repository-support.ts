@@ -55,7 +55,7 @@ export async function executeWorkerSnapshotUpsert(
       last_heartbeat_at = excluded.last_heartbeat_at,
       updated_at = excluded.updated_at,
       version = worker_snapshots.version + 1
-    WHERE $36 IS NULL OR worker_snapshots.version = $36`,
+    WHERE $36 IS NULL OR worker_snapshots.version = $37`,
     snapshot.workerId,
     snapshot.status,
     snapshot.placement ?? "local",
@@ -91,6 +91,7 @@ export async function executeWorkerSnapshotUpsert(
     snapshot.lastHeartbeatAt,
     snapshot.updatedAt,
     insertedVersion,
+    expectedVersion,
     expectedVersion,
   );
   if (changes === 0) {

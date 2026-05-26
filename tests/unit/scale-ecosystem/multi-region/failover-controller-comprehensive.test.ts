@@ -21,6 +21,8 @@ function createTestFailoverInput(overrides: Partial<RegionFailoverInput> = {}): 
   const preferredRegionId = overrides.preferredRegionId;
   const forceDemote = overrides.forceDemote;
   const promoteEpoch = overrides.promoteEpoch;
+  const activeExecutionLeases = overrides.activeExecutionLeases;
+  const reclaimLease = overrides.reclaimLease;
 
   const result: RegionFailoverInput = {
     primaryHealthy: overrides.primaryHealthy ?? true,
@@ -34,6 +36,8 @@ function createTestFailoverInput(overrides: Partial<RegionFailoverInput> = {}): 
     ...(preferredRegionId !== undefined ? { preferredRegionId } : {}),
     ...(forceDemote !== undefined ? { forceDemote } : {}),
     ...(promoteEpoch !== undefined ? { promoteEpoch } : {}),
+    ...(activeExecutionLeases !== undefined ? { activeExecutionLeases } : {}),
+    ...(reclaimLease !== undefined ? { reclaimLease } : {}),
   };
   return result;
 }
@@ -377,4 +381,30 @@ test("RegionFailoverController.resolve handles null currentLeaderRegionId", () =
   assert.equal(decision.shouldFailover, true);
   assert.equal(decision.demotedRegionId, null); // No previous leader to demote
   assert.equal(decision.leaderState, "promoted");
+});
+
+test("RegionFailoverController.resolve reclaims demoted-region leases and forwards lease evidence into reconciliation", () => {
+  const controller = new RegionFailoverController();
+  const reclaimed: string[] = [];
+
+  const decision = controller.resolve(createTestFailoverInput({
+    primaryHealthy: false,
+    currentLeaderRegionId: "us-east-1",
+    preferredRegionId: "us-west-2",
+    activeExecutionLeases: [
+      { executionId: "exec-east-1", leaseId: "lease-east-1", regionId: "us-east-1", expiresAt: "2026-01-01T00:00:00.000Z" },
+      { executionId: "exec-west-1", leaseId: "lease-west-1", regionId: "us-west-2", expiresAt: "2027-01-01T00:00:00.000Z" },
+    ],
+    reclaimLease: ({ executionId, regionId, reasonCode }) => {
+      reclaimed.push(`${regionId}:${executionId}:${reasonCode}`);
+    },
+  }));
+
+  assert.deepEqual(reclaimed, [
+    "us-east-1:exec-east-1:region_failover.demoted_region_lease_reclaimed",
+  ]);
+  assert.deepEqual(decision.reclaimedLeaseExecutionIds, ["exec-east-1"]);
+  assert.equal(decision.reconciliationResult?.activeLeaseCount, 2);
+  assert.equal(decision.reconciliationResult?.staleLeaseCount, 1);
+  assert.equal(decision.reconciliationResult?.canProceed, false);
 });

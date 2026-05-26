@@ -149,7 +149,7 @@ export class EventOpsService {
       delivered: 0,
       pendingAfter: this.bus.pendingForConsumer(consumerId).length,
       failedAfter: this.store.event.listFailedEventsForConsumer(consumerId).length,
-      outcome: this.isTimeoutError(error) ? "timeout" : "failed",
+      outcome: this.isTimeoutError(error) ? "timeout" as const : "failed" as const,
       errorCode: error instanceof Error ? error.message : String(error),
     }));
     return {
@@ -197,13 +197,13 @@ export class EventOpsService {
     return async (event) => {
       // Phase 1a still reads from the authoritative store directly, but the
       // default consumer now validates referenced aggregates before acking.
-      if (event.taskId != null && this.store.getTask(event.taskId) == null) {
+      if (event.taskId != null && this.store.task.getTask(event.taskId) == null) {
         throw new ValidationError(
           "event_ops.consumer_missing_task",
           `event_ops.consumer_missing_task: Consumer ${consumerId} could not resolve task ${event.taskId}.`,
         );
       }
-      if (event.executionId != null && this.store.getExecution(event.executionId) == null) {
+      if (event.executionId != null && this.store.execution.getExecution(event.executionId) == null) {
         throw new ValidationError(
           "event_ops.consumer_missing_execution",
           `event_ops.consumer_missing_execution: Consumer ${consumerId} could not resolve execution ${event.executionId}.`,

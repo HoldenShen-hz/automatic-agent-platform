@@ -116,6 +116,16 @@
 | [110](./110-runtime-state-machine-authority.md) | Runtime State Machine Authority | Accepted | 2026-04-27 |
 | [111](./111-platform-fact-vs-oapeflir-view-events.md) | Platform Fact vs OAPEFLIR View Events | Accepted | 2026-04-27 |
 | [112](./112-mvp-ring-implementation-boundary.md) | MVP Ring Implementation Boundary | Accepted | 2026-04-27 |
+| [113](./113-session-tenant-resolution-and-principal-scope.md) | Session Tenant Resolution And Principal Scope | Accepted | 2026-05-25 |
+| [114](./114-http-auth-precedence-and-service-delegation.md) | HTTP Auth Precedence And Service Delegation | Accepted | 2026-05-25 |
+| [115](./115-self-healing-simulation-boundary.md) | Self Healing Simulation Boundary | Accepted | 2026-05-25 |
+| [116](./116-interface-rate-limit-key-design.md) | Interface Rate Limit Key Design | Accepted | 2026-05-25 |
+| [117](./117-cost-event-wal-recovery.md) | Cost Event WAL Recovery | Accepted | 2026-05-25 |
+| [118](./118-panic-allowlist-governance.md) | Panic Allowlist Governance | Accepted | 2026-05-25 |
+| [119](./119-pack-domain-lifecycle-coordination.md) | Pack Domain Lifecycle Coordination | Accepted | 2026-05-25 |
+| [120](./120-ui-sdk-client-transport-boundary.md) | UI 与 SDK Client Transport Boundary | Accepted | 2026-05-25 |
+| [121](./121-timeout-and-worker-liveness-hierarchy.md) | Timeout 与 Worker Liveness Hierarchy | Accepted | 2026-05-25 |
+| [122](./122-domain-evidence-and-session-boundary.md) | Domain Evidence 与 Session Replay Boundary | Accepted | 2026-05-25 |
 
 ## 状态说明
 
@@ -130,8 +140,8 @@
 - 历史目录同时保留 `003-memory-six-layers.md` 与 `003-memory-seven-layers.md`；其中 `seven-layers` 仅保留为历史别名 / 跳转页，规范内容以 `003-memory-six-layers.md` 为准。
 - Plugin SPI ADR 已统一收敛到 `071-plugin-spi-framework.md`；旧的 `066-plugin-spi-framework.md` 重复副本已移除，所有引用统一改到 ADR-071。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
-- 新增的 `109-112` 是 v4.3 Contract Freeze 实现入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层，以及 MVP / Hardening / Enterprise 三环边界。
-- `109-112` 通过 freeze / authority / event namespace / ring boundary 约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名等语义；历史 ADR 正文保留，不直接改写。
+- 新增的 `109-122` 是 v4.3 Contract Freeze 与后续实现澄清入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层、MVP / Hardening / Enterprise 三环边界，以及 tenant scope / auth precedence / self-healing boundary / interface rate-limit / WAL recovery / panic allowlist / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary 的权威说明。
+- `109-122` 通过 freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary 等规则约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名、tenant 解析与跨层边界语义；历史 ADR 正文保留，不直接改写。
 
 ## 创建新 ADR
 

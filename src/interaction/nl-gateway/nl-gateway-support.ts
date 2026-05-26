@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
+import {
+  INTAKE_INTENT_CONFIDENCE_THRESHOLD,
+  INTAKE_SLOT_CONFIDENCE_THRESHOLD,
+} from "../../platform/contracts/constants/index.js";
 import type { JsonValue } from "../../platform/contracts/executable-contracts/index.js";
 import type {
   ClarificationState,
@@ -16,8 +20,8 @@ import type {
   RiskPreview,
 } from "./nl-gateway-model.js";
 
-export const INTENT_CONFIDENCE_THRESHOLD = 0.8;
-export const SLOT_CONFIDENCE_THRESHOLD = 0.85;
+export const INTENT_CONFIDENCE_THRESHOLD = INTAKE_INTENT_CONFIDENCE_THRESHOLD;
+export const SLOT_CONFIDENCE_THRESHOLD = INTAKE_SLOT_CONFIDENCE_THRESHOLD;
 // R5-30: Default maximum clarification rounds
 export const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
 export const DEFAULT_MAX_ACTIVE_CONVERSATION_CONTEXTS = 1000;

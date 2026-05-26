@@ -93,22 +93,11 @@ test("R5-17: DetectedIntent supports 'why' intentType", async () => {
  * Fix: Added delegation depth tracking and global call depth cap
  */
 test("R5-18: decompose enforces max delegation depth of 3", async () => {
-  const service = new GoalDecompositionService();
-
-  // First decomposition succeeds
-  const result1 = await service.decompose({
-    goalId: "test_goal_r5_18",
-    description: "Create marketing campaign for Q2 product launch",
-    owner: "user_r5_18",
-    successCriteria: [],
-    constraints: [],
-    priority: "normal",
+  const service = new GoalDecompositionService({
+    currentDepth: 3,
+    maxDelegationDepth: 3,
   });
 
-  assert.equal(result1.lifecycleState, "decomposed");
-  assert.ok(result1.tasks.length > 0);
-
-  // Second decomposition of same goal should fail (duplicate)
   await assert.rejects(
     async () => service.decompose({
       goalId: "test_goal_r5_18",
@@ -118,7 +107,7 @@ test("R5-18: decompose enforces max delegation depth of 3", async () => {
       constraints: [],
       priority: "normal",
     }),
-    /goal_decomposer.duplicate_decomposition/,
+    /goal_decomposer.delegation_depth_exceeded/,
   );
 });
 

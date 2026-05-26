@@ -465,6 +465,46 @@ test("HttpApiServer.stop clears stale worker incident cache even when server nev
   assert.equal((server as unknown as { staleWorkerIncidentIds: Set<string> }).staleWorkerIncidentIds.size, 0);
 });
 
+test("HttpApiServer requires explicit env opt-in for local rate limiter fallback in production", () => {
+  const previousNodeEnv = process.env["NODE_ENV"];
+  const previousFallback = process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"];
+  const previousRedis = process.env["AA_API_RATE_LIMIT_REDIS_URL"];
+  const previousDisabled = process.env["AA_API_RATE_LIMIT_DISABLED"];
+
+  process.env["NODE_ENV"] = "production";
+  delete process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"];
+  delete process.env["AA_API_RATE_LIMIT_REDIS_URL"];
+  delete process.env["AA_API_RATE_LIMIT_DISABLED"];
+
+  try {
+    assert.throws(
+      () => createTestServer(),
+      (error: unknown) => error instanceof Error && error.message === "rate_limiter.redis_required_in_production",
+    );
+  } finally {
+    if (previousNodeEnv == null) {
+      delete process.env["NODE_ENV"];
+    } else {
+      process.env["NODE_ENV"] = previousNodeEnv;
+    }
+    if (previousFallback == null) {
+      delete process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"];
+    } else {
+      process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"] = previousFallback;
+    }
+    if (previousRedis == null) {
+      delete process.env["AA_API_RATE_LIMIT_REDIS_URL"];
+    } else {
+      process.env["AA_API_RATE_LIMIT_REDIS_URL"] = previousRedis;
+    }
+    if (previousDisabled == null) {
+      delete process.env["AA_API_RATE_LIMIT_DISABLED"];
+    } else {
+      process.env["AA_API_RATE_LIMIT_DISABLED"] = previousDisabled;
+    }
+  }
+});
+
 function createMockServerResponse(): {
   response: PassThrough & {
     statusCode: number;
@@ -1406,7 +1446,7 @@ test("x-api-key header authentication works", async () => {
   }
 });
 
-test("rejects expired tokens", async () => {
+test("returns 401 for expired tokens", async () => {
   const authService = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "test-user", roles: ["viewer"] }],
     jwtSecret: "test-secret",
@@ -1422,19 +1462,17 @@ test("rejects expired tokens", async () => {
   });
 
   try {
-    await assert.rejects(
-      async () => server.inject({
-        method: "GET",
-        url: "/v1/tasks",
-        headers: {
-          authorization: `Bearer ${expiredToken}`,
-        },
-      }),
-      (error: unknown) => {
-        assert.ok(error instanceof Error);
-        return "code" in error && error.code === "api.token_expired";
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/tasks",
+      headers: {
+        authorization: `Bearer ${expiredToken}`,
       },
-    );
+    });
+
+    assert.equal(response.statusCode, 401);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.token_expired");
   } finally {
     await server.stop();
   }

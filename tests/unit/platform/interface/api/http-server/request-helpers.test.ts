@@ -314,7 +314,7 @@ test("authenticateOptionalPrincipal returns principal for valid API key", () => 
   assert.deepEqual(result!.roles, ["operator"]);
 });
 
-test("authenticateOptionalPrincipal rethrows invalid token errors", () => {
+test("authenticateOptionalPrincipal returns null for invalid token errors during optional auth", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
     jwtSecret: "secret-123",
@@ -325,10 +325,10 @@ test("authenticateOptionalPrincipal rethrows invalid token errors", () => {
     headers: { authorization: "Bearer invalid.token.here" },
     body: null,
   };
-  assert.throws(() => authenticateOptionalPrincipal(request, service));
+  assert.equal(authenticateOptionalPrincipal(request, service), null);
 });
 
-test("authenticateOptionalPrincipal rethrows invalid API key errors", () => {
+test("authenticateOptionalPrincipal returns null for invalid API key errors during optional auth", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
     jwtSecret: "secret-123",
@@ -339,5 +339,5 @@ test("authenticateOptionalPrincipal rethrows invalid API key errors", () => {
     headers: { "x-api-key": "wrong-key" },
     body: null,
   };
-  assert.throws(() => authenticateOptionalPrincipal(request, service));
+  assert.equal(authenticateOptionalPrincipal(request, service), null);
 });

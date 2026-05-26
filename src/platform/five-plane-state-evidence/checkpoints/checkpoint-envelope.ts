@@ -145,6 +145,13 @@ export async function createCheckpointEnvelope<T = unknown>(
   const jsonPayload = JSON.stringify(checkpointData);
   const uncompressedBuffer = Buffer.from(jsonPayload, "utf8");
   const originalSizeBytes = uncompressedBuffer.length;
+  if (originalSizeBytes > maxSizeBytes) {
+    throw new CheckpointSizeExceededError(
+      originalSizeBytes,
+      maxSizeBytes,
+      `Original size ${originalSizeBytes} exceeds limit ${maxSizeBytes}`,
+    );
+  }
 
   // Compress the payload using gzip
   const compressedBuffer = await asyncGzip(uncompressedBuffer);
@@ -248,10 +255,6 @@ export async function unpackCheckpointEnvelope<T = unknown>(
       `Failed to parse checkpoint JSON: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
-  const payloadSchemaVersion = extractPayloadSchemaVersion(data);
-  if (payloadSchemaVersion != null && payloadSchemaVersion !== envelope.schema) {
-    throw new CheckpointEnvelopeInvalidError("Payload schemaVersion does not match envelope schema");
-  }
 
   return {
     data,
@@ -259,16 +262,6 @@ export async function unpackCheckpointEnvelope<T = unknown>(
     metadata: envelope.metadata,
     wasCompressed: envelope.metadata.algorithm === "gzip",
   };
-}
-
-function extractPayloadSchemaVersion(value: unknown): string | null {
-  if (value == null || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  const schemaVersion = (value as Record<string, unknown>).schemaVersion;
-  return typeof schemaVersion === "string" && schemaVersion.trim().length > 0
-    ? schemaVersion
-    : null;
 }
 
 /**

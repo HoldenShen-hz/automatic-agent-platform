@@ -166,3 +166,14 @@ test("detectAnomalies for latency_p99_ms generates hints", () => {
   assert.ok(alerts.length > 0);
   assert.ok(alerts[0]!.rootCauseHints.some((h) => h.includes("database")));
 });
+
+test("ingestMetric trims per-metric history to bounded length", () => {
+  const service = new AnomalyDetectionService();
+  for (let i = 0; i < 200; i++) {
+    service.ingestMetric("error_rate", i / 1000);
+  }
+
+  const stats = service.getMetricStats("error_rate", 60);
+  assert.ok(stats !== null);
+  assert.equal(stats.count, 120);
+});

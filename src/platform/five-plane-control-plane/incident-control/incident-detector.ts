@@ -220,6 +220,7 @@ export interface IncidentDetectionRule {
   severity: IncidentSeverity;
   condition: (metrics: Record<string, string | number | boolean | null>) => boolean;
   category: IncidentCategory;
+  dimensions: readonly string[];
 }
 
 /**
@@ -238,6 +239,7 @@ export const DEFAULT_DETECTION_RULES: IncidentDetectionRule[] = [
       return (availability !== null && availability < 95) || (errorRate !== null && errorRate > 5);
     },
     category: "availability",
+    dimensions: ["availability", "error_rate"],
   },
   {
     ruleId: "sev1_data_integrity_failure",
@@ -246,6 +248,7 @@ export const DEFAULT_DETECTION_RULES: IncidentDetectionRule[] = [
     severity: "SEV1",
     condition: (m) => typeof m.data_integrity_check === "boolean" && m.data_integrity_check === false,
     category: "data_integrity",
+    dimensions: ["data_integrity_check"],
   },
   {
     ruleId: "sev2_degraded_service",
@@ -258,6 +261,7 @@ export const DEFAULT_DETECTION_RULES: IncidentDetectionRule[] = [
       return (latency !== null && latency > 1000) || (errorRate !== null && errorRate > 1);
     },
     category: "performance",
+    dimensions: ["latency_p99", "error_rate"],
   },
   {
     ruleId: "sev2_security_anomaly",
@@ -266,6 +270,7 @@ export const DEFAULT_DETECTION_RULES: IncidentDetectionRule[] = [
     severity: "SEV2",
     condition: (m) => typeof m.security_events === "number" && m.security_events > 10,
     category: "security",
+    dimensions: ["security_events"],
   },
   {
     ruleId: "sev3_config_drift",
@@ -274,6 +279,7 @@ export const DEFAULT_DETECTION_RULES: IncidentDetectionRule[] = [
     severity: "SEV3",
     condition: (m) => typeof m.config_drift_detected === "boolean" && m.config_drift_detected === true,
     category: "configuration",
+    dimensions: ["config_drift_detected"],
   },
 ];
 
@@ -285,8 +291,36 @@ export function applyDetectionRules(
   metrics: Record<string, string | number | boolean | null>,
   rules: IncidentDetectionRule[] = DEFAULT_DETECTION_RULES,
 ): Array<{ rule: IncidentDetectionRule; matched: boolean }> {
-  return rules.map((rule) => ({
-    rule,
-    matched: rule.condition(metrics),
-  }));
+  const severityOrder: Record<IncidentSeverity, number> = {
+    SEV1: 0,
+    SEV2: 1,
+    SEV3: 2,
+    SEV4: 3,
+    p1: 0,
+    p2: 1,
+    p3: 2,
+    p4: 3,
+  };
+  const matchedDimensions = new Set<string>();
+  return [...rules]
+    .sort((left, right) => {
+      const severityDelta = severityOrder[normalizeIncidentSeverity(left.severity)] - severityOrder[normalizeIncidentSeverity(right.severity)];
+      if (severityDelta !== 0) {
+        return severityDelta;
+      }
+      return left.ruleId.localeCompare(right.ruleId);
+    })
+    .map((rule) => {
+      const matched = rule.condition(metrics);
+      if (!matched) {
+        return { rule, matched: false };
+      }
+      if (rule.dimensions.some((dimension) => matchedDimensions.has(dimension))) {
+        return { rule, matched: false };
+      }
+      for (const dimension of rule.dimensions) {
+        matchedDimensions.add(dimension);
+      }
+      return { rule, matched: true };
+    });
 }

@@ -9,6 +9,7 @@ import type { ApiRequestLike, ApiResponsePayload } from "./types.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiAuthService, ApiPrincipal, ApiRole } from "../api-auth-service.js";
 import { ApiAuthError } from "../api-auth-service.js";
+import { extractServiceAuth, type ServiceAuthError } from "../../../five-plane-control-plane/iam/service-auth.js";
 import { inferApiErrorCategory, inferApiErrorSource } from "./api-error.js";
 import { newId } from "../../../contracts/types/ids.js";
 
@@ -25,6 +26,16 @@ class ApiError extends AppError {
 }
 
 export const API_INVALID_JSON_ERROR_CODE = "api.invalid_json";
+const INTERNAL_ROUTE_AUDIENCE_ALIASES: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  tasks: ["tasks", "task"],
+  gateway: ["gateway"],
+  admin: ["admin"],
+  approvals: ["approvals", "approval"],
+  packs: ["packs", "pack"],
+  prompts: ["prompts", "prompt"],
+  costs: ["costs", "cost"],
+  incidents: ["incidents", "incident"],
+});
 
 export function readRequestId(request: ApiRequestLike): string {
   const candidate = request.headers["x-request-id"];
@@ -108,6 +119,10 @@ export function requirePrincipal(
   requiredRole: ApiRole,
 ): ApiPrincipal {
   try {
+    const servicePrincipal = authenticateServicePrincipal(request);
+    if (servicePrincipal != null) {
+      return servicePrincipal;
+    }
     if (authService == null) {
       throw new ApiError(401, "api.auth_not_configured", "This endpoint requires authentication to be configured.");
     }
@@ -117,6 +132,84 @@ export function requirePrincipal(
       throw new ApiError(error.statusCode, error.code, error.message);
     }
     throw error;
+  }
+}
+
+function authenticateServicePrincipal(request: ApiRequestLike): ApiPrincipal | null {
+  const serviceHeaders: {
+    "x-service-id"?: string;
+    "x-service-token"?: string;
+    "x-service-token-signature"?: string;
+    "x-mtls-cert"?: string;
+  } = {};
+  if (request.headers["x-service-id"] != null) {
+    serviceHeaders["x-service-id"] = request.headers["x-service-id"];
+  }
+  if (request.headers["x-service-token"] != null) {
+    serviceHeaders["x-service-token"] = request.headers["x-service-token"];
+  }
+  if (request.headers["x-service-token-signature"] != null) {
+    serviceHeaders["x-service-token-signature"] = request.headers["x-service-token-signature"];
+  }
+  if (request.headers["x-mtls-cert"] != null) {
+    serviceHeaders["x-mtls-cert"] = request.headers["x-mtls-cert"];
+  }
+  if (
+    serviceHeaders["x-service-id"] == null
+    && serviceHeaders["x-service-token"] == null
+    && serviceHeaders["x-service-token-signature"] == null
+    && serviceHeaders["x-mtls-cert"] == null
+  ) {
+    return null;
+  }
+  const authResult = extractServiceAuth(serviceHeaders);
+  if (!authResult.authenticated || authResult.serviceIdentity == null) {
+    throw mapServiceAuthError(authResult.reason);
+  }
+  const acceptedAudiences = inferInternalRouteAudiences(request.url);
+  const tokenAudience = authResult.token?.audience ?? "*";
+  if (acceptedAudiences.length > 0 && tokenAudience !== "*" && !acceptedAudiences.includes(tokenAudience)) {
+    throw mapServiceAuthError("audience_mismatch");
+  }
+  return {
+    actorId: authResult.serviceIdentity.serviceId,
+    roles: ["admin"],
+    authMethod: "jwt",
+    tenantId: null,
+  };
+}
+
+function inferInternalRouteAudiences(url: string | undefined): string[] {
+  const pathname = parseUrl(url ?? "/", true).pathname ?? "/";
+  const normalized = pathname === "/api"
+    ? "/"
+    : pathname.startsWith("/api/")
+      ? pathname.slice(4)
+      : pathname;
+  const segments = normalized.split("/").filter((segment) => segment.length > 0);
+  const surface = segments[1] ?? segments[0] ?? "";
+  if (surface.length === 0) {
+    return [];
+  }
+  return [...(INTERNAL_ROUTE_AUDIENCE_ALIASES[surface] ?? [surface])];
+}
+
+function mapServiceAuthError(reason: ServiceAuthError | null): ApiError {
+  switch (reason) {
+    case "audience_mismatch":
+      return new ApiError(403, "api.service_audience_mismatch", "Service token audience does not match the target route.");
+    case "capability_not_granted":
+      return new ApiError(403, "api.service_capability_denied", "Service token is missing required capabilities.");
+    case "service_suspended":
+    case "service_revoked":
+      return new ApiError(403, "api.service_forbidden", "Service identity is not allowed to access this route.");
+    case "token_expired":
+      return new ApiError(401, "api.service_token_expired", "Service token has expired.");
+    case "token_invalid":
+    case "token_mtls_required":
+    case "service_not_found":
+    default:
+      return new ApiError(401, "api.service_auth_invalid", "Service authentication failed.");
   }
 }
 

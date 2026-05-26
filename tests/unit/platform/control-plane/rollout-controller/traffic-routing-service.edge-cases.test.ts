@@ -388,12 +388,13 @@ test("advanceShift updates currentStep correctly", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
 
   assert.equal(shift.currentStep, 0);
 
+  service.updateHealth(green.id, 0.95);
   const advanced1 = service.advanceShift(shift.id);
   assert.ok(advanced1 !== null);
   assert.equal(advanced1.currentStep, 1);
@@ -424,12 +425,13 @@ test("advanceShift completes shift when reaching final step", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const green = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
   const stepsCount = shift.totalSteps;
 
   // Advance to the last step
+  service.updateHealth(green.id, 0.95);
   for (let i = 0; i < stepsCount - 1; i++) {
     service.advanceShift(shift.id);
   }
@@ -449,11 +451,12 @@ test("complete shift activates green and retires blue slot", () => {
   const service = new TrafficRoutingService(db);
 
   service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
+  const greenSlot = service.registerSlot("green", "v2.0.0", 1);
 
   const shift = service.startCanaryShift("blue", "green");
 
   // Complete the shift
+  service.updateHealth(greenSlot.id, 0.95);
   for (let i = 0; i < shift.totalSteps; i++) {
     service.advanceShift(shift.id);
   }

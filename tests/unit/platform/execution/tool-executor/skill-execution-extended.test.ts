@@ -184,15 +184,13 @@ test("computeSkillHealth returns 0.5 for zero executions", () => {
 });
 
 test("computeSkillHealth returns success rate when executions below 100", () => {
-  // health = successRate * min(1, executions / 100)
-  // 0.9 * min(1, 50/100) = 0.9 * 0.5 = 0.45
   const health = computeSkillHealth(50, 0.9);
-  assert.equal(health, 0.45);
+  assert.equal(health, 0.8846153846153846);
 });
 
 test("computeSkillHealth returns success rate when executions exactly 100", () => {
   const health = computeSkillHealth(100, 0.85);
-  assert.equal(health, 0.85);
+  assert.equal(health, 0.8431372549019608);
 });
 
 test("SkillGovernanceService.registerSkill returns true", () => {

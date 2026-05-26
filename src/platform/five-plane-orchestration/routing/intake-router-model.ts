@@ -1,4 +1,5 @@
 import type { LoadedDivisionDefinition } from "../../../domains/governance/division-loader.js";
+import { INTAKE_INTENT_CONFIDENCE_THRESHOLD } from "../../contracts/constants/index.js";
 
 /** Intent types for request classification */
 export type IntakeIntent =
@@ -52,7 +53,7 @@ export const ORCHESTRATION_HINTS = [
 ] as const;
 
 /** R6-11: Confidence threshold below which LLM intent extraction should be used per §39.3 */
-export const CONFIDENCE_THRESHOLD = 0.80;
+export const CONFIDENCE_THRESHOLD = INTAKE_INTENT_CONFIDENCE_THRESHOLD;
 
 /** Intent detection rules mapping intents to keyword lists */
 const INTENT_RULES: Readonly<Record<IntakeIntent, readonly string[]>> = {

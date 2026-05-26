@@ -70,6 +70,7 @@ import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-e
 import { ValidationError } from "../../contracts/errors.js";
 import type { ControlPlaneDirectiveSink } from "../../five-plane-control-plane/control-plane-directive-sink.js";
 import { OapeflirLoopSupport } from "./oapeflir-loop-support.js";
+import type { GoalDecompositionResult } from "../../../interaction/goal-decomposer/index.js";
 
 const DEFAULT_ASSESSMENT_RESOURCE_ALLOCATION = Object.freeze({
   maxTokens: 5_000,
@@ -81,6 +82,8 @@ export interface OapeflirLoopInput {
   taskId: string;
   objective: string;
   workflow: PlannedWorkflow;
+  goalDecomposition?: GoalDecompositionResult;
+  requiresOrchestration?: boolean;
   feedbackSignals?: FeedbackSignal[];
   blockerSummaries?: string[];
   fileRefs?: string[];
@@ -223,6 +226,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
       }
       fsm.recordStageEntry("observe");
 
+      const planningWorkflow = this.resolvePlanningWorkflow(input);
       const taskObservation = await this.runStage<UnifiedObservation>("observe", async () => {
         const taskSituation: TaskSituation = this.situationBuilder.build({
           taskId: input.taskId,
@@ -230,19 +234,19 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           currentPhase: "planning",
           blockers: input.blockerSummaries ?? [],
           fileRefs: input.fileRefs ?? [],
-          metrics: { workflowSteps: input.workflow.executionSteps.length },
+          metrics: { workflowSteps: planningWorkflow.executionSteps.length },
         });
         const systemObservation = this.systemSituationBuilder.build();
         return this.observationAggregator.aggregate(
           taskSituation,
           systemObservation,
           this.createEmptyEventFlowSituation(),
-          this.createEmptyGoalDecompositionSituation(),
+          this.buildGoalDecompositionSituation(input),
           this.createEmptyMemorySituation(),
         );
       }, {
         taskId: input.taskId,
-        workflowStepCount: input.workflow.executionSteps.length,
+        workflowStepCount: planningWorkflow.executionSteps.length,
       });
       timeline.record("observe", "completed", taskObservation.task.taskId, null, "Aggregated task and system observations for downstream assessment.");
       fsm.recordStageCompletion("observe");
@@ -285,7 +289,12 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         };
       })();
 
-      const assessResult = await this.runStage<{ assessment: UnifiedAssessment; riskAssessment: RiskAssessment }>("assess", () => this.assessment.assess(observedTask, input.constraintPack, input.effectivePolicy), {
+      const assessResult = await this.runStage<{ assessment: UnifiedAssessment; riskAssessment: RiskAssessment }>("assess", () => this.assessment.assess({
+        taskSituation: observedTask,
+        ...(input.constraintPack === undefined ? {} : { constraintPack: input.constraintPack }),
+        ...(input.effectivePolicy === undefined ? {} : { effectivePolicySnapshot: input.effectivePolicy }),
+        requiresOrchestration: input.requiresOrchestration ?? false,
+      }), {
         taskId: input.taskId,
       });
       const assessment = assessResult.assessment;
@@ -362,7 +371,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
       loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.buildPlanGraphBundleForInput({
         observation: observedTask,
         assessment: validatedAssessment,
-        workflow: input.workflow,
+        workflow: planningWorkflow,
       }, { normalizeGraph: true, propagateRisk: true }), {
         taskId: input.taskId,
       });
@@ -532,7 +541,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.buildPlanGraphBundleForInput({
           observation: observedTask,
           assessment: validatedAssessment,
-          workflow: input.workflow,
+          workflow: planningWorkflow,
         }, planBuildOptions), {
           taskId: input.taskId,
           hasGraphPatch: loopGraphPatch != null,
@@ -897,17 +906,22 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
       currentPhase: "planning",
       blockers: input.blockerSummaries ?? [],
       fileRefs: input.fileRefs ?? [],
-      metrics: { workflowSteps: input.workflow.executionSteps.length },
+      metrics: { workflowSteps: this.resolvePlanningWorkflow(input).executionSteps.length },
     });
     const taskObservation = this.observationAggregator.aggregate(
       taskSituation,
       this.systemSituationBuilder.build(),
       this.createEmptyEventFlowSituation(),
-      this.createEmptyGoalDecompositionSituation(),
+      this.buildGoalDecompositionSituation(input),
       this.createEmptyMemorySituation(),
     );
     const observedTask = this.normalizeObservationTask(taskObservation.task, input);
-    const assessResult = this.assessment.assess(observedTask, input.constraintPack, input.effectivePolicy);
+    const assessResult = this.assessment.assess({
+      taskSituation: observedTask,
+      ...(input.constraintPack === undefined ? {} : { constraintPack: input.constraintPack }),
+      ...(input.effectivePolicy === undefined ? {} : { effectivePolicySnapshot: input.effectivePolicy }),
+      requiresOrchestration: input.requiresOrchestration ?? false,
+    });
     const validatedAssessment: UnifiedAssessment = validateUnifiedAssessment(assessResult.assessment).ok
       ? assessResult.assessment
       : {
@@ -927,7 +941,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
     const planGraphBundle = this.buildPlanGraphBundleForInput({
       observation: observedTask,
       assessment: validatedAssessment,
-      workflow: input.workflow,
+      workflow: this.resolvePlanningWorkflow(input),
     }, { normalizeGraph: true, propagateRisk: true });
     const plan = this.toLegacyPlan(planGraphBundle, input.taskId);
     const executionContext = this.buildExecutionContext(input, planGraphBundle, plan, validatedAssessment);

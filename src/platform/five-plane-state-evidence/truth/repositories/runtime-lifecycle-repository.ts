@@ -26,7 +26,7 @@ export interface RuntimeLifecycleRepository {
     errorCode?: string | null,
     completedAt?: string | null,
   ): number;
-  updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void;
+  updateTaskOutput(taskId: string, outputJson: string | null, updatedAt: string): void;
   updateWorkflowState(
     taskId: string,
     status: string,
@@ -127,7 +127,7 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     return this.store.task.updateTaskStatusCas(taskId, expectedStatus, status, updatedAt, errorCode, completedAt);
   }
 
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
+  public updateTaskOutput(taskId: string, outputJson: string | null, updatedAt: string): void {
     this.store.task.updateTaskOutput(taskId, outputJson, updatedAt);
   }
 
@@ -299,7 +299,7 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.run("updateTaskStatusCas", () => this.inner.updateTaskStatusCas(taskId, expectedStatus, status, updatedAt, errorCode, completedAt));
   }
 
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
+  public updateTaskOutput(taskId: string, outputJson: string | null, updatedAt: string): void {
     return this.run("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, outputJson, updatedAt));
   }
 
@@ -456,7 +456,7 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.observe("updateTaskStatusCas", () => this.inner.updateTaskStatusCas(taskId, expectedStatus, status, updatedAt, errorCode, completedAt));
   }
 
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
+  public updateTaskOutput(taskId: string, outputJson: string | null, updatedAt: string): void {
     return this.observe("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, outputJson, updatedAt));
   }
 

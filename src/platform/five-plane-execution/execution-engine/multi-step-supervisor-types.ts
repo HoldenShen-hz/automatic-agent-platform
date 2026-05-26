@@ -8,6 +8,7 @@ import type { AdmissionDecision } from "../dispatcher/admission-controller.js";
 import type { TransitionService } from "../state-transition/transition-service.js";
 import type { ContextCompactionResult, ContextCompactionService } from "./context-compaction-service.js";
 import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
+import type { WorkflowDebuggerService } from "../../../ops-maturity/workflow-debugger/workflow-debugger-service.js";
 
 export function normalizeStepFailurePlan(value: string | StepFailurePlan): StepFailurePlan {
   return typeof value === "string" ? { errorCode: value } : value;
@@ -57,9 +58,11 @@ export interface StepSupervisorContext {
   input: MultiStepToolExecutionInput;
   routing: ReturnType<typeof import("../../five-plane-orchestration/routing/intake-router.js").IntakeRouter.prototype.route>;
   plannedWorkflow: ReturnType<typeof import("../../five-plane-orchestration/routing/workflow-planner.js").WorkflowPlanner.prototype.plan>;
+  planGraphId?: string | null;
   outputs: Record<string, unknown>;
   stepOutputs: StepOutputRecord[];
   toolExposureService: import("../tool-executor/role-tool-exposure-service.js").RoleToolExposureService;
+  workflowDebugger?: WorkflowDebuggerService | null;
   latestCompaction: ContextCompactionResult | null;
   executionAttemptCounter: number;
   workflowRetryCount: number;

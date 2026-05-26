@@ -150,10 +150,13 @@ function normalizeHealthGates(healthGates?: Record<string, unknown>): HealthGate
   if (healthGates == null) {
     return undefined;
   }
+  const maxErrorRate = parseHealthGateValue(healthGates, "maxErrorRate", 1);
+  const maxLatencyRegression = parseHealthGateValue(healthGates, "maxLatencyRegression", 10);
+  const maxIncidentRate = parseHealthGateValue(healthGates, "maxIncidentRate", 1);
   return {
-    ...(parseHealthGateValue(healthGates, "maxErrorRate", 1) === undefined ? {} : { maxErrorRate: parseHealthGateValue(healthGates, "maxErrorRate", 1) }),
-    ...(parseHealthGateValue(healthGates, "maxLatencyRegression", 10) === undefined ? {} : { maxLatencyRegression: parseHealthGateValue(healthGates, "maxLatencyRegression", 10) }),
-    ...(parseHealthGateValue(healthGates, "maxIncidentRate", 1) === undefined ? {} : { maxIncidentRate: parseHealthGateValue(healthGates, "maxIncidentRate", 1) }),
+    ...(maxErrorRate === undefined ? {} : { maxErrorRate }),
+    ...(maxLatencyRegression === undefined ? {} : { maxLatencyRegression }),
+    ...(maxIncidentRate === undefined ? {} : { maxIncidentRate }),
   };
 }
 

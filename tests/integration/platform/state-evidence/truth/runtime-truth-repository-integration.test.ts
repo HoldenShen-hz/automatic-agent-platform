@@ -184,28 +184,14 @@ test("RuntimeTruthRepository allows valid lease holder transition", () => {
     constraintPackRef: "cp-1",
     versionLockId: "rvlock-1",
     budgetLedgerId: "bledger-1",
-    leaseId: "lease-valid",
+    leaseId: "worker-1",
     ownership: { ownerId: "worker-1", ownerType: "worker" },
   });
 
   repository.seed("HarnessRun", harnessRun);
 
   // This should succeed
-  const result = repository.transition({
-    commandId: newId("cmd"),
-    entityType: "HarnessRun" as const,
-    entityId: harnessRun.harnessRunId,
-    aggregateType: "HarnessRun",
-    aggregate: harnessRun,
-    fromStatus: "created",
-    toStatus: "admitted",
-    principal: "test",
-    tenantId: "tenant-1",
-    traceId: "trace-1",
-    reasonCode: "admission_ok",
-    emittedBy: "test",
-    runVersionLockId: "rvlock-1",
-  });
+  const result = repository.transition(makeHarnessRunTransitionCommand(harnessRun, "created", "admitted"));
 
   assert.equal(result.aggregate.status, "admitted");
 });

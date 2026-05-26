@@ -143,6 +143,9 @@ test("R29-31 conversation history persists by default on layer_3 when memory is 
   const service = new ConversationHistoryService({
     remember: async (record: { memoryLayer: string; content: string }) => {
       remembered.push(record);
+      return {
+        id: "memory-1",
+      };
     },
     recall: async () => [],
   } as never);

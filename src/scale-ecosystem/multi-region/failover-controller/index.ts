@@ -3,6 +3,7 @@ import {
   type ReconciliationJobInput,
   type ReconciliationScanResult,
 } from "../failover-reconciliation-job.js";
+import { nowIso } from "../../../platform/contracts/types/ids.js";
 import { getFencingTokenService, type FencingToken } from "../fencing-token-service.js";
 import { getSplitBrainProtectionService } from "../split-brain-protection.js";
 
@@ -38,6 +39,31 @@ export interface RegionFailoverInput {
    * Used when manual failover is required.
    */
   readonly forceDemote?: boolean;
+  /**
+   * Active execution leases observed at failover time. When supplied, the controller
+   * uses them to block promotion on source-held leases and optionally reclaim them.
+   */
+  readonly activeExecutionLeases?: readonly RegionLeaseRecord[];
+  /**
+   * Optional fail-close lease reclamation hook for demoted-region active leases.
+   */
+  readonly reclaimLease?: (input: RegionLeaseReclaimRequest) => void;
+}
+
+export interface RegionLeaseRecord {
+  readonly executionId: string;
+  readonly leaseId: string;
+  readonly regionId: string;
+  readonly workerId?: string;
+  readonly expiresAt?: string | null;
+}
+
+export interface RegionLeaseReclaimRequest {
+  readonly executionId: string;
+  readonly leaseId: string;
+  readonly regionId: string;
+  readonly occurredAt: string;
+  readonly reasonCode: string;
 }
 
 /**
@@ -82,6 +108,8 @@ export interface RegionFailoverDecision {
   readonly consensus?: ConsensusDecision;
   /** Reconciliation result after failover - present when shouldFailover is true and reconciliation was run */
   readonly reconciliationResult?: ReconciliationScanResult;
+  /** Execution IDs whose active leases were reclaimed from the demoted region during failover. */
+  readonly reclaimedLeaseExecutionIds?: readonly string[];
 }
 
 export interface FencingEpochState {
@@ -367,6 +395,7 @@ export class RegionFailoverController {
     }
 
     const targetRegionId = this.selectTargetRegion(input);
+    const occurredAt = nowIso();
 
     // Demoted leader is the previous leader (not null) that differs from target
     const demotedRegionId = previous.leaderRegionId != null && previous.leaderRegionId !== targetRegionId
@@ -392,6 +421,12 @@ export class RegionFailoverController {
     // open budgets, pending approvals, outbox gaps, restricted writes).
     // The new leader cannot safely accept writes until critical issues are resolved.
     const sourceRegion = previous.leaderRegionId ?? demotedRegionId ?? targetRegionId;
+    const activeExecutionLeases = input.activeExecutionLeases ?? [];
+    const activeLeaseHolderRegionDistribution = activeExecutionLeases.reduce<Record<string, number>>((distribution, lease) => {
+      distribution[lease.regionId] = (distribution[lease.regionId] ?? 0) + 1;
+      return distribution;
+    }, {});
+    const staleLeaseCount = activeExecutionLeases.filter((lease) => lease.expiresAt != null && Date.parse(lease.expiresAt) <= Date.parse(occurredAt)).length;
     const reconciliationInput: ReconciliationJobInput = {
       sourceRegionId: sourceRegion as string,
       targetRegionId: targetRegionId as string,
@@ -402,8 +437,27 @@ export class RegionFailoverController {
       openBudgets: [],
       outboxMessages: [],
       restrictedWrites: [],
+      activeLeaseCount: activeExecutionLeases.length,
+      activeLeaseHolderRegionDistribution,
+      staleLeaseCount,
     };
     const reconciliationResult = this.reconciliationJob.runReconciliation(reconciliationInput);
+    const reclaimedLeaseExecutionIds: string[] = [];
+    if (demotedRegionId != null && input.reclaimLease != null) {
+      for (const lease of activeExecutionLeases) {
+        if (lease.regionId !== demotedRegionId) {
+          continue;
+        }
+        input.reclaimLease({
+          executionId: lease.executionId,
+          leaseId: lease.leaseId,
+          regionId: lease.regionId,
+          occurredAt,
+          reasonCode: "region_failover.demoted_region_lease_reclaimed",
+        });
+        reclaimedLeaseExecutionIds.push(lease.executionId);
+      }
+    }
 
     const result: RegionFailoverDecision = {
       shouldFailover: true,
@@ -421,6 +475,7 @@ export class RegionFailoverController {
       },
       ...(consensus !== undefined ? { consensus } : {}),
       reconciliationResult,
+      ...(reclaimedLeaseExecutionIds.length > 0 ? { reclaimedLeaseExecutionIds } : {}),
     };
     return result;
   }

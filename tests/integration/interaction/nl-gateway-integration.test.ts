@@ -205,7 +205,8 @@ test("integration: DisambiguationHandler categorizes confidence levels", () => {
   const handler = new DisambiguationHandler();
 
   assert.equal(handler.getConfidenceLevel(0.9), "high");
-  assert.equal(handler.getConfidenceLevel(0.75), "medium");
+  assert.equal(handler.getConfidenceLevel(0.8), "medium");
+  assert.equal(handler.getConfidenceLevel(0.75), "low");
   assert.equal(handler.getConfidenceLevel(0.6), "low");
   assert.equal(handler.getConfidenceLevel(0.4), "very_low");
 });

@@ -75,11 +75,11 @@ export function normalizeGatewayDeliveryFailure(
     return {
       responseStatus: null,
       errorMessage: error.message,
-      retryable: false,
+      retryable: true,
     };
   }
   return {
     errorMessage: String(error),
-    retryable: false,
+    retryable: true,
   };
 }

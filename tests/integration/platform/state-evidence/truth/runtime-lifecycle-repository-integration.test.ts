@@ -370,7 +370,7 @@ test("RuntimeLifecycleRepository updateExecutionStatusCas validates state before
     let affected = ctx.db.transaction(() => {
       return ctx.store.execution.updateExecutionStatusCas(
         executionId,
-        "pending",
+        "created",
         "executing",
         now,
       );

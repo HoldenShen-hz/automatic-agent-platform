@@ -333,8 +333,8 @@ export class ExecutionWorkerWritebackService {
       };
     }
 
-    const taskOutputJson = input.taskOutputJson ?? task.outputJson ?? "{}";
-    const outputsJson = input.outputsJson ?? workflow.outputsJson;
+    const taskOutputJson = input.taskOutputJson ?? task.outputJson ?? null;
+    const outputsJson = input.outputsJson ?? workflow.outputsJson ?? null;
     const releaseReason = `worker_writeback_${input.terminalStatus}`;
     const transitionReasonCode = input.reasonCode ?? `worker.writeback.${input.terminalStatus}`;
     const executionTerminalStatus = toExecutionTerminalStatus(input.terminalStatus);

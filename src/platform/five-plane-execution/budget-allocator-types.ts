@@ -39,6 +39,8 @@ export interface BudgetSettlementResult {
   readonly reservation: RuntimeTransitionResult<BudgetReservation>;
   readonly settlement: BudgetSettlement;
   readonly ledger: BudgetLedger;
+  readonly overspendDetected: boolean;
+  readonly overspendAmount: number;
   readonly hierarchyLedgers?: readonly BudgetLedger[];
 }
 

@@ -59,7 +59,7 @@ test("resolveInterfaceCapabilityBaseline returns correct baseline for ingress", 
   const baseline = resolveInterfaceCapabilityBaseline("ingress");
   assert.equal(baseline.capabilityId, "ingress");
   assert.ok(baseline.entryModule.includes("ingress"));
-  assert.ok(baseline.baselineServices.includes("IngressGovernanceService"));
+  assert.ok(baseline.baselineServices.includes("DistributedRateLimiter"));
 });
 
 test("resolveInterfaceCapabilityBaseline returns correct baseline for scheduler", () => {

@@ -60,11 +60,33 @@ export function normalizeToolInputForHash(input: unknown): string {
   if (typeof input === "string") {
     return input.trim().toLowerCase();
   }
+  if (Array.isArray(input)) {
+    return JSON.stringify(input.map((item) => normalizeToolInputValue(item))).toLowerCase().trim();
+  }
   if (typeof input === "object") {
-    const sorted = JSON.stringify(input, Object.keys(input).sort());
-    return sorted.toLowerCase().trim();
+    return JSON.stringify(normalizeToolInputValue(input)).toLowerCase().trim();
   }
   return String(input);
+}
+
+function normalizeToolInputValue(input: unknown): unknown {
+  if (input === null || input === undefined) {
+    return null;
+  }
+  if (typeof input === "string") {
+    return input.trim();
+  }
+  if (Array.isArray(input)) {
+    return input.map((item) => normalizeToolInputValue(item));
+  }
+  if (typeof input === "object") {
+    return Object.fromEntries(
+      Object.entries(input)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, value]) => [key, normalizeToolInputValue(value)]),
+    );
+  }
+  return input;
 }
 
 /**

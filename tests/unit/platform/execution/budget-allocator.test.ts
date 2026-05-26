@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ValidationError, WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import { createBudgetLedger, type PlatformFactEvent } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { BudgetAllocator } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
@@ -43,13 +43,13 @@ test("BudgetAllocator reserves against hard cap and settles reservation with led
   assert.equal(settled.ledger.releasedAmount, 10);
 });
 
-test("BudgetAllocator rejects settlement that exceeds the hard cap or reservation", () => {
+test("BudgetAllocator settles overspend when actual usage exceeds the reservation but remains under hard cap", () => {
   const allocator = new BudgetAllocator();
   const ledger = createBudgetLedger({
     tenantId: "tenant-1",
     harnessRunId: "run-1",
     currency: "USD",
-    hardCap: 100,
+    hardCap: 200,
     settledAmount: 90,
     version: 0,
   });
@@ -62,24 +62,23 @@ test("BudgetAllocator rejects settlement that exceeds the hard cap or reservatio
     nodeRunId: "node-run-1",
   });
 
-  assert.throws(
-    () =>
-      allocator.settle({
-        ledger: reserved.ledger,
-        reservation: reserved.reservation,
-        actualAmount: 11,
-        expectedVersion: reserved.ledger.version,
-        context: {
-          tenantId: "tenant-1",
-          traceId: "trace-1",
-          emittedBy: "budget-allocator",
-          principal: "budget-allocator",
-        },
-      }),
-    (error: unknown) =>
-      error instanceof WorkflowStateError &&
-      error.code === "budget_settlement.actual_amount_exceeds_reservation",
-  );
+  const settled = allocator.settle({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    actualAmount: 11,
+    expectedVersion: reserved.ledger.version,
+    context: {
+      tenantId: "tenant-1",
+      traceId: "trace-1",
+      emittedBy: "budget-allocator",
+      principal: "budget-allocator",
+    },
+  });
+
+  assert.equal(settled.overspendDetected, true);
+  assert.equal(settled.overspendAmount, 1);
+  assert.equal(settled.ledger.settledAmount, 101);
+  assert.equal(settled.ledger.releasedAmount, 0);
 });
 
 test("BudgetAllocator can release a reservation when execution never starts", () => {

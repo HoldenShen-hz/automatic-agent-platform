@@ -353,7 +353,7 @@ test("WebhookDispatchEnvelope type is usable", () => {
   assert.equal(envelope.dispatchState, "accepted");
 });
 
-test("WebhookIngressService rejects inbound delivery for unsigned endpoints", () => {
+test("WebhookIngressService accepts explicitly unsigned endpoints with signatureVerified=false", () => {
   const service = new WebhookIngressService();
   service.registerEndpoint({
     endpointId: "unsigned",
@@ -365,13 +365,14 @@ test("WebhookIngressService rejects inbound delivery for unsigned endpoints", ()
     algorithm: "none",
   });
 
-  assert.throws(() => {
-    service.receive({
-      endpointId: "unsigned",
-      headers: {},
-      body: JSON.stringify({ eventType: "event.1", eventId: "evt-1" }),
-    });
-  }, /signature_algorithm_invalid/);
+  const envelope = service.receive({
+    endpointId: "unsigned",
+    headers: {},
+    body: JSON.stringify({ eventType: "event.1", eventId: "evt-1" }),
+  });
+
+  assert.equal(envelope.dispatchState, "accepted");
+  assert.equal(envelope.signatureVerified, false);
 });
 
 test("WebhookDispatchState type is usable", () => {

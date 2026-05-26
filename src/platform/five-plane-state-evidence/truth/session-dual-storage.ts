@@ -69,6 +69,8 @@ export interface SessionPluginValidationResult {
 export interface SessionDualStorageOptions {
   /** Root directory for JSONL files */
   jsonlRootDir: string;
+  /** Optional task-to-domain resolver for self-describing replay payloads. */
+  domainIdResolver?: ((taskId: string, sessionId: string) => string | null) | null;
 }
 
 /**
@@ -82,9 +84,11 @@ export interface SessionDualStorageOptions {
  */
 export class SessionDualStorageService {
   private readonly jsonlRootDir: string;
+  private readonly domainIdResolver: ((taskId: string, sessionId: string) => string | null) | null;
 
   constructor(options: SessionDualStorageOptions) {
     this.jsonlRootDir = options.jsonlRootDir;
+    this.domainIdResolver = options.domainIdResolver ?? null;
     this.ensureDirectoryExists(this.jsonlRootDir);
   }
 
@@ -181,6 +185,7 @@ export class SessionDualStorageService {
    * @param session - The session record to record
    */
   public recordSessionCreated(session: SessionRecord): void {
+    const domainId = this.resolveDomainId(session.taskId, session.id, session);
     this.appendSessionEvent({
       eventType: "session_created",
       sessionId: session.id,
@@ -189,6 +194,7 @@ export class SessionDualStorageService {
       payload: {
         id: session.id,
         taskId: session.taskId,
+        ...(domainId == null ? {} : { domainId }),
         channel: session.channel,
         status: session.status,
         externalSessionId: session.externalSessionId,
@@ -203,6 +209,7 @@ export class SessionDualStorageService {
    * @param session - The session record containing updated data
    */
   public recordSessionUpdated(session: SessionRecord): void {
+    const domainId = this.resolveDomainId(session.taskId, session.id, session);
     this.appendSessionEvent({
       eventType: "session_updated",
       sessionId: session.id,
@@ -210,6 +217,7 @@ export class SessionDualStorageService {
       timestamp: nowIso(),
       payload: {
         id: session.id,
+        ...(domainId == null ? {} : { domainId }),
         status: session.status,
         updatedAt: session.updatedAt,
       },
@@ -227,7 +235,7 @@ export class SessionDualStorageService {
       sessionId,
       taskId,
       timestamp: nowIso(),
-      payload: {},
+      payload: this.buildDomainPayload(taskId, sessionId),
     });
   }
 
@@ -243,7 +251,10 @@ export class SessionDualStorageService {
       sessionId,
       taskId,
       timestamp: nowIso(),
-      payload: errorCode != null ? { errorCode } : {},
+      payload: {
+        ...this.buildDomainPayload(taskId, sessionId),
+        ...(errorCode != null ? { errorCode } : {}),
+      },
     });
   }
 
@@ -258,7 +269,7 @@ export class SessionDualStorageService {
       sessionId,
       taskId,
       timestamp: nowIso(),
-      payload: {},
+      payload: this.buildDomainPayload(taskId, sessionId),
     });
   }
 
@@ -276,6 +287,7 @@ export class SessionDualStorageService {
       payload: {
         id: message.id,
         sessionId: message.sessionId,
+        ...this.buildDomainPayload(taskId, message.sessionId),
         direction: message.direction,
         messageType: message.messageType,
         content: message.content,
@@ -298,7 +310,10 @@ export class SessionDualStorageService {
       sessionId,
       taskId,
       timestamp: nowIso(),
-      payload: compactionSummary,
+      payload: {
+        ...this.buildDomainPayload(taskId, sessionId),
+        ...compactionSummary,
+      },
     });
   }
 
@@ -354,6 +369,19 @@ export class SessionDualStorageService {
       }
     }
     return events;
+  }
+
+  private buildDomainPayload(taskId: string, sessionId: string): Record<string, unknown> {
+    const domainId = this.resolveDomainId(taskId, sessionId);
+    return domainId == null ? {} : { domainId };
+  }
+
+  private resolveDomainId(taskId: string, sessionId: string, session?: SessionRecord): string | null {
+    const direct = Reflect.get(session ?? {}, "domainId");
+    if (typeof direct === "string" && direct.trim().length > 0) {
+      return direct.trim();
+    }
+    return this.domainIdResolver?.(taskId, sessionId) ?? null;
   }
 
   /**
