@@ -55,17 +55,12 @@ test("multi-step orchestration runs intake routing, planned multi-step workflow,
     );
     assert.equal(JSON.parse(plan!.partsJson!).at(0)?.partType, "text");
 
-    // Verify cost events were recorded for each successful step
+    // Multi-step orchestration no longer creates placeholder cost records for
+    // successful steps unless the step captured real llmResult telemetry.
     const costEvents = store.listCostEventsByTask(result.snapshot.task.id);
-    assert.equal(costEvents.length, 4, "expected one cost event per successful step");
-    for (const cost of costEvents) {
-      assert.equal(cost.taskId, result.snapshot.task.id);
-      assert.equal(cost.budgetScope, "task_execution");
-      assert.equal(cost.provider, "minimax");
-      assert.ok(cost.costUsd > 0);
-    }
+    assert.equal(costEvents.length, 0, "expected no synthetic cost events without llm telemetry");
     const totalCost = store.sumCostByTask(result.snapshot.task.id);
-    assert.ok(totalCost > 0, "total cost should be positive");
+    assert.equal(totalCost, 0, "total cost should stay zero when no cost events were recorded");
 
     db.close();
   } finally {

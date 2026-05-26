@@ -189,16 +189,16 @@ test("createQueueAdapter validates config.kind is required", () => {
   }
 });
 
-test("createQueueAdapter redis config host is validated by adapter", () => {
-  // Redis config validation happens at adapter level, not factory level
-  const adapter = createQueueAdapter({
-    kind: "redis",
-    redis: {
-      port: 6379,
-    },
-  });
-
-  assert.equal(adapter.backendKind, "redis");
+test("createQueueAdapter redis config host is required", () => {
+  assert.throws(
+    () => createQueueAdapter({
+      kind: "redis",
+      redis: {
+        port: 6379,
+      },
+    }),
+    (error: unknown) => error instanceof ValidationError && error.code === "redis.host_required",
+  );
 });
 
 test("createQueueAdapter redis config port is validated by adapter", () => {

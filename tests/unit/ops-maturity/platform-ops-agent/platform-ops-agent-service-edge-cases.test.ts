@@ -391,7 +391,7 @@ describe("PlatformOpsAgentService - Edge Cases", () => {
   });
 
   describe("blockedBy", () => {
-    test("action not in allowedActionTypes adds blocker", () => {
+    test("action falls back to the allowlist instead of emitting an action_not_allowed blocker", () => {
       const service = createService({ allowedActionTypes: ["developer_assist"] });
       const proposal = service.createProposal({
         probes: [{ component: "db", status: "failed" }],
@@ -401,7 +401,8 @@ describe("PlatformOpsAgentService - Edge Cases", () => {
         projectedLoad: 200,
       });
 
-      assert.ok(proposal.blockedBy.includes("ops_agent.action_not_allowed"));
+      assert.equal(proposal.actionType, "developer_assist");
+      assert.ok(!proposal.blockedBy.includes("ops_agent.action_not_allowed"));
     });
 
     test("panicActive adds blocker", () => {

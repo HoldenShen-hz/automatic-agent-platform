@@ -127,7 +127,7 @@ test("orchestration: Multi-step orchestration with approval-required step pauses
   }
 });
 
-test("orchestration: Multi-step orchestration records cost events for each step", async () => {
+test("orchestration: Multi-step orchestration does not synthesize cost events without model telemetry", async () => {
   const workspace = createTempWorkspace("aa-orch-cost-");
 
   try {
@@ -143,20 +143,12 @@ test("orchestration: Multi-step orchestration records cost events for each step"
 
     const costEvents = store.listCostEventsByTask(result.snapshot.task.id);
 
-    // Verify cost events were recorded
-    assert.ok(costEvents.length >= 1, "Should have cost events for steps");
+    // Multi-step orchestration no longer emits placeholder WAL rows when no real
+    // llmResult usage telemetry is available for the executed steps.
+    assert.equal(costEvents.length, 0, "Should not create synthetic cost events without llm telemetry");
 
-    // Verify each cost event has required fields
-    for (const cost of costEvents) {
-      assert.ok(cost.taskId != null, "Cost event should have taskId");
-      assert.equal(cost.budgetScope, "task_execution", "Cost should be task execution scope");
-      assert.ok(cost.costUsd > 0, "Cost should be positive");
-      assert.ok(cost.provider != null, "Cost should have provider");
-    }
-
-    // Verify total cost can be computed
     const totalCost = store.sumCostByTask(result.snapshot.task.id);
-    assert.ok(totalCost > 0, "Total cost should be positive");
+    assert.equal(totalCost, 0, "Total cost should stay zero when no cost events were recorded");
 
     db.close();
   } finally {

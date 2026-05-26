@@ -93,14 +93,14 @@ test("RedisQueueAdapter sync methods throw sync_not_supported errors", () => {
   }
 });
 
-test("RedisQueueAdapter config defaults host to localhost and port to 6379", () => {
-  // Minimal config should use defaults
-  const adapter1 = new RedisQueueAdapter({});
-  assert.equal(adapter1.backendKind, "redis");
+test("RedisQueueAdapter requires host and defaults port to 6379", () => {
+  assert.throws(
+    () => new RedisQueueAdapter({}),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "redis.host_required",
+  );
 
-  // Explicit values should be respected
-  const adapter2 = new RedisQueueAdapter({ host: "redis.example.com", port: 6380 });
-  assert.equal(adapter2.backendKind, "redis");
+  const adapter = new RedisQueueAdapter({ host: "redis.example.com" });
+  assert.equal(adapter.backendKind, "redis");
 });
 
 test("RedisQueueAdapter mapRedisToJobRecord handles missing optional fields", () => {

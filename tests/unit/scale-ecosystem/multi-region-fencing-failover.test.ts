@@ -17,6 +17,7 @@ import { orderFairQueue } from "../../../src/scale-ecosystem/resource-manager/fa
 import { FairSchedulingService } from "../../../src/scale-ecosystem/resource-manager/fair-scheduling-service.js";
 import { ResourcePoolService } from "../../../src/scale-ecosystem/resource-manager/resource-pool-service.js";
 import { SlaTierSchema } from "../../../src/scale-ecosystem/sla-engine/tier-resolver/index.js";
+import { resetRpoRtoTrackingService } from "../../../src/scale-ecosystem/multi-region/rpo-rto-tracking.js";
 
 test("R15-49 records fencing epoch and rejects stale demoted leader rejoins", () => {
   const controller = new RegionFailoverController();
@@ -420,6 +421,7 @@ test("R15-67b failover listener errors log explicit trace and correlation ids", 
   });
 
   try {
+    resetRpoRtoTrackingService();
     const orchestrator = new RegionFailoverOrchestrator();
     orchestrator.registerRegion({
       regionId: "us-west-2",
@@ -451,6 +453,7 @@ test("R15-67b failover listener errors log explicit trace and correlation ids", 
     assert.equal(entry.data?.["targetRegionId"], "us-west-2");
     assert.equal(entry.data?.["errorMessage"], "listener exploded");
   } finally {
+    resetRpoRtoTrackingService();
     StructuredLogger.removeTransport("failover-log-capture");
   }
 });
