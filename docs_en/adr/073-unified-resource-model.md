@@ -1,37 +1,37 @@
 # ADR-073: Unified Agent Resource Model
 
-- Status: Accepted (phased)
-- Date: 2026-04-13
-- Updated: 2026-04-16
+Status: Accepted (phased)
+Date: 2026-04-13
+Updated: 2026-04-16
 
-## Context
+## Background
 
-`reviews/opeli_detailed_design.md §K` requires unifying OAPEFLIR, feedback learning improvement loop, knowledge and memory references, and artifact and rollout evidence chains into a single shared resource model.
+`reviews/opeli_detailed_design.md §K` requires unifying OAPEFLIR, feedback-learning-improvement closed loop, knowledge and memory references, artifact and rollout evidence chains into a shared resource model.
 
 The repository already contains:
 
-- Persistent objects such as `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / events / approvals / artifacts / memories`
-- Domain objects such as `FeedbackSignal / LearningObject / ImprovementCandidate / StrategyVersion / RolloutRecord`
-- Reference semantics such as `ArtifactRef / EvidenceRef`
+- `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / events / approvals / artifacts / memories` and other persistent objects
+- `FeedbackSignal / LearningObject / ImprovementCandidate / StrategyVersion / RolloutRecord` and other domain objects
+- `ArtifactRef / EvidenceRef` and similar reference semantics
 
-However, the resource model still has three problems:
+However, the resource model still has three issues:
 
-1. Typed refs are incomplete; `MemoryRef / KnowledgeRef` are not explicitly defined in the unified resource model.
-2. The resource enumeration is outdated, not yet incorporating feedback / learning / improvement / rollout / knowledge / memory layers into the same canonical resource family.
-3. The old draft directly specified `EnvironmentSpec / Session / AgentThread / McpServerSpec` as current must-deliver, which easily conflates with completed Ring 1 scope.
+1. Incomplete typed refs, `MemoryRef / KnowledgeRef` not explicitly defined in unified resource model.
+2. Outdated resource enumeration, not yet incorporating feedback / learning / improvement / rollout / knowledge / memory layer into a single canonical resource family.
+3. Old draft directly wrote `EnvironmentSpec / Session / AgentThread / McpServerSpec` as current deliverables, easily confused with Ring 1 completed scope.
 
-Therefore, this ADR needs to be rewritten: first define the current authoritative resource boundaries, then separately mark the `M2` target-state extensions.
+Therefore, this ADR needs to be rewritten: first define current authoritative resource boundaries, then separately mark `M2` target-state extensions.
 
 ## Decision
 
 The unified resource model adopts a "two-layer definition":
 
-1. Ring 1 authoritative resource family: resource types, typed refs, and lineage boundaries that the current repository and contracts should uniformly use.
-2. Ring 2 / Ring 3 extension resource family: extended resources after full platformization of Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry; not counted toward current completion claims.
+1. Ring 1 authoritative resource family: resource types, typed refs, and lineage boundaries that the current repository and contracts should unifiedly use.
+2. Ring 2 / Ring 3 extension resource family: extended resources after complete platformization of `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry`, not counted toward current completion declarations.
 
 ## Canonical Typed Ref
 
-All cross-contract shared references converge to the typed ref family:
+All cross-contract shared references converge to typed ref family:
 
 ```ts
 type TypedRefId = ArtifactRef | EvidenceRef | MemoryRef | KnowledgeRef;
@@ -44,15 +44,15 @@ type KnowledgeRef = `knowledge:${string}`;
 
 Constraints:
 
-- `ArtifactRef` is used for artifact store artifacts that are previewable, publishable, and archivable.
-- `EvidenceRef` is used for evidence packages, screenshots, log summaries, and repro bundles in runbooks, approvals, audits, and readiness.
-- `MemoryRef` is used for persisted entries or promotion records in the six-layer memory.
-- `KnowledgeRef` is used for knowledge namespaces, knowledge chunks, knowledge entries, or retrieval results.
-- If a bare `ref_id` appears in contracts, its semantics must converge to one of the above four types; undifferentiated free-form strings must not be used as cross-boundary authoritative references.
+- `ArtifactRef` is used for previewable, publishable, archivable artifacts in artifact store.
+- `EvidenceRef` is used for evidence packages, screenshots, log summaries, repro bundles in runbooks, approvals, audits, and readiness.
+- `MemoryRef` is used for persisted entries or promotion records in six-layer memory.
+- `KnowledgeRef` is used for knowledge namespaces, knowledge chunks, knowledge entries, or index results.
+- If bare `ref_id` appears in a contract, its semantics must converge to one of the four types above; undifferentiated free-form strings must not be used as cross-boundary authoritative references.
 
 ## Authoritative Resource Family
 
-Current Ring 1 authoritative resource family is as follows:
+Current Ring 1 authoritative resource family:
 
 | Resource Type | Current Canonical Object | Minimal Identifier |
 | --- | --- | --- |
@@ -77,15 +77,15 @@ Current Ring 1 authoritative resource family is as follows:
 
 Supplementary rules:
 
-- `feedback_signal / learning_object / improvement_candidate / strategy_version / rollout_record` are first-class resources in the OAPEFLIR loop and are no longer treated as subsidiary logs.
-- `memory_layer` is a governance partition of `MemoryEntry`, not an independent business object; however, contracts may treat layer promotion as an independent audit resource.
-- `knowledge_entry` is allowed to exist with minimal implementation in current Ring 1, but naming, references, and lineage semantics must be fixed.
+- `feedback_signal / learning_object / improvement_candidate / strategy_version / rollout_record` are first-class resources in the OAPEFLIR closed loop, no longer treated as subsidiary logs.
+- `memory_layer` is a governance partition of `MemoryEntry`, not an independent business object; but contracts may treat layer promotion as an independent audit resource.
+- `knowledge_entry` may exist as minimal implementation in current Ring 1, but naming, references, and lineage semantics must be fixed.
 
 ## Resource Projection
 
-The unified resource model does not require the current repository to immediately add a whole new set of tables, but requires that all entry documents, contracts, and API descriptions can be projected to the same set of resource semantics:
+The unified resource model does not require the current repository to immediately add a whole new set of tables, but requires all entry documents, contracts, and API descriptions to project to the same resource semantics:
 
-| Resource Family | Current Common Projections |
+| Resource Family | Common Projections |
 | --- | --- |
 | harness_run / plan_graph_bundle / node_run / node_attempt_receipt | `storage_schema_contract.md`, `runtime_execution_contract.md` |
 | task_projection / workflow_projection | `task_and_workflow_contract.md`, interaction projection |
@@ -93,11 +93,11 @@ The unified resource model does not require the current repository to immediatel
 | artifact / evidence | `artifact_store_contract.md`, `diagnostics_snapshot_and_repro_bundle_contract.md` |
 | memory_entry / memory_layer | `memory_decay_and_quality_contract.md`, `context_compaction_and_overflow_contract.md` |
 | feedback / learning / improvement / rollout | `task_and_workflow_contract.md`, `state_transition_matrix_contract.md` |
-| knowledge_entry | `knowledge` minimal implementation, `data_plane_contract.md`, namespace/ingestion descriptions in active docs |
+| knowledge_entry | knowledge minimum implementation, `data_plane_contract.md`, namespace/ingestion descriptions in active docs |
 
 ## Shared Resource Shape
 
-The minimum fields shared across resources should remain consistent:
+Minimum fields shared across resources should remain consistent:
 
 ```ts
 interface ResourceEnvelope<Id extends string, Kind extends string> {
@@ -114,22 +114,22 @@ interface ResourceEnvelope<Id extends string, Kind extends string> {
 }
 ```
 
-Notes:
+Description:
 
-- Not all tables are required to adopt the exact same interface verbatim.
-- However, all contracts should be able to map core entities to the same set of minimum governance fields: identity, status, timestamps, trace, evidence references, and related typed refs.
+- Not requiring all tables to literally adopt the same interface.
+- But all contracts should map core entities to the same minimum governance fields: identity, status, timestamps, trace, evidence references, related typed refs.
 
 ## Memory And Knowledge Typed Refs
 
 ### `MemoryRef`
 
-`MemoryRef` should minimally be able to point to:
+`MemoryRef` minimally should point to:
 
 - A `MemoryEntry`
 - The target entry of a `memory.layer_promoted` event
-- A retained or evicted memory object in a `CompactionRecord`
+- A memory object retained or evicted by a `CompactionRecord`
 
-Minimum metadata recommendation:
+Suggested minimum metadata:
 
 ```ts
 interface MemoryRefMetadata {
@@ -142,13 +142,13 @@ interface MemoryRefMetadata {
 
 ### `KnowledgeRef`
 
-`KnowledgeRef` should minimally be able to point to:
+`KnowledgeRef` minimally should point to:
 
-- An entry under a knowledge namespace
+- An entry under some knowledge namespace
 - An indexed knowledge chunk / summary / retrieval result
-- A provenance record for a knowledge source
+- A provenance record of some knowledge source
 
-Minimum metadata recommendation:
+Suggested minimum metadata:
 
 ```ts
 interface KnowledgeRefMetadata {
@@ -165,7 +165,7 @@ The unified resource model must support the following lineage paths:
 
 `HarnessRun/NodeRun/NodeAttemptReceipt -> FeedbackSignal -> LearningObject -> ImprovementCandidate -> StrategyVersion -> RolloutRecord -> Artifact/Evidence`
 
-And also allow:
+Also allows:
 
 `HarnessRun/NodeRun -> MemoryRef`
 
@@ -173,48 +173,48 @@ And also allow:
 
 Constraints:
 
-- Improvement, release, and audit chains must not lose upstream feedback / learning sources.
-- `MemoryRef` and `KnowledgeRef` may participate in context construction but must not bypass approval, classification, and trust tier boundaries.
-- LLMs may generate draft content, but resource state transitions must be updated by the control plane.
+- Improvement, rollout, and audit chains must not lose upstream feedback / learning sources.
+- `MemoryRef` and `KnowledgeRef` may participate in context building, but must not bypass approval, classification, and trust tier boundaries.
+- LLM may generate draft content, but resource state transitions must be updated by the control plane.
 
 ## Phase Boundary
 
 ### Current Ring 1 Authoritative Scope
 
-Current documentation must describe the following boundaries:
+Current documentation system must be narrated according to the following boundaries:
 
-- `harness_run / plan_graph_bundle / node_run / node_attempt_receipt / approval / event / artifact / evidence / feedback / learning / improvement / rollout / memory / knowledge-minimum` all belong to the current aligned scope.
-- `tasks / workflow_state / sessions` are only permitted as projection / interaction resource descriptions.
-- Typed ref family is already part of current documentation boundaries, even if underlying implementations still have legacy naming.
+- `harness_run / plan_graph_bundle / node_run / node_attempt_receipt / approval / event / artifact / evidence / feedback / learning / improvement / rollout / memory / knowledge-minimum` all belong to currently aligned scope.
+- `tasks / workflow_state / sessions` only allowed as projection / interaction resource narration.
+- Typed ref family is already part of current documentation boundary, even if underlying implementation still has compatible naming.
 - `Observe / Assess / Plan / Execute / Feedback / Learn / Improve / Release` as top-level loop phases are already current contract canonical terminology.
 
 ### `M2` Target-State Scope
 
 The following resources are reserved as `M2-EXT-01` target-state and must not be stated as delivered in current readiness:
 
-- Full `EnvironmentSpec` platformization
-- Full `Session` / `AgentThread` resource-oriented API
-- Full `McpServerSpec` control plane integration
-- Full `Knowledge Plane / Artifact Plane / Domain Registry / Plugin SPI Registry`
+- Complete `EnvironmentSpec` platformization
+- Complete `Session` / `AgentThread` resource API
+- Complete `McpServerSpec` control plane integration
+- Complete `Knowledge Plane / Artifact Plane / Domain Registry / Plugin SPI Registry`
 
-These resources may appear in contracts or ADRs but must be explicitly marked as target-state or extension-plane, not current Ring 1 authoritative deliverable.
+These resources may appear in contracts or ADRs, but must be explicitly marked as target-state or extension-plane, not current Ring 1 authoritative deliverable.
 
 ## Relationship with Existing Documents
 
-- `storage_schema_contract.md` is responsible for minimal persistence projections, not requiring immediate establishment of all target-state tables.
+- `storage_schema_contract.md` is responsible for minimal persistence projection, not requiring immediate establishment of all target-state tables.
 - `memory_decay_and_quality_contract.md` defines `MemoryRef` and quality, promotion, and decay rules for `L1-L6`.
 - `tool_skill_plugin_contract.md` and `ecosystem_extension_plane_contract.md` are responsible for `M2` extension resource SPI / registry boundaries.
-- `artifact_unified_model_contract.md` and `artifact_store_contract.md` are responsible for the canonical model of `ArtifactRef`.
+- `artifact_unified_model_contract.md` and `artifact_store_contract.md` are responsible for `ArtifactRef` canonical model.
 
 ## Result
 
-After adopting this ADR, the meaning of the unified resource model is converged to:
+After adopting this ADR, the meaning of the unified resource model converges to:
 
 1. Current contracts must share the same typed ref and resource family.
-2. Ring 1 completed scope and Ring 2 / Ring 3 extension scope are explicitly layered.
-3. When adding new APIs, table structures, or diagnostic objects in the future, they must first project to existing canonical resource families, rather than introducing new parallel naming.
+2. Ring 1 completed scope and Ring 2 / Ring 3 extension scope are clearly layered.
+3. When adding new APIs, table structures, or diagnostic objects, must first project to existing canonical resource family, rather than introducing new parallel naming.
 
 ## v4.3 ADR Remediation
 
-- A-20: This ADR originally wrote `tasks / workflow / execution / ExecutionEnvelope` as the authoritative resource family. Root cause was that the unified resource model was first drafted from historical storage projection objects and was not subsequently rewritten as `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt` became runtime truth. Fix: The text now changes the canonical resource subject to run/node/graph/receipt; old task/workflow/execution are retained only as projection resources.
-- A-29: This ADR originally repeatedly used `phase1-4` as the current completion boundary. Root cause was that the resource model ADR followed legacy scheduling naming and was not synchronized with the main architecture's migration to `Ring 1 / Ring 2 / Ring 3`. Fix: The text now uses ring layering terminology; old phase names are no longer used as canonical delivery language.
+- A-20: This ADR originally wrote `tasks / workflow / execution / ExecutionEnvelope` as authoritative resource family. Root cause: unified resource model was first drafted from historical storage projection objects, and was not rewritten synchronized with `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt` becoming runtime truth. Fix: Main text now changes canonical resource subject to run/node/graph/receipt, old task/workflow/execution only retained as projection resources.
+- A-29: This ADR repeatedly used `phase1-4` as current completion boundary. Root cause: resource model ADR followed old scheduling naming, not synchronized with main architecture's `Ring 1 / Ring 2 / Ring 3` terminology. Fix: Main text now changes to ring layering terminology, old phase names no longer used as canonical delivery scope.

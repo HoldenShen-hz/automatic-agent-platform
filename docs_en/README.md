@@ -1,4 +1,4 @@
-# Automatic Agent Platform Documentation Entry (English)
+# Automatic Agent Platform Documentation Entry
 
 `docs_en/` is now organized by "purpose" rather than "historical source", with top-level directory entries only, and no longer piles up scattered overview files.
 

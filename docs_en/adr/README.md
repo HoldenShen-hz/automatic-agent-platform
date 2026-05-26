@@ -139,8 +139,8 @@
 
 - Historical directory simultaneously retains `003-memory-six-layers.md` and `003-memory-seven-layers.md`; where `seven-layers` is retained only as historical alias / jump page, and canonical content uses `003-memory-six-layers.md` as the standard.
 - Plugin SPI ADR has been unified and converged to `071-plugin-spi-framework.md`; the old `066-plugin-spi-framework.md` duplicate copy has been removed, and all references are unified to ADR-071.
-- Newly added `091-108` are used to承接 Harness eight pillars and domain governance supplement items.
-- Newly added `109-122` are the v4.3 Contract Freeze and follow-on implementation clarification entry points: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, MVP / Hardening / Enterprise three-ring boundary, plus the canonical rules for tenant scope, auth precedence, self-healing boundary, interface rate-limit keys, WAL recovery, panic allowlists, pack-domain lifecycle, client transport, timeout hierarchy, and evidence boundaries.
+- Newly added `091-108` address the Harness eight pillars and domain governance supplementation items.
+- Newly added `109-122` are the v4.3 Contract Freeze and follow-on implementation clarification entry points: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, MVP / Hardening / Enterprise three-ring boundary, plus the canonical description for tenant scope / auth precedence / self-healing boundary / interface rate-limit keys / WAL recovery / panic allowlists / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary.
 - `109-122` constrain old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming, tenant resolution, and cross-layer boundary semantics through freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary rules; historical ADR text is retained and not directly rewritten.
 
 ## Creating New ADR

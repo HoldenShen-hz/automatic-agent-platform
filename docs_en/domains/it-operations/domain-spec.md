@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/it-operations/index.ts` |
 | domain_status | spec_ready |
 | risk_level | critical |
-| accountable_role | SRE Lead / On-call Lead |
+| accountable_role | SRE Lead / On-Call Lead |
 
 ## Hard Constraints
 
-- Auto-repair blast radius is limited to single node or single service.
+- Auto-remediation blast radius is limited to single node or single service.
 - Cross-service, cross-region, or production write operations require human approval.
-- Diagnosis, repair, rollback, and post-mortem must preserve evidence.
+- Diagnosis, remediation, rollback, and post-mortems must retain evidence.
 
-## Acceptance Criteria
+## Acceptance Entry Criteria
 
-- Blast-radius guard, MTTR metrics, rollback drill, and human approval evidence must be provided before GA.
+- Prior to GA, evidence of blast-radius guard, MTTR metrics, rollback drills, and human approval must be provided.

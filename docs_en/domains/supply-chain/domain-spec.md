@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/supply-chain/index.ts` |
 | domain_status | spec_ready |
 | risk_level | high |
-| accountable_role | Supply Chain Lead |
+| accountable_role | Supply Chain Manager |
 
 ## Hard Constraints
 
-- Purchase orders exceeding threshold must be based on approved demand forecasts.
-- Scheduling, procurement, and inventory side effects must be reconcilable.
-- Abnormal forecasts must not directly drive irreversible procurement actions.
+- Above-threshold purchase orders must be based on approved demand forecasts.
+- Side effects from scheduling, procurement, and inventory must be reconcilable.
+- Anomaly predictions must not directly drive irreversible procurement actions.
 
-## Acceptance Criteria
+## Acceptance Entry
 
-- Prior to GA, must provide demand forecast approval, procurement audit, inventory consistency, and exception handling evidence.
+- Pre-GA must provide demand forecast approval, procurement audit, inventory consistency, and anomaly handling evidence.

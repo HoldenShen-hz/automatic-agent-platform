@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/human-resources/index.ts` |
 | domain_status | spec_ready |
 | risk_level | critical |
-| accountable_role | HR Lead / Compliance Lead |
+| accountable_role | HR Lead / Compliance Officer |
 
 ## Hard Constraints
 
-- Recruitment, promotion, and performance automation must pass bias audit.
-- AIR must be greater than or equal to 0.8; automated decisions are not allowed if not met.
+- Recruitment, promotion, and performance automation must pass bias audits.
+- AIR must be greater than or equal to 0.8; automated decisions are not allowed if the threshold is not met.
 - Candidate and employee data must be minimally collected and auditable.
 
-## Acceptance Criteria
+## Acceptance Entry Criteria
 
-- Bias audit, human review, data minimization, and appeal process evidence must be provided before GA.
+- Prior to GA, evidence of bias audits, human review, data minimization, and appeal processes must be provided.

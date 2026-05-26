@@ -1,25 +1,25 @@
-# Security Access Lifecycle
+# Security Onboarding and Offboarding Process
 
-This document defines the access lifecycle for personnel, service accounts, and automated credentials, covering onboarding authorization, permission changes, offboarding revocation, and audit retention.
+This document defines the access lifecycle for personnel, service accounts, and automated credentials, covering onboarding authorization, permission changes, offboarding revocation, and audit evidence retention.
 
 ## Onboarding
 
-- Access requests must be submitted by the direct supervisor, specifying role, business scope, required environment, and validity period.
-- Production permissions are denied by default; operation scenarios must be stated and approvers must be bound.
-- Initial permissions are granted based on least privilege, prioritizing groups and roles rather than directly binding long-term privileges to individuals.
-- All secrets must be injected through approved secret managers or deployment environments; writing to `.env`, script parameters, logs, or fixtures is prohibited.
+- The direct supervisor submits an access request, specifying the role, business scope, required environment, and validity period.
+- Production permissions are denied by default; the operating scenario must be explained and an approver must be bound.
+- Initial permissions are granted following the principle of least privilege, with preference for groups and roles; direct binding of long-term privileges to individuals is not allowed.
+- All secrets are injected via an approved secret manager or deployment environment; writing to `.env`, script parameters, logs, or fixtures is prohibited.
 
 ## Permission Changes
 
-- Permission upgrades must record reasons, duration, and rollback plans.
-- Temporary permissions are automatically revoked upon expiration; when automatic revocation is not possible, calendar reminders and audit records must be established.
-- Cross-team access requires dual confirmation from resource owner and security owner.
+- Permission upgrades must document the reason, time limit, and rollback plan.
+- Temporary permissions are automatically revoked upon expiration; when automatic revocation is not possible, a calendar reminder and audit record must be established.
+- Cross-team access requires dual confirmation from the resource owner and security owner.
 
-## Offboarding and Transfer
+## Offboarding and Transfers
 
-- On the day of offboarding, revoke access to SSO, VPN, code repositories, CI/CD, cloud accounts, databases, and observability backends.
-- Rotate shared tokens, bot tokens, and long-term API keys that individuals have accessed.
-- Review audit logs from the last 30 days to confirm no abnormal exports, privilege escalations, or burst of failed logins.
+- On the last day of employment, revoke SSO, VPN, code repository, CI/CD, cloud account, database, and observability backend access.
+- Rotate personal shared tokens, bot tokens, and long-term API keys that the individual had access to.
+- Review the audit logs for the past 30 days to confirm no abnormal exports, privilege escalations, or bursts of failed logins.
 
 ## Evidence
 

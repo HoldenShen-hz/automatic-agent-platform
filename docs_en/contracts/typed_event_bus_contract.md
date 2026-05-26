@@ -2,18 +2,18 @@
 
 ## 1. Scope
 
-This contract defines the upper-layer requirements for a typed event bus, used to further freeze the current event registry and payload schema into strong type boundaries.
+This contract defines upper-layer requirements for the typed event bus, further freezing current event registration and payload schema into strong-type boundaries.
 
-Related documents:
+Related Documents:
 
 - `event_bus_contract.md`
 - `event_registry_and_ops_threshold_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
-- Establish one-to-one correspondence between event type, payload schema, producer, and consumer.
-- Reduce implementation drift caused by broad unions and manual payload handling.
-- Provide a unified event definition source for code generation, linting, and replay tools.
+- Let event type, payload schema, producer, and consumer form one-to-one correspondence.
+- Reduce implementation drift caused by broad unions and manual payload.
+- Provide unified event definition source for code generation, lint, and replay tools.
 
 ## 3. Type Model
 
@@ -30,92 +30,102 @@ Each event definition must contain at minimum:
 
 Requirements:
 
-- All OAPEFLIR hub events must have both a schema ref and a stable TypeScript payload type name.
-- If `stage` exists, it must come from the canonical OAPEFLIR stage enumeration, not consumer-defined tags.
+- All OAPEFLIR hub events must simultaneously have schema ref and stable TypeScript payload type name.
+- If `stage` exists, must come from canonical OAPEFLIR stage enum, not consumer-defined tags.
 
 ## 3A. OAPEFLIR Event Payload Types
 
-Phase 1-4 loop-closed events must provide typed payloads, corresponding to ADR-079 and ADR-080:
+Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-079 and ADR-080:
 
 ### 3A.1 Observe Hub Events
 
 `ObserveSignalsCollectedPayload`
 
-- `task_id`
-- `workflow_id?`
+- `harness_run_id`
+- `plan_graph_id?`
 - `loop_iteration`
 - `signal_count`
 - `source_refs`
 - `trace_id`
+- `derived_from_event_id?`
 
 `UnifiedObservationCreatedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `observation_id`
 - `situation_snapshot`
 - `metrics`
 - `trace_id`
+- `derived_from_event_id?`
 
 ### 3A.2 Assess Hub Events
 
 `AssessmentCompletedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `assessment_id`
 - `complexity`
 - `risk_level`
 - `confidence`
 - `trace_id`
+- `derived_from_event_id?`
 
 ### 3A.3 Plan Hub Events
 
 `PlanCreatedPayload`
 
-- `task_id`
-- `plan_id`
-- `version`
+- `harness_run_id`
+- `plan_graph_id`
+- `graph_version`
 - `strategy`
-- `step_count`
+- `node_count`
 - `trace_id`
+- `derived_from_event_id?`
 
 `ReplanTriggeredPayload`
 
-- `task_id`
-- `plan_id`
-- `old_version`
-- `new_version`
+- `harness_run_id`
+- `plan_graph_id`
+- `previous_graph_version`
+- `next_graph_version`
 - `trigger_type`
 - `trace_id`
+- `derived_from_event_id`
 
 ### 3A.4 Execute Hub Events
 
 `ExecutionCompletedPayload`
 
-- `task_id`
-- `execution_id`
-- `outcome`
+- `harness_run_id`
+- `node_run_id`
+- `node_attempt_id?`
+- `receipt_ref`
+- `status`
 - `output_refs`
 - `trace_id`
+- `derived_from_event_id`
 
 ### 3A.5 Feedback Hub Events (ADR-079)
 
 `FeedbackCollectedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `feedback_id`
 - `signal_count`
 - `sources`
 - `trace_id`
+- `derived_from_event_id?`
 
 `FeedbackLearningSignalPayload`
 
 - `signal_id`
-- `task_id`
+- `harness_run_id`
 - `learning_signal_id`
 - `type`
 - `confidence`
 - `source_signals`
 - `trace_id`
+- `derived_from_event_id?`
 
 ### 3A.6 Learn Hub Events (ADR-080)
 
@@ -168,12 +178,13 @@ Phase 1-4 loop-closed events must provide typed payloads, corresponding to ADR-0
 
 `ReleaseRolloutStartedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `rollout_id`
 - `loop_iteration`
 - `strategy_version`
 - `level` (`L0` | `L1` | `L2` | `L3` | `L4` | `L5`)
 - `triggered_by`
+- `derived_from_event_id?`
 
 `ReleaseRolloutCompletedPayload`
 
@@ -186,10 +197,11 @@ Phase 1-4 loop-closed events must provide typed payloads, corresponding to ADR-0
 
 Rules:
 
-- Breaking changes to payload schema must be handled via new type name or explicit version upgrade.
-- Tier 1 improvement / rollout events must not degrade to untyped `json` blobs.
-- M2 event types not yet enabled may retain schema reservation, but must not be falsely published in production traffic.
+- Breaking changes to payload schema must be handled through new type name or explicit version upgrade.
+- Tier 1 improvement/rollout events must not degrade to untyped `json` blob.
+- Disabled M2 event types may retain schema reserved slots, must not be fictitiously published in production traffic.
 - OAPEFLIR event types uniformly use `<stage>:<event>` format (e.g., `feedback:collected`, `learning:object_promoted`).
+- Typed payloads derived from preceding facts or events must explicitly carry `derived_from_event_id` to avoid losing causal source in Plan/Execute/Feedback chain.
 
 ## 3B. Extension Plane Event Payload Types
 
@@ -215,24 +227,24 @@ If `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline is
 - `duration_ms?`
 - `reason_code?`
 
-Supplementary rules:
+Supplementary Rules:
 
-- `plugin:invocation_started` and `plugin:invocation_completed` must share a stable payload type, rather than each drifting into ad-hoc field sets.
-- Extension-plane events may initially go through in-process typed bus, but must not therefore disguise as cross-process reliable delivery capability.
-- If `domain:* / plugin:* / knowledge:*` events are consumed by feedback or projection, producer, consumer, and payload schema must be simultaneously traceable in the registry.
+- `plugin:invocation_started` and `plugin:invocation_completed` must share stable payload type, rather than each drifting into ad-hoc field sets.
+- Extension-plane events may first go to in-process typed bus, but must not therefore disguise as cross-process reliable delivery capability.
+- If `domain:* / plugin:* / knowledge:*` events are consumed by feedback or projection, producer, consumer, and payload schema must be simultaneously traceable in registry.
 
 ## 4. Compatibility Rules
 
-- Backward-compatible fields may be added, not silently deleted or semantically changed.
-- Breaking changes should introduce a new `event_type` or explicit version.
-- Consumers should only subscribe to event types they explicitly declare support for.
+- Backward-compatible fields may be added, must not be silently deleted or have semantics changed.
+- Breaking changes should open new `event_type` or use explicit version.
+- Consumers should only subscribe to event types they declare support for.
 
 ## 5. Relationship with Existing EventBus
 
 - `event_bus_contract.md` still defines bus semantics and acknowledgment boundaries.
 - This contract defines the type-freezing layer on top of it.
-- Transport upgrades must not break the typed event contract.
+- Transport upgrades must not break typed event contract.
 
-## 6. Closure Conclusion
+## 6. Closing Conclusion
 
-Typed Event Bus is not another bus, but stronger schema and compatibility guarantees for the existing event system.
+Typed Event Bus is not another bus, but adds stronger schema and compatibility guarantees to the existing event system.

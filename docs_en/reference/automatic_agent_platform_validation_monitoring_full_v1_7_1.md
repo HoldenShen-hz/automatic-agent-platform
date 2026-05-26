@@ -1,10 +1,10 @@
 # Automatic Agent Platform — Complete Validation and Real-time Monitoring Solution
 
-> **Version**: v1.7.3 — Repo Closure Patch / v2.0 Baseline Candidate
-> **Status**: `repo_validation_baseline_implemented`
+> **Version**: v1.7.5 — Product Validation Closure / v2.0 Baseline Candidate
+> **Status**: `repo_validation_tasks_implemented`
 > **Applicable System**: Automatic Agent Platform
 > **First Validation Business**: LLM Research Intelligence Mission
-> **Core Objective**: Prove the platform具备可执行、可观测、可审计、可回放、可阻断、可签字、可复盘的准生产能力 in the Research Intelligence scenario.
+> **Core Objective**: Prove the platform has quasi-production capability in Research Intelligence scenarios with executability, observability, auditability, replayability, blocking, signability, and reviewability.
 > **Terminology Strategy**: De-emphasize `Step`, uniformly use `PlanGraphBundle / NodeRun / NodeAttempt` to describe execution units. `Step` only allowed in legacy compatibility, external document references, or migration instructions.
 > **Roadmap Stage and Validation Phase Separation**: Roadmap Stage represents product/business advancement phase; Validation Phase represents validation phase; Runtime Ring / Release Ring represents runtime release level; the three must not be mixed.
 
@@ -25,6 +25,8 @@
 | **v1.7.1** | **Freeze Patch: merged Evidence Bundle Gate sub-items, completed hitl-e2e CI Job, clarified eventName segment regex, clarified aa.* span name does not enter Metric Registry Closure** |
 | **v1.7.2** | **Review Patch: distinguished target state from current repo executable baseline; corrected Mission ownership rules, CI Job Registry, machine Registry artifacts and metric caliber over-statement** |
 | **v1.7.3** | **Repo Closure Patch: implemented platform validation machine registry, CI job scripts, registry artifact exporter, monitoring metric map and exporter/alert/dashboard guardian tests** |
+| **v1.7.4** | **Machine Artifact Closure: exported schemas, event payload schema refs, generated registry types, closure reports, and extended Evidence Bundle closure validation to machine artifact integrity** |
+| **v1.7.5** | **Product Validation Closure: completed Dashboard/UI acceptance matrix, Research governance/rubric/golden/reviewer artifacts, observability semantic checker, capacity/soak/GPU validator, scorecard/freeze readiness reports** |
 
 ## Review Patch Conclusions
 
@@ -40,14 +42,78 @@ This review conclusion: This document is suitable as **Validation / Monitoring t
 
 | Issue | Root Cause | Revision Conclusion | Repo Basis |
 |---|---|---|---|
-| Document top directly marked `freeze_ready_candidate` | Target Gate/Registry tables complete, but machine registry artifacts and several CI job commands not yet one-to-one implemented in repo | Repo baseline implemented, status changed to `repo_validation_baseline_implemented`; real freeze only valid after Chapter 51 environment conditions met | `package.json`, `config/validation/platform-validation-registry.json`, `scripts/validation/platform-validation-closure.mjs` |
+| Document top directly marked `freeze_ready_candidate` | Target Gate/Registry tables complete, but machine registry artifacts and several CI job commands not yet one-to-one implemented in repo | Repo baseline implemented, status changed to `repo_validation_tasks_implemented`; real freeze only valid after Chapter 51 environment conditions met | `package.json`, `config/validation/platform-validation-registry.json`, `scripts/validation/platform-validation-closure.mjs` |
 | CI Job Registry wrote many non-existent `npm run ...` commands | Expected job names directly written as existing scripts | Chapter 33 supplemented with real package scripts and machine registry; `tests/unit/scripts/platform-validation-closure.test.ts` will prevent job/script mapping from mismatching again | `package.json`, `config/validation/platform-validation-registry.json` |
-| Task without归属 automatically falls to `default_system_mission` | Caliber落后于 MissionResolver current implementation | Low/medium risk no Mission can create ad hoc Mission; high risk and side effect tasks no Mission must fail-closed | `src/platform/five-plane-interface/api/http-server/task-routes.ts`, Mission E2E |
+| Task without attribution automatically falls to `default_system_mission` | Caliber落后于 MissionResolver current implementation | Low/medium risk no Mission can create ad hoc Mission; high risk and side effect tasks no Mission must fail-closed | `src/platform/five-plane-interface/api/http-server/task-routes.ts`, Mission E2E |
 | `aa.*` Metric Registry written as current exporter only truth | Target observation semantics mixed with Prometheus exporter / alert rules current exposed names | Chapter 48 declares `aa.*` as target validation registry; current runtime monitoring baseline uses exporter, Prometheus rules, Grafana dashboard as standard | `src/platform/shared/observability/prometheus-metrics-exporter.ts`, `deploy/prometheus/rules/automatic-agent.yml` |
 | Prometheus name and unit mapping not becoming explicit freeze condition | exporter, dashboard, alert rules each evolved; document only registered target metrics | Added metric map and closure test; HTTP latency, queue, worker, DLQ, outbox, OAPEFLIR latency alerts all bound to current exporter exposed names, no longer citing stale metrics | `config/validation/platform-monitoring-metric-map.json`, `automatic-agent.yml`, `prometheus-alerts.test.ts` |
 | Machine Event/Gate/Metric/Runbook Registry artifacts written as existing premise | Design tables and appendices before machine artifacts | Added machine registry, closure, and artifact exporter; TypeScript event registry is still event source of truth; export snapshot generated by `npm run validation:artifacts` | `src/platform/five-plane-state-evidence/events/event-registry.ts`, `scripts/validation/export-platform-validation-artifacts.ts` |
 
 > This document still retains complete target design; review patch's purpose is not to delete targets, but to prevent "document closed loop" from being misread as "code, CI, environment, and sign-off all closed".
+
+## Chapter-by-Chapter Implementation Confirmation
+
+Marking rules: Only chapters where code, config, scripts, or test evidence can be directly located in the repo have `done` appended to the title. Boundary descriptions, diagrams, RACI, examples, freeze/sign-off, and acceptance chapters that depend on real environment do not falsely mark "document written" as implementation complete.
+
+| Chapter | Conclusion | Verification Basis |
+|---|---|---|
+| 1 Document Objectives and Validation Boundaries | Explanatory chapter | Defines validation scope, not an implementation task |
+| 2 First Validation Business Selection | Explanatory chapter | Business selection description, not an implementation task |
+| 3 Core Object Relationships | done | `src/platform/contracts/executable-contracts/`, Mission/Harness/Node contract tests |
+| 4 Mission / Task / Session Creation Strategy | done | `src/platform/five-plane-control-plane/mission/`, task routes, Mission E2E |
+| 5 Validation Principles | done | event truth, budget, evidence, audit, replay, tool/plugin validation tests |
+| 6 Roadmap Stage and Validation Phase | Explanatory chapter | Stage definitions enter subsequent gate/registry, not separately implemented |
+| 7 System Overall Architecture Diagram | Explanatory chapter | Architecture diagram, not separately implemented |
+| 8 Real-time Monitoring System | done | Prometheus exporter, Grafana dashboard, validation metric map |
+| 9 Dashboard Design | done | Dashboard VM/Web displays validation drilldown trail and operator workflow checks; product validation exports UI report |
+| 10 Alert System | done | `deploy/prometheus/rules/automatic-agent.yml`, Alertmanager, golden tests |
+| 11 Full Coverage Validation Method | done | layered tests, coverage manual, registry gates, validation jobs |
+| 12 Test System | done | `package.json` validation scripts, unit/integration/e2e/invariant/perf/golden suites |
+| 13 Quality Scorecard | done | `platform-validation-readiness.ts` provides weights, hard gates and scorecard decision; `validation:product` exports scorecard report |
+| 14 Release / Graduation Gate | done | release/freeze conditions uniformly evaluated by scorecard/freeze readiness service with registry/evidence reports |
+| 15 Blocking Strategy | done | Gate Registry, Mission live guard, budget/sideeffect/security/runtime guard tests |
+| 16 Evidence Bundle | done | stable evidence bundle, validation artifact exporter, bundle closure tests |
+| 17 OAPEFLIR Stage-level Validation | done | OAPEFLIR stage emitter/FSM, research E2E, event registry |
+| 18 Skills / Plugins / Tool Registry / Connector Runtime Validation | done | plugin SPI/executor, tool registry, connector framework, sandbox/egress tests |
+| 19 Security / Tenant / IAM Validation | done | IAM, egress, tenant isolation, crypto/security validation tests |
+| 20 Operator Cockpit / UI Validation | done | Dashboard/Task/Workflow/HITL/Incident surfaces and workflow matrix guarded by UI report and feature tests |
+| 21 Runtime State / CAS / Lease / Fencing Validation | done | runtime state machine, CAS/fencing/lease services and tests |
+| 22 SideEffect / Reconciliation Validation | done | SideEffect lifecycle/reconciliation invariants and E2E |
+| 23 Config Center / Drift / Rollout Validation | done | config center, drift, impact, hot reload, rollout tests |
+| 24 Model Gateway Provider / Streaming Validation | done | model gateway provider routing/streaming/fallback/budget tests |
+| 25 Persistence / Repository / Migration Validation | done | SQLite/PG repositories, migration/portability/replay/parity tests |
+| 26 Dispatch / Queue / Worker Pool Validation | done | dispatcher, worker pool, queue/backpressure/fair ordering tests |
+| 27 Test Quality Governance | done | exclusion/hygiene/quality audits, mutation entrypoints, reality tests |
+| 28 Autonomy / Runtime Mode Validation | done | autonomy validation and runtime-mode propagation tests |
+| 29 Prompt / Skill / Knowledge Rollout Validation | done | prompt rollout, learning/promotion, improve rollout services/tests |
+| 30 Documentation / ADR / Contract Drift Validation | done | docs canonical/drift/registry scripts and tests |
+| 31 Requirement Traceability Matrix | done | Gate/metric/job registry closure protects RTM references |
+| 32 Metric Summary | done | Metric Registry and runtime monitoring metric map |
+| 33 CI/CD Validation Pipeline | done | machine CI registry plus package scripts |
+| 34 Observability Semantic Convention | done | validation semantic conventions固化 span names, required attributes and high-cardinality label guard |
+| 35 Research Data Governance | done | ResearchSourceGovernance strict schema, gate decision, schema artifact and data governance tests |
+| 36 Research Output Quality Rubric and Feedback Loop | done | rubric scorer, golden set, reviewer agreement/drift reports and product validation evidence |
+| 37 Load / Stress / Capacity Validation | done | capacity validation report固化 smoke/pilot/stress/soak/spike/backpressure profiles and bound to `soak:stable` |
+| 38 Lifecycle Transition Matrix | done | Mission/NodeRun/Plugin/Artifact lifecycle services and exported lifecycle matrix |
+| 39 Backup / Restore / DR Validation | done | stable restore/replay/backup rehearsal paths and DR validation jobs |
+| 40 Incident Lifecycle / Postmortem | done | incident-control services, incident E2E, postmortem artifact/template coverage |
+| 41 SLO / Error Budget / Burn-rate Validation | done | SLO alerting/tracking and burn-rate tests |
+| 42 Tenant Quota / Fair Scheduling Validation | done | fair scheduling, tenant isolation/quota/noisy-neighbor services/tests |
+| 43 Local Model / L40S GPU Capacity Validation | done | local GPU capacity validator covers L40S admission, watermark, queue isolation, OOM/unload/fallback report |
+| 44 Example Validation Run | Example chapter | Example event sequence, not separately representing validation run sign-off |
+| 45 RACI / Sign-off Matrix | Explanatory chapter | Role and sign-off matrix, not code implementation |
+| 46 Event Naming / Event Schema Registry | done | event registry, payload validators, artifact exporter |
+| 47 Gate Registry | done | machine gate registry and closure |
+| 48 Metric Registry | done | target metric registry export and runtime metric map closure |
+| 49 Runbook Registry | done | machine runbook registry and appendix/runbook closure |
+| 50 Artifact Lifecycle / Integrity Validation | done | artifact repository/governance/integrity tests |
+| 51 Freeze Checklist | done | freeze readiness report checks registry, evidence, projection, SLO, external signoff refs |
+| 52 Final Acceptance Criteria | done | scorecard/freeze evaluator consolidates final acceptance conditions into machine decision; real environment results input via report refs |
+| 53 Appendix A: Canonical Event List | Reference appendix | machine registry source of truth already implemented; appendix list itself not separately marked implemented |
+| 54 Appendix B: Test Checklist | done | UI/product/research/capacity/GPU validation tests and scripts supplemented remaining items in this appendix |
+| 55 Appendix C: Dashboard Field List | done | Dashboard product report, UI drilldown trail and runtime dashboard baseline jointly guard field surface |
+| 56 Appendix D: Runbook Registry | done | runbook registry closure validates every `D.*` mapping |
+| 57 Appendix E: Machine-Executable Artifact List | done | artifact exporter emits contracts/schemas/generated/reports |
 
 ---
 
@@ -117,35 +183,35 @@ This review conclusion: This document is suitable as **Validation / Monitoring t
 
 ## 1.1 Validation Objectives
 
-This plan validates whether Automatic Agent Platform具备承载第一阶段业务的准生产能力. Validation is not aimed at "can run a Demo", but at these capabilities:
+This plan validates whether Automatic Agent Platform has quasi-production capability for the first-phase business. Validation is not aimed at "running a Demo," but at the following capabilities:
 
 | Capability | Validation Question |
 |---|---|
-| Correctness | Whether status, budget, evidence, permissions, output conform to contract |
-| Reliability | Whether can recover after worker crash, provider failure, event lag, DB restore |
-| Security | Whether tenant isolation, IAM, secret, sandbox, egress are fail-closed |
-| Auditability | Whether each key decision has principal, trace, auditRef, evidenceRef |
-| Replayability | Whether Event → Truth → Projection can be reconstructed and diff=0 |
-| Observability | Whether can judge system status in real-time through trace/metric/log/dashboard |
-| Scalability | Whether Skills / Plugins / Tools / Connectors can be safely extended |
-| Governability | Whether Prompt / Skill / Knowledge / Config / Policy can progressively rollout and rollback |
-| Signable | Whether each validation forms signable, archivable Evidence Bundle |
+| Correctness | Do state, budget, evidence, permissions, and output match contracts |
+| Reliability | Can it recover after worker crash, provider failure, event lag, DB restore |
+| Security | Are tenant isolation, IAM, secret, sandbox, egress fail-closed |
+| Auditability | Does each key decision have principal, trace, auditRef, evidenceRef |
+| Replayability | Can Event → Truth → Projection be reconstructed with diff=0 |
+| Observability | Can system state be judged in real-time via trace/metric/log/dashboard |
+| Extensibility | Can Skills/Plugins/Tools/Connectors be safely extended |
+| Governability | Can Prompt/Skill/Knowledge/Config/Policy be progressively rolled out and rolled back |
+| Signability | Does each validation form a signable and archivable Evidence Bundle |
 
 ## 1.2 Validation Boundaries
 
-Phase 1 validation uses **LLM Research Intelligence Mission** as business carrier, covering platform core foundation, not covering fully open third-party Marketplace.
+Phase 1 validation uses **LLM Research Intelligence Mission** as the business carrier, covering the platform core foundation, not covering fully open third-party Marketplace.
 
 | Scope | Included in v1.7 |
 |---|---:|
-| Mission / Task / Session / Harness / PlanGraph / NodeRun | Yes |
-| OAPEFLIR eight stages | Yes |
-| Tool Registry / First-party Skills / First-party Plugins / Connectors | Yes |
-| Model Gateway / Budget / Cost Attribution | Yes |
-| EventBus / Truth / Projection / CAS / Lease / Fencing | Yes |
-| HITL / Governance / Knowledge Promotion | Yes |
-| Operator Cockpit / Dashboard / Alert / Runbook | Yes |
-| Data Governance / Evidence Integrity / Artifact Integrity | Yes |
-| Third-party Marketplace | Default off, only validate "cannot open early" Gate |
+| Mission / Task / Session / Harness / PlanGraph / NodeRun | yes |
+| OAPEFLIR eight stages | yes |
+| Tool Registry / First-party Skills / First-party Plugins / Connectors | yes |
+| Model Gateway / Budget / Cost Attribution | yes |
+| EventBus / Truth / Projection / CAS / Lease / Fencing | yes |
+| HITL / Governance / Knowledge Promotion | yes |
+| Operator Cockpit / Dashboard / Alert / Runbook | yes |
+| Data Governance / Evidence Integrity / Artifact Integrity | yes |
+| Third-party Marketplace | Default off; only validates "must not be enabled early" Gate |
 | External Business Mission | Subsequent Roadmap Stage validation |
 
 ---
@@ -156,44 +222,44 @@ Phase 1 validation uses **LLM Research Intelligence Mission** as business carrie
 
 Reasons:
 
-1. **Low side effects**: Main outputs are reports, knowledge entries, evidence bundles; few external destructive side effects.
-2. **Wide coverage**: Can cover paper ingestion, web crawling, LLM review, evidence linking, knowledge沉淀, HITL, release governance.
-3. **High business value**: Can support Reasoning / Code / Function Call / Agent / Token Efficiency research沉淀.
-4. **Suitable for validating Mission concept**: Research tasks are usually long-term goals, not single Agent Session.
-5. **Suitable for gradual introduction of Skills / Plugins**: Paper Reader, Web Search, Evidence Extractor, Knowledge Writer, Report Generator can all serve as first-party skills.
+1. **Low side effects**: Main outputs are reports, knowledge entries, evidence bundles, with few external destructive side effects.
+2. **Wide coverage**: Covers paper ingestion, web crawling, LLM review, evidence linking, knowledge沉淀, HITL, publishing governance.
+3. **High business value**: Supports Reasoning/Code/Function Call/Agent/Token Efficiency research沉淀.
+4. **Suitable for validating Mission concept**: Research tasks are typically long-term goals, not a single Agent Session.
+5. **Suitable for gradual introduction of Skills/Plugins**: Paper Reader, Web Search, Evidence Extractor, Knowledge Writer, Report Generator can all be first-party skills.
 
 ## 2.2 Not Recommended as First Business
 
-| Business | Reasons Not Recommended |
+| Business | Reason Not Recommended |
 |---|---|
-| Code Agent auto code modification | Higher side effects, requires PR sandbox, repo writeback, CI rollback |
-| Engineering Ops auto operation | Easy to trigger production environment side effects, needs stronger incident governance |
-| Quant Trading / Legal / YONO prediction business | High domain risk, requires extra regulatory, compliance, business model validation |
-| Third-party Marketplace | Supply chain and plugin isolation complex, should promote after core platform stabilizes |
+| Code Agent auto code modification | Higher side effects; requires PR sandbox, repo writeback, CI rollback |
+| Engineering Ops automated operations | Easily triggers production environment side effects; requires stronger incident governance |
+| Quant Trading / Legal / YONO prediction business | High domain risk; requires additional regulation, compliance, business model validation |
+| Third-party Marketplace | Complex supply chain and plugin isolation; should be promoted after core platform stabilizes |
 
 ---
 
-# 3. Core Object Relationships
+# 3. Core Object Relationships done
 
 ## 3.1 Object Definitions
 
 | Object | Definition | Authoritative |
 |---|---|---:|
-| Mission | Long-term goal, continuous workflow, business unit across multiple Tasks | Yes |
-| Task | Single executable work request under Mission | Yes |
-| Session | Human-machine interaction context, can produce Task, not equal to Task | Partially authoritative |
-| HarnessRun | One controlled execution cycle, bound to Task/PlanGraph/Budget/Risk | Yes |
-| PlanGraphBundle | DAG plan structure, replacing linear `steps[]` | Yes |
-| NodeRun | Running instance of one node in PlanGraph, replacing legacy step execution | Yes |
-| NodeAttempt | One attempt of NodeRun, can retry, multiple attempts | Yes |
-| BudgetReservation | Budget reservation before LLM/tool/connector calls | Yes |
-| SideEffectRecord | Side effect record of all external writes/releases/notifications/connector calls | Yes |
-| EvidenceRef | Evidence reference bound to conclusions, decisions, outputs | Yes |
-| ArtifactRef | Report, file, snapshot, evidence bundle product reference | Yes |
-| SkillDefinition | Reusable platform capability definition, e.g., Paper Review, Evidence Link | Yes |
-| PluginManifest | Plugin/adapter artifact metadata, signature, SBOM, sandbox declaration | Yes |
-| ToolInvocationReceipt | Tool invocation audit receipt | Yes |
-| ConnectorBinding | External system connector binding and permission boundaries | Yes |
+| Mission | Long-term goal, persistent workflow, business unit across multiple Tasks | yes |
+| Task | Single executable work request under Mission | yes |
+| Session | Human-machine interaction context; can produce Task, but not equal to Task | partially authoritative |
+| HarnessRun | One controlled execution cycle; binds Task/PlanGraph/Budget/Risk | yes |
+| PlanGraphBundle | DAG plan structure; replaces linear `steps[]` | yes |
+| NodeRun | Running instance of one node in PlanGraph; replaces legacy step execution | yes |
+| NodeAttempt | One attempt of NodeRun; can retry, multiple attempts | yes |
+| BudgetReservation | Budget reservation before LLM/tool/connector calls | yes |
+| SideEffectRecord | Side effect record of all external writes/publishes/notifications/connector calls | yes |
+| EvidenceRef | Evidence reference bound to conclusions, decisions, outputs | yes |
+| ArtifactRef | Report, file, snapshot, evidence bundle and other product references | yes |
+| SkillDefinition | Reusable platform capability definition, such as Paper Review, Evidence Link | yes |
+| PluginManifest | Plugin/adapter artifact metadata, signature, SBOM, sandbox declaration | yes |
+| ToolInvocationReceipt | Tool invocation audit receipt | yes |
+| ConnectorBinding | External system connector binding and permission boundaries | yes |
 
 ## 3.2 Object Relationship Diagram
 
@@ -230,26 +296,26 @@ flowchart TB
 
 ---
 
-# 4. Mission / Task / Session Creation Strategy
+# 4. Mission / Task / Session Creation Strategy done
 
 ## 4.1 Creation Rules
 
 | Input Type | Created Object | Rules |
 |---|---|---|
-| Long-term goal, continuous tracking, cross-task goal | Mission | Must explicitly create Mission |
-| Single completed work | Task | Must resolve Mission via MissionResolver before dispatch; low/medium risk can bind existing Mission or create ad hoc Mission |
-| Human-machine dialogue, clarification, review | Session | Session can create Task, cannot replace Task |
-| Scheduled research summary | Scheduled Task | Belongs to Research Mission |
-| Temporary operator query | Session only | Does not create Task unless produces execution action |
-| P0 incident repair | Task | Belongs to explicit Incident Mission; no authorized Mission means reject dispatch |
-| High-risk or side-effect one-time request | Task | Must explicitly bind Mission; missionless dispatch prohibited |
-| Low/medium risk unowned one-time request | Task | Allowed MissionResolver to auto-create ad hoc Mission; orphan task prohibited |
+| Long-term goal, persistent tracking, cross-task goal | Mission | Must be explicitly created |
+| Single completable work | Task | Must be resolved by MissionResolver before dispatch; low/medium risk can bind existing Mission or create ad hoc Mission |
+| Human-machine dialogue, clarification, review | Session | Session can create Task, but cannot replace Task |
+| Scheduled research summary | Scheduled Task | Attribution to Research Mission |
+| Temporary operator query | Session only | No Task created unless produces execution action |
+| P0 incident repair | Task | Attribution to explicit Incident Mission; dispatch rejected if no authorized Mission |
+| High-risk or one-time request with side effects | Task | Must have explicit Mission binding; missionless dispatch prohibited |
+| Low/medium risk unattributed one-time request | Task | MissionResolver can auto create ad hoc Mission; orphan task prohibited |
 
-## 4.2 Prohibited Objects
+## 4.2 Prohibited Items
 
 | Prohibited Item | Reason |
 |---|---|
-| Orphan Task | Cannot do budget, evidence, archive, accountability; current intake should fail-closed on resolution failure |
+| Orphan Task | Cannot do budget, evidence, archiving, accountability; current intake should fail-closed on resolution failure |
 | Session directly executes side effects | Bypasses Mission/Task/Harness governance |
 | PlanStep[] as execution contract | Conflicts with PlanGraphBundle |
 | Step as main UI term | Should display NodeRun/NodeAttempt |
@@ -257,23 +323,23 @@ flowchart TB
 
 ---
 
-# 5. Validation Principles
+# 5. Validation Principles done
 
-## 5.1 All Validations Must Be Event-Driven
+## 5.1 All Validation Must Be Event-Driven
 
 All authoritative state changes must produce `PlatformFactEvent`, and Truth/Projection can be reconstructed from events.
 
-## 5.2 All Executions Must Be Budget-First
+## 5.2 All Execution Must Be Budget-First
 
-Any LLM/tool/connector/embedding/reranker/external API call within any stage must first `reserveBudget()`, then `settleBudget()` after completion.
+Any LLM/tool/connector/embedding/reranker/external API call in any stage must first `reserveBudget()`, then `settleBudget()` after completion.
 
 ## 5.3 All Conclusions Must Be Evidence-Bound
 
-Research conclusions, risk judgments, quality scores, knowledge promotions, release decisions must bind EvidenceRef.
+Research conclusions, risk judgments, quality scores, knowledge promotions, publishing decisions must bind EvidenceRef.
 
-## 5.4 All Validations Must Be Replayable
+## 5.4 All Validation Must Be Replayable
 
-Validation results must be verifiable through Event Log, Truth Snapshot, Artifact, Evidence Bundle review.
+Validation results must be reviewable through Event Log, Truth Snapshot, Artifact, Evidence Bundle.
 
 ## 5.5 All Writes Must Be Auditable
 
@@ -281,7 +347,7 @@ Writes must include principal, tenantId, traceId, auditRef, expectedVersion, lea
 
 ## 5.6 Capability Extension Layer Is First-Class Validation Object
 
-Skill, Tool, Plugin, Connector are not auxiliary capabilities, but Phase 1 core tested objects.
+Skill, Tool, Plugin, Connector are not ancillary capabilities, but Phase 1 core tested objects.
 
 ---
 
@@ -302,10 +368,10 @@ Skill, Tool, Plugin, Connector are not auxiliary capabilities, but Phase 1 core 
 | Validation Phase | Target | Pass Conditions |
 |---|---|---|
 | validation_phase_0 | Static / Contract / Schema | Contract, schema, types, event, metric, gate registry all pass |
-| validation_phase_1 | Single Task E2E | Single Research Task from input to Evidence Bundle full链路 passes |
+| validation_phase_1 | Single Task E2E | Single Research Task passes full链路 from input to Evidence Bundle |
 | validation_phase_2 | Multi-task Mission | Multi-Task Research Mission runs stably |
 | validation_phase_3 | Reliability / Security / Chaos | Fault, attack, recovery, replay, DR pass |
-| validation_phase_4 | Pre-production Soak | Continuous run, monitoring, alerting, SLO, cost, quality meet standard |
+| validation_phase_4 | Pre-production Soak | Continuous run, monitoring, alerting, SLO, cost, quality meet standards |
 
 ---
 
@@ -388,7 +454,7 @@ flowchart LR
 
 ---
 
-# 8. Real-time Monitoring System
+# 8. Real-time Monitoring System done
 
 ## 8.1 Monitoring Layers
 
@@ -405,9 +471,9 @@ flowchart LR
 
 ---
 
-# 9. Dashboard Design
+# 9. Dashboard Design done
 
-Dashboard must support drilldown from Mission to:
+Dashboard must support drilling down from Mission to:
 
 ```text
 Mission → Task → HarnessRun → PlanGraphBundle → NodeRun → NodeAttempt → Tool/Model/Connector → Evidence/Artifact
@@ -429,22 +495,22 @@ Mission → Task → HarnessRun → PlanGraphBundle → NodeRun → NodeAttempt 
 
 ---
 
-# 10. Alert System
+# 10. Alert System done
 
-Alert only does runtime trigger description; formal blocking conditions take **Gate Registry** as standard.
+Alert is for runtime trigger description only; formal blocking conditions use **Gate Registry** as the sole source.
 
 | Severity | Response Target | Examples |
 |---|---|---|
-| P0 | Immediate block / fail-closed | cross-tenant read, stale fencing write, budget missing before tool |
+| P0 | Immediate blocking / fail-closed | cross-tenant read, stale fencing write, budget missing before tool |
 | P1 | Degrade / pause rollout / human intervention | projection lag, provider streaming missing usage |
 | P2 | Observe / schedule repair | dashboard stale, low mutation score on noncritical module |
 | P3 | Statistical optimization | cost trend, quality drift warning |
 
 ---
 
-# 11. Full Coverage Validation Method
+# 11. Full Coverage Validation Method done
 
-This document's "full coverage" refers to **risk, contract, lifecycle, observation, and acceptance evidence coverage**, not claiming current repo has reached 100% code coverage. Code coverage facts, test exclusion audits, and supplementary test routes take `docs_zh/quality/00-full-coverage-test-manual.md`, coverage reports, and CI gates as standard.
+"Full coverage" in this document refers to **risk, contract, lifecycle, observation and acceptance evidence coverage**, not claiming the current repository has reached 100% code coverage. Code coverage facts, test exclusion audits and supplementation routes use `docs_zh/quality/00-full-coverage-test-manual.md`, coverage reports and CI gates as the standard.
 
 ## 11.1 Coverage by Five Planes
 
@@ -486,26 +552,26 @@ CapabilityProfile
 
 ---
 
-# 12. Test System
+# 12. Test System done
 
 | Test Type | Target |
 |---|---|
 | Unit | Single module behavior correctness |
 | Contract | Type, schema, event, API, registry alignment |
-| Integration | Multi-real-service combination, pure mock prohibited to impersonate integration |
+| Integration | Multi-real-service combination; mocks/literals cannot impersonate integration |
 | E2E | Research Mission full链路 |
 | Replay | Event → Truth → Projection reconstruction diff=0 |
 | Chaos | provider failure, worker crash, DB restore, network failure |
 | Security | tenant isolation, SSRF, path traversal, secret leak, PII redaction |
 | Test Quality | no-op assertion, fake concurrency, mutation score, fixture schema |
 | UI E2E | operator workflow, permission rendering, HITL, dashboard freshness |
-| Load / Soak | concurrency, backpressure, memory growth, long-term stability |
+| Load / Soak | Concurrency, backpressure, memory growth, long-term stability |
 
 ---
 
-# 13. Quality Scorecard
+# 13. Quality Scorecard done
 
-Scorecard used for comprehensive judgment, but **any P0 hard gate failure overrides Scorecard score**.
+Scorecard is for comprehensive judgment, but **any P0 hard gate failure covers Scorecard score**.
 
 | Dimension | Weight |
 |---|---:|
@@ -518,7 +584,7 @@ Scorecard used for comprehensive judgment, but **any P0 hard gate failure overri
 | Observability / Runbook readiness | 10 |
 | Cost / Budget attribution | 5 |
 
-Judgment:
+Decision:
 
 ```text
 score >= 90 and no P0/P1 open issue → pass
@@ -528,7 +594,7 @@ any P0 hard gate failure → fail
 
 ---
 
-# 14. Release / Graduation Gate
+# 14. Release / Graduation Gate done
 
 ## 14.1 Roadmap Stage 1 Entering Quasi-Production
 
@@ -537,19 +603,19 @@ Must pass:
 ```text
 validation_phase_0 ~ validation_phase_4
 Gate Registry all P0/P1 pass
-Metric / Event / Runbook / CI / Evidence Bundle registry closed loop
+Metric / Event / Runbook / CI / Evidence Bundle registry closure
 SLO profile for Research Intelligence Mission meets standard
 ```
 
 ## 14.2 Subsequent Roadmap Stage Entry Conditions
 
-Code Agent, Engineering Ops, External Business Mission must additionally pass各自副作用, permissions, rollback, domain compliance Gates.
+Code Agent, Engineering Ops, External Business Mission must additionally pass respective side effect, permission, rollback, domain compliance Gates.
 
 ---
 
-# 15. Blocking Strategy
+# 15. Blocking Strategy done
 
-All blocking strategies take Gate Registry as standard. Must fail-closed in following cases:
+All blocking strategies use Gate Registry as the sole source. Must fail-closed in following situations:
 
 ```text
 cross-tenant read/write
@@ -565,7 +631,7 @@ P0 alert without runbook
 
 ---
 
-# 16. Evidence Bundle
+# 16. Evidence Bundle done
 
 ## 16.1 ValidationEvidenceBundle
 
@@ -633,32 +699,32 @@ type ValidationEvidenceBundle = {
 
 ## 16.2 Evidence Bundle Gate
 
-Evidence Bundle integrity unifiedly managed by `GATE-EVIDENCE-BUNDLE-001` to avoid same evidence bundle integrity requirement split into multiple Gates causing Registry drift.
+Evidence Bundle integrity is uniformly managed by `GATE-EVIDENCE-BUNDLE-001` to prevent the same evidence bundle integrity requirement from being split into multiple Gates causing Registry drift.
 
 | Gate | Blocking Condition |
 |---|---|
-| GATE-EVIDENCE-BUNDLE-001 | registry snapshot/version/hash/signature missing or mismatched; evidence bundle not bound to git/config/contract/event/gate/metric/CI/runbook version; `bundleHash` verification failed; signature invalid; `signedBy/signedAt` missing |
+| GATE-EVIDENCE-BUNDLE-001 | registry snapshot/version/hash/signature missing or mismatch; evidence bundle not bound to git/config/contract/event/gate/metric/CI/runbook version; `bundleHash` validation failed; signature invalid; `signedBy/signedAt` missing |
 
 ---
 
-# 17. OAPEFLIR Stage-level Validation
+# 17. OAPEFLIR Stage-level Validation done
 
 ## 17.1 Stage Matrix
 
 | Stage | Must Validate | Budget Semantics | Evidence | Gate |
 |---|---|---|---|---|
 | Observe | Input normalization, tenant/principal/source binding | Stage itself may have no budget; if calling parser/tool/model must reserve | source evidence | GATE-OAPEFLIR-001 |
-| Assess | Risk, complexity, routing, budget feasibility | Budget estimation required; model calls must reserve | assessment evidence | GATE-OAPEFLIR-001 |
-| Plan | Output PlanGraphBundle DAG, prohibited PlanStep[] | worst-path budget | plan validation report | GATE-OAPEFLIR-002 |
+| Assess | Risk, complexity, routing, budget feasibility | Budget estimation required; model call must reserve | assessment evidence | GATE-OAPEFLIR-001 |
+| Plan | Output PlanGraphBundle DAG; prohibited PlanStep[] | worst-path budget | plan validation report | GATE-OAPEFLIR-002 |
 | Execute | NodeRun / NodeAttempt execution | each model/tool/connector must reserve | execution receipt | GATE-RUNTIME-001 |
-| Feedback | Quality assessment, failure classification, replan/HITL/terminate | evaluator/model calls must reserve | quality report | GATE-OAPEFLIR-003 |
-| Learn | LearningObject isolation, validation, promotion candidate | embedding/model/write calls must reserve | learning evidence | GATE-ROLLOUT-001 |
-| Improve | improvement proposal, rollout proposal | cost assessment required | improvement evidence | GATE-ROLLOUT-001 |
-| Release | artifact/knowledge/report release | settle + side-effect record | release evidence | GATE-SIDEEFFECT-001 |
+| Feedback | Quality evaluation, failure classification, replan/HITL/terminate | evaluator/model call must reserve | quality report | GATE-OAPEFLIR-003 |
+| Learn | LearningObject isolation, validation, promotion candidate | embedding/model/write call must reserve | learning evidence | GATE-ROLLOUT-001 |
+| Improve | improvement proposal, rollout proposal | cost evaluation required | improvement evidence | GATE-ROLLOUT-001 |
+| Release | artifact/knowledge/report publishing | settle + side-effect record | release evidence | GATE-SIDEEFFECT-001 |
 
 ## 17.2 Canonical Stage Event
 
-Use unified event name, distinguish by payload:
+Use unified event names; distinguish stages via payload:
 
 ```text
 oapeflir.stage.started
@@ -700,7 +766,7 @@ type OapeflirStageEventPayload = {
 
 ---
 
-# 18. Skills / Plugins / Tool Registry / Connector Runtime Validation
+# 18. Skills / Plugins / Tool Registry / Connector Runtime Validation done
 
 ## 18.1 First-Class Validation Objects
 
@@ -709,8 +775,8 @@ type OapeflirStageEventPayload = {
 | SkillDefinition | Platform capability abstraction |
 | ToolDefinition | Tool schema and execution strategy |
 | PluginManifest | Plugin artifact, signature, SBOM, sandbox |
-| ConnectorBinding | External system connector configuration |
-| ToolInvocationReceipt | All tool call audit receipts |
+| ConnectorBinding | External system connection configuration |
+| ToolInvocationReceipt | All tool invocation audit receipts |
 
 ## 18.2 Plugin Lifecycle
 
@@ -734,7 +800,7 @@ critical_cve_detected → revoked
 
 ## 18.3 Plugin Signature Rules
 
-Allowed three paths:
+Three paths allowed:
 
 ```text
 1. signature verified
@@ -752,9 +818,9 @@ waiver must have owner, expiry, risk acceptance, auditRef
 
 ---
 
-# 19. Security / Tenant / IAM Validation
+# 19. Security / Tenant / IAM Validation done
 
-| Area | Must Validate |
+| Domain | Must Validate |
 |---|---|
 | Tenant Isolation | tenantId required, cross-tenant read/write deny |
 | IAM / RBAC | principal capability, role, policy decision |
@@ -769,7 +835,7 @@ waiver must have owner, expiry, risk acceptance, auditRef
 
 ---
 
-# 20. Operator Cockpit / UI Validation
+# 20. Operator Cockpit / UI Validation done
 
 ## 20.1 Must-Test Workflows
 
@@ -809,70 +875,70 @@ offline/reconnect replay
 
 ---
 
-# 21. Runtime State / CAS / Lease / Fencing Validation
+# 21. Runtime State / CAS / Lease / Fencing Validation done
 
-| Capability | Validation Requirements |
+| Capability | Validation Requirement |
 |---|---|
 | RSM | All state changes must go through RuntimeTransitionCommand |
-| CAS | expectedVersion mismatch must be rejected |
-| Lease | Expired lease cannot write |
-| Fencing | Stale fencingToken must be rejected |
-| Terminal | completed/failed/cancelled cannot reverse transition |
-| Recovery | Recovery worker must also carry lease + fencing |
-| Concurrent terminal | Only one concurrent terminal transition can succeed |
+| CAS | expectedVersion mismatch must reject |
+| Lease | expired lease cannot write |
+| Fencing | stale fencingToken must reject |
+| Terminal | completed/failed/cancelled cannot reverse |
+| Recovery | recovery worker must also carry lease + fencing |
+| Concurrent terminal | concurrent terminal transition only one can succeed |
 
 ---
 
-# 22. SideEffect / Reconciliation Validation
+# 22. SideEffect / Reconciliation Validation done
 
-| Capability | Validation Requirements |
+| Capability | Validation Requirement |
 |---|---|
-| SideEffectRecord | Each external write must first register |
+| SideEffectRecord | Every external write must first register |
 | Idempotency | Retry cannot resubmit |
 | State machine | proposed → reserved → committing → committed / failed / unknown / compensated |
-| Pre-commit revalidation | Before commit re-check policy/budget/lease/fencing |
+| Pre-commit revalidation | Recheck policy/budget/lease/fencing before commit |
 | Reconciliation | Periodic probe external state and reconcile |
 | Compensation | Failure must have compensation or HITL |
 | Replay safety | replay/time-travel cannot produce real side effects |
 
 ---
 
-# 23. Config Center / Drift / Rollout Validation
+# 23. Config Center / Drift / Rollout Validation done
 
-| Capability | Validation Requirements |
+| Capability | Validation Requirement |
 |---|---|
 | Config Schema | strict schema |
-| Config Version | Each release has configVersion |
-| Impact Analyzer | High-risk config must have impact analysis before release |
+| Config Version | each release has configVersion |
+| Impact Analyzer | high-risk config must have impact analysis before release |
 | Canary Config Rollout | canary / rollback |
 | Drift Detection | security/budget/egress/sandbox drift fail-closed |
-| Hot Reload | Hot reload failure must not pollute running state |
-| Audit | All changes have principal/auditRef |
+| Hot Reload | hot reload failure must not pollute running state |
+| Audit | all changes have principal/auditRef |
 | Lifecycle | draft → validated → canary → active → rolled_back / archived |
 
 ---
 
-# 24. Model Gateway Provider / Streaming Validation
+# 24. Model Gateway Provider / Streaming Validation done
 
 | Scenario | Validation Points |
-|---|---|
+|---|---|---|
 | Non-streaming | response schema, usage, finish reason |
 | Streaming | final chunk, finish_reason, usage accumulation, error propagation |
-| Retry | Only retry 429/5xx/timeout, not retry 4xx |
+| Retry | only retry 429/5xx/timeout; do not retry 4xx |
 | Circuit breaker | open/half-open/closed state accurate |
 | Fallback | fallback decision event |
-| Budget | reserve before each model call, settle after |
-| Version Lock | Conclusion binds model/prompt/config version |
+| Budget | reserve before each model call; settle after |
+| Version Lock | conclusion binds model/prompt/config version |
 | Credential | 401/403 key disable/cooldown |
 
 ---
 
-# 25. Persistence / Repository / Migration Validation
+# 25. Persistence / Repository / Migration Validation done
 
-| Capability | Validation Requirements |
+| Capability | Validation Requirement |
 |---|---|
-| SQLite / PG parity | Same repository tests both backends |
-| SQL Parameterization | String concatenation of user input prohibited |
+| SQLite / PG parity | same repository test dual backends run |
+| SQL Parameterization | prohibit string concatenation of user input |
 | Transaction Boundary | event + truth write in same transaction |
 | Migration | up/down dry-run, backup, rollback |
 | Optimistic Locking | version/CAS |
@@ -881,34 +947,34 @@ offline/reconnect replay
 
 ---
 
-# 26. Dispatch / Queue / Worker Pool Validation
+# 26. Dispatch / Queue / Worker Pool Validation done
 
-| Capability | Validation Requirements |
+| Capability | Validation Requirement |
 |---|---|
-| Dispatch Ticket | Create, invalidate, replace must be atomic |
-| Queue Admission | Before enqueue check tenant quota, budget, risk, priority |
+| Dispatch Ticket | create, invalidate, replace must be atomic |
+| Queue Admission | check tenant quota, budget, risk, priority before enqueue |
 | Worker Claim | claim + lease must be equivalent atomic |
-| Worker Capacity | Concurrency must not exceed capacity |
-| Backpressure | queue/event/worker saturation triggers flow control |
-| Preemption | critical/high correctly preempts, protected task not preempted |
+| Worker Capacity | concurrency must not exceed capacity |
+| Backpressure | queue/event/worker saturation triggers throttling |
+| Preemption | critical/high correctly preempted; protected task not preempted |
 | Reconciliation | stale ticket, lost claim, orphan lease can be repaired |
-| Ordering | Same aggregate / same NodeRun write order controlled |
+| Ordering | same aggregate / same NodeRun write order controlled |
 
 ---
 
-# 27. Test Quality Governance
+# 27. Test Quality Governance done
 
-| Item | Requirements |
+| Item | Requirement |
 |---|---|
-| No-op Assertion Scan | Prohibited `assert.ok(true)`, `x >= 0` always-true assertions |
-| Catch Swallow Scan | Prohibited `catch { assert.ok(true) }` |
-| Integration Reality | Integration must import real services or lightweight real implementation |
-| E2E Concurrency Reality | Concurrency must use Promise.all / worker / race harness |
-| Mutation Testing | Critical modules need to meet threshold |
-| Fixture Validation | Test fixture must schema validate |
-| Coverage Quality | Line coverage + branch + mutation + invariant coverage |
+| No-op Assertion Scan | prohibit `assert.ok(true)`, `x >= 0` always-true assertions |
+| Catch Swallow Scan | prohibit `catch { assert.ok(true) }` |
+| Integration Reality | integration must import real service or lightweight real implementation |
+| E2E Concurrency Reality | concurrency must use Promise.all / worker / race harness |
+| Mutation Testing | critical modules need to meet threshold |
+| Fixture Validation | test fixture must schema validate |
+| Coverage Quality | line coverage + branch + mutation + invariant coverage |
 
-## 27.1 Mutation Score Layering
+## 27.1 Mutation Score Stratification
 
 | Module | Minimum Mutation Score |
 |---|---:|
@@ -917,27 +983,27 @@ offline/reconnect replay
 | Tool Registry / Sandbox / Egress | ≥85% |
 | Dispatch / Worker claim / SideEffect | ≥85% |
 | Research quality rubric | ≥75% |
-| UI components | Not mandatory mutation, use interaction + visual regression |
+| UI components | no mandatory mutation; use interaction + visual regression |
 
 ---
 
-# 28. Autonomy / Runtime Mode Validation
+# 28. Autonomy / Runtime Mode Validation done
 
-| Scenario | Requirements |
+| Scenario | Requirement |
 |---|---|
-| High risk write | Can only be supervised / manual approval |
-| P0/P1 incident | Auto degrade to suggestion / supervised |
-| frozen | Restricted mode, cannot be considered higher than full_auto |
-| full_auto | Cannot bypass risk / budget / HITL |
+| High risk write | highest can only be supervised / manual approval |
+| P0/P1 incident | auto degrade to suggestion / supervised |
+| frozen | restricted state; cannot be considered higher than full_auto |
+| full_auto | cannot bypass risk / budget / HITL |
 | propagation | RequestEnvelope → Task → HarnessRun → NodeRun → tool/model call |
-| override | Must have policy decision + auditRef |
-| recover from frozen | Must have human approval |
+| override | must have policy decision + auditRef |
+| recover from frozen | must have human approval |
 
 ---
 
-# 29. Prompt / Skill / Knowledge Rollout Validation
+# 29. Prompt / Skill / Knowledge Rollout Validation done
 
-| Object | Validation Requirements |
+| Object | Validation Requirement |
 |---|---|
 | PromptBundle | version lock, eval gate, canary, rollback |
 | SkillDefinition | schema compatibility, runtime compatibility, deprecation |
@@ -948,7 +1014,7 @@ offline/reconnect replay
 
 ---
 
-# 30. Documentation / ADR / Contract Drift Validation
+# 30. Documentation / ADR / Contract Drift Validation done
 
 Must validate:
 
@@ -963,9 +1029,9 @@ deprecated terms scan: WorkflowStep / PlanStep[] / WorkflowState / ControlDirect
 
 ---
 
-# 31. Requirement Traceability Matrix
+# 31. Requirement Traceability Matrix done
 
-> In RTM, Gate must reference Gate Registry ID; Metric must reference formal `aa.*` names registered in Metric Registry.
+> In RTM, Gate must reference Gate Registry ID; Metric must reference the formal `aa.*` name registered in Metric Registry.
 
 | Requirement ID | Requirement | Test | Metric | Gate |
 |---|---|---|---|---|
@@ -973,36 +1039,38 @@ deprecated terms scan: WorkflowStep / PlanStep[] / WorkflowState / ControlDirect
 | INV-RSM-001 | All state changes go through RSM | rsm-contract | `aa.rsm.bypass.count` | GATE-RSM-001 |
 | INV-CAS-001 | Authoritative writes must expectedVersion | cas-concurrency | `aa.cas.conflict.rejected.count` | GATE-CAS-001 |
 | INV-LEASE-001 | Writes must validate active lease | lease-expiry | `aa.lease.expired_write.rejected.count` | GATE-LEASE-001 |
-| INV-FENCING-001 | Stale fencingToken reject | fencing-stale | `aa.fencing.stale_write.rejected.count` | GATE-FENCING-001 |
-| INV-TERMINAL-001 | Terminal state immutable | terminal-cas | `aa.terminal.reverse_transition.count` | GATE-TERMINAL-001 |
-| INV-BUDGET-001 | LLM/tool before reserve budget | budget-invariant | `aa.budget.reservation.missing.count` | GATE-BUDGET-001 |
-| INV-EVIDENCE-001 | Conclusions bind evidence | evidence-link | `aa.evidence.ref.coverage_ratio` | GATE-EVIDENCE-001 |
+| INV-FENCING-001 | stale fencingToken reject | fencing-stale | `aa.fencing.stale_write.rejected.count` | GATE-FENCING-001 |
+| INV-TERMINAL-001 | terminal state immutable | terminal-cas | `aa.terminal.reverse_transition.count` | GATE-TERMINAL-001 |
+| INV-BUDGET-001 | LLM/tool reserve budget before | budget-invariant | `aa.budget.reservation.missing.count` | GATE-BUDGET-001 |
+| INV-EVIDENCE-001 | conclusions bind evidence | evidence-link | `aa.evidence.ref.coverage_ratio` | GATE-EVIDENCE-001 |
 | INV-TOOL-001 | Tool must go through Tool Registry | tool-registry | `aa.tool.direct_invocation.count` | GATE-TOOL-001 |
 | INV-PLUGIN-001 | Plugin must signature/provenance/SBOM/sandbox | plugin-validate | `aa.plugin.signature.failed.count` | GATE-PLUGIN-001 |
 | INV-CONNECTOR-001 | Connector egress must allowlist | connector-egress | `aa.connector.egress.denied.count` | GATE-CONNECTOR-001 |
 | INV-HITL-001 | HITL decision must authorized and idempotent | hitl-e2e | `aa.hitl.double_decision.count` | GATE-HITL-001 |
-| INV-OAPEFLIR-001 | Each stage boundary must emit event | oapeflir-stage | `aa.oapeflir.stage.event_missing.count` | GATE-OAPEFLIR-001 |
+| INV-OAPEFLIR-001 | Each stage boundary must send event | oapeflir-stage | `aa.oapeflir.stage.event_missing.count` | GATE-OAPEFLIR-001 |
 | INV-OAPEFLIR-002 | Plan outputs PlanGraphBundle | plan-graph | `aa.oapeflir.plan.linear_plan.count` | GATE-OAPEFLIR-002 |
 | INV-OAPEFLIR-003 | Feedback fail must replan/HITL/terminate | feedback-gate | `aa.oapeflir.feedback.unresolved.count` | GATE-OAPEFLIR-003 |
-| INV-TENANT-001 | All objects tenant scoped | tenant-isolation | `aa.tenant.cross_access.denied.count` | GATE-TENANT-001 |
+| INV-TENANT-001 | all objects tenant scoped | tenant-isolation | `aa.tenant.cross_access.denied.count` | GATE-TENANT-001 |
 | INV-SECURITY-001 | Secret read needs policy + audit | secret-audit | `aa.secret.access.without_audit.count` | GATE-SECURITY-001 |
-| INV-SIDEEFFECT-001 | External side effects must have SideEffectRecord | sideeffect-e2e | `aa.side_effect.without_record.count` | GATE-SIDEEFFECT-001 |
-| INV-CONFIG-001 | High-risk config needs impact analysis | config-validate | `aa.config.impact_analysis.missing.count` | GATE-CONFIG-001 |
-| INV-CONFIG-002 | Security drift fail-closed | config-drift | `aa.config.security_drift.failopen.count` | GATE-CONFIG-002 |
-| INV-MODEL-001 | model call binds budget | model-provider | `aa.model.request.without_budget.count` | GATE-MODEL-001 |
+| INV-SIDEEFFECT-001 | external side effect must have SideEffectRecord | sideeffect-e2e | `aa.side_effect.without_record.count` | GATE-SIDEEFFECT-001 |
+| INV-CONFIG-001 | high-risk config needs impact analysis | config-validate | `aa.config.impact_analysis.missing.count` | GATE-CONFIG-001 |
+| INV-CONFIG-002 | security drift fail-closed | config-drift | `aa.config.security_drift.failopen.count` | GATE-CONFIG-002 |
+| INV-MODEL-001 | model call bind budget | model-provider | `aa.model.request.without_budget.count` | GATE-MODEL-001 |
 | INV-STORE-001 | SQLite/PG parity | repo-parity | `aa.repository.parity.diff.count` | GATE-STORE-001 |
 | INV-DISPATCH-001 | worker claim must bind lease | dispatch-validate | `aa.worker.claim.without_lease.count` | GATE-DISPATCH-001 |
-| INV-TEST-001 | Prohibited no-op test | test-quality | `aa.test.noop_assertion.count` | GATE-TEST-001 |
+| INV-TEST-001 | prohibit no-op test | test-quality | `aa.test.noop_assertion.count` | GATE-TEST-001 |
 | INV-AUTONOMY-001 | high-risk write cannot full_auto bypass HITL | autonomy-validate | `aa.autonomy.high_risk_full_auto.count` | GATE-AUTONOMY-001 |
-| INV-DOCS-001 | docs/contracts cannot reference non-canonical execution object | docs-canonical | `aa.docs.noncanonical_reference.count` | GATE-DOCS-001 |
+| INV-DOCS-001 | docs/contracts must not reference non-canonical execution object | docs-canonical | `aa.docs.noncanonical_reference.count` | GATE-DOCS-001 |
 | INV-DATA-001 | Research data must license/retention/classification | data-governance | `aa.data.source.license_missing.count` | GATE-DATA-001 |
 | INV-EVIDENCE-BUNDLE-001 | Evidence Bundle must verify signature and contain registry digest | evidence-bundle | `aa.evidence_bundle.signature.invalid.count` | GATE-EVIDENCE-BUNDLE-001 |
+| INV-OBS-001 | P0 Alert must have trace/log/metric/runbook | observability-smoke | `aa.observability.runbook_missing.count` | GATE-OBS-001 |
+| INV-DR-001 | Restore后 projection diff=0 | dr-restore | `aa.projection.rebuild.diff.count` | GATE-DR-001 |
 
 ---
 
-# 32. Metric Summary
+# 32. Metric Summary done
 
-This chapter only provides core metric summary. **Formal definition takes Chapter 48 Metric Registry as the only source.**
+This chapter only provides core metric summary. **Formal definition uses Chapter 48 Metric Registry as the sole source.**
 
 Core categories:
 
@@ -1014,7 +1082,7 @@ docs / artifact / gpu / ui / slo / evidence_bundle
 
 ---
 
-# 33. CI/CD Validation Pipeline
+# 33. CI/CD Validation Pipeline done
 
 ## 33.1 CI Stage
 
@@ -1031,71 +1099,71 @@ docs / artifact / gpu / ui / slo / evidence_bundle
 
 ## 33.2 Current Repo Executable CI / Validation Baseline
 
-Current repo has provided main validation entry points as follows. They are the **current baseline** directly executable or integrable into CI during review; finer validation jobs can be split on this basis, but must not write尚未落地的 commands as existing scripts.
+The main validation entry points already provided by the current repository are as follows. They are the **current baseline** directly executable or integrable into CI during review; finer validation jobs can be split on this basis, but non-existent commands cannot be written as already-existing scripts.
 
 | Baseline Entry | Current Command | Current Usage |
 |---|---|---|
-| Type and static checks | `npm run typecheck`, `npm run lint` | Types, static rules, basic drift discovery |
+| Type and static checks | `npm run typecheck`, `npm run lint` | Type, static rules, basic drift detection |
 | Layered tests | `npm run test:unit`, `npm run test:integration`, `npm run test:e2e`, `npm run test:invariants` | Current unit, integration, E2E, invariant validation |
 | Output and performance | `npm run test:golden`, `npm run test:performance` | Golden output stability and performance regression |
 | Full-layer validation | `npm run test:layers:full` | Current repo full-layer test aggregation entry |
 | Coverage and mutation | `npm run coverage:gate`, `npm run test:mutation` | Coverage ratchet and mutation testing |
-| Test exclusion and repo hygiene | `npm run audit:test-exclusions`, `npm run audit:repo-hygiene` | skip/exclusion, review examples, supply chain check |
-| Mission operating model closure | `npm run registry:closure`, `npm run playbook:validate`, `npm run mission-outcome:validate` | Current Mission registry/playbook/outcome closed loop scripts |
+| Test exclusion and repo hygiene | `npm run audit:test-exclusions`, `npm run audit:repo-hygiene` | skip/exclusion, review samples, supply chain check |
+| Mission operating model closure | `npm run registry:closure`, `npm run playbook:validate`, `npm run mission-outcome:validate` | Current Mission registry/playbook/outcome closure scripts |
 | Stability evidence baseline | `npm run evidence:stable`, `npm run gate:stable`, `npm run validate:stable` | Current stable evidence / gate / validate CLI paths |
 
-> `deploy/prometheus/`, `deploy/grafana/`, and `deploy/runbooks/` have provided runtime observation baseline; config file correctness guarded by existing deploy golden tests. Real scrape, notification delivery, and on-call drills still belong to environment acceptance.
+> `deploy/prometheus/`, `deploy/grafana/` and `deploy/runbooks/` already provide runtime observability baseline; configuration file correctness is guarded by existing deploy golden tests. Real scrape, notification delivery and on-call drills still belong to environment acceptance.
 
 ## 33.3 Machine-readable CI Job Registry
 
-This table describes job granularity and artifacts used for freeze/sign-off. Current repo has provided corresponding scripts in `package.json` and saved job/gate/runbook machine mappings in `config/validation/platform-validation-registry.json`; `npm run platform-registry:closure` and `tests/unit/scripts/platform-validation-closure.test.ts` will verify mapping exists.
+The table below describes the job granularity and artifacts used for freeze/sign-off. The current repo has already provided corresponding scripts in `package.json` and saved job, gate, runbook machine mappings in `config/validation/platform-validation-registry.json`; `npm run platform-registry:closure` and `tests/unit/scripts/platform-validation-closure.test.ts` will verify the mapping exists.
 
 | CI Job | Command | Artifact | Required | Blocks |
 |---|---|---|---|---|
-| contract-validate | `npm run contract:validate` | `contract-report.json` | PR | contract-validate |
-| schema-strict | `npm run schema:strict` | `schema-report.json` | PR | schema-strict |
-| unit-test | `npm run test:unit` | `unit-report.json` | PR | unit-test |
-| mutation-critical | `npm run test:mutation:critical` | `mutation-report.json` | PR/main | mutation-critical |
-| integration-test | `npm run test:integration` | `integration-report.json` | main | integration-test |
-| research-e2e | `npm run test:e2e:research` | `research-e2e-report.json` | staging | research-e2e |
-| hitl-e2e | `npm run test:e2e:hitl` | `hitl-e2e-report.json` | staging | hitl-e2e |
-| projection-replay | `npm run test:replay` | `projection-diff.json` | staging | projection-replay |
-| dr-restore | `npm run test:dr:restore` | `restore-report.json` | weekly/staging | dr-restore |
-| tool-registry-validate | `npm run tool-registry:validate` | `tool-registry-audit.json` | PR | tool-registry-validate |
-| plugin-validate | `npm run plugin:validate` | `plugin-validation.json` | PR | plugin-validate |
-| connector-egress | `npm run connector:egress:test` | `connector-egress.json` | main | connector-egress |
-| security-scan | `npm run security:scan` | `security-report.json` | PR | security-scan |
-| security-tenant | `npm run security:tenant` | `tenant-isolation.json` | main | security-tenant |
-| data-governance | `npm run data-governance:validate` | `data-governance-report.json` | PR/main | data-governance |
-| budget-invariant | `npm run budget:invariant` | `budget-report.json` | PR | budget-invariant |
-| rsm-contract | `npm run rsm:contract` | `rsm-report.json` | PR | rsm-contract |
-| cas-concurrency | `npm run cas:concurrency` | `cas-report.json` | main | cas-concurrency |
-| lease-fencing | `npm run lease:fencing` | `lease-fencing-report.json` | main | lease-fencing |
-| sideeffect-e2e | `npm run sideeffect:e2e` | `sideeffect-report.json` | staging | sideeffect-e2e |
-| config-validate | `npm run config:validate` | `config-report.json` | PR | config-validate |
-| config-drift | `npm run config:drift` | `config-drift-report.json` | main | config-drift |
-| model-provider | `npm run model:provider:test` | `model-provider-report.json` | main | model-provider |
-| repo-parity | `npm run repo:parity` | `repo-parity-report.json` | main | repo-parity |
-| dispatch-validate | `npm run dispatch:validate` | `dispatch-report.json` | main | dispatch-validate |
-| test-quality | `npm run test:quality` | `test-quality-report.json` | PR | test-quality |
-| test-reality | `npm run test:reality` | `test-reality-report.json` | main | test-reality |
-| autonomy-validate | `npm run autonomy:validate` | `autonomy-report.json` | PR | autonomy-validate |
-| rollout-validate | `npm run rollout:validate` | `rollout-report.json` | main | rollout-validate |
-| docs-canonical | `npm run docs:canonical` | `docs-canonical-report.json` | PR | docs-canonical |
-| contract-drift | `npm run contract:drift` | `contract-drift-report.json` | PR | contract-drift |
-| docs-registry | `npm run docs:registry` | `docs-registry-report.json` | PR | docs-registry |
-| observability-smoke | `npm run observability:smoke` | `observability-report.json` | main | observability-smoke |
-| evidence-bundle | `npm run validation:bundle` | `validation-bundle.json` | staging | evidence-bundle |
-| artifact-integrity | `npm run artifact:integrity` | `artifact-integrity-report.json` | staging | artifact-integrity |
-| gpu-capacity | `npm run gpu:capacity` | `gpu-capacity-report.json` | conditional | gpu-capacity |
+| contract-validate | `npm run contract:validate` | `contract-report.json` | PR | |
+| schema-strict | `npm run schema:strict` | `schema-report.json` | PR | |
+| unit-test | `npm run test:unit` | `unit-report.json` | PR | |
+| mutation-critical | `npm run test:mutation:critical` | `mutation-report.json` | PR/main | |
+| integration-test | `npm run test:integration` | `integration-report.json` | main | |
+| research-e2e | `npm run test:e2e:research` | `research-e2e-report.json` | staging | |
+| hitl-e2e | `npm run test:e2e:hitl` | `hitl-e2e-report.json` | staging | |
+| projection-replay | `npm run test:replay` | `projection-diff.json` | staging | |
+| dr-restore | `npm run test:dr:restore` | `restore-report.json` | weekly/staging | |
+| tool-registry-validate | `npm run tool-registry:validate` | `tool-registry-audit.json` | PR | |
+| plugin-validate | `npm run plugin:validate` | `plugin-validation.json` | PR | |
+| connector-egress | `npm run connector:egress:test` | `connector-egress.json` | main | |
+| security-scan | `npm run security:scan` | `security-report.json` | PR | |
+| security-tenant | `npm run security:tenant` | `tenant-isolation.json` | main | |
+| data-governance | `npm run data-governance:validate` | `data-governance-report.json` | PR/main | |
+| budget-invariant | `npm run budget:invariant` | `budget-report.json` | PR | |
+| rsm-contract | `npm run rsm:contract` | `rsm-report.json` | PR | |
+| cas-concurrency | `npm run cas:concurrency` | `cas-report.json` | main | |
+| lease-fencing | `npm run lease:fencing` | `lease-fencing-report.json` | main | |
+| sideeffect-e2e | `npm run sideeffect:e2e` | `sideeffect-report.json` | staging | |
+| config-validate | `npm run config:validate` | `config-report.json` | PR | |
+| config-drift | `npm run config:drift` | `config-drift-report.json` | main | |
+| model-provider | `npm run model:provider:test` | `model-provider-report.json` | main | |
+| repo-parity | `npm run repo:parity` | `repo-parity-report.json` | main | |
+| dispatch-validate | `npm run dispatch:validate` | `dispatch-report.json` | main | |
+| test-quality | `npm run test:quality` | `test-quality-report.json` | PR | |
+| test-reality | `npm run test:reality` | `test-reality-report.json` | main | |
+| autonomy-validate | `npm run autonomy:validate` | `autonomy-report.json` | PR | |
+| rollout-validate | `npm run rollout:validate` | `rollout-report.json` | main | |
+| docs-canonical | `npm run docs:canonical` | `docs-canonical-report.json` | PR | |
+| contract-drift | `npm run contract:drift` | `contract-drift-report.json` | PR | |
+| docs-registry | `npm run docs:registry` | `docs-registry-report.json` | PR | |
+| observability-smoke | `npm run observability:smoke` | `observability-report.json` | main | |
+| evidence-bundle | `npm run validation:bundle` | `validation-bundle.json` | staging | |
+| artifact-integrity | `npm run artifact:integrity` | `artifact-integrity-report.json` | staging | |
+| gpu-capacity | `npm run gpu:capacity` | `gpu-capacity-report.json` | conditional | |
 
 ### 33.3.1 Script mapping closure
 
-This round supplemented missing direct script mappings for validation jobs, including contract/schema, research/HITL E2E, replay/restore, tool/plugin/connector/security data governance, docs registry, observability smoke, validation bundle, and artifact integrity. Environment-related jobs still need CI runner to save real artifacts; `gpu:capacity` remains conditional validation entry.
+This round supplemented missing direct script mappings for validation jobs with real entry points, including contract/schema, research/HITL E2E, replay/restore, tool/plugin/connector/security/data governance, docs registry, observability smoke, validation bundle and artifact integrity. Environment-related jobs still need CI runner to save real artifacts; `gpu:capacity` remains conditional validation entry.
 
 ---
 
-# 34. Observability Semantic Convention
+# 34. Observability Semantic Convention done
 
 ## 34.1 Span Names
 
@@ -1119,7 +1187,7 @@ aa.projection.rebuild
 aa.side_effect.commit
 ```
 
-Note: The above `aa.*` are OTel span names, not metric names. Metric Registry Closure only scans `aa.*` names marked as `Metric`, `指标`, `Alert Metric`, Dashboard metric, RTM Metric, Runbook linkedMetrics; span names managed by this chapter, not entering Chapter 48 Metric Registry.
+Note: The above `aa.*` are OTel span names, not metric names. Metric Registry Closure only scans `aa.*` names explicitly marked as `Metric`, `指标`, `Alert Metric`, Dashboard metric, RTM Metric, Runbook linkedMetrics; span names are managed by this chapter and do not enter Chapter 48 Metric Registry.
 
 ## 34.2 Required Attributes
 
@@ -1148,14 +1216,14 @@ artifact_ref_count
 ## 34.3 Prohibited Items
 
 ```text
-prompt / secret / PII prohibited from entering normal logs
+prompt / secret / PII prohibited from entering regular logs
 high-cardinality fields prohibited as metric labels
-large fields must enter artifact/evidence store, logs only store ref
+large fields must enter artifact/evidence store; logs only store ref
 ```
 
 ---
 
-# 35. Research Data Governance
+# 35. Research Data Governance done
 
 ## 35.1 Data Governance Fields
 
@@ -1189,7 +1257,7 @@ type ResearchSourceGovernance = {
 };
 ```
 
-## 35.2 Data Governance Gates
+## 35.2 Data Governance Gate
 
 All Research data sources must have:
 
@@ -1204,7 +1272,7 @@ tenant scoped access
 
 ---
 
-# 36. Research Output Quality Rubric and Feedback Loop
+# 36. Research Output Quality Rubric and Feedback Loop done
 
 ## 36.1 Rubric
 
@@ -1247,7 +1315,7 @@ reviewer drift detection report
 
 ---
 
-# 37. Load / Stress / Capacity Validation
+# 37. Load / Stress / Capacity Validation done
 
 | Tier | Target |
 |---|---|
@@ -1255,12 +1323,12 @@ reviewer drift detection report
 | Pilot Load | 50 concurrent tasks |
 | Stress Load | 200 concurrent tasks |
 | Soak Test | 7 days continuous run |
-| Spike Test | 10x task spike within 5 minutes |
-| Backpressure Test | Flow control after EventBus/WorkerPool queue buildup |
+| Spike Test | 10x task burst within 5 minutes |
+| Backpressure Test | throttling after EventBus/WorkerPool queue accumulation |
 
 ---
 
-# 38. Lifecycle Transition Matrix
+# 38. Lifecycle Transition Matrix done
 
 ## 38.1 Mission
 
@@ -1312,7 +1380,7 @@ reviewer drift detection report
 
 ---
 
-# 39. Backup / Restore / DR Validation
+# 39. Backup / Restore / DR Validation done
 
 Must validate:
 
@@ -1329,7 +1397,7 @@ RPO / RTO measurement
 
 ---
 
-# 40. Incident Lifecycle / Postmortem
+# 40. Incident Lifecycle / Postmortem done
 
 ```text
 detected
@@ -1362,7 +1430,7 @@ postmortemRef
 
 ---
 
-# 41. SLO / Error Budget / Burn-rate Validation
+# 41. SLO / Error Budget / Burn-rate Validation done
 
 ## 41.1 Mission-specific SLO Profiles
 
@@ -1391,7 +1459,7 @@ burn_rate = actual_error_rate / allowed_error_rate
 
 ---
 
-# 42. Tenant Quota / Fair Scheduling Validation
+# 42. Tenant Quota / Fair Scheduling Validation done
 
 Must validate:
 
@@ -1408,7 +1476,7 @@ protected/system task not evicted
 
 ---
 
-# 43. Local Model / L40S GPU Capacity Validation
+# 43. Local Model / L40S GPU Capacity Validation done
 
 > Conditional chapter: If Roadmap Stage 1 uses local embedding/reranker/local LLM, this chapter must be enabled.
 
@@ -1506,7 +1574,7 @@ Dashboard Snapshot
 
 ---
 
-# 46. Event Naming / Event Schema Registry
+# 46. Event Naming / Event Schema Registry done
 
 ## 46.1 Naming Convention
 
@@ -1531,7 +1599,7 @@ Rules:
 eventName must use dot-separated canonical form
 each segment must match ^[a-z][a-z0-9_]*$
 allow snake_case within segment, e.g., side_effect, critical_cve, rate_limited
-prohibited kebab-case, camelCase, empty segment, consecutive dots, leading/trailing dots
+prohibit kebab-case, camelCase, empty segment, consecutive dots, leading/trailing dots
 payload fields can use camelCase or snake_case, but must be consistent within same schema
 event schema must be managed by machine-readable registry
 ```
@@ -1540,7 +1608,7 @@ Therefore, `tool.schema.validation_failed`, `plugin.critical_cve.detected`, `con
 
 ## 46.2 Machine-readable Event Registry
 
-Current repo event registration source of truth:
+Current repo event registration source of truth is:
 
 ```text
 src/platform/five-plane-state-evidence/events/event-registry.ts
@@ -1548,7 +1616,7 @@ src/platform/five-plane-state-evidence/events/event-registry-payloads.ts
 src/platform/five-plane-state-evidence/events/event-types.ts
 ```
 
-These source files already carry typed event metadata, payload validator, replay metadata, and compatible period legacy/canonical dual-track. `npm run validation:artifacts` will export current baseline of event/gate/metric/CI/runbook to `artifacts/validation/platform/contracts/`; Event snapshot generated from above TypeScript registry, not reverse replacing source of truth.
+These source files already carry typed event metadata, payload validator, replay metadata and compatibility period legacy/canonical dual-track. `npm run validation:artifacts` will export current baseline of event/gate/metric/CI/runbook to `artifacts/validation/platform/contracts/`; Event snapshot is generated from the above TypeScript registry, not反向替代 source of truth.
 
 ```text
 event-registry.canonical.json
@@ -1557,7 +1625,7 @@ typed-event-payloads.generated.ts
 event-registry.hash
 ```
 
-Appendix A is only for reading list. CI takes machine registry as standard.
+Appendix A is for reading list only. CI uses machine registry as standard.
 
 Each event must define:
 
@@ -1575,9 +1643,9 @@ piiPolicy
 
 ---
 
-# 47. Gate Registry
+# 47. Gate Registry done
 
-> Gate Registry is the only formal blocking condition source. Other chapters can only reference Gate ID.
+> Gate Registry is the sole formal blocking condition source. Other chapters can only reference Gate ID.
 
 ## 47.1 Gate Severity Model
 
@@ -1598,7 +1666,7 @@ owner: string
 ## 47.2 Core Gate Registry
 
 | Gate ID | Name | Default Severity | Blocking Condition | CI Job | Runbook |
-|---|---|---:|---|---|
+|---|---|---:|---|---|---|---|
 | GATE-PRIORITY-001 | P0 hard gate priority | P0 | any P0 hard gate failed | evidence-bundle | D.1 |
 | GATE-STATE-001 | Event/Truth atomicity | P0 | event/truth diff > 0 | projection-replay | D.1 |
 | GATE-RSM-001 | RSM transition | P0 | state write bypass RSM | rsm-contract | D.6 |
@@ -1645,15 +1713,15 @@ owner: string
 
 ---
 
-# 48. Metric Registry
+# 48. Metric Registry done
 
-> Metric Registry is the only formal metric source for validation target semantics. All `aa.*` target metrics appearing in main text, Runbook, Dashboard, RTM must be registered in this chapter.
+> Metric Registry is the sole formal metric source for validation semantics. All `aa.*` target metrics appearing in body, Runbook, Dashboard, RTM must be registered in this chapter.
 
-Current repo runtime monitoring baseline still takes Prometheus metrics exposed by `src/platform/shared/observability/prometheus-metrics-exporter.ts`, `deploy/prometheus/rules/automatic-agent.yml`, and `deploy/grafana/dashboards/automatic-agent.json` as standard, e.g., `http_requests_total`, `queued_tasks`, `redis_connection_errors`, `event_loop_lag_ms`, `disk_used_ratio`. This chapter's `aa.*` represents validation semantic registry; runtime exporter mapping managed by `config/validation/platform-monitoring-metric-map.json`.
+Current repo runtime monitoring baseline uses `src/platform/shared/observability/prometheus-metrics-exporter.ts`, `deploy/prometheus/rules/automatic-agent.yml` and `deploy/grafana/dashboards/automatic-agent.json` exposed Prometheus metrics as standard, e.g., `http_requests_total`, `queued_tasks`, `redis_connection_errors`, `event_loop_lag_ms`, `disk_used_ratio`. This chapter's `aa.*` represents validation semantic registry; runtime exporter mapping is managed by `config/validation/platform-monitoring-metric-map.json`.
 
-This round has converged HTTP latency alert query to `_ms` histogram, and queue, worker, DLQ, outbox, OAPEFLIR latency alerts to exporter current exposed names. `npm run observability:smoke` will verify **exporter exposed names, dashboard query, alert query, unit threshold** no longer drift.
+This round has converged HTTP latency alert query to `_ms` histogram, and converged queue, worker, DLQ, outbox, OAPEFLIR latency alerts to exporter current exposed names. `npm run observability:smoke` will verify **exporter exposed names, dashboard query, alert query, unit threshold** no longer drift.
 
-Metric Closure scanning rules: only scan `aa.*` names clearly marked as `Metric`, `指标`, `Alert Metric`, `linkedMetrics`, `RTM Metric`, `Dashboard Metric` in table column names or field names. OTel span names listed in Chapter 34 also use `aa.*` prefix but are not metrics and do not require entry into this chapter.
+Metric Closure scanning rules: only scan `aa.*` names explicitly marked as `Metric`, `指标`, `Alert Metric`, linkedMetrics, RTM Metric, Dashboard Metric in table column names or field names. OTel span names listed in Chapter 34, although also using `aa.*` prefix, are not metrics and are not required to enter this chapter.
 
 Fields:
 
@@ -1744,9 +1812,9 @@ Fields:
 
 ---
 
-# 49. Runbook Registry
+# 49. Runbook Registry done
 
-> Runbook Registry has been incorporated into `config/validation/platform-validation-registry.json`; current repo retains `deploy/runbooks/` production manuals and Appendix D detailed human-readable runbooks. Closure verifies each Gate referenced runbook id has appendix paragraph and machine mapping; Evidence Bundle output by `validation:bundle` registry snapshot.
+> Runbook Registry has been incorporated into `config/validation/platform-validation-registry.json`; current repo retains `deploy/runbooks/` production manuals and Appendix D detailed human-readable runbooks. closure will verify each Gate referenced runbook id has appendix paragraph and machine mapping; Evidence Bundle is output by `validation:bundle` with registry snapshot.
 
 Each runbook must have:
 
@@ -1765,7 +1833,7 @@ lastReviewedAt: string
 
 ---
 
-# 50. Artifact Lifecycle / Integrity Validation
+# 50. Artifact Lifecycle / Integrity Validation done
 
 Must validate:
 
@@ -1781,37 +1849,37 @@ artifact export audit
 
 ---
 
-# 51. Freeze Checklist
+# 51. Freeze Checklist done
 
 ## 51.1 Registry Closure
 
 | Registry | Must Satisfy |
 |---|---|
-| Gate Registry | All Gates cited in main text are registered, and can export machine snapshots |
-| Metric Registry | All aa.* target metrics in main text/Runbook/Dashboard/RTM are registered, and have current exporter or collection mapping |
-| Event Registry | Current source registry consistent with exported snapshot; canonical events have payload schema, legacy events have compatibility strategy |
-| CI Job Registry | All CI jobs cited in Gates are registered, and can map to real scripts or CI workflow |
-| Runbook Registry | Each P0 Gate bound to runbook; machine registry consistent with `deploy/runbooks/` / Appendix D without drift |
-| Evidence Bundle | Contains all registry version/hash/signature; only uses `GATE-EVIDENCE-BUNDLE-001` as unified integrity Gate |
+| Gate Registry | all Gates referenced in body are registered and can export machine snapshot |
+| Metric Registry | all aa.* target metrics in body/Runbook/Dashboard/RTM are registered, with current exporter or collection mapping |
+| Event Registry | current source registry and exported snapshot are consistent; canonical events have payload schema, legacy events have compatibility policy |
+| CI Job Registry | all CI jobs referenced in Gates are registered and can map to real scripts or CI workflow |
+| Runbook Registry | each P0 Gate binds runbook; machine registry has no drift with `deploy/runbooks/` / Appendix D |
+| Evidence Bundle | contains all registry version/hash/signature; only uses `GATE-EVIDENCE-BUNDLE-001` as unified integrity Gate |
 
 ## 51.2 Final Freeze Conditions
 
 ```text
-All P0 Gates pass
-All P1 Gates pass or have owner+expiry+waiver
+all P0 Gate pass
+all P1 Gate pass or have owner+expiry+waiver
 Scorecard >= 90
 Research Mission SLO meets standard
-Evidence Bundle signature passes
+Evidence Bundle signature verification passed
 Projection rebuild diff = 0
-Data Governance Gate passes
-Runbook Registry closure passes
-Each required job in CI Job Registry has real execution mapping
+Data Governance Gate pass
+Runbook Registry closure pass
+each required job in CI Job Registry has real execution mapping
 Metric Registry and Prometheus exporter/alert mapping reviewed
 ```
 
 ---
 
-# 52. Final Acceptance Criteria
+# 52. Final Acceptance Criteria done
 
 After v1.7 passes, can freeze as:
 
@@ -1819,22 +1887,22 @@ After v1.7 passes, can freeze as:
 v2.0 — Automatic Agent Platform Validation Baseline
 ```
 
-Admission conditions:
+Admissions conditions:
 
-1. Research Intelligence Mission full E2E passes.
+1. Research Intelligence Mission complete E2E passes.
 2. Mission / Task / HarnessRun / PlanGraph / NodeRun / NodeAttempt full链路 traceable.
 3. All state changes event-driven and replayable.
-4. All LLM / tool / connector calls budget reserved first.
-5. All conclusions and releases bind EvidenceRef / ArtifactRef.
+4. All LLM / tool / connector calls reserve budget first.
+5. All conclusions and publishing bind EvidenceRef / ArtifactRef.
 6. Skills / Plugins / Tool Registry pass signature, SBOM, sandbox, egress, receipt verification.
-7. Security / Tenant / IAM / Data Governance all P0 Gates pass.
-8. RSM / CAS / Lease / Fencing all concurrency verification passes.
-9. Dispatch / Worker / Queue / Backpressure verification passes.
-10. Model Gateway streaming / usage / fallback / version lock passes.
+7. Security / Tenant / IAM / Data Governance all P0 Gate pass.
+8. RSM / CAS / Lease / Fencing all concurrency verification pass.
+9. Dispatch / Worker / Queue / Backpressure verification pass.
+10. Model Gateway streaming / usage / fallback / version lock pass.
 11. Persistence / Migration / DR restore / Projection rebuild diff=0.
-12. CI/CD, Gate, Metric, Event, Runbook, Evidence Bundle five Registry closed loop.
+12. CI/CD, Gate, Metric, Event, Runbook, Evidence Bundle five Registry closed loops.
 13. Operator Cockpit can complete real governance operations and pass permission chain verification.
-14. Evidence Bundle signature passes and can be archived for review.
+14. Evidence Bundle signature verification passed and can be archived for review.
 
 ---
 
@@ -1970,7 +2038,7 @@ data.governance.failed
 
 ---
 
-# 54. Appendix B: Test Checklist
+# 54. Appendix B: Test Checklist done
 
 ```text
 B.1 Mission / Task / Session Tests
@@ -2001,7 +2069,7 @@ B.24 GPU Capacity Tests
 
 ---
 
-# 55. Appendix C: Dashboard Field List
+# 55. Appendix C: Dashboard Field List done
 
 ```text
 Mission:
@@ -2057,7 +2125,7 @@ CI / Registry:
 
 ---
 
-# 56. Appendix D: Runbook Registry
+# 56. Appendix D: Runbook Registry done
 
 ## D.1 Event / Truth Inconsistency
 
@@ -2636,11 +2704,11 @@ lastReviewedAt: "YYYY-MM-DD"
 
 ---
 
-# 57. Appendix E: Machine-Executable Artifact List
+# 57. Appendix E: Machine-Executable Artifact List done
 
-## E.1 Current Repo Existing Baseline
+## E.1 Current Repo Baseline
 
-Review directly locatable implementation and config baselines include:
+Implementation and configuration baseline locatable during review:
 
 ```text
 src/platform/five-plane-state-evidence/events/event-registry.ts
@@ -2656,12 +2724,13 @@ config/validation/platform-lifecycle-matrix.json
 scripts/validation/mission-operating-model-closure.mjs
 scripts/validation/platform-validation-closure.mjs
 scripts/validation/export-platform-validation-artifacts.ts
+scripts/validation/platform-product-validation.ts
 scripts/run-layered-tests.mjs
 ```
 
 ## E.2 Exportable Machine Artifacts
 
-`npm run validation:artifacts` currently can export Event/Gate/Metric/CI/Runbook snapshots to `artifacts/validation/platform/contracts/`; `npm run validation:bundle` first exports registry snapshots, then executes evidence bundle targeted validation. The following remaining schema/generated/report artifacts still generated and archived by respective owning subsystems:
+`npm run validation:artifacts` currently exports Event/Gate/Metric/CI/Runbook snapshots to `artifacts/validation/platform/contracts/`, synchronously exporting `schemas/` and `generated/` artifacts listed in this section; `npm run validation:bundle` will verify these artifacts after registry snapshot, then execute evidence bundle targeted validation. `platform-validation-closure` simultaneously generates closure reports under `reports/`:
 
 ```text
 contracts/
@@ -2691,4 +2760,11 @@ reports/
   event-schema-coverage-report.json
   runbook-registry-closure-report.json
   validation-bundle.json
+  ui-validation-report.json
+  research-validation-report.json
+  observability-validation-report.json
+  capacity-validation-report.json
+  gpu-validation-report.json
+  scorecard-validation-report.json
+  freeze-validation-report.json
 ```

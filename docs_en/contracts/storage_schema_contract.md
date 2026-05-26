@@ -2,9 +2,9 @@
 
 ## 1. Scope
 
-This contract defines the core entities that Phase 1a platform must persist, minimum column sets, key indexes, foreign key strategies, and recovery semantics.
+This contract defines Phase 1a platform core entities that must be persisted, minimum column sets, key indexes, foreign key strategies, and recovery semantics.
 
-This version focuses on completing storage landing points for v4.3 runtime truth, including:
+This version focuses on adding storage landing points corresponding to v4.3 runtime truth:
 
 - `harness_runs`
 - `plan_graph_bundles`
@@ -14,24 +14,24 @@ This version focuses on completing storage landing points for v4.3 runtime truth
 - `budget_ledgers`
 - `budget_reservations`
 
-It also defines OAPEFLIR closed-loop phase boundaries at the storage layer:
+Also defines OAPEFLIR closed-loop phased boundaries at storage layer:
 
-- phase1-4 authoritative: core tables that must be stable and able to support recovery, approval, event audit, and artifact/memory minimum persistence.
-- transition / target-state extension: extension table families and column semantics required for feedback, learning, improvement, release, knowledge, and higher-order memory governance; allowed to evolve by phase, must not be miswritten as all currently persisted.
+- phase1-4 authoritative: Core tables that must currently be stable and able to support recovery, approval, event audit, and artifact/memory minimum persistence.
+- transition/target-state extension: Extended table families and column semantics required for feedback, learning, improvement, release, knowledge, and higher-order memory governance; allowed to evolve by phase, must not be mistaken as all currently persisted.
 
 ## 2. Storage Principles
 
-- Phase 1a defaults to SQLite as single-machine authoritative store.
-- Table structures prioritize task recovery, approval tracking, event audit, and runtime run reconstruction.
-- Large-volume data prioritizes artifact storage, with indexes and references retained in DB.
+- Phase 1a defaults to using SQLite as single-machine authoritative store.
+- Table structure prioritizes task recovery, approval tracking, event audit, and runtime run reconstruction.
+- Large-volume data prioritizes artifact landing, then retains indexes and references in DB.
 - Phase 1a explicitly enables `PRAGMA foreign_keys = ON`.
-- Phase 1a defaults to `WAL`, `busy_timeout`, and explicit transaction boundary control.
-- High-frequency heartbeats and display-class traffic do not require heavy persistence row by row; should use sampled snapshots or latest state primarily.
-- Migration, backup, recovery, `integrity_check`, and corruption detection are stable core database backing requirements.
+- Phase 1a defaults to enabling `WAL`, `busy_timeout`, and explicit transaction boundary control.
+- High-frequency heartbeat and display traffic do not require heavy persistence per record, should prioritize sampling snapshots or latest state.
+- migration, backup, recovery, `integrity_check`, and corruption detection belong to Stable Core database backing requirements.
 
 ## 3. Core Tables and Extension Tables
 
-Authoritative schema must include at least the following core tables:
+Authoritative schema contains at minimum the following core tables:
 
 - `harness_runs`
 - `plan_graph_bundles`
@@ -53,26 +53,26 @@ Authoritative schema must include at least the following core tables:
 - `memories`
 - `tool_result_files`
 
-Notes:
+Description:
 
-- The above defines v4.3 canonical truth + projection minimum core table set, not all tables an implementation may have.
-- `tasks`, `workflow_state`, `workflow_step_outputs`, `sessions`, `messages` are retained as projection/interaction tables, no longer independently carrying runtime truth.
-- Current implementation also allows and actually includes various extension tables, for example:
+- The above defines v4.3 canonical truth + projection minimum core table set, not the total tables an implementation may have.
+- `tasks`, `workflow_state`, `workflow_step_outputs`, `sessions`, `messages` are retained as projection/interaction tables, no longer independently carry runtime truth.
+- Current implementation also allows and actually contains many types of extension tables, for example:
   - Organization and tenant domain: `organizations`, `workspaces`, `tenants`, `deployment_bindings`
   - Supply chain and governance domain: `skill_registry`, `skill_execution_policies`, `extension_packages`, `marketplace_*`
   - Security and key domain: `secret_registry`, `secret_leases`, `secret_usage_audits`, `secret_rotation_events`
   - Billing and data domain: `billing_accounts`, `usage_events`, `quota_counters`, `analytics_facts`, `archive_bundles`
-  - Evolution and Observe-compatible domain: `evolution_*`, `perception_sources`, `intel_items`, `intel_briefs` (legacy table names preserved, semantics closed via Observe)
-- Therefore, contracts use "minimum set" constraints on core tables; extension tables may continue to be added without breaking core constraints.
+  - Evolution and Observe-compatible domain: `evolution_*`, `perception_sources`, `intel_items`, `intel_briefs` (retaining legacy table names, semantics have been closed per Observe)
+- Therefore contract uses "minimum set" constraint for core tables; extension tables may continue to increase without breaking core constraints.
 
 ### 3B. Authoritative Schema Inventory
 
-The current repository no longer uses static "total table count" from architecture documents as acceptance criteria, but rather authoritative inventory:
+Current warehouse no longer uses static "total table count" from architecture documents as acceptance criterion, but authoritative inventory as the standard:
 
 - Authoritative service: `src/platform/five-plane-state-evidence/truth/schema-inventory-service.ts`
 - Authoritative API surface: `GET /v1/admin/inventories/schema`
-- Current inventory reconciliation baseline: `86` logical tables
-- Classification summary:
+- Current inventory reconciliation criterion: `86` unique logical tables
+- Categorized summary:
   - `core_truth`: `55`
   - `runtime_extension`: `18`
   - `governance_extension`: `9`
@@ -80,12 +80,12 @@ The current repository no longer uses static "total table count" from architectu
 
 Constraints:
 
-- Subsequent schema evolution must synchronize inventory service updates and corresponding tests, no longer manually maintaining numbers only in reviews.
-- Table counts appearing in reviews/coverage-matrix/contracts should use inventory service exported numbers as authoritative source.
+- Subsequent schema evolution must synchronize inventory service and corresponding tests, no longer only manually maintaining numbers in review.
+- Table counts appearing in review/coverage-matrix/contract should use the number exported from inventory service as authoritative source.
 
 ### 3A. OAPEFLIR Extension Table Families
 
-The following table families belong to `§K` canonical extension directions for storage schema:
+The following table families belong to `§K` canonical extension direction for storage schema:
 
 - `feedback_signals`
 - `learning_objects`
@@ -97,10 +97,10 @@ The following table families belong to `§K` canonical extension directions for 
 
 Constraints:
 
-- These table families may land in `Current -> Transition -> Target` manner, not required to all become authoritative operational dependencies in one batch.
-- But contracts, migration planning, diagnostics, and lineage documentation must reserve unified naming and minimum field semantics for these objects.
+- These table families may land in `Current -> Transition -> Target` way, not requiring current warehouse to become all authoritative running dependencies at once.
+- But contracts, migration planning, diagnostics, and lineage documents must reserve unified naming and minimum field semantics for these objects.
 
-Suggested minimum fields:
+Recommended minimum fields:
 
 | Table | Minimum Fields |
 | --- | --- |
@@ -129,10 +129,10 @@ Suggested minimum fields:
 | `output_json` | `TEXT NULL` | Output summary |
 | `estimated_cost_usd` | `REAL NULL` | Estimated cost |
 | `actual_cost_usd` | `REAL NOT NULL DEFAULT 0` | Actual cost |
-| `error_code` | `TEXT NULL` | Latest error code |
-| `created_at` | `TEXT NOT NULL` | Created at |
-| `updated_at` | `TEXT NOT NULL` | Updated at |
-| `completed_at` | `TEXT NULL` | Completed at |
+| `error_code` | `TEXT NULL` | Most recent error code |
+| `created_at` | `TEXT NOT NULL` | Creation time |
+| `updated_at` | `TEXT NOT NULL` | Update time |
+| `completed_at` | `TEXT NULL` | Completion time |
 
 Index requirements:
 
@@ -146,16 +146,16 @@ Index requirements:
 | Column | Type | Description |
 | --- | --- | --- |
 | `task_id` | `TEXT PRIMARY KEY` | Associated task |
-| `division_id` | `TEXT NOT NULL` | Division ownership |
+| `division_id` | `TEXT NOT NULL` | Owning division |
 | `workflow_id` | `TEXT NOT NULL` | Workflow ID |
 | `current_step_index` | `INTEGER NOT NULL` | Current step index |
 | `status` | `TEXT NOT NULL` | Workflow status |
 | `outputs_json` | `TEXT NOT NULL` | Output snapshot |
-| `last_error_code` | `TEXT NULL` | Latest error code |
+| `last_error_code` | `TEXT NULL` | Most recent error code |
 | `retry_count` | `INTEGER NOT NULL DEFAULT 0` | Retry count |
 | `resumable_from_step` | `TEXT NULL` | Resumable step |
-| `started_at` | `TEXT NOT NULL` | Started at |
-| `updated_at` | `TEXT NOT NULL` | Updated at |
+| `started_at` | `TEXT NOT NULL` | Start time |
+| `updated_at` | `TEXT NOT NULL` | Update time |
 
 Index requirements:
 
@@ -426,7 +426,7 @@ Index requirements:
 Supplementary constraints:
 
 - `memory_layer` must be mappable to `L1-L6`.
-- `layer_level` recommended to have one-to-one correspondence with `L1-L6` as `1-6` for easier sorting and migration.
+- `layer_level` is recommended to correspond to `L1-L6` as `1-6` one-to-one for easy sorting and migration.
 - `source_refs_json` should prioritize storing `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`.
 
 `tool_result_files`:
@@ -465,24 +465,24 @@ Phase 1a explicitly adopts the following strategy:
 - `file_locks.node_run_id -> node_runs.node_run_id`
 - `tool_result_files.node_run_id -> node_runs.node_run_id`
 
-Notes:
+Description:
 
-- `events.task_id` and `events.execution_id` allow null, so not all events are required to be bound to tasks or executions.
-- `memories` supports multi-source writes across task/session/agent/execution, Phase 1a does not enforce single foreign key.
-- All data that must be bound to task main line or runtime run should be directly constrained by SQLite foreign keys, not relying only on application-layer discipline.
+- `events.task_id` and `events.execution_id` allow null, so not all events are forced to bind to task or execution.
+- `memories` supports multi-source writes across task/session/agent/execution, Phase 1a does not force a single foreign key.
+- All data that must bind to task main line or runtime run should be directly constrained by SQLite foreign keys, not just by application-layer self-discipline.
 
-## 14A. Transition / Target-State Supplementary Notes
+## 14A. Transition/Target-State Supplementary Notes
 
-To maintain consistency with `runtime_repository_and_migration_contract.md`, the storage layer adopts three-state migration semantics:
+To stay consistent with `runtime_repository_and_migration_contract.md`, storage layer adopts three-state migration semantics:
 
-- `Current`: `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations` as runtime truth; `tasks / workflow / approvals / events / artifacts / memories` etc. as hybrid projection/evidence tables.
-- `Transition`: extension table families may first be connected via append-only, shadow write, reporting-only, or evidence-only approaches.
-- `Target`: `feedback / learning / improvement / rollout / knowledge / high-order memory` become stable governance objects fully aligned with typed ref/lineage.
+- `Current`: `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations` are runtime truth; `tasks / workflow / approvals / events / artifacts / memories` etc. are hybrid projection/evidence tables.
+- `Transition`: Extension table families may first connect via append-only, shadow write, reporting-only, or evidence-only.
+- `Target`: `feedback / learning / improvement / rollout / knowledge / high-order memory` become stable governance objects and fully align with typed ref/lineage.
 
 Therefore:
 
 - This contract allows current implementation to still focus on minimum core tables.
-- But when designing new schema, migration, inspection, or audit, no longer introduce naming parallel to and conflicting with the above table families.
+- But when adding new schema, migration, inspection, or audit design, must not introduce naming that conflicts parallel with the above table families.
 
 ## 15. SQLite Initial Version DDL Appendix
 
@@ -773,38 +773,38 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
 ## 16. Runtime Storage Boundaries
 
 - `harness_runs / node_runs / node_attempts / node_attempt_receipts / budget_*` are v4.3 runtime truth main table families.
-- `runtime_repository_and_migration_contract.md` defines how these tables are consumed by repositories and how migrations evolve.
-- `events` is responsible for fact events and recovery chains, `event_consumer_acks` is responsible for consumer acknowledgment; survival observation is only a derived observation layer; the two must not be mixed.
-- `file_locks` is authoritative storage for concurrent write protection, must not be retained only in process memory.
+- `runtime_repository_and_migration_contract.md` defines how these tables are consumed by repositories and how migration evolves.
+- `events` is responsible for fact events and recovery chain; `event_consumer_acks` is responsible for consumer acknowledgment by consumer; survival observation is only a derived observation layer; the two must not be mixed.
+- `file_locks` is the authoritative storage for concurrent write protection, must not be kept only in process memory.
 
 ## 17. Artifact Index Boundaries
 
 - Artifact main body is stored in filesystem or object storage.
 - `tool_result_files` is responsible for Phase 1a minimum index.
-- If artifact types expand in the future, a separate `artifacts` index table should be added, not backfilling BLOB into core task tables.
+- If artifact types expand in the future, should add independent `artifacts` index table, rather than pouring BLOB back into core task tables.
 
 ## 18. Recovery and Transaction Requirements
 
-- `harness_runs.status`, `node_runs.status`, and related projection key updates should be completed within the same transaction as much as possible.
-- When creating new `HarnessRun` / `NodeRun` / `NodeAttempt`, initial truth records should be written simultaneously; cannot run first then fill accounts later.
-- When run enters `awaiting_hitl` or `policy_blocked`, approval records and wait state persistence must be reliable.
-- When run enters terminal state, ensure latest error code, attempt count, budget settlement, and terminal time are recoverable.
-- Tier 1 event writes cannot be bypassed by optional optimization paths.
-- Expired file lock recovery must be determinable based on joint judgment of `file_locks` and `node_runs`.
-- Recovery flow must at minimum be able to reconstruct execution context based on `harness_runs`, `plan_graph_bundles`, `node_runs`, `node_attempts`, `node_attempt_receipts`, `budget_reservations`, `events`, `file_locks`.
+- Key updates to `harness_runs.status`, `node_runs.status`, and related projections should try to complete within the same transaction.
+- When creating `HarnessRun` / `NodeRun` / `NodeAttempt`, should simultaneously write initial truth record, must not run then fill accounts later.
+- When run enters `awaiting_hitl` or `policy_blocked`, approval record and waiting state persistence must be reliable.
+- When run enters terminal state, should ensure final error code, attempt count, budget settlement, and terminal time are recoverable.
+- Tier 1 event writes must not be bypassed by optional optimization paths.
+- Expired file lock recycling must be based on joint determination of `file_locks` and `node_runs`.
+- Recovery flow must be able to reconstruct execution context based on at minimum `harness_runs`, `plan_graph_bundles`, `node_runs`, `node_attempts`, `node_attempt_receipts`, `budget_reservations`, `events`, `file_locks`.
 
 ## 19. Supplementary Rules
 
-- When migrating to PostgreSQL, primary key, unique constraints, foreign keys, and timestamp semantics must remain consistent; SQLite shortcuts must not be brought into PG fact sources.
-- Complete artifact index table should at minimum split: artifact main record, artifact version, artifact access log.
-- Heartbeat snapshots may be retained compressed by window, but latest snapshots and windows related to incidents must not be compressed.
+- When migrating to PostgreSQL, primary key, unique constraints, foreign keys, and timestamp semantics must remain consistent; SQLite shortcuts must not be brought into PG source of truth.
+- Complete artifact index table splits at minimum: artifact main record, artifact version, artifact access log.
+- Heartbeat snapshots may be retained by window compression, but latest snapshot and windows related to incidents must not be compressed away.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-33: This document originally wrote `tasks / workflow_state / executions` as storage truth main chain. Root cause: storage contract directly reused v3 single-machine table model, without migrating along as `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt / BudgetLedger` became canonical runtime truth. Fix: This version changes core truth table families to `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations`, and demotes old tables to projection/compatibility layer.
-- T-34: This document declared `layer_level / token_budget / freshness_state / source_refs_json` in `memories` minimum columns in §13, but SQLite DDL appendix still lacked these columns. Root cause: body schema and appendix DDL were not synchronized after a memory contract expansion. Fix: Body and DDL are now aligned; `memories` table minimum columns and DDL synchronously include these four fields.
+- T-33: This document previously wrote `tasks / workflow_state / executions` as storage truth main chain. The root cause was storage contract directly reused v3 single-machine table model, did not migrate along with `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt / BudgetLedger` becoming canonical runtime truth. Fix: The main text now changes core truth table families to `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations`, and demotes old tables to projection/compatibility layer.
+- T-34: This document in §13 `memories` minimum columns declared `layer_level / token_budget / freshness_state / source_refs_json`, but SQLite DDL appendix still lacked these columns. The root cause was main text schema and appendix DDL were not synchronized after a memory contract extension. Fix: Main text and DDL are now aligned; `memories` table minimum columns and DDL synchronize to include these four fields.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

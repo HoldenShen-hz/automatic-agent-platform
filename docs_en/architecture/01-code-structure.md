@@ -1,11 +1,11 @@
 # New Platform Code File Structure Design Document
 
-> **Document Version**: v1.2
-> **Document Status**: Active
+> **Document Version**: v1.3
+> **Document Status**: Active (calibrated after code structure review)
 > **Related Document**: "Enterprise Agent Platform Overall Technical Architecture Design Document" v2.7 §35 Recommended Code Directory
 > **Related Document**: "Old System → New Platform Migration Assessment Document" v1.1
 > **Design Date**: 2026-04-19
-> **Last Updated**: 2026-05-17
+> **Last Updated**: 2026-05-18 (third round structure review, supplemented with UI Monorepo, Mission/Yono, test specialty directories, src/testing/benchmarks and current code statistics)
 
 ---
 
@@ -15,7 +15,23 @@ This document defines the **complete code file structure** of the new platform a
 
 1. How is the new platform's `src/` directory organized? What goes in each directory?
 2. Where does code from the old system (`src/core/` 42 modules) go in the new platform?
-3. Where do the 24 brand-new modules of the new platform go?
+3. Where do the brand-new modules, Mission/Yono, cross-platform UI, and specialty tests of the new platform go?
+
+### 1.1 Code Structure Review Conclusions (2026-05-18)
+
+This review is based on actual directory measurements in the current workspace, focusing on consistency between `src/`, `ui/`, `tests/`, `config/`, `deploy/`, `scripts/` and this document. Conclusions:
+
+| Conclusion Item | Current Code Facts | Document Handling |
+|-----------------|-------------------|-------------------|
+| Backend seven-layer main structure | `src/platform`, `domains`, `interaction`, `org-governance`, `scale-ecosystem`, `ops-maturity` all exist as authoritative implementation locations | Keep seven-layer structure, update statistics and new directory descriptions |
+| Five-plane implementation | `five-plane-*` five directories complete, with new subdomains: mission, outbox, side-effect-ledger, reconciliation, degradation | Supplement new subdomains in platform description |
+| Legacy core | `src/core` only has runtime compatibility entry, should not carry new capabilities | Keep compatibility layer positioning, continue to prohibit new business capabilities from entering core |
+| Mission | `src/platform/contracts/mission` and `src/platform/five-plane-control-plane/mission` have become long-term goal governance entry points | Add Mission directory responsibilities and dependency rules |
+| Yono Business | `src/domains/yono` exists as a business domain instance | Mark as business domain instance in domains chapter, not part of domain framework infrastructure |
+| Cross-platform UI | `ui/` Monorepo exists, containing apps, packages, tools, tests | Add UI top-level directory chapter and dependency boundaries |
+| Test structure | `tests/unit`, `integration`, `e2e`, `golden`, `performance`, `invariants`, `leaks` etc. all exist | Update test directory description, supplement invariants/leaks |
+| Runtime configuration and deployment | `config/`, `deploy/` cover environments, domains, risk, security, Helm, Terraform, Prometheus, Chaos, runbooks | Supplement in top-level overview and ops directory descriptions |
+| Documentation risk | Large amount of statistics may become outdated as code changes rapidly | Change statistics table to "structure snapshot", require subsequent script generation |
 
 ---
 
@@ -23,10 +39,10 @@ This document defines the **complete code file structure** of the new platform a
 
 | # | Principle | Description |
 |---|-----------|-------------|
-| 1 | **Architecture-Driven Directory** | Top-level directories are organized by the seven-layer architecture + five planes, not by technical concerns (controller/service/repository) |
+| 1 | **Architecture-Driven Directory** | Top-level directories are organized by seven-layer architecture + five planes, not by technical concerns (controller/service/repository) |
 | 2 | **Bounded Context as Directory** | Each bounded context corresponds to a second-level directory, self-contained with model/service/repository/types inside |
 | 3 | **Contracts Centralized** | Inter-plane communication contracts are centralized in `platform/contracts/`, not scattered across plane directories |
-| 4 | **Domain Instances Separated from Framework** | `domains/` is divided into "framework infrastructure" and "domain instances" layers; adding a new business domain only requires adding a domain instance directory |
+| 4 | **Domain Instances Separated from Framework** | `domains/` is divided into "framework infrastructure" and "domain instance" layers; adding a new business domain only requires adding a domain instance directory |
 | 5 | **Tests Mirror Source** | The `tests/` directory structure mirrors `src/`, with one-to-one path correspondence |
 | 6 | **kebab-case File Naming** | All filenames use kebab-case, class/type names use PascalCase, function names use camelCase |
 | 7 | **One index.ts per Directory** | Each second-level directory provides `index.ts` as the public API export; third-level directories are internal implementation details |
@@ -35,6 +51,8 @@ This document defines the **complete code file structure** of the new platform a
 ---
 
 ## 3. Top-Level Directory Overview
+
+> **Current Implementation Notes (2026-05-14)**: `src/core/` in the new platform is retained only as a Legacy compatibility and migration re-export layer. The authoritative implementation locations for new runtime, contracts, execution, state, and governance capabilities are `src/platform/*`, `src/domains/*`, `src/interaction/*`, `src/org-governance/*`, `src/scale-ecosystem/*`, `src/ops-maturity/*`. New code must not use `src/core/` as a new capability entry point.
 
 ```
 new-platform/
@@ -48,15 +66,40 @@ new-platform/
 │   ├── plugins/            # Cross-layer: Plugin Ecosystem
 │   ├── sdk/                # Cross-layer: SDK and Developer Experience
 │   ├── apps/               # Application Entry Points (API server / Console / Workers)
-│   └── index.ts            # Platform Entry Point
+│   ├── testing/            # Test Infrastructure and Common Test Contracts
+│   ├── benchmarks/         # Benchmark Entry and Performance Samples
+│   ├── core/               # Legacy Compatibility Re-export Layer, prohibited from new business capabilities
+│   └── index.ts            # Platform Entry
+├── ui/                     # Cross-Platform UI Monorepo (Web / Electron / Tauri / Mobile)
 ├── tests/                  # Tests (mirrors src/ structure)
 ├── config/                 # Versioned Configuration
 ├── divisions/              # Division Definitions (adapted after migration to DomainDescriptor)
-├── doc/                    # Documentation
+├── docs_zh/                # Chinese Documentation
+├── docs_en/                # English Documentation
 ├── scripts/                # CI/Build Scripts
 ├── deploy/                 # Deployment Manifests
 └── [Top-level config files]  # package.json / tsconfig.json / eslint.config.js / Dockerfile / ...
 ```
+
+### 3.0.1 Top-Level Directory Responsibility Boundaries (Current Authority)
+
+| Top-level Directory | Code Facts | Responsibility Boundary | Prohibited Items |
+|---------------------|------------|--------------------------|------------------|
+| `src/platform/` | Backend platform core, current largest code area | Five planes, contracts, shared infrastructure, model gateway, Prompt/Eval, compliance, stability | Must not depend on `interaction/`, `domains/` business instances or UI |
+| `src/domains/` | Domain framework + domain instances | Domain descriptor, risk/eval/workflow/tool configuration, Yono and other business domains | Must not place platform runtime, HTTP API, worker implementation |
+| `src/interaction/` | Intelligent interaction layer | NL gateway, goal decomposer, dashboard, proactive, UX/autonomy | Must not bypass platform contracts to directly write truth store |
+| `src/org-governance/` | Organization governance layer | Organization model, approval routing, SSO/SCIM, compliance boundaries, delegated governance | Must not carry general IAM infrastructure; basic IAM belongs to control-plane |
+| `src/scale-ecosystem/` | Scale and ecosystem layer | Marketplace, billing, SLA, multi-region, feedback, runtime-services | Must not replace P4/P5 fact-writing chain |
+| `src/ops-maturity/` | Operations maturity layer | Chaos, debugger, capacity, compliance report, edge, explainability | Must not become the sole dependency of the main execution chain |
+| `src/plugins/` | Plugin ecosystem | Plugin manifest, runtime adapter, marketplace access | Must not bypass sandbox and capability |
+| `src/sdk/` | Developer experience | CLI, SDK, pack/plugin tools | Must not import internal non-public API |
+| `src/apps/` | Backend application entry | API, console backend, workers bootstrap | Must not precipitate business logic, only do composition and startup |
+| `src/testing/` | Test common facilities | Test helpers, fixtures, invariant support | Must not be depended on by production code |
+| `src/benchmarks/` | Performance sample entry | Performance/capacity benchmark helper code | Must not enter runtime main chain |
+| `ui/` | Frontend monorepo | Web/desktop/mobile UI, shared frontend SDK, feature packages, UI tests | Must not directly import backend `src/*` internal implementations |
+| `tests/` | Backend tests | unit/integration/e2e/golden/performance/invariants/leaks | Must not depend on production environment real credentials |
+| `config/` | Versioned configuration | environments, domains, risk, security, runtime, providers | Must not place secret plaintext |
+| `deploy/` | Deployment and ops assets | Helm, Terraform, Prometheus, Grafana, Chaos, runbooks, scripts | Must not serve as business logic source |
 
 ### 3.1 Old System vs. New Platform Top-Level Comparison
 
@@ -65,6 +108,9 @@ new-platform/
 | `src/core/` (42 flat modules) | `src/platform/` + `src/domains/` + `src/interaction/` + `src/org-governance/` + `src/scale-ecosystem/` + `src/ops-maturity/` | Flat core/ split into 6 top-level directories organized by seven-layer architecture |
 | `src/cli/` (78 scripts) | `src/sdk/cli/` | CLI belongs to SDK layer |
 | `src/gateway/` (13 files) | `src/platform/five-plane-interface/` + `src/interaction/nl-gateway/` | API gateway belongs to P1 Interface, NL gateway belongs to Layer 4 |
+| No independent frontend project | `ui/` | New cross-platform UI Monorepo, carrying Web/desktop/mobile |
+| No specialty test infrastructure | `src/testing/` + `tests/invariants/` + `tests/leaks/` | New test infrastructure, invariants and leak tests |
+| No benchmark entry | `src/benchmarks/` + `tests/performance/` | New performance/capacity benchmark entry |
 | `src/plugins/` (20 files) | `src/plugins/` | Remained independent, structure unchanged |
 | `src/index.ts` | `src/index.ts` | Retained |
 
@@ -134,9 +180,15 @@ new-platform/
 
 `platform/` corresponds to architecture Layer 1 (Infrastructure) and Layer 2 (AI Operations), containing five planes + cross-cutting concerns.
 
+> **Five-Plane Naming Convention**: In actual code, the five planes correspond to `five-plane-interface/`, `five-plane-control-plane/`, `five-plane-orchestration/`, `five-plane-execution/`, `five-plane-state-evidence/` — five directories with `five-plane-` prefix, equivalent to the abbreviated names `interface/`, `control-plane/` etc. in documentation. Both naming styles are valid entry points with no ambiguity in source code or configuration.
+
+**Supplementary Notes (2026-05-18 update)**: The following independent modules also belong to platform/ but are not part of the five planes: `agent-delegation/`, `architecture/`, `compliance/`, `contracts/`, `cost-management/`, `model-gateway/`, `ops-maturity/`, `prompt-engine/`, `prompt-registry/`, `remote-coordination/`, `shared/`, `stability/`, `structure/`. Among them, `contracts/` and `shared/` are legitimate landing spots for inter-plane dependencies.
+
+**Mission Structure Notes (2026-05-18)**: Mission is the root object for long-term goals and governance context. Contracts are located at `platform/contracts/mission/`. Lifecycle, resolution, governance, budget, handoff and other control capabilities are located at `platform/five-plane-control-plane/mission/`. The execution plane can only consume missionRef / missionSnapshotRef, and must not treat Mission as an executable object.
+
 ```
 src/platform/
-├── interface/              # P1 Interface Plane ── §6 API Contracts
+├── five-plane-interface/              # P1 Interface Plane ── §6 API Contracts
 │   ├── api/                #   HTTP API server + OIDC/OAuth + WebSocket
 │   │   ├── http-api-server.ts
 │   │   ├── api-auth-service.ts
@@ -146,7 +198,6 @@ src/platform/
 │   │   ├── task-websocket-status-relay.ts
 │   │   └── index.ts
 │   ├── webhook/            #   Webhook Inbound Processing
-│   │   ├── webhook-receiver.ts
 │   │   └── index.ts
 │   ├── channel-gateway/    #   Channel Gateway (Telegram/Slack/Webhook/SSE)
 │   │   ├── channel-gateway-service.ts
@@ -169,8 +220,15 @@ src/platform/
 │   └── ingress/            #   Ingress Traffic Management (rate limiting/routing/canary)
 │       └── index.ts
 │
-├── control-plane/          # P2 Control Plane ── §24 Configuration / §11 Security / §21 Approval
+├── five-plane-control-plane/          # P2 Control Plane ── §24 Configuration / §11 Security / §21 Approval
 │   ├── tenant/             #   Tenant Management
+│   │   └── index.ts
+│   ├── mission/            #   Mission Long-term Goal Governance (lifecycle/resolution/budget/LiveGuard/Handoff)
+│   │   ├── mission-lifecycle-service.ts
+│   │   ├── mission-resolver.ts
+│   │   ├── mission-governance-service.ts
+│   │   ├── mission-budget-service.ts
+│   │   ├── mission-live-guard.ts
 │   │   └── index.ts
 │   ├── iam/                #   Identity & Access Management (← core/security/)
 │   │   ├── sandbox-policy.ts
@@ -246,7 +304,7 @@ src/platform/
 │       ├── audit-export-service.ts
 │       └── index.ts
 │
-├── orchestration/          # P3 Orchestration Plane ── §13 OAPEFLIR
+├── five-plane-orchestration/          # P3 Orchestration Plane ── §13 OAPEFLIR
 │   ├── oapeflir/           #   OAPEFLIR Controlled Cognitive Kernel (← core/agent-loop/ + core/workflow/)
 │   │   ├── oapeflir-loop-service.ts
 │   │   ├── execute-bridge.ts
@@ -310,7 +368,7 @@ src/platform/
 │       ├── hitl-explainability-service.ts
 │       └── index.ts
 │
-├── execution/              # P4 Execution Plane ── §14 Runtime
+├── five-plane-execution/              # P4 Execution Plane ── §14 Runtime
 │   ├── dispatcher/         #   Execution Dispatch (← runtime/BC1 Dispatch)
 │   │   ├── execution-dispatch-service.ts
 │   │   ├── execution-dispatch-service-async.ts
@@ -456,13 +514,16 @@ src/platform/
 │   ├── resource/           #   Resource Tracking (← core/resource/)
 │   │   ├── process-tracker.ts
 │   │   └── index.ts
+│   ├── hibernation/        #   Long-running Workflow Hibernation/Wakeup
+│   ├── queue-metrics/      #   Queue Metrics and Backlog Observation
+│   ├── oapeflir/           #   Execution-side OAPEFLIR Bridge/Execution Record
 │   └── startup/            #   Startup & Preflight
 │       ├── startup-preflight.ts
 │       ├── startup-consistency-checker.ts
 │       ├── graceful-shutdown.ts
 │       └── index.ts
 │
-├── state-evidence/         # P5 State & Evidence Plane ── §25-§29
+├── five-plane-state-evidence/         # P5 State & Evidence Plane ── §25-§29
 │   ├── truth/              #   Authoritative Data Storage (← core/storage/ after split)
 │   │   ├── sqlite-database.ts
 │   │   ├── async-sql-database.ts
@@ -511,6 +572,10 @@ src/platform/
 │   │   └── index.ts
 │   ├── projections/        #   Projection Views
 │   │   └── index.ts
+│   ├── outbox/             #   Reliable Publish Outbox
+│   ├── side-effect-ledger/ #   External Side Effect Ledger
+│   ├── reconciliation/     #   State/Projection/External Write Reconciliation
+│   ├── compaction/         #   Historical Event/Context Compaction
 │   ├── artifacts/          #   Artifact Management (← core/artifacts/)
 │   │   ├── artifact-store.ts
 │   │   ├── artifact-model.ts
@@ -581,6 +646,7 @@ src/platform/
 │   │   └── index.ts
 │   ├── fallback/           #   Provider Failover
 │   │   └── index.ts
+│   ├── degradation/        #   Model/Provider Degradation Strategy
 │   └── messages/           #   Message Model (← core/messages/)
 │       ├── token-estimator.ts
 │       ├── message-parts.ts
@@ -631,6 +697,16 @@ src/platform/
 │   ├── execution-plan/     #   Execution Plan (§5.5)
 │   │   └── index.ts
 │   ├── execution-receipt/  #   Execution Receipt (§5.6)
+│   │   └── index.ts
+│   ├── mission/            #   Mission Contract (record/membership/snapshot/budget/error/event)
+│   │   └── index.ts
+│   ├── evidence-record/    #   Evidence Record Contract
+│   │   └── index.ts
+│   ├── executable-contracts/ # Executable Contracts and PlanGraph Binding
+│   │   └── index.ts
+│   ├── projection-update/  #   Projection Update Contract
+│   │   └── index.ts
+│   ├── prompt-bundle/      #   Prompt Bundle Contract
 │   │   └── index.ts
 │   ├── state-command/      #   State Command (§5.7)
 │   │   └── index.ts
@@ -725,27 +801,31 @@ src/platform/
         └── index.ts
 ```
 
-### 4.1 platform/ Statistics
+### 4.1 platform/ Statistics Snapshot (2026-05-18)
 
-| Subdirectory | Architecture Positioning | Migration Source Files | New Files |
-|--------------|-----------------|----------------------|-----------|
-| `interface/` | P1 Interface Plane | ~43 (api 30 + gateway 13) | ~5 |
-| `control-plane/` | P2 Control Plane | ~72 (config 27 + security 19 + approvals 3 + ops 19 + deployment 2 + compliance 2) | ~8 |
-| `orchestration/` | P3 Orchestration Plane | ~64 (agent-loop 14 + planning 9 + orchestration 3 + workflow 4 + learning 14 + improvement 11 + runtime/HITL 2 + runtime/orchestration 7) | ~3 |
-| `execution/` | P4 Execution Plane | ~155 (runtime 80 + tools 36 + locking 8 + queue 6 + resource 2 + reliability 8 + startup 3) | ~5 |
-| `state-evidence/` | P5 State & Evidence | ~157 (storage 101 + events 8 + artifacts 13 + memory 16 + knowledge 10 + split repo 21) | ~8 |
-| `model-gateway/` | AI Operations | ~12 (providers 10 + messages 2) | ~5 |
-| `prompt-engine/` | AI Operations | ~6 (evaluation 6) | ~5 |
-| `compliance/` | AI Operations | 0 | ~6 |
-| `contracts/` | Cross-plane | ~26 (types 21 + errors 1 + constants 2 + results 2) | ~8 |
-| `shared/` | Cross-layer Shared | ~73 (utils 2 + lifecycle 3 + cache 12 + observability 36 + stability 31) | 0 |
-| **Total** | | **~608** | **~53** |
+| Subdirectory | Architecture Positioning | Current TS Files | Description |
+|--------------|-----------------|---------------|-------------|
+| `five-plane-interface/` | P1 Interface Plane | 90 | API, channel gateway, console, scheduler, webhook |
+| `five-plane-control-plane/` | P2 Control Plane | 140 | IAM, approval, config, incident, mission, risk, rollout |
+| `five-plane-orchestration/` | P3 Orchestration Plane | 188 | Harness, OAPEFLIR, planner, routing, HITL, learn, rollout |
+| `five-plane-execution/` | P4 Execution Plane | 230 | dispatcher, lease, worker, engine, queue, tool, recovery |
+| `five-plane-state-evidence/` | P5 State & Evidence | 250 | truth, events, outbox, dlq, memory, knowledge, audit, ledger |
+| `shared/` | Cross-plane Shared | 130 | cache, observability, events, lifecycle, stability, context |
+| `contracts/` | Cross-plane Contracts | 60 | request, plan, state, mission, evidence, prompt, projection |
+| `model-gateway/` | AI Operations | 28 | provider, router, fallback, degradation, cost, messages |
+| `prompt-engine/` | AI Operations | 26 | registry, renderer, rollout, eval |
+| `compliance/` | AI Operations | 12 | erasure, encryption, data residency, lineage |
+| `stability/` | Stability/Reliability | 48 | reliability and stability rehearsal supplements |
+| Other platform independent modules | Cross-cutting/auxiliary | 22 | architecture, agent-delegation, remote-coordination, structure etc. |
+| **Total** | | **1,224** | Current `src/platform/**/*.ts` snapshot |
 
 ---
 
 ## 5. domains/ — Business Domain Access Layer
 
 `domains/` corresponds to architecture Layer 3 (§37-§38), divided into "domain framework infrastructure" and "domain instance" layers.
+
+> **Actual Domain Instance Count (2026-05-18 update)**: `src/domains/` currently contains domain framework infrastructure, domain public services, and 30+ vertical domain instances. Framework infrastructure includes `registry`, `risk-profile`, `knowledge-schema`, `eval-framework`, `prompt-library`, `recipes`, `interaction-policy`, `governance`, `business-pack`, `canonical-meta-model`. Vertical domain instances include `academic-research`, `advertising`, `agriculture`, `coding`, `financial-services`, `finance-accounting`, `healthcare`, `legal`, `quant-trading`, `yono`, etc. `yono` is the Yono Business domain instance and cannot be classified as framework infrastructure.
 
 ```
 src/domains/
@@ -782,10 +862,18 @@ src/domains/
 │   ├── safe-load-division-registry.ts
 │   ├── hr-role-governance-service.ts
 │   └── index.ts
+├── business-pack/          # Business Pack Domain Framework
+│   └── index.ts
+├── canonical-meta-model/   # Canonical Meta Model
+│   └── index.ts
 ├── coding/                 # Coding Domain Instance
 │   └── index.ts
-└── operations/             # Operations Domain Instance
-    └── index.ts
+├── operations/             # Operations Domain Instance
+│   └── index.ts
+├── yono/                   # Yono Business Domain Instance
+│   └── index.ts
+├── [30+ vertical domain instances]         # academic-research, advertising, agriculture, content-moderation, creative-production, customer-service, data-engineering, ecommerce, education, executive-assistant, facilities, finance-accounting, financial-services, game-dev, game-publishing, healthcare, human-resources, industry-research, it-operations, knowledge-base, legal, live-streaming, manufacturing, marketing, product-management, project-management, quality-assurance, quant-trading, supply-chain, user-operations, etc.
+└── [framework and public services]         # domain-baseline-catalog.ts, domain-baseline-seeds.ts, domain-descriptor-orchestration-service.ts, domain-eval-framework-service.ts, domain-knowledge-schema-service.ts, domain-module-helper.ts, domain-recipe-service.ts, domain-risk-profile-service.ts, domain-specs.ts, domain-task-design-service.ts, domains-bootstrap.ts
 ```
 
 ---
@@ -793,6 +881,8 @@ src/domains/
 ## 6. interaction/ — Intelligent Interaction Layer
 
 `interaction/` corresponds to architecture Layer 4 (§39-§44), all **newly created modules** (old system completely missing).
+
+> **Actual Submodules (2026-05-18 update)**: Document §6 records 6 subdirectories, actual code contains 13 subdirectories with deep submodules (autonomy, dashboard, goal-decomposer, nl-gateway, proactive-agent, ux each have deep submodules), all reflected in the tree below and §13 statistics table.
 
 ```
 src/interaction/
@@ -852,6 +942,8 @@ src/interaction/
 
 `org-governance/` corresponds to architecture Layer 5 (§46-§51). Except for a small amount of code migrated from `core/hr/` to `org-model/`, the rest are **newly created modules**.
 
+> **Actual Submodules (2026-05-18 update)**: Document §7 records 7 subdirectories, actual code contains 24 subdirectories with deep submodules (approval-routing, compliance-engine, delegated-governance, knowledge-boundary, org-model, org-routing, sso-scim each have deep submodules), all reflected in the tree below and §13 statistics table.
+
 ```
 src/org-governance/
 ├── org-model/              # Organization Hierarchy Model (NEW §46, partially migrated from core/hr/)
@@ -907,7 +999,11 @@ src/org-governance/
 
 ## 8. scale-ecosystem/ — Scale Operations Layer + Ecosystem Layer
 
-`scale-ecosystem/` corresponds to architecture Layer 6 (§52-§57). `feedback_loop/` migrated from `core/feedback/`, `marketplace/` partially migrated from `core/product/`, and the rest are **newly created modules**.
+`scale-ecosystem/` corresponds to architecture Layer 6 (§52-§57). `feedback-loop/` migrated from `core/feedback/`, `marketplace/` partially migrated from `core/product/`, and the rest are **newly created modules**.
+
+> **Actual Submodules (2026-05-18 update)**: Document §8 records 6 top-level subdirectories, actual code contains 46 subdirectories with deep submodules (billing, capacity-planning, cost-attribution, enterprise, federation, feedback-loop, integration, intelligence, marketplace, multi-region, operations, resource-manager, runtime-services, sla, sla-engine, tenant-platform each have deep submodules), all reflected in the tree below and §13 statistics table.
+
+> **Additional Submodules (2026-05-18 update)**: Top-level module count expanded from 6 to 16 (billing, capacity-planning, cost-attribution, enterprise, federation, intelligence, operations, runtime-services, sla, tenant-platform etc. 10 new additions), incorporated into §13 statistics table.
 
 ```
 src/scale-ecosystem/
@@ -986,6 +1082,10 @@ src/scale-ecosystem/
 ## 9. ops-maturity/ — Operations Maturity Layer
 
 `ops-maturity/` corresponds to architecture Layer 7 (§59-§70). `drift-detection/` migrated from `core/evolution/`, and the rest are **newly created modules**.
+
+> **Actual Submodules (2026-05-18 update)**: Document §9 records 11 top-level subdirectories, actual code contains 66 subdirectories with deep submodules (agent-lifecycle, capacity-planner, chaos, compliance-reporter, cost-optimizer, drift-detection, edge-runtime, emergency, explainability, improvement, learning, monitoring, multimodal, platform-ops-agent, version-management, workflow-debugger each have deep submodules), all reflected in the tree below and §13 statistics table.
+
+> **Additional Submodules (2026-05-18 update)**: Top-level module count expanded from 11 to 16 (learning, monitoring etc. new additions), incorporated into §13 statistics table.
 
 ```
 src/ops-maturity/
@@ -1141,6 +1241,8 @@ src/plugins/
 
 ### 10.2 sdk/ — SDK & Developer Experience (§22)
 
+> **Additional Submodules (2026-05-18 update)**: Besides the 4 modules shown in documentation, actual code also contains `admin-sdk/`, `harness-sdk/`, `workbench/` three additional modules, incorporated into §13 statistics.
+
 ```
 src/sdk/
 ├── pack-sdk/               # Business Pack Development SDK
@@ -1149,23 +1251,29 @@ src/sdk/
 │   └── index.ts
 ├── client-sdk/             # Client SDK (REST/WebSocket)
 │   └── index.ts
-└── cli/                    # CLI Entry Point (← src/cli/ 78 scripts migrated)
-    ├── acceptance-readiness.ts
-    ├── api-server.ts
-    ├── billing.ts
-    ├── channel-gateway.ts
-    ├── dispatch-execution.ts
-    ├── dispatch-reconcile.ts
-    ├── doctor.ts
-    ├── inspect.ts
-    ├── release-pipeline.ts
-    ├── secret-management.ts
-    ├── takeover.ts
-    ├── task-board.ts
-    ├── worker-handshake.ts
-    ├── worker-register.ts
-    ├── worker-writeback.ts
-    ├── ... (remaining 63 CLI scripts, structure unchanged)
+├── cli/                    # CLI Entry Point (← src/cli/ 78 scripts migrated)
+│   ├── acceptance-readiness.ts
+│   ├── api-server.ts
+│   ├── billing.ts
+│   ├── channel-gateway.ts
+│   ├── dispatch-execution.ts
+│   ├── dispatch-reconcile.ts
+│   ├── doctor.ts
+│   ├── inspect.ts
+│   ├── release-pipeline.ts
+│   ├── secret-management.ts
+│   ├── takeover.ts
+│   ├── task-board.ts
+│   ├── worker-handshake.ts
+│   ├── worker-register.ts
+│   ├── worker-writeback.ts
+│   ├── ... (remaining 63 CLI scripts, structure unchanged)
+│   └── index.ts
+├── admin-sdk/              # Admin SDK
+│   └── index.ts
+├── harness-sdk/           # Harness SDK
+│   └── index.ts
+└── workbench/             # Workbench SDK
     └── index.ts
 ```
 
@@ -1209,9 +1317,102 @@ new-platform/
 
 ---
 
-## 11. tests/ — Test Directory Structure
+## 11. ui/ — Cross-Platform UI Monorepo
+
+`ui/` is the frontend sub-project in the current repository, not migrated into backend `src/`. It interacts with the backend through API-first, DTO → VM → Props, PlatformAdapter and feature gate. UI code must not directly import backend `src/platform/*` internal implementations; can only depend on generated contracts, OpenAPI/schema, frontend shared API client, or mock/contract seam.
+
+```
+ui/
+├── apps/
+│   ├── web/                # React + Vite Web SPA, can run main entry
+│   ├── electron-win/       # Windows Electron shell
+│   ├── tauri-macos/        # macOS Tauri shell
+│   ├── tauri-linux/        # Linux Tauri shell
+│   └── mobile/             # React Native mobile shell
+├── packages/
+│   ├── shared/
+│   │   ├── api-client/     # REST/WS client, endpoint binding
+│   │   ├── auth/           # token/session/auth callback
+│   │   ├── state/          # Query/store/offline persistence
+│   │   ├── sync/           # offline queue/conflict resolver
+│   │   ├── domain/         # DomainUIConfig, permissions, field masking
+│   │   ├── platform/       # PlatformAdapter contract + adapters
+│   │   ├── telemetry/      # Frontend telemetry
+│   │   ├── i18n/           # locale/catalog
+│   │   ├── nl-client/      # NL interaction client
+│   │   └── types/          # Frontend common types
+│   ├── ui-core/            # Web/desktop design system, business components, charts, layout, theme
+│   ├── ui-mobile/          # Mobile components, native module seam, navigation
+│   ├── features/           # Business feature packages, unified web/mobile/hooks split
+│   │   ├── dashboard/
+│   │   ├── task-cockpit/
+│   │   ├── workflow-cockpit/
+│   │   ├── approval/
+│   │   ├── hitl/
+│   │   ├── settings/
+│   │   ├── domain-wizard/
+│   │   ├── stability/
+│   │   ├── takeover/
+│   │   ├── alerts/
+│   │   ├── dispatch/
+│   │   ├── inspect/
+│   │   ├── health/
+│   │   ├── incidents/
+│   │   ├── conversation/
+│   │   ├── feature-flags/
+│   │   ├── agent-manager/
+│   │   ├── workflow-builder/
+│   │   ├── workflow-debugger/
+│   │   ├── explainability/
+│   │   ├── cost-center/
+│   │   ├── marketplace/
+│   │   ├── analytics/
+│   │   └── governance-compliance/
+│   └── storybook/          # Component documentation and visual review
+├── tools/
+│   ├── codegen/            # Generate frontend types and endpoint binding from backend contracts/OpenAPI/schema
+│   ├── mock-server/        # Planned endpoint / WS event typed mock
+│   └── e2e/                # UI E2E tooling
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── features/
+│   ├── apps/
+│   ├── a11y/
+│   ├── playwright/
+│   └── docs/
+└── docs/                   # UI ADR / Storybook documentation
+```
+
+### 11.1 UI Feature Directory Rules
+
+Each `ui/packages/features/<feature>/src/` must maintain the same split:
+
+```
+src/
+├── web/                    # Web/desktop rendering entry
+├── mobile/                 # Mobile rendering entry
+├── hooks/                  # Query/VM hooks, only return ViewModel
+├── route.ts                # route registration
+├── permissions.ts          # feature guard / visibility
+├── mapper.ts               # DTO → VM
+└── index.ts                # public exports
+```
+
+Rules:
+
+- Components must not directly consume backend DTO; must go through mapper to VM.
+- Planned backend capabilities must use feature gate + typed mock + degradation banner.
+- Platform-specific capabilities can only be injected through PlatformAdapter; forbidden to directly call Electron/Tauri/RN API in feature.
+- UI tests belong to `ui/tests/*` or `tests/unit/ui` / `tests/integration/ui`; must not mix into backend runtime tests.
+
+---
+
+## 12. tests/ — Test Directory Structure
 
 Tests **mirror `src/` structure**; each source directory has a corresponding test directory under tests/.
+
+> **Actual Test Subdirectories (2026-05-18 update)**: Actual `tests/` contains `unit/`, `integration/`, `e2e/`, `golden/`, `performance/`, `invariants/`, `leaks/`, `fixtures/`, `helpers/` and other specialty directories; UI also has independent `ui/tests/`. Test directories no longer just simply mirror source, but also bear architectural invariants, memory leak, deployment, documentation and UI acceptance.
 
 ```
 tests/
@@ -1239,22 +1440,22 @@ tests/
 │
 ├── unit/                   # Unit Tests (mirrors src/ structure)
 │   ├── platform/
-│   │   ├── interface/
+│   │   ├── five-plane-interface/
 │   │   │   ├── api/
 │   │   │   └── channel-gateway/
-│   │   ├── control-plane/
+│   │   ├── five-plane-control-plane/
 │   │   │   ├── iam/
 │   │   │   ├── approval-center/
 │   │   │   ├── config-center/
 │   │   │   ├── incident-control/
 │   │   │   ├── rollout-controller/
 │   │   │   └── audit-export/
-│   │   ├── orchestration/
+│   │   ├── five-plane-orchestration/
 │   │   │   ├── oapeflir/
 │   │   │   ├── planner/
 │   │   │   ├── routing/
 │   │   │   └── hitl/
-│   │   ├── execution/
+│   │   ├── five-plane-execution/
 │   │   │   ├── dispatcher/
 │   │   │   ├── lease/
 │   │   │   ├── worker-pool/
@@ -1266,7 +1467,7 @@ tests/
 │   │   │   ├── tool-executor/
 │   │   │   ├── distributed-lock/
 │   │   │   └── queue/
-│   │   ├── state-evidence/
+│   │   ├── five-plane-state-evidence/
 │   │   │   ├── truth/
 │   │   │   ├── events/
 │   │   │   ├── artifacts/
@@ -1335,7 +1536,7 @@ tests/
 │   ├── cli-help-text.test.ts
 │   └── snapshots/
 │
-├── e2e/                    # End-to-end Tests (← Adapted migration 10 files)
+├── e2e/                    # End-to-end Tests
 │   ├── task-lifecycle.test.ts
 │   ├── multi-step-workflow.test.ts
 │   ├── lease-recovery.test.ts
@@ -1347,7 +1548,11 @@ tests/
 │   ├── streaming-response.test.ts
 │   └── approval-event-flow.test.ts
 │
-├── performance/            # Performance Tests (← Directly migrated 6 files)
+├── performance/            # Performance Tests and Capacity Benchmark
+├── invariants/             # Architectural Invariant Tests
+├── leaks/                  # Memory/Handle Leak Tests
+├── unit/ui/                # UI Unit Test Mirror
+├── integration/ui/         # UI Integration Test Mirror
 │
 └── fixtures/               # Test Fixtures (← Adapted migration)
     └── migration/
@@ -1355,48 +1560,48 @@ tests/
 
 ---
 
-## 12. Statistics Summary
+## 13. Statistics Summary
 
-### 12.1 Directory Statistics (2026-05-17 Second Round Update)
+### 13.1 Directory Statistics Snapshot (2026-05-18 Third Round Structure Review)
 
-| Top-level Directory | Architecture Layer | Actual Direct Subdirectories | With Deep Subdirectories Total | Status |
-|---------------------|-------------------|---------------------------|------------------------------|--------|
-| `platform/` | Layer 1-2 | 19 (5 five-plane-* + 14 independent modules) | Contains 130+ deep submodules | Five planes complete; other modules supplemented per §4 |
-| `five-plane-control-plane/` | P2 | 14 | 44 (with deep) | Complete |
-| `five-plane-execution/` | P4 | 17 | Contains deep submodules | Complete |
-| `five-plane-interface/` | P1 | 9 | 17 (with deep) | Complete |
-| `five-plane-orchestration/` | P3 | 11 | 29 (with deep) | Complete |
-| `five-plane-state-evidence/` | P5 | 12 | 20 (with deep) | Complete |
-| `domains/` | Layer 3 | 40 | Contains 21 root-level service files | **Significant Expansion** (doc noted 10, now 40 domain instance directories) |
-| `interaction/` | Layer 4 | 12 (with deep submodules) | 13 (with deep) | **Expanded** (doc noted 6, now 12 top-level subdirectories) |
-| `org-governance/` | Layer 5 | 23 (with deep submodules) | 24 (with deep) | **Significant Expansion** (doc noted 7, now 23 subdirectories) |
-| `scale-ecosystem/` | Layer 6 | 45 (with deep submodules) | 46 (with deep) | **Significant Expansion** (doc noted 6, now 45 subdirectories) |
-| `ops-maturity/` | Layer 7 | 65 (with deep submodules) | 66 (with deep) | **Significant Expansion** (doc noted 11, now 65 subdirectories) |
-| `plugins/` | Cross-layer | 5 | - | Matches documentation |
-| `sdk/` | Cross-layer | 7 | Contains 70+ scripts under CLI | Matches documentation (updated) |
-| `apps/` | Entry | 3 | - | Matches documentation |
-| `core/` | Compatibility layer | 1 (runtime/) | - | Matches documentation |
-| `testing/` | Test infrastructure | Contains helpers, fixtures, invariants, leaks, etc. | - | Matches documentation |
-| `benchmarks/` | Performance benchmarks | Empty directory | - | Matches documentation |
+> Note: The following numbers are current workspace snapshots used for structure review, not intended as long-term manually maintained precise indicators. Should be generated by scripts and synced to this document to avoid expiration as code grows.
 
-> **Five-Plane Submodule Count Notes (2026-05-17 Update)**:
-> - `five-plane-control-plane/`: approval-center, audit-export, compliance, config-center, cost-alert, iam, incident-control, mission, policy-center, replay-repair-control, risk-control, rollout-controller, tenant + deep threat-model, runbook-executor, etc. → Total 44 directories with deep
+| Top-level Directory | Architecture Layer | Current TS/TSX Files | Structure Status | Notes |
+|---------------------|-------------------|-------------------|----------|-------|
+| `src/platform/` | Layer 1-2 | 1,224 | Authoritative core area | Five planes + contracts/shared/model-gateway/prompt/compliance |
+| `src/domains/` | Layer 3 | 96 | Expanded | Contains canonical meta-model, business domain instances and `yono/` |
+| `src/interaction/` | Layer 4 | 52 | Expanded | NL, goal, dashboard, autonomy, UX |
+| `src/org-governance/` | Layer 5 | 52 | Expanded | org model, approval routing, SSO/SCIM, compliance |
+| `src/scale-ecosystem/` | Layer 6 | 148 | Expanded | marketplace, billing, SLA, multi-region, runtime-services |
+| `src/ops-maturity/` | Layer 7 | 121 | Expanded | chaos, debugger, capacity, edge, explainability |
+| `src/plugins/` | Cross-layer | 25 | Stable | Plugin ecosystem |
+| `src/sdk/` | Cross-layer | 104 | Expanded | CLI, SDK, pack/plugin, harness/admin/workbench |
+| `src/apps/` | Entry | 4 | Stable | API/console/workers |
+| `src/core/` | Legacy Compatibility | 8 | Compatibility layer | Prohibited from new business capabilities |
+| `src/testing/` | Test Infrastructure | 1 | Stable | Must not be depended on by production code |
+| `src/benchmarks/` | Performance Benchmark | 1 | Stable | Benchmark entry |
+| `ui/` | UI Monorepo | 330 | New authoritative area | apps/packages/tools/tests |
+| `tests/` | Backend Tests | 6,000+ | Expanded | unit/integration/e2e/golden/performance/invariants/leaks |
+
+> **Five-Plane Submodule Count Notes (2026-05-18 update)**:
+> - `five-plane-control-plane/`: approval-center, audit-export, compliance, config-center, cost-alert, iam, incident-control, mission, policy-center, replay-repair-control, risk-control, rollout-controller, tenant + deep threat-model, runbook-executor etc. → Total 44 directories with deep
 > - `five-plane-execution/`: budget-allocator, compensation-manager, dispatcher, distributed-lock, execution-engine, ha, hibernation, hot-upgrade, lease, oapeflir, plugin-executor, queue, queue-metrics, recovery, reconciliation-worker, resource, runtime-state-machine, side-effect-manager, startup, state-transition, tool-executor, worker-pool → 17 direct subdirectories
-> - `five-plane-interface/`: api, channel-gateway, console, console-backend, ingress, scheduler, webhook, etc. → 17 directories with deep
-> - `five-plane-orchestration/`: agent-delegation, escalation, evaluator, harness, hitl, improve-rollout, learn, oapeflir, observer, planner, replan, routing, etc. → 29 directories with deep
-> - `five-plane-state-evidence/`: artifacts, audit, checkpoints, compaction, dlq, events, incident, knowledge, memory, outbox, projections, reconciliation, side-effect-ledger, truth, etc. → 20 directories with deep
+> - `five-plane-interface/`: api, channel-gateway, console, console-backend, ingress, scheduler, webhook etc. → 17 directories with deep
+> - `five-plane-orchestration/`: agent-delegation, escalation, evaluator, harness, hitl, improve-rollout, learn, oapeflir, observer, planner, replan, routing etc. → 29 directories with deep
+> - `five-plane-state-evidence/`: artifacts, audit, checkpoints, compaction, dlq, events, incident, knowledge, memory, outbox, projections, reconciliation, side-effect-ledger, truth etc. → 20 directories with deep
 
-### 12.2 Comparison with Old System
+### 13.2 Comparison with Old System
 
 | Metric | Old System | New Platform | Change |
 |--------|------------|--------------|--------|
-| Top-level src/ directory count | 4 (core/cli/gateway/plugins) | 9 (platform/.../sdk/apps/plugins) | +5 |
-| Second-level directory count | 43 (flat under core/) | 61 (distributed across seven layers) | +18 |
-| Max files in single directory | 101 (core/storage/) | ~40 (largest split directory) | -60% |
-| Max lines in single module | 30,348 (core/runtime/) | ~5,000 (split into 12 BCs) | -83% |
+| Top-level src/ directory count | 4 (core/cli/gateway/plugins) | 12 (platform/domains/interaction/org/scale/ops/plugins/sdk/apps/core/testing/benchmarks) | +8 |
+| Frontend project | No independent monorepo | `ui/` Monorepo | New six-platform UI baseline |
+| Second-level directory count | 43 (flat under core/) | 100+ (distributed across seven layers, five planes, UI packages) | Significant increase but clearer boundaries |
+| Max files in single directory | 101 (core/storage/) | ~40 (split after largest directory) | -60% |
+| Max lines in single module | 30,348 (core/runtime/) | ~5,000 (split into 12 BC) | -83% |
 | Circular dependency risk | High (42 flat modules) | Low (layered dependencies + contract decoupling) | Significantly improved |
 
-### 12.3 Dependency Direction Rules
+### 13.3 Dependency Direction Rules
 
 ```
 Layer 7  ops-maturity/     ──→ Can depend on Layer 1-6
@@ -1405,7 +1610,19 @@ Layer 5  org-governance/   ──→ Can depend on Layer 1-4
 Layer 4  interaction/      ──→ Can depend on Layer 1-3
 Layer 3  domains/          ──→ Can depend on Layer 1-2
 Layer 1-2 platform/        ──→ Only depends on platform/contracts/ and platform/shared/
-Cross-layer plugins/sdk/apps/ ──→ Can depend on any layer (through interface injection)
+Cross-layer     plugins/sdk/apps/ ──→ Can depend on any layer (through public interface injection)
+Frontend     ui/                ──→ Only depends on public API/OpenAPI/schema/codegen/mock seam
+Testing     tests/             ──→ Can depend on tested public API; architectural guardian tests can scan source code
 ```
 
 **Forbidden**: Lower layers depending on upper layers (e.g., platform/ must not import interaction/). Same-layer modules decouple through event bus or platform/contracts/.
+
+### 13.4 Current Structure Risks and Follow-up Items
+
+| Risk | Description | Recommendation |
+| ---- | ---- | ------- |
+| Manual statistics easily expire | Directory and file count growth is fast, manually maintained tables easily become inaccurate | Use `scripts/ci/audit-codebase-inventory.mjs` or new structure inventory script to generate |
+| Dual-entry naming coexistence | `five-plane-*` is authoritative source directory, historical documents still occasionally see interface/control-plane abbreviations | New documents unified to `five-plane-*`, abbreviations only as explanation |
+| UI and backend boundary needs continuous guardianship | UI scale is already large, if directly importing backend internal implementations it will break layering | Add contract test forbidding `ui/**` import `src/**` internal paths |
+| Mission/Yono will continue expanding | Mission and Yono have entered code structure, but business/governance capabilities will continue growing | When adding new subdirectories, simultaneously update corresponding chapter in this file |
+| `src/core/` still exists | Reasonable as compatibility layer, but easily misused | CI guardian prohibits new business code from entering `src/core/` |

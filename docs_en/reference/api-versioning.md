@@ -6,7 +6,7 @@ This document defines the versioning scope for API documentation and implementat
 
 - Route prefix: Stable public APIs use `/api/v1`.
 - OpenAPI: `openapi.json` serves as the machine-readable source of truth.
-- Documentation: `docs_zh/reference/` records human-readable explanations and migration notes.
+- Documentation: `docs_en/reference/` records human-readable explanations and migration notes.
 
 ## Change Rules
 

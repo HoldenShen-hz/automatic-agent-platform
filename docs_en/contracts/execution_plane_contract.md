@@ -1,28 +1,28 @@
 # Execution Plane Contract
 
-> **v4.3 Compatibility Note**: This file is preserved as historical execution plane documentation. v4.3 P3 -> P4 execution handover uses [plan-graph-patch-contract.md](./plan-graph-patch-contract.md) as the standard; P4 state advancement uses [ADR-110](../adr/110-runtime-state-machine-authority.md) as the standard; linear execution / workflow semantics can only be used as legacy projection.
+> **v4.3 Compatibility Note**: This file is preserved as historical execution plane documentation. v4.3 P3 -> P4 execution handover is based on [plan-graph-patch-contract.md](./plan-graph-patch-contract.md); P4 state progression is based on [ADR-110](../adr/110-runtime-state-machine-authority.md); linear execution / workflow semantics can only be used as legacy projection.
 
-> **OAPEFLIR Association**: This contract defines the execution plane of OAPEFLIR Execute Hub, corresponding to ADR-016 Execute phase and ADR-079 Feedback Hub.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Related**: This contract defines the Execution Plane for OAPEFLIR Execute Hub, corresponding to ADR-016 Execute stage and ADR-079 Feedback Hub.
+> **Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the target architecture of the platform evolving from single-machine runtime to multi-execution plane, including scheduling, dispatch, lease, worker survival, takeover, recovery, and execution authority governance.
+This contract defines the platform's target architecture evolving from single-machine runtime to multi-execution plane, including scheduling, dispatch, lease, worker survival, takeover, recovery, and execution authority governance.
 
-It is a superset extension of `runtime_execution_contract.md`, answering "when execution no longer runs in a single process, how does the platform remain controllable, recoverable, and auditable".
+It is the upper-level extension of `runtime_execution_contract.md` and answers "when execution no longer runs only in a single process, how does the platform remain controllable, recoverable, and auditable".
 
-## 2. Objectives
+## 2. Goals
 
-- Formally separate `control plane` and `execution plane`.
-- Enable execution to be scheduled, recovered, and taken over across workers.
-- Ensure unified semantics for stale runs, failover, handover, and takeover.
-- Ensure only one authoritative execution authority holder exists in multi-worker environments.
+- Officially separate `control plane` and `execution plane`.
+- Allow execution to be scheduled, recovered, and taken over across workers.
+- Ensure stale run, failover, handover, and takeover have unified semantics.
+- Ensure only one authoritative execution authority holder exists in multi-worker environment.
 
-## 3. Non-Objectives
+## 3. Non-Goals
 
-- Phase 1a does not require a full distributed queue cluster.
+- Phase 1a does not require a complete distributed queue cluster.
 - This contract does not specify specific queue backend product selection.
-- This contract does not replace single-run state machine and execution semantics definition.
+- This contract does not replace single run state machine and execution semantics definition.
 
 ## 4. Architecture Layers
 
@@ -30,16 +30,16 @@ It is a superset extension of `runtime_execution_contract.md`, answering "when e
 : Responsible for task generation, workflow orchestration, approval waiting, and result writeback.
 
 `Execution Control Plane`
-: Responsible for dispatch, lease, route, capacity awareness, recovery decision.
+: Responsible for dispatch, lease, route, capacity awareness, and recovery decision.
 
 `Execution Worker Plane`
-: Responsible for actually consuming execution tickets, executing runs, reporting heartbeats and results.
+: Responsible for actually consuming execution tickets, executing runs, reporting heartbeats, and results.
 
 `Recovery And Governance Hooks`
-: Responsible for stale detection, takeover proposal, kill / freeze / retry decision linkage.
+: Responsible for stale detection, takeover proposal, and kill / freeze / retry decision coordination.
 
 `Plan / Feedback Boundary (OAPEFLIR)`
-: P3 only allows issuing `PlanGraphBundle` / `GraphPatch`; after execution plane executes, writeback `NodeAttemptReceipt` first; `FeedbackSignal` and user summary can only be derived views based on receipts (corresponding to ADR-079).
+: P3 only allows issuing `PlanGraphBundle` / `GraphPatch`; after execution plane executes, first writes back `NodeAttemptReceipt`, and `FeedbackSignal` and user summary can only be used as receipt-based derived view (corresponding to ADR-079).
 
 ## 5. Key Components
 
@@ -51,9 +51,9 @@ It is a superset extension of `runtime_execution_contract.md`, answering "when e
 - `WorkerRegistry`
 - `WorkerHeartbeat`
 - `TakeoverManager`
-- `PlanGraphBundle` (P3 -> P4 sole execution plan contract)
-- `NodeAttemptReceipt` (P4 -> other planes sole execution receipt)
-- `FeedbackSignal` (cognition/learning input derived based on `NodeAttemptReceipt`)
+- `PlanGraphBundle` (P3 -> P4 unique execution plan contract)
+- `NodeAttemptReceipt` (P4 -> other planes unique execution receipt)
+- `FeedbackSignal` (cognition/learning input derived from `NodeAttemptReceipt`)
 
 ## 6. Target Architecture
 
@@ -76,7 +76,7 @@ flowchart LR
 Supplementary notes:
 
 - `ExecutionControlPlane` is responsible for deciding "who should execute".
-- `ExecutionWorker` is responsible for executing "runs that have been authorized to execute".
+- `ExecutionWorker` is responsible for executing "runs that have already been authorized to execute".
 - `LeaseCoordinator` is responsible for ensuring only one worker holds the same execution at the same time.
 - `RecoveryCoordinator` is responsible for scanning stale executions and deciding recovery, retry, takeover, or dead letter.
 
@@ -136,7 +136,7 @@ flowchart TD
 | `task_id` | `string?` | Compatible query entry; not truth primary key |
 | `plan_graph_bundle_id` | `string` | Associated execution graph bundle |
 | `graph_version` | `number` | Corresponding graph version |
-| `stage_view_ref` | `string?` | Associated OAPEFLIR stage view; only for explanation/display, does not drive execution |
+| `stage_view_ref` | `string?` | Associated OAPEFLIR stage view; for explanation/display only, does not drive execution |
 | `priority` | `low \| normal \| high \| urgent` | Scheduling priority |
 | `queue_name` | `string` | Target queue |
 | `required_capabilities` | `string[]` | Worker required capabilities |
@@ -151,15 +151,15 @@ flowchart TD
 
 | Strategy | Meaning |
 | --- | --- |
-| `any` | No preference for worker deployment location; both local and remote acceptable |
+| `any` | No preference for worker deployment location; both local and remote are acceptable |
 | `local_only` | Only local worker execution allowed; remote workers excluded |
 | `prefer_remote` | Prefer remote worker; if no remote worker available, degrade to local |
-| `require_remote` | Remote worker required; fail-closed (no degradation) if no remote worker available |
+| `require_remote` | Must be remote worker; if no remote worker available, fail-closed (no degradation) |
 
 Rules:
 
-- When `require_remote` and remote workers are partially available, dispatch should return `remote.partial_available` and reject dispatch, rather than degrading to local.
-- Dispatch target is determined by ticket creator (orchestrator / operator), must not be modified by worker.
+- When `require_remote` and remote workers are partially available, dispatch should return `remote.partial_available` and reject dispatch, instead of degrading to local.
+- Dispatch target is determined by ticket creator (orchestrator / operator) and must not be modified by worker.
 
 ### 8.2 Isolation Level Semantics
 
@@ -169,13 +169,13 @@ Worker isolation levels are ordered: `read_only (0) < workspace_write (1) < scop
 | --- | --- |
 | `read_only` | Read-only sandbox, no write permission |
 | `workspace_write` | Standard sandbox, allows writing to workspace |
-| `scoped_external_access` | Hardened sandbox, restricted external access |
+| `scoped_external_access` | Hardened sandbox, scoped external access |
 | `restricted_exec` | Strict isolation, minimum privilege execution |
 
 Rules:
 
-- High-risk executions can declare `required_isolation_level`; worker's actual isolation level must be >= required level to accept.
-- When isolation level is not met, dispatch should record rejection reason in decision trace.
+- High-risk execution can declare `required_isolation_level`, and worker's actual isolation level must be >= required level to accept.
+- When isolation level is not satisfied, dispatch should record rejection reason in decision trace.
 
 ### 8.3 Repo Version Consistency
 
@@ -193,7 +193,7 @@ Rules:
 
 ### 8A.1 Plan Hub - Execute (Corresponding to ADR-060)
 
-When `PlanGraphBundle` enters execution plane, minimum should provide:
+When `PlanGraphBundle` enters execution plane, minimum must provide:
 
 - `planGraphBundleId`
 - `harnessRunId`
@@ -206,13 +206,13 @@ When `PlanGraphBundle` enters execution plane, minimum should provide:
 - `riskProfile`
 
 **P3 -> P4 Constraints**:
-- Execute layer can only receive `PlanGraphBundle` / `GraphPatch`, not allow bypass of raw task or linear `PlanDTO` direct execution.
-- Graph version chain must maintain stable lineage, must not be silently rewritten by new worker.
-- Node semantics that have generated `NodeAttemptReceipt` must not be in-place rewritten by new worker.
+- Execute layer can only receive `PlanGraphBundle` / `GraphPatch`, bypass of raw task or linear `PlanDTO` direct execution is not allowed.
+- Graph version chain must maintain stable lineage and must not be silently overwritten by new worker.
+- Node semantics that have already generated `NodeAttemptReceipt` must not be overwritten in-place by new worker.
 
 ### 8A.2 Execute - Feedback Hub (Corresponding to ADR-079)
 
-After execution plane completes a single attempt, truth output must first land `NodeAttemptReceipt`:
+After execution plane completes a single attempt, truth output must first persist `NodeAttemptReceipt`:
 
 - `receiptId`
 - `nodeAttemptId`
@@ -233,30 +233,30 @@ On this basis, other planes or read models can derive:
 
 **Rules**:
 
-- `NodeAttemptReceipt` is the formal truth output from Execute to other planes, must not only be side-carried via logs.
-- `FeedbackSignal` must explicitly associate `receiptId`, `planGraphBundleId` and `graphVersion`, serving as derived cognition input, not replacing receipt.
-- If an attempt produces no feedback, should explicitly record `feedback_count=0` or equivalent evidence, to avoid subsequent Learn / Improve misjudging missing chain.
-- `DualChannelStepOutput` is only allowed as user display projection, must not be the sole basis for recovery, budget settlement, or side-effect confirmation.
+- `NodeAttemptReceipt` is the formal truth output from Execute -> other planes, must not be delivered only via log side channel.
+- `FeedbackSignal` must explicitly associate `receiptId`, `planGraphBundleId`, and `graphVersion`, serving as derived cognition input, not as receipt replacement.
+- If a certain attempt did not produce feedback, should explicitly record `feedback_count=0` or equivalent evidence to avoid subsequent Learn / Improve misjudging missing链路.
+- `DualChannelStepOutput` is only allowed as user display projection and must not be the sole basis for recovery, budget settlement, or side-effect confirmation.
 
 ## 9. `LeaseRecord` Minimum Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `lease_id` | `string` | Lease ID |
-| `harness_run_id` | `string` | Belonging HarnessRun |
+| `harness_run_id` | `string` | HarnessRun it belongs to |
 | `node_run_id` | `string` | Target NodeRun |
 | `attempt_id` | `string?` | Associated NodeAttempt |
 | `worker_id` | `string` | Current holder |
 | `acquired_at` | `timestamp` | Acquisition time |
 | `expires_at` | `timestamp` | Expiration time |
-| `last_heartbeat_at` | `timestamp?` | Last renewal time |
+| `last_heartbeat_at` | `timestamp?` | Most recent renewal time |
 | `status` | `active \| expired \| released \| reclaimed \| handed_over` | Lease status (aligned with `task_lease_and_fencing_contract.md` §5) |
 
 Rules:
 
 - At any moment, only one `active` lease for the same `node_run_id`.
-- Worker must not execute side-effect steps without obtaining active lease.
-- After lease expires, original worker is deemed to have lost execution authority, even if local process is still alive.
+- Worker must not execute side effect steps without obtaining active lease.
+- After lease expires, original worker is considered to have lost execution authority even if local process is still alive.
 
 ## 10. `WorkerSnapshot` Minimum Fields
 
@@ -281,23 +281,23 @@ Rules:
 
 ### 10.1 Worker Status Semantics
 
-| Status | Meaning | Can Accept New Dispatch |
+| status | Meaning | Can Accept New Dispatch |
 | --- | --- | --- |
-| `idle` | Idle, no task executing | Yes |
-| `busy` | Executing task, not saturated | Yes (subject to max_concurrency constraint) |
-| `draining` | Under maintenance; can finish current task, not accepting new tasks | No |
+| `idle` | Idle, no task in progress | Yes |
+| `busy` | Task in progress, not saturated | Yes (constrained by max_concurrency) |
+| `draining` | In maintenance, can finish current task, not accepting new tasks | No |
 | `degraded` | Partial capability degradation (e.g., provider timeout, memory pressure) | Depends on situation |
 | `unavailable` | Currently unserviceable (e.g., network partition, dependency failure) | No |
-| `quarantined` | Isolated due to exception (e.g., consecutive failures, security incident) | No |
-| `offline` | Heartbeat timeout or主动下线 | No |
+| `quarantined` | Isolated due to anomaly (e.g., consecutive failures, security incident) | No |
+| `offline` | Heartbeat timeout or主动 offline | No |
 
 ### 10.2 Worker Scheduling Projection
 
-The scheduling layer projects 7 worker statuses into a simplified scheduling view:
+Scheduler layer projects 7 worker statuses into simplified scheduling view:
 
 | Scheduling Status | Corresponding Worker Status |
 | --- | --- |
-| `healthy` | `idle`, `busy` (and other not explicitly mapped statuses) |
+| `healthy` | `idle`, `busy` (and other unmapped statuses) |
 | `degraded` | `degraded` |
 | `draining` | `draining` |
 | `quarantined` | `quarantined` |
@@ -306,8 +306,8 @@ The scheduling layer projects 7 worker statuses into a simplified scheduling vie
 
 Rules:
 
-- Scheduling layer only consumes projected scheduling status, does not directly read worker internal status.
-- `healthy` is the only scheduling status allowed to accept new dispatch (subject to capacity and capability constraints).
+- Scheduler layer only consumes projected scheduling status, does not directly read worker internal state.
+- `healthy` is the only scheduling status allowed to accept new dispatch (constrained by capacity and capability).
 
 ## 11. `RecoveryDecision` Minimum Fields
 
@@ -327,16 +327,16 @@ Rules:
 
 ## 12. Execution Lifecycle
 
-Standard lifecycle for multi-execution plane:
+Multi-execution plane standard lifecycle:
 
-1. `HarnessRun` / `NodeRun` registered by control plane.
+1. `HarnessRun` / `NodeRun` is registered by control plane.
 2. Control plane generates `ExecutionTicket`.
 3. Ticket enters target `DispatchQueue`.
-4. Worker applies for lease and consumes ticket.
-5. Worker enters actual execution after obtaining lease.
+4. Worker claims lease and consumes ticket.
+5. Worker obtains lease and enters actual execution.
 6. Worker periodically sends heartbeat / lease renew.
-7. After attempt ends, write back `NodeAttemptReceipt` and release lease.
-8. If lease expires, worker disappears, or attempt is stuck, enter recovery scan.
+7. After attempt ends, writes back `NodeAttemptReceipt` and releases lease.
+8. If lease expires, worker disappears, or attempt is stuck, enters recovery scan.
 
 ### 12.1 Lifecycle Flowchart
 
@@ -363,17 +363,17 @@ flowchart TD
 
 - Queue selection considers at minimum: priority, capability, isolation level, queue congestion, and `graphVersion` / `required_repo_version` compatibility.
 - Workers not meeting `required_capabilities` must not claim ticket.
-- High-risk executions can require entering specific queue or specific worker class.
+- High-risk execution can require entering specific queue or specific worker class.
 - Ticket must not be consumed before `dispatch_after` time.
 
 ## 14. Lease and Heartbeat Rules
 
-- Lease defaults to short TTL, relies on heartbeat for renewal.
+- Lease defaults to short TTL, renewed by heartbeat.
 - Heartbeat loss does not directly equal execution failure, but triggers recovery candidate.
 - Stale determination should combine `lease.expires_at` with worker heartbeat.
-- Worker heartbeat and node attempt heartbeat are different layers:
+- Worker heartbeat and node attempt heartbeat are different levels:
   - Worker heartbeat indicates worker survival and capacity.
-  - Node attempt heartbeat indicates progress and survival of a specific `NodeAttempt`.
+  - Node attempt heartbeat indicates progress and survival of a certain `NodeAttempt`.
 
 ## 15. Handover / Takeover Rules
 
@@ -381,19 +381,19 @@ flowchart TD
 : Controlled transfer of execution authority within the system, e.g., original worker is about to go offline.
 
 `takeover`
-: Due to exception, manual takeover, or governance need, forcibly handing `NodeRun` / `NodeAttempt` to a new execution subject or manual process.
+: Due to anomaly, manual takeover, or governance need, forcing `NodeRun` / `NodeAttempt` to be handed to new execution subject or manual process.
 
 Rules:
 
 - Handover must record old lease, new lease, and lineage.
 - Takeover must generate `TakeoverProposal` or governance decision record.
-- Takeover must not happen silently, must be traceable to cause and trigger.
+- Takeover must not occur silently and must be traceable to cause and trigger.
 
 ## 16. Failure Mode
 
 Main failure modes:
 
-- Worker crashes but lease does not expire timely.
+- Worker crashes but lease did not expire in time.
 - Worker network isolation causes false survival.
 - Ticket consumed but result not written back.
 - Lease expired but old worker continues execution.
@@ -401,16 +401,16 @@ Main failure modes:
 Handling rules:
 
 - Authoritative result is based on control plane + storage, not worker local memory.
-- When old worker continues writeback after lease expires, should be identified as expired write and rejected or degraded.
-- Recovery scan should at minimum identify three types of exceptions: `running but stale`, `ticket lost`, `duplicate claimant`, and be able to trace back to corresponding `NodeAttemptReceipt` gaps.
+- When old worker continues writeback after lease expiration, should be identified as expired write and rejected or degraded.
+- Recovery scan can identify at minimum three types of anomalies: `running but stale`, `ticket lost`, `duplicate claimant`, and can trace back to corresponding `NodeAttemptReceipt` gaps.
 
 ## 17. Relationship with Storage and Governance
 
 - `runtime_repository_and_migration_contract.md` should supplement repository for lease / queue / worker registry in the future.
-- `governance_control_plane_contract.md` constrains governance paths for freeze / kill / takeover.
-- `storage_schema_contract.md` continues to be responsible for authoritative baseline of `HarnessRun / NodeRun / NodeAttempt / NodeAttemptReceipt`; execution plane only adds scheduling layer on top.
+- `governance_control_plane_contract.md` constrains freeze / kill / takeover governance paths.
+- `storage_schema_contract.md` continues to be responsible for `HarnessRun / NodeRun / NodeAttempt / NodeAttemptReceipt` authoritative baseline; execution plane only adds scheduling layer on top.
 
-## 18. Implementation Sequence
+## 18. Implementation Order
 
 - Phase 1b: Minimum queue + stale detection + worker registry.
 - Phase 2a: Lease / failover / handover.
@@ -419,17 +419,17 @@ Handling rules:
 
 ## 19. Closure Conclusion
 
-The core of execution plane is not "moving running to multi-process", but formally modeling execution authority, recovery authority, and scheduling authority.
+The core of Execution plane is not "moving execution to multiple processes", but officially modeling execution authority, recovery authority, and scheduling authority.
 
-The current platform already has single-machine runtime baseline; after supplementing this contract, subsequent implementation should use "control plane and worker plane separation" as the sole evolution direction.
+The platform currently has single-machine runtime baseline; after completing this contract, subsequent implementation should use "control plane and worker plane separation" as the only evolution direction.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-14: This document originally wrote `PlanDTO + steps[] + dag` and `DualChannelStepOutput / FeedbackSignal` directly as execution plane main input/output. The root cause is that the old execution plane document inherited ADR-060/079 linear plan and feedback bridge draft, and the object model was not rewritten as `PlanGraphBundle` / `NodeAttemptReceipt` became canonical truth. Fix: The main text now converges P3 -> P4 input to `PlanGraphBundle`, P4 truth output to `NodeAttemptReceipt`, other objects are only allowed as derived views.
-- T-75: This document originally used `nodeAttemptReceiptId` in the Execute -> Feedback boundary. The root cause is that the execution plane contract was not synchronized after v4.3 rename of API-level field shapes. Fix: The main text now uniformly uses `receiptId` as the receipt primary key.
-- T-20: Original `WorkerSnapshot.isolation_level` referenced the deprecated enum `standard/hardened/strict`, not aligned with architecture §25.8 which defines `read_only/workspace_write/scoped_external_access/restricted_exec`. Fix: §10 `WorkerSnapshot` fields have been updated to the canonical enum; `ExecutionTicket.required_isolation_level` field (§8) remains consistent.
+- T-14: This document originally wrote `PlanDTO + steps[] + dag` and `DualChannelStepOutput / FeedbackSignal` directly as execution plane primary input/output. Root cause: old execution plane document followed ADR-060/079 linear plan and feedback bridging draft, and did not rewrite object model along with `PlanGraphBundle` / `NodeAttemptReceipt` becoming canonical truth. Fix: The body now converges P3 -> P4 input to `PlanGraphBundle`, P4 truth output converges to `NodeAttemptReceipt`, other objects are only allowed as derived view.
+- T-75: This document originally continued using `nodeAttemptReceiptId` in Execute -> Feedback boundary. Root cause: execution plane contract did not synchronize API-level field shape after v4.3 rename. Fix: The body now unifies using `receiptId` as receipt primary key.
+- T-20: Original `WorkerSnapshot.isolation_level` referenced deprecated enum `standard/hardened/strict`, not aligned with architecture §25.8 defined `read_only/workspace_write/scoped_external_access/restricted_exec`. Fix: §10 `WorkerSnapshot` field has been updated to canonical enum; `ExecutionTicket.required_isolation_level` field (§8) remains consistent.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

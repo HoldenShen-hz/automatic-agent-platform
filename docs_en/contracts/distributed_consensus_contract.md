@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Defines canonical objects, voting constraints, and failure semantics for cross-node consistent decision-making, covering leader election, write barrier, quorum, and read-only degradation.
+Defines canonical objects, voting constraints, and failure semantics for cross-node consensus decision-making, covering leader election, write gatekeeper, quorum, and read-only degradation.
 
 ## 2. Core Objects
 
@@ -29,6 +29,6 @@ interface ConsensusVote {
 
 ## 3. Constraints
 
-- All authoritative writes must be initiated by the current `ConsensusEpoch.leaderNodeId`.
-- When quorum is not satisfied, the system may only enter read-only mode or pause; dual-master writes are prohibited.
-- `term` must monotonically increase; write requests from old terms must fail-close.
+- Any authoritative write must be initiated by the current `ConsensusEpoch.leaderNodeId`.
+- When quorum is not satisfied, may only enter read-only or pause, must not have dual-master writes.
+- `term` monotonically increases; write requests from old term must fail-close.

@@ -1,6 +1,6 @@
 # Plugin SPI Contract
 
-> **OAPEFLIR Related**: This contract defines the OAPEFLIR Domain Registry Plugin SPI interface system, corresponding to ADR-071.
+> **OAPEFLIR Related**: This contract defines the Plugin SPI interface system for OAPEFLIR Domain Registry, corresponding to ADR-071.
 > **Updated**: 2026-04-17
 
 ## 1. Scope
@@ -45,13 +45,13 @@ interface RetrievalRequest {
   namespace?: string;
   domainId?: string | null;
   limit?: number;
-  retrievalLevel?: 'quick' | 'standard' | 'deep';  // Corresponds to Knowledge Plane 3-level query
+  retrievalLevel?: 'quick' | 'standard' | 'deep';  // Corresponds to Knowledge Plane level 3 queries
 }
 ```
 
 ### 2.2 DomainValidatorPlugin
 
-Validates whether execution input/output conforms to domain specifications.
+Validates whether execution input/output complies with domain specifications.
 
 ```typescript
 interface DomainValidatorPlugin {
@@ -196,7 +196,7 @@ class PluginSpiRegistry {
   // Invoke single plugin
   async invoke(pluginId: string, method: string, args: unknown[]): Promise<unknown>;
 
-  // Batch execute (fan-out)
+  // Batch invoke (fan-out)
   async invokeAll(type: PluginType, method: string, args: unknown[]): Promise<unknown[]>;
 
   // Suspend plugin
@@ -234,21 +234,21 @@ const PluginDescriptorSchema = z.object({
 });
 ```
 
-## 6. Builtin Plugin Inventory
+## 6. Builtin Plugin List
 
 | pluginId | Type | Domain | Status | Description |
 |----------|------|--------|------|------|
-| `plugin.core.basic-evaluator` | validator | — | Pending | Basic evaluation (correctness/completeness/efficiency/safety) |
-| `plugin.core.basic-planner` | planner | — | Pending | Basic planning strategy retrieval |
-| `plugin.builtin.coding-retriever` | retriever | coding | Pending | Codebase semantic retrieval |
-| `plugin.builtin.coding-presenter` | presenter | coding | Pending | Code diff formatting |
+| `plugin.core.basic-evaluator` | validator | — | To implement | Basic scoring (correctness/completeness/efficiency/safety) |
+| `plugin.core.basic-planner` | planner | — | To implement | Basic planning strategy retrieval |
+| `plugin.builtin.coding-retriever` | retriever | coding | To implement | Codebase semantic retrieval |
+| `plugin.builtin.coding-presenter` | presenter | coding | To implement | Code diff formatting |
 | `plugin.builtin.github-adapter` | adapter | — | Implemented | GitHub REST API integration |
 
 ## 7. OAPEFLIR Stage Integration
 
 | OAPEFLIR Stage | Plugin Role |
 |--------------|-----------|
-| Observe | DomainRetrieverPlugin retrieves contextual knowledge |
+| Observe | DomainRetrieverPlugin retrieves context knowledge |
 | Assess | DomainValidatorPlugin validates pre-execution conditions |
 | Plan | DomainPlannerPlugin generates domain-specific `PlanGraphBundle` |
 | Execute | DomainValidatorPlugin validates execution output based on `NodeAttemptReceipt` |
@@ -259,19 +259,19 @@ const PluginDescriptorSchema = z.object({
 
 ## 8. Constraints
 
-- Plugin lifecycle hook names are unified as `onLoad / onActivate / onDeactivate / onUnload`.
-- Plugins must execute in independent processes (`plugin-runtime-host.ts`).
-- Communication between Plugin and host is through the serialization protocol of `plugin-runtime-protocol.ts`.
-- Do not trust plugin returned data: all return values must be validated by schema.
-- Plugin timeout: `timeoutMs` defaults to 30s, three-level timeout handling (warn → kill → dead-letter).
-- Hook failure must not escalate privileges; default degrade to disable that SPI instance or block loading.
-- SPI may only consume capabilities and settings declared in the manifest and must not expand privileges at runtime.
+- Plugin lifecycle hook naming is unified as `onLoad / onActivate / onDeactivate / onUnload`.
+- Plugin must execute in independent process (`plugin-runtime-host.ts`).
+- Communication between Plugin and host uses serialization protocol in `plugin-runtime-protocol.ts`.
+- Do not trust Plugin returned data: all return values must undergo schema validation.
+- Plugin timeout: `timeoutMs` defaults to 30s, with three-level timeout handling (warn -> kill -> dead-letter).
+- Hook failure must not escalate privileges; defaults to disabling that SPI instance or blocking loading.
+- SPI can only consume capabilities and settings declared in manifest, must not secretly expand permissions at runtime.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-38: This document originally let `DomainPlannerPlugin.plan()` return a generalized `Plan`, and the OAPEFLIR integration table continued to use `Rollout`. Root cause: Plugin SPI still followed the early "linear plan + rollout" interface draft and did not sync with v4.3's `PlanGraphBundle` handoff and `Release` stage naming. Fix: The body now converges planner output to `PlanGraphBundle`, validation context and output validation align to `harnessRunId / nodeRunId / attemptId / NodeAttemptReceipt`, and the stage table is changed back to `Release`.
+- T-38: This document originally let `DomainPlannerPlugin.plan()` return generalized `Plan`, and continued using `Rollout` in the OAPEFLIR integration table. Root cause: Plugin SPI still followed early "linear plan + rollout" interface draft and did not synchronously upgrade along with v4.3's `PlanGraphBundle` handoff and `Release` stage naming. Fix: The body now converges planner output to `PlanGraphBundle`, validation context and output validation aligned to `harnessRunId / nodeRunId / attemptId / NodeAttemptReceipt`, and the stage table is reverted to `Release`.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

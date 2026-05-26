@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/healthcare/index.ts` |
 | domain_status | spec_ready |
 | risk_level | critical |
-| accountable_role | Licensed Physician / Healthcare Compliance Lead |
+| accountable_role | Licensed Physician / Medical Compliance Officer |
 
 ## Hard Constraints
 
-- Agent provides medical information only, not medical advice.
-- All clinical recommendations must be reviewed by a licensed physician.
+- Agent only provides medical information, does not replace medical advice.
+- All diagnostic and treatment recommendations must be reviewed by a licensed physician.
 - PHI handling must comply with minimization, isolation, and audit requirements.
 
-## Acceptance Criteria
+## Acceptance Entry Criteria
 
-- Physician review, PHI isolation, responsibility boundaries, and patient safety assessment evidence must be provided before GA.
+- Prior to GA, evidence of physician review, PHI isolation, liability boundaries, and patient safety assessment must be provided.

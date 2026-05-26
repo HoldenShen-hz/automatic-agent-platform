@@ -14,6 +14,6 @@
 - Factual statements must be traceable to evidence.
 - Outbound reports must pass quality gates.
 
-## Acceptance Criteria
+## Acceptance Entry Criteria
 
-- Source verification, citation check, report review, and quality assessment evidence must be provided before GA.
+- Prior to GA, evidence of source verification, citation checking, report review, and quality assessment must be provided.
