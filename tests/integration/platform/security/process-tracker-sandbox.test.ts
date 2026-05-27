@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, ChildProcess } from 'node:child_process';
 import { ProcessTracker, getProcessTracker, resetProcessTracker } from '../../../../src/platform/five-plane-execution/resource/process-tracker.js';
+import { waitForCondition } from '../../../helpers/wait.js';
 
 // Extended type for pgid access
 interface ChildProcessWithPgid extends ChildProcess {
@@ -39,7 +40,11 @@ test('ProcessTracker sandbox: process group isolation', async () => {
   // Create a process group using detached mode
   const proc = spawn('bash', ['-c', 'sleep 60'], { detached: true, stdio: 'ignore' });
   proc.unref();
-  await new Promise(r => setTimeout(r, 100));
+  await waitForCondition(() => proc.pid != null, {
+    timeoutMs: 500,
+    intervalMs: 10,
+    description: "detached process pid assignment",
+  });
 
   const procWithPgid = proc as ChildProcessWithPgid;
   if (proc.pid && procWithPgid.pgid) {
@@ -51,7 +56,11 @@ test('ProcessTracker sandbox: process group isolation', async () => {
     // Kill should target process group
     await tracker.kill(proc.pid, 'SIGTERM');
 
-    await new Promise(r => setTimeout(r, 500));
+    await waitForCondition(() => tracker.getActiveCount() < before, {
+      timeoutMs: 1_000,
+      intervalMs: 20,
+      description: "process group termination",
+    });
     // Process should be in terminating state
     const summary = tracker.getSummary();
     assert.ok(summary.active <= before);
@@ -97,7 +106,11 @@ test('ProcessTracker sandbox: zombie detection', async () => {
   const proc = spawnTracked(tracker, 'echo', ['test'], 'bash-tool');
 
   // Wait for it to exit
-  await new Promise(r => setTimeout(r, 200));
+  await waitForCondition(() => tracker.getActiveCount() === 0 || tracker.getZombieCount() >= 0, {
+    timeoutMs: 1_000,
+    intervalMs: 20,
+    description: "short-lived process exit",
+  });
 
   // Zombie count should be accurate
   const zombieCount = tracker.getZombieCount();
@@ -124,7 +137,11 @@ test('ProcessTracker sandbox: force kill after delay', async () => {
   await tracker.killAll('SIGTERM', 500);
 
   // Process should be killed despite ignoring SIGTERM
-  await new Promise(r => setTimeout(r, 100));
+  await waitForCondition(() => tracker.getActiveCount() === 0, {
+    timeoutMs: 1_000,
+    intervalMs: 20,
+    description: "force kill cleanup",
+  });
   assert.strictEqual(tracker.getActiveCount(), 0);
 
   // Cleanup

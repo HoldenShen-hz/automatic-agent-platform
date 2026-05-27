@@ -56,6 +56,22 @@ test("loadApiServerEnv parses auth tenant scope and gateway config", () => {
   assert.equal(config.enableWebSocket, false);
 });
 
+test("loadApiServerEnv accepts legacy AA_API_KEYS when AA_API_KEYS_JSON is absent", () => {
+  const config = loadApiServerEnv({
+    AA_API_KEYS: "key-a, key-b",
+    AA_API_JWT_SECRET: "StrongSecret1234567890!StrongSecret",
+  });
+
+  assert.deepEqual(
+    config.apiKeys.map((record) => record.apiKey),
+    ["key-a", "key-b"],
+  );
+  assert.deepEqual(
+    config.apiKeys.map((record) => record.actorId),
+    ["legacy-api-key-1", "legacy-api-key-2"],
+  );
+});
+
 test("loadApiServerEnv rejects jwt secret of 31 chars (below min length)", () => {
   assert.throws(
     () =>
@@ -124,6 +140,19 @@ test("loadApiServerEnv rejects invalid websocket toggle values", () => {
       }),
     /api\.invalid_enable_websocket/,
   );
+});
+
+test("loadApiServerEnv prefers AA_API_KEYS_JSON over AA_API_KEYS", () => {
+  const config = loadApiServerEnv({
+    AA_API_KEYS: "legacy-key",
+    AA_API_KEYS_JSON: JSON.stringify([
+      { apiKey: "json-key", actorId: "json-actor", roles: ["viewer"] },
+    ]),
+    AA_API_JWT_SECRET: "StrongSecret1234567890!StrongSecret",
+  });
+
+  assert.equal(config.apiKeys.length, 1);
+  assert.equal(config.apiKeys[0]?.apiKey, "json-key");
 });
 
 test("loadApiServerEnv parses metrics and otel settings", () => {

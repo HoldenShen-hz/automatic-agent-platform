@@ -22,6 +22,7 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-s
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+import { waitForCondition } from "../../../../helpers/wait.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 interface TrackedEvent {
@@ -285,13 +286,21 @@ test("TakeoverEscalationManager integration: auto-close handler is invoked at ma
 
     manager.startSessionTracking("session-autoclose", "task-escalation-autoclose");
 
-    // Wait for escalation to progress to auto_close
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await waitForCondition(() => autoCloseCalled || emitter.events.some((event) => event.event === "takeover:escalated"), {
+      timeoutMs: 1_000,
+      intervalMs: 25,
+      description: "takeover escalation auto-close",
+    });
 
     // The auto-close callback should have been called at some point during escalation
     // This is tested indirectly by checking escalation events were emitted
     const escalatedEvents = emitter.events.filter((e) => e.event === "takeover:escalated");
     assert.ok(escalatedEvents.length >= 1, "Should have emitted at least one escalation event");
+    if (autoCloseCalled) {
+      assert.equal(autoCloseSessionId, "session-autoclose");
+      assert.equal(autoCloseTaskId, "task-escalation-autoclose");
+    }
+    manager.stopSessionTracking("session-autoclose");
 
     db.close();
   } finally {

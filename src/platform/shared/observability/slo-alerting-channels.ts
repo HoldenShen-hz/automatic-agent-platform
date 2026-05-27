@@ -357,7 +357,7 @@ async function deliverWithRetry(
 function delay(ms: number): Promise<void> {
   if (ms <= 0) {
     return new Promise((resolve) => {
-      queueMicrotask(resolve);
+      setImmediate(resolve);
     });
   }
   return new Promise((resolve) => {

@@ -147,7 +147,7 @@ export class RegionHealthCheckService {
   /**
    * Perform health check on a region
    */
-  public async checkRegion(regionId: string): Promise<RegionHealthCheckResult> {
+  public async checkRegion(regionId: string, signal?: AbortSignal): Promise<RegionHealthCheckResult> {
     const config = this.configs.get(regionId);
     const circuitBreaker = this.circuitBreakers.get(regionId);
 
@@ -178,8 +178,8 @@ export class RegionHealthCheckService {
 
     try {
       const result = await (circuitBreaker
-        ? circuitBreaker.execute(() => this.performHealthCheck(config))
-        : this.performHealthCheck(config));
+        ? circuitBreaker.execute(() => this.performHealthCheck(config, signal))
+        : this.performHealthCheck(config, signal));
       const latencyMs = result.metrics.find((metric) => metric.metricName === "latency")?.value
         ?? (Date.now() - startTime);
 
@@ -379,6 +379,7 @@ export class RegionHealthCheckService {
    */
   private async performHealthCheck(
     config: RegionHealthCheckConfig,
+    signal?: AbortSignal,
   ): Promise<{ metrics: HealthCheckMetric[] }> {
     const snapshot = config.metricSnapshot ?? {};
 
@@ -387,7 +388,7 @@ export class RegionHealthCheckService {
     if (snapshot.latencyMs != null) {
       measuredLatencyMs = snapshot.latencyMs;
     } else {
-      measuredLatencyMs = await this.measureNetworkLatency(config.endpoint, config.timeoutMs);
+      measuredLatencyMs = await this.measureNetworkLatency(config.endpoint, config.timeoutMs, signal);
     }
 
     const metrics: HealthCheckMetric[] = [
@@ -423,9 +424,10 @@ export class RegionHealthCheckService {
   /**
    * Measure actual network latency to a region endpoint using HTTP HEAD request
    */
-  private async measureNetworkLatency(endpoint: string, timeoutMs: number): Promise<number> {
+  private async measureNetworkLatency(endpoint: string, timeoutMs: number, signal?: AbortSignal): Promise<number> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const combinedSignal = signal == null ? controller.signal : AbortSignal.any([controller.signal, signal]);
 
     const startTime = Date.now();
     try {
@@ -433,7 +435,7 @@ export class RegionHealthCheckService {
       const url = resolveRegionHealthEndpoint(endpoint);
       await fetch(`${url}/health`, {
         method: "HEAD",
-        signal: controller.signal,
+        signal: combinedSignal,
         headers: {
           "User-Agent": "RegionHealthCheck/1.0",
         },

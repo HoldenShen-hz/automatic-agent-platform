@@ -30,6 +30,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: deploy-${{ inputs.environment }}-${{ inputs.rollout_strategy }}
+  cancel-in-progress: false
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -184,19 +188,19 @@ jobs:
             --namespace "${{ steps.namespace.outputs.namespace }}"
             --create-namespace
             -f "deploy/helm/automatic-agent/values-${DEPLOY_ENV}.yaml"
-            --set "image.tag=${IMAGE_TAG}"
-            --set "image.registry=${IMAGE_REGISTRY}"
-            --set "image.repository=${IMAGE_REPOSITORY}"
-            --set "env.AA_BUILD_COMMIT=${{ github.sha }}"
-            --set "env.AA_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            --set "rolloutStrategy=${{ steps.rollout.outputs.rollout_strategy }}"
-            --set "replicaCount=${{ steps.rollout.outputs.replica_count }}"
+            --set-string "image.tag=${IMAGE_TAG}"
+            --set-string "image.registry=${IMAGE_REGISTRY}"
+            --set-string "image.repository=${IMAGE_REPOSITORY}"
+            --set-string "env.AA_BUILD_COMMIT=${{ github.sha }}"
+            --set-string "env.AA_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            --set-string "rolloutStrategy=${{ steps.rollout.outputs.rollout_strategy }}"
+            --set-string "replicaCount=${{ steps.rollout.outputs.replica_count }}"
             --wait
             --timeout 10m
             --debug
           )
           if [ -n "${{ steps.rollout.outputs.fullname_override }}" ]; then
-            HELM_ARGS+=(--set "fullnameOverride=${{ steps.rollout.outputs.fullname_override }}")
+            HELM_ARGS+=(--set-string "fullnameOverride=${{ steps.rollout.outputs.fullname_override }}")
           fi
           helm "${HELM_ARGS[@]}"
 
@@ -218,10 +222,10 @@ jobs:
             helm upgrade --install automatic-agent deploy/helm/automatic-agent \
               --namespace "$NAMESPACE" \
               -f "deploy/helm/automatic-agent/values-${DEPLOY_ENV}.yaml" \
-              --set "image.tag=${IMAGE_TAG}" \
-              --set "image.registry=${IMAGE_REGISTRY}" \
-              --set "image.repository=${IMAGE_REPOSITORY}" \
-              --set "rolloutStrategy=rolling" \
+              --set-string "image.tag=${IMAGE_TAG}" \
+              --set-string "image.registry=${IMAGE_REGISTRY}" \
+              --set-string "image.repository=${IMAGE_REPOSITORY}" \
+              --set-string "rolloutStrategy=rolling" \
               --wait --timeout 10m
             helm uninstall automatic-agent-canary --namespace "$NAMESPACE" || true
           elif [ "$STRATEGY" = "blue_green" ]; then
@@ -246,6 +250,24 @@ jobs:
             sleep 10
           done
           echo "Endpoint health check failed"
+          exit 1
+
+      - name: Post-promotion health gate
+        run: |
+          kubectl rollout status deployment/automatic-agent \
+            -n "${{ steps.namespace.outputs.namespace }}" \
+            --timeout=300s
+          for i in $(seq 1 30); do
+            ENDPOINT_COUNT=$(kubectl get endpoints "automatic-agent" \
+              -n "${{ steps.namespace.outputs.namespace }}" \
+              -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | awk '{print NF}')
+            if [ "${ENDPOINT_COUNT:-0}" -gt 0 ]; then
+              echo "Post-promotion endpoint health gate passed"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Post-promotion endpoint health gate failed"
           exit 1
 
       - name: Record deployment info

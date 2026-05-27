@@ -400,7 +400,7 @@ class SimulatedReleasePipelineCommandRunner {
   }> {
     const runId = request.step === "publish_workflow" ? "700000001" : null;
     const stdout = request.step === "publish_workflow"
-      ? `Created workflow_dispatch event\nhttps://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}`
+      ? `Created workflow_dispatch event\n${buildGithubActionRunUrl(runId)}`
       : `simulated:${request.step}`;
     return {
       step: request.step,
@@ -433,9 +433,13 @@ class SimulatedDeploymentCommandRunner {
       args: [...request.args],
       executed: true,
       exitCode: 0,
-      stdout: `Created workflow_dispatch event\nhttps://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}`,
+      stdout: `Created workflow_dispatch event\n${buildGithubActionRunUrl(runId)}`,
       stderr: "",
       durationMs: 1,
     };
   }
+}
+
+function buildGithubActionRunUrl(runId: string | null): string {
+  return `https://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}`;
 }

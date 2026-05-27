@@ -15,6 +15,7 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+import { waitForCondition } from "../../../../helpers/wait.js";
 
 async function flushMacrotask(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
@@ -432,7 +433,11 @@ test("integration: multiple consumers can subscribe and receive events independe
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await waitForCondition(() => consumerACount === 5 && consumerBCount === 5, {
+      timeoutMs: 1_000,
+      intervalMs: 20,
+      description: "durable event bus multi-consumer delivery",
+    });
 
     assert.equal(consumerACount, 5, "Consumer A should receive all 5 events");
     assert.equal(consumerBCount, 5, "Consumer B should receive all 5 events");

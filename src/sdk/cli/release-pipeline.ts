@@ -45,6 +45,12 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
 import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
 import { loadReleasePipelineCliEnv } from "../../platform/five-plane-control-plane/config-center/release-pipeline-env.js";
 
+const GITHUB_ACTION_RUN_URL_PREFIX = "https://github.com/automatic-agent/automatic-agent-platform/actions/runs/";
+
+function buildGithubActionRunUrl(runId: string | null): string {
+  return `${GITHUB_ACTION_RUN_URL_PREFIX}${runId}`;
+}
+
 /**
  * Retrieves a required environment variable value mapped from CLI config.
  *
@@ -77,7 +83,7 @@ class SimulatedReleasePipelineCommandRunner {
   public async run(request: ReleasePipelineCommandRequest): Promise<ReleasePipelineCommandResult> {
     const runId = request.step === "publish_workflow" ? "700000001" : null;
     const stdout = request.step === "publish_workflow"
-      ? `Created workflow_dispatch event\nhttps://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}`
+      ? `Created workflow_dispatch event\n${buildGithubActionRunUrl(runId)}`
       : `simulated:${request.step}`;
     return {
       step: request.step,
@@ -107,7 +113,7 @@ class SimulatedDeploymentCommandRunner {
       args: [...request.args],
       executed: true,
       exitCode: 0,
-      stdout: `Created workflow_dispatch event\nhttps://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}`,
+      stdout: `Created workflow_dispatch event\n${buildGithubActionRunUrl(runId)}`,
       stderr: "",
       durationMs: 1,
     };

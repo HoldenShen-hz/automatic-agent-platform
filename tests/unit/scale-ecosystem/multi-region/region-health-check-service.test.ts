@@ -58,6 +58,47 @@ test("RegionHealthCheckService performs health check", async () => {
   assert.ok(result.latencyMs >= 0);
 });
 
+test("RegionHealthCheckService honors caller abort signal during network health checks", async () => {
+  const service = new RegionHealthCheckService();
+  const originalFetch = globalThis.fetch;
+  const controller = new AbortController();
+
+  service.registerRegion({
+    regionId: "abort-region",
+    endpoint: "https://abort-region.example.com",
+    checkIntervalMs: 30_000,
+    timeoutMs: 5_000,
+    retryCount: 1,
+    thresholds: {
+      maxLatencyMs: 200,
+      maxErrorRate: 0.05,
+      maxCpuUsage: 0.8,
+      maxMemoryUsage: 0.9,
+    },
+  });
+
+  globalThis.fetch = async (_url, init) => {
+    await new Promise<void>((resolve, reject) => {
+      const signal = init?.signal as AbortSignal | undefined;
+      if (signal?.aborted) {
+        reject(new Error("aborted"));
+        return;
+      }
+      signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    });
+    return new Response(null, { status: 204 });
+  };
+
+  try {
+    controller.abort();
+    const result = await service.checkRegion("abort-region", controller.signal);
+    assert.equal(result.status, "unhealthy");
+    assert.match(result.errorMessage ?? "", /aborted/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("RegionHealthCheckService returns unknown for unregistered region", async () => {
   const service = new RegionHealthCheckService();
 

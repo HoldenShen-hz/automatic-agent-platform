@@ -163,6 +163,12 @@ export const ApiKeysJsonSchema = z.string().refine((value) => {
 }, { message: "must be a JSON array" }).optional();
 
 /**
+ * Schema for AA_API_KEYS — legacy comma-separated API keys list.
+ * Optional: when used, AA_API_JWT_SECRET must also be configured.
+ */
+export const ApiKeysSchema = NonEmptyString.optional();
+
+/**
  * Schema for AA_WEBHOOK_SECRET — secret for webhook signature verification.
  * Optional: used when webhook endpoints are configured.
  */
@@ -350,6 +356,7 @@ export const StartupEnvSchema = z.object({
   AA_LOG_DATADOG_API_KEY: LogDatadogApiKeySchema,
   AA_LOG_DATADOG_SITE: LogDatadogSiteSchema,
   AA_LOG_DATADOG_SERVICE: LogDatadogServiceSchema,
+  AA_API_KEYS: ApiKeysSchema,
   AA_API_KEYS_JSON: ApiKeysJsonSchema,
   AA_WEBHOOK_SECRET: WebhookSecretSchema,
   AA_API_ENABLE_WEBSOCKET: ApiEnableWebSocketSchema,
@@ -404,6 +411,13 @@ export const StartupEnvSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["AA_STORAGE_POSTGRES_DSN"],
       message: "must match AA_PG_DSN when both variables are configured",
+    });
+  }
+  if ((value.AA_API_KEYS_JSON != null || value.AA_API_KEYS != null) && value.AA_API_JWT_SECRET == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["AA_API_JWT_SECRET"],
+      message: "must be set when API key authentication is configured",
     });
   }
   const pluginEgressEnabled =
@@ -462,6 +476,7 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_LOG_DATADOG_API_KEY: env["AA_LOG_DATADOG_API_KEY"] ?? undefined,
     AA_LOG_DATADOG_SITE: env["AA_LOG_DATADOG_SITE"] ?? undefined,
     AA_LOG_DATADOG_SERVICE: env["AA_LOG_DATADOG_SERVICE"] ?? undefined,
+    AA_API_KEYS: env["AA_API_KEYS"] ?? undefined,
     AA_API_KEYS_JSON: env["AA_API_KEYS_JSON"] ?? undefined,
     AA_WEBHOOK_SECRET: env["AA_WEBHOOK_SECRET"] ?? undefined,
     AA_API_ENABLE_WEBSOCKET: env["AA_API_ENABLE_WEBSOCKET"] ?? undefined,

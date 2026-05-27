@@ -14,8 +14,8 @@
  *   - AA_LOG_FILE_MAX_BYTES: Max size of each log file
  *   - AA_LOG_FILE_MAX_FILES: Number of rotated log files to retain
  *   - AA_WEBHOOK_SECRET: Secret for webhook signature verification
- *   - AA_JWT_SECRET: Secret for JWT authentication
- *   - AA_API_KEYS: Comma-separated list of valid API keys
+ *   - AA_API_JWT_SECRET: Secret for JWT authentication
+ *   - AA_API_KEYS / AA_API_KEYS_JSON: API key auth configuration
  *
  * Usage: npm run api-server
  *

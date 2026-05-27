@@ -15,6 +15,7 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+import { waitForCondition } from "../../../../helpers/wait.js";
 
 test("integration: durable event bus publishes events and creates ack records for tier-1 consumers", () => {
   const ctx = createIntegrationContext("aa-event-bus-publish-");
@@ -73,7 +74,11 @@ test("integration: durable event bus delivers events to subscribers and handles 
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitForCondition(() => deliveredEvents.includes(event.id), {
+      timeoutMs: 1_000,
+      intervalMs: 20,
+      description: "tier-1 event delivery",
+    });
 
     assert.ok(deliveredEvents.includes(event.id), "Subscriber should receive and ack the tier-1 event");
     assert.equal(bus.pendingForConsumer("inspect_projection").length, 0);
@@ -158,8 +163,11 @@ test("integration: durable event bus dispatches volatile tier-2 events to handle
       payload: { ticketId: "ticket-volatile-1", queueId: "default" },
     });
 
-    // Allow async delivery to complete
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitForCondition(() => handlerCalled, {
+      timeoutMs: 1_000,
+      intervalMs: 20,
+      description: "tier-2 event delivery",
+    });
 
     assert.ok(handlerCalled, "Tier-2 events should be dispatched to handlers immediately");
     bus.dispose();
@@ -226,7 +234,11 @@ test("integration: durable event bus can unsubscribe and stop receiving events",
       payload: { ticketId: "ticket-unsub-1", queueId: "default" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitForCondition(() => deliveredCount > 0, {
+      timeoutMs: 1_000,
+      intervalMs: 20,
+      description: "pre-unsubscribe delivery",
+    });
     const countBeforeUnsub = deliveredCount;
 
     bus.unsubscribe("unsub_consumer");
@@ -239,7 +251,11 @@ test("integration: durable event bus can unsubscribe and stop receiving events",
       payload: { ticketId: "ticket-unsub-2", queueId: "default" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitForCondition(() => bus.pendingForConsumer("unsub_consumer").length === 0, {
+      timeoutMs: 1_000,
+      intervalMs: 20,
+      description: "post-unsubscribe quiescence",
+    });
 
     assert.equal(deliveredCount, countBeforeUnsub, "Unsubscribed consumer should not receive new events");
     bus.dispose();

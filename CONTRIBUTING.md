@@ -6,7 +6,7 @@ Thank you for your interest in contributing to the Automatic Agent Platform. Thi
 
 ### Prerequisites
 
-- Node.js 20+ (use Active LTS)
+- Node.js 22.x (match `package.json#engines`)
 - npm 10+
 - SQLite (for local development)
 
@@ -58,7 +58,7 @@ Key environment variables:
 2. **Make your changes** following the code standards:
    - Run `npm run typecheck` to verify type correctness
    - Run `npm test` to ensure tests pass
-   - Run `npm run lint` to check code style
+   - Run `npm run lint` to verify static rules
 
 3. **Commit** using short imperative subjects:
    ```bash
@@ -114,7 +114,7 @@ Examples:
 ```bash
 npm run build          # Compile TypeScript
 npm run typecheck      # Type-check without emitting
-npm run lint           # Run ESLint
+npm run lint           # Run static rule checks
 npm run test           # Run all tests
 npm run doctor         # Health diagnostics
 npm run inspect        # Entity inspection (set AA_INSPECT_KIND, AA_TASK_ID)

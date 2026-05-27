@@ -25,6 +25,7 @@ import { TransitionService } from "../../../../src/platform/five-plane-execution
 import { createRuntimeLifecycleRepository } from "../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { SqliteLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { waitForCondition } from "../../../helpers/wait.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 let syntheticConcurrentExecutionCounter = 0;
@@ -638,11 +639,19 @@ test("[CONCURRENCY-3] lock acquisition with TTL timeout works correctly", async 
     const result2 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-2", ttlMs: 30000 });
     assert.equal(result2.acquired, false, "Second acquire should fail - lock not expired");
 
-    // Wait for TTL to expire
-    await new Promise((resolve) => setTimeout(resolve, 1600));
+    let result3 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-2", ttlMs: 30000 });
+    await waitForCondition(() => {
+      if (result3.acquired) {
+        return true;
+      }
+      result3 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-2", ttlMs: 30000 });
+      return result3.acquired;
+    }, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+      description: "lock TTL expiration",
+    });
 
-    // Now should be able to acquire
-    const result3 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-2", ttlMs: 30000 });
     assert.equal(result3.acquired, true, "Should acquire after TTL expires");
   } finally {
     db.close();

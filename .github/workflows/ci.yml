@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  workflow_call:
   push:
     branches:
       - main
@@ -46,6 +45,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Build
+        run: npm run build
+
       - name: Changelog Gate
         run: npm run changelog:check
 
@@ -61,11 +63,20 @@ jobs:
       - name: Stable validation
         run: AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled
 
+      - name: Generate artifact integrity manifest
+        if: always()
+        run: |
+          mkdir -p test-results
+          {
+            find test-results coverage -type f -print0 2>/dev/null | xargs -0 shasum -a 256
+          } > test-results/artifact-sha256.txt || true
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-node-22
+          retention-days: 14
           path: |
             test-results/
             coverage/
@@ -114,6 +125,7 @@ jobs:
         if: always()
         with:
           name: mutation-report
+          retention-days: 14
           path: reports/mutation/
 
   security:
@@ -156,6 +168,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: npm-audit-report
+          retention-days: 14
           path: |
             npm-audit.json
             npm-audit.sarif

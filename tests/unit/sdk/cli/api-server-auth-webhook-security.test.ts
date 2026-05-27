@@ -22,7 +22,9 @@ const billingRoutesSource = readFileSync(
 
 test("2280: api-server startup remains fail-closed when auth is absent", () => {
   assert.match(source, /requireValidStartupEnv\(\)/);
+  assert.match(source, /AA_API_KEYS/);
   assert.match(envSource, /AA_API_KEYS_JSON/);
+  assert.match(envSource, /AA_API_KEYS/);
   assert.match(envSource, /AA_API_JWT_SECRET/);
   assert.match(envSource, /api\.jwt_secret_required/);
   assert.match(routeUtilsSource, /api\.auth_not_configured/);

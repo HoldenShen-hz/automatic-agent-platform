@@ -21,6 +21,15 @@ interface SignalCapable {
   removeListener(event: "SIGTERM" | "SIGINT", listener: () => void): unknown;
 }
 
+function flushWriteStream(stream: NodeJS.WriteStream): Promise<void> {
+  if (stream.destroyed || !stream.writable) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    stream.write("", () => resolve());
+  });
+}
+
 export interface GracefulShutdownOptions {
   /** Timeout in ms for graceful shutdown (default: 30000) */
   timeoutMs?: number;
@@ -232,7 +241,9 @@ export class GracefulShutdown {
     this.signalExitCode = code;
     this.exitHandler(code);
     if (this.usesDefaultExitHandler) {
-      setImmediate(() => process.exit(code));
+      void Promise.allSettled([flushWriteStream(process.stdout), flushWriteStream(process.stderr)]).finally(() => {
+        setImmediate(() => process.exit(code));
+      });
     }
   }
 

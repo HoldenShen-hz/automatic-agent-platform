@@ -6,6 +6,7 @@ import {
   CallRateLimiter,
   CallGovernance,
 } from "../../../../src/platform/five-plane-execution/execution-engine/call-governance.js";
+import { waitForCondition } from "../../../helpers/wait.js";
 
 test("CallGovernance integration: limiter and breaker together", async () => {
   const governance = new CallGovernance({
@@ -52,9 +53,18 @@ test("CallGovernance integration: breaker recovery after timeout", async () => {
   const blocked = await governance.execute("recovery-key", async () => "blocked");
   assert.equal(blocked.success, false);
 
-  await new Promise((r) => setTimeout(r, 120));
-
-  const recovered = await governance.execute("recovery-key", async () => "recovered");
+  let recovered = await governance.execute("recovery-key", async () => "recovered");
+  await waitForCondition(async () => {
+    if (recovered.success) {
+      return true;
+    }
+    recovered = await governance.execute("recovery-key", async () => "recovered");
+    return recovered.success;
+  }, {
+    timeoutMs: 1_000,
+    intervalMs: 20,
+    description: "circuit breaker recovery",
+  });
   assert.equal(recovered.success, true);
   assert.equal(recovered.metadata?.circuitState, "half_open");
 });
@@ -69,9 +79,15 @@ test("CallGovernance integration: circuit breaker half-open allows test calls", 
   breaker.recordFailure("test-key");
   breaker.check("test-key");
 
-  await new Promise((r) => setTimeout(r, 60));
-
-  const halfOpen = breaker.check("test-key");
+  let halfOpen = breaker.check("test-key");
+  await waitForCondition(() => {
+    halfOpen = breaker.check("test-key");
+    return halfOpen.state === "half_open" && halfOpen.allowed;
+  }, {
+    timeoutMs: 1_000,
+    intervalMs: 20,
+    description: "circuit breaker half-open transition",
+  });
   assert.equal(halfOpen.state, "half_open");
   assert.equal(halfOpen.allowed, true);
 });
@@ -142,7 +158,11 @@ test("CallRateLimiter integration: sliding window enforcement", async () => {
   assert.equal(limiter.checkAndConsume("key", 0).allowed, true);
   assert.equal(limiter.checkAndConsume("key", 0).allowed, false);
 
-  await new Promise((r) => setTimeout(r, 110));
+  await waitForCondition(() => limiter.checkAndConsume("key", Date.now()).allowed, {
+    timeoutMs: 1_000,
+    intervalMs: 20,
+    description: "rate limiter sliding window",
+  });
 
-  assert.equal(limiter.checkAndConsume("key", 110).allowed, true);
+  assert.equal(limiter.checkAndConsume("key", Date.now()).allowed, true);
 });

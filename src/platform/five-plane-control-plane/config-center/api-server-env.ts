@@ -100,7 +100,7 @@ function parseBoolean(raw: string | null, errorCode: string): boolean | undefine
  * Parses the API keys JSON environment variable into structured records.
  * Each key must have apiKey, actorId, and roles properties.
  */
-function parseApiKeys(raw: string | null): ApiKeyRecord[] {
+function parseApiKeysJson(raw: string | null): ApiKeyRecord[] {
   if (raw == null) {
     return [];
   }
@@ -126,6 +126,32 @@ function parseApiKeys(raw: string | null): ApiKeyRecord[] {
       ...(typeof record.tenantId === "string" ? { tenantId: record.tenantId } : {}),
     } as ApiKeyRecord;
   });
+}
+
+function parseLegacyApiKeys(raw: string | null): ApiKeyRecord[] {
+  if (raw == null) {
+    return [];
+  }
+  const keys = raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  if (keys.length === 0) {
+    throw new ValidationError("api.invalid_api_keys", "api.invalid_api_keys");
+  }
+  return keys.map((apiKey, index) => ({
+    apiKey,
+    actorId: `legacy-api-key-${index + 1}`,
+    roles: ["operator"],
+  }));
+}
+
+function parseApiKeysFromEnv(env: NodeJS.ProcessEnv): ApiKeyRecord[] {
+  const apiKeysJson = readTrimmedEnv(env, "AA_API_KEYS_JSON");
+  if (apiKeysJson != null) {
+    return parseApiKeysJson(apiKeysJson);
+  }
+  return parseLegacyApiKeys(readTrimmedEnv(env, "AA_API_KEYS"));
 }
 
 /**
@@ -168,7 +194,7 @@ function validateJwtSecret(secret: string | null, apiKeys: ApiKeyRecord[]): stri
  * before returning a typed configuration object.
  */
 export function loadApiServerEnv(env: NodeJS.ProcessEnv = process.env): ApiServerEnvConfig {
-  const apiKeys = parseApiKeys(readTrimmedEnv(env, "AA_API_KEYS_JSON"));
+  const apiKeys = parseApiKeysFromEnv(env);
   const jwtSecret = validateJwtSecret(readTrimmedEnv(env, "AA_API_JWT_SECRET"), apiKeys);
   const dbPath = readTrimmedEnv(env, "AA_DB_PATH");
   const apiHost = readTrimmedEnv(env, "AA_API_HOST");

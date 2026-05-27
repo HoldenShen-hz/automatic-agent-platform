@@ -103,7 +103,6 @@ function createMockFetchForSeededContext(_ctx: SeededApiContext) {
     }
 
     // Default: return not found to fail test if unexpected
-    console.warn(`Unhandled fetch: ${urlStr} ${init?.method ?? "GET"}`);
     return new Response(JSON.stringify({ error: "not found" }), {
       status: 404,
       headers: { "content-type": "application/json" },

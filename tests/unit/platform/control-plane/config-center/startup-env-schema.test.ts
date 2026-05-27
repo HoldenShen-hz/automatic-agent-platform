@@ -132,6 +132,26 @@ test("validateStartupEnv rejects conflicting postgres DSN aliases", () => {
   assert.ok(result.errors.some((e) => e.key === "AA_STORAGE_POSTGRES_DSN"));
 });
 
+test("validateStartupEnv requires AA_API_JWT_SECRET when AA_API_KEYS_JSON is configured", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "/tmp/db",
+    AA_API_KEYS_JSON: JSON.stringify([{ apiKey: "key", actorId: "actor", roles: ["viewer"] }]),
+  });
+
+  assert.equal(result.success, false);
+  assert.ok(result.errors.some((e) => e.key === "AA_API_JWT_SECRET"));
+});
+
+test("validateStartupEnv requires AA_API_JWT_SECRET when legacy AA_API_KEYS is configured", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "/tmp/db",
+    AA_API_KEYS: "key-a,key-b",
+  });
+
+  assert.equal(result.success, false);
+  assert.ok(result.errors.some((e) => e.key === "AA_API_JWT_SECRET"));
+});
+
 test("validateStartupEnv fails for invalid AA_LOG_STDOUT", () => {
   const result = validateStartupEnv({
     AA_DB_PATH: "/tmp/db",

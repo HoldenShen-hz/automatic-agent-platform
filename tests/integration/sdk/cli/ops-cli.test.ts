@@ -32,12 +32,18 @@ function runCli<T>(scriptName: string, env: NodeJS.ProcessEnv): T {
 
 function serialTest(
   name: string,
-  optionsOrFn: { skip?: string } | ((t: TestContext) => void | Promise<void>),
+  optionsOrFn: { skip?: boolean } | ((t: TestContext) => void | Promise<void>),
   maybeFn?: (t: TestContext) => void | Promise<void>,
 ): void {
   if (typeof optionsOrFn === "function") {
     test(name, { concurrency: false }, optionsOrFn);
     return;
+  }
+  if (maybeFn == null) {
+    throw new TypeError("serialTest options form requires a test function");
+  }
+  if (optionsOrFn.skip !== undefined && optionsOrFn.skip !== true) {
+    throw new TypeError("serialTest only accepts skip: true");
   }
   test(name, { concurrency: false, skip: optionsOrFn.skip }, maybeFn!);
 }

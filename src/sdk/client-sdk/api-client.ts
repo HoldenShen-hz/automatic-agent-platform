@@ -42,6 +42,21 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxBackoffMs: 1000,
 };
 
+export function parseRetryAfterDelayMs(retryAfterHeader: string | null, nowMs = Date.now()): number | null {
+  if (retryAfterHeader == null) {
+    return null;
+  }
+  const retryAfterSeconds = Number.parseInt(retryAfterHeader, 10);
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+  const retryAtMs = Date.parse(retryAfterHeader);
+  if (!Number.isFinite(retryAtMs)) {
+    return null;
+  }
+  return Math.max(0, retryAtMs - nowMs);
+}
+
 function normalizeApiVersionSegment(apiVersion: string): string {
   const normalized = apiVersion.replace(/^\/+|\/+$/g, "");
   return normalized.startsWith("api/") ? normalized : `api/${normalized}`;
@@ -601,10 +616,9 @@ export class RetryableApiClient {
 
       const retryableStatus = response.status === 429 || response.status >= 500;
       if (!response.ok && retryableStatus && isIdempotent && attempt < this.retryConfig.maxRetries) {
-        const retryAfterHeader = response.headers.get("retry-after");
-        const retryAfterSeconds = retryAfterHeader == null ? Number.NaN : Number.parseInt(retryAfterHeader, 10);
-        const retryAfter = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-          ? Math.min(retryAfterSeconds * 1000, this.retryConfig.maxBackoffMs)
+        const retryAfterDelayMs = parseRetryAfterDelayMs(response.headers.get("retry-after"));
+        const retryAfter = retryAfterDelayMs != null
+          ? Math.min(retryAfterDelayMs, this.retryConfig.maxBackoffMs)
           : Math.min(
             this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
             this.retryConfig.maxBackoffMs,

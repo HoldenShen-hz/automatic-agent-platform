@@ -12,6 +12,7 @@ import { IntakeAdmissionService } from "../../../../../src/platform/five-plane-o
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import { waitForCondition } from "../../../../helpers/wait.js";
 
 function createServerHarness(options: {
   workerHeartbeatSweepIntervalMs?: number;
@@ -263,7 +264,14 @@ networkPathTest("HttpApiServer sweeps stale worker heartbeats, marks workers off
   });
 
   await harness.server.start({ host: "127.0.0.1", port: 0 });
-  await new Promise((resolve) => setTimeout(resolve, 40));
+  await waitForCondition(() => {
+    const snapshot = harness.store.worker.getWorkerSnapshot("worker-stale-1");
+    return snapshot?.status === "offline" && harness.incidentService.listIncidents(10).length === 1;
+  }, {
+    timeoutMs: 1_000,
+    intervalMs: 20,
+    description: "stale worker heartbeat sweep",
+  });
 
   const snapshot = harness.store.worker.getWorkerSnapshot("worker-stale-1");
   assert.equal(snapshot?.status, "offline");

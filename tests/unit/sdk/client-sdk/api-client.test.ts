@@ -6,6 +6,7 @@ import {
   ApiClientConfig,
   buildApiUrl,
   buildAuthHeaders,
+  parseRetryAfterDelayMs,
 } from "../../../../src/sdk/client-sdk/index.js";
 
 /**
@@ -38,6 +39,20 @@ test("RetryableApiClient constructor uses default retry config when not provided
   };
   const client = new RetryableApiClient(config);
   assert.ok(client instanceof RetryableApiClient);
+});
+
+test("parseRetryAfterDelayMs parses delta-seconds values", () => {
+  assert.equal(parseRetryAfterDelayMs("3", 0), 3000);
+});
+
+test("parseRetryAfterDelayMs parses HTTP-date values", () => {
+  const nowMs = Date.parse("2026-10-21T07:27:58.000Z");
+  const delayMs = parseRetryAfterDelayMs("Wed, 21 Oct 2026 07:28:00 GMT", nowMs);
+  assert.equal(delayMs, 2000);
+});
+
+test("parseRetryAfterDelayMs returns null for invalid headers", () => {
+  assert.equal(parseRetryAfterDelayMs("not-a-date"), null);
 });
 
 test("RetryableApiClient createExecutionTicket targets the dispatch ticket endpoint", async () => {

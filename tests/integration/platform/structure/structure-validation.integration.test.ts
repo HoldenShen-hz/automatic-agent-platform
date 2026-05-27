@@ -28,13 +28,10 @@ test("Integration: discover all platform surfaces and validate structure", () =>
   const validator = new ModuleStructureValidator(SRC_ROOT);
   const result = validator.validateAllSurfaces();
 
-  console.log(`Platform surfaces check: valid=${result.valid}, errors=${result.errors.length}`);
-  for (const error of result.errors) {
-    console.log(`  - ${error.code}: ${error.message}`);
-  }
-
   assert.ok(Array.isArray(result.errors));
   assert.equal(typeof result.valid, "boolean");
+  assert.equal(typeof result.checkedAt, "string");
+  assert.ok(result.errors.every((error) => error.code.length > 0 && error.message.length > 0));
 });
 
 test("Integration: validate each platform surface individually", () => {
@@ -64,7 +61,7 @@ test("Integration: validate each platform surface individually", () => {
   }
 
   const validCount = results.filter((r) => r.result.valid).length;
-  console.log(`Valid surfaces: ${validCount}/${surfaces.length}`);
+  assert.ok(validCount >= 0 && validCount <= surfaces.length);
 });
 
 test("Integration: cross-validate directory conventions across platform", () => {
@@ -74,13 +71,7 @@ test("Integration: cross-validate directory conventions across platform", () => 
   assert.equal(typeof result.valid, "boolean");
   assert.ok(Array.isArray(result.errors));
   assert.equal(typeof result.checkedAt, "string");
-
-  if (result.errors.length > 0) {
-    console.log(`Convention violations: ${result.errors.length}`);
-    for (const err of result.errors.slice(0, 5)) {
-      console.log(`  [${err.severity}] ${err.code}: ${err.message}`);
-    }
-  }
+  assert.ok(result.errors.every((error) => error.path.length > 0));
 });
 
 // ---------------------------------------------------------------------------
@@ -93,8 +84,7 @@ test("Integration: validate exports for each platform surface", () => {
 
   assert.equal(typeof result.valid, "boolean");
   assert.ok(Array.isArray(result.errors));
-
-  console.log(`Export validation: valid=${result.valid}, errors=${result.errors.length}`);
+  assert.ok(result.errors.every((error) => typeof error.code === "string" && error.code.length > 0));
 });
 
 test("Integration: check each surface index.ts exists and has exports", () => {
@@ -119,9 +109,8 @@ test("Integration: check each surface index.ts exists and has exports", () => {
       const validator = new ExportSurfaceValidator(SRC_ROOT);
       const hasExports = validator.hasExports(`platform/${surface}/index.ts`);
       assert.equal(typeof hasExports, "boolean", `${surface} hasExports should return boolean`);
-      console.log(`  ${surface}: index.ts exists, hasExports=${hasExports}`);
     } else {
-      console.log(`  ${surface}: index.ts not found`);
+      assert.equal(exists, false);
     }
   }
 });
@@ -135,7 +124,7 @@ test("Integration: list and validate module directories in platform", () => {
   const platformModules = validator.listModuleDirs("platform");
 
   assert.ok(Array.isArray(platformModules));
-  console.log(`Found ${platformModules.length} module directories under platform/`);
+  assert.ok(platformModules.length > 0);
 
   for (const modulePath of platformModules.slice(0, 5)) {
     const result = validator.validateModuleDir(modulePath);
@@ -153,8 +142,6 @@ test("Integration: validate structure module exports all submodules", async () =
   assert.ok(typeof mod.validatePlatformModuleStructure === "function");
   assert.ok(typeof mod.validateDirectoryConventions === "function");
   assert.ok(typeof mod.validateExportSurface === "function");
-
-  console.log("Structure module exports verified");
 });
 
 // ---------------------------------------------------------------------------

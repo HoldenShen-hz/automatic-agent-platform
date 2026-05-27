@@ -123,8 +123,11 @@ test("GracefulShutdown integration with timeout behavior", async () => {
     handlers: [
       {
         name: "slow-handler",
-        handler: async () => {
-          await new Promise((resolve) => setTimeout(resolve, 100));
+        handler: async (signal) => {
+          assert.ok(signal, "GracefulShutdown should provide an abort signal to handlers");
+          await new Promise<void>((resolve) => {
+            signal.addEventListener("abort", () => resolve(), { once: true });
+          });
         },
         timeoutMs: 10, // Will timeout
       },

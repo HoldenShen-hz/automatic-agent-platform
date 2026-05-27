@@ -100,25 +100,24 @@ test("buildPluginRuntimeExecArgv handles non-sandboxed isolation", () => {
   assert.equal(args.includes("--permission"), false);
 });
 
-test("buildPluginRuntimeExecArgv strips dangerous debugger and profiler args", () => {
+test("buildPluginRuntimeExecArgv strips dangerous debugger and profiler args", (t) => {
   const originalExecArgv = [...process.execArgv];
-  process.execArgv = ["--inspect=127.0.0.1:9229", "--debug", "--prof", "--max-old-space-size=256"];
-  try {
-    const args = buildPluginRuntimeExecArgv({
-      isolation: "shared_process",
-      workspaceRoot: "/workspace",
-      sandboxPolicy: createSandboxPolicy(),
-      sandboxRoot: null,
-      env: {},
-    });
-
-    assert.equal(args.includes("--inspect=127.0.0.1:9229"), false);
-    assert.equal(args.includes("--debug"), false);
-    assert.equal(args.includes("--prof"), false);
-    assert.ok(args.includes("--max-old-space-size=256"));
-  } finally {
+  t.after(() => {
     process.execArgv = originalExecArgv;
-  }
+  });
+  process.execArgv = ["--inspect=127.0.0.1:9229", "--debug", "--prof", "--max-old-space-size=256"];
+  const args = buildPluginRuntimeExecArgv({
+    isolation: "shared_process",
+    workspaceRoot: "/workspace",
+    sandboxPolicy: createSandboxPolicy(),
+    sandboxRoot: null,
+    env: {},
+  });
+
+  assert.equal(args.includes("--inspect=127.0.0.1:9229"), false);
+  assert.equal(args.includes("--debug"), false);
+  assert.equal(args.includes("--prof"), false);
+  assert.ok(args.includes("--max-old-space-size=256"));
 });
 
 // =============================================================================

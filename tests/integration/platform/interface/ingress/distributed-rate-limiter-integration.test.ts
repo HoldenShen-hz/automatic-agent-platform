@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+import { waitForCondition } from "../../../../helpers/wait.js";
 
 test("DistributedRateLimiter uses in-memory mode when no Redis configured", async () => {
   const limiter = new DistributedRateLimiter({
@@ -36,10 +37,19 @@ test("DistributedRateLimiter resets window after time expires", async () => {
   const denied = await limiter.checkAndConsume("time-test");
   assert.equal(denied.allowed, false);
 
-  // Wait for window to reset
-  await new Promise((resolve) => setTimeout(resolve, 150));
+  let allowed = await limiter.checkAndConsume("time-test");
+  await waitForCondition(async () => {
+    if (allowed.allowed) {
+      return true;
+    }
+    allowed = await limiter.checkAndConsume("time-test");
+    return allowed.allowed;
+  }, {
+    timeoutMs: 1_000,
+    intervalMs: 20,
+    description: "rate limiter window reset",
+  });
 
-  const allowed = await limiter.checkAndConsume("time-test");
   assert.equal(allowed.allowed, true);
   assert.equal(allowed.remaining, 1);
 });
